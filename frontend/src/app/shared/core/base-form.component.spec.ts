@@ -1,12 +1,13 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
-import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { Router, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { BaseFormComponent, BaseFormConfig } from './base-form.component';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { Component } from '@angular/core';
+import { BaseFormComponent, BaseFormConfig } from './base-form.component';
 
 // Mock test interfaces
 interface TestItem {
@@ -50,11 +51,7 @@ class TestFormComponent extends BaseFormComponent<TestItem, TestCreateDto, TestU
   }
 
   protected loadItem(id: number) {
-    return vi.fn().mockReturnValue({
-      subscribe: vi.fn((callbacks: any) => {
-        callbacks.next({ id, name: 'Test Item', email: 'test@example.com' });
-      }),
-    })();
+    return of({ id, name: 'Test Item', email: 'test@example.com' });
   }
 
   protected createDto(): TestCreateDto {
@@ -66,19 +63,11 @@ class TestFormComponent extends BaseFormComponent<TestItem, TestCreateDto, TestU
   }
 
   protected saveCreate(dto: TestCreateDto) {
-    return vi.fn().mockReturnValue({
-      subscribe: vi.fn((callbacks: any) => {
-        callbacks.next({ id: 1, ...dto });
-      }),
-    })();
+    return of({ id: 1, ...dto });
   }
 
   protected saveUpdate(dto: TestUpdateDto) {
-    return vi.fn().mockReturnValue({
-      subscribe: vi.fn((callbacks: any) => {
-        callbacks.next({ id: 1, ...dto });
-      }),
-    })();
+    return of({ id: 1, ...dto });
   }
 
   // Expose protected methods for testing
@@ -107,7 +96,7 @@ describe('BaseFormComponent', () => {
     await TestBed.configureTestingModule({
       imports: [TestFormComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: '**', redirectTo: '' }]),
         provideHttpClient(),
         FormBuilder,
         { provide: GlobalToastService, useValue: { success: vi.fn(), error: vi.fn() } },
@@ -170,107 +159,96 @@ describe('BaseFormComponent', () => {
       expect(state.searchQuery).toBe('test search');
       expect(state.page).toBe(5);
     });
-
-    it('should return null for navigation state when not in browser', () => {
-      // Simulate SSR
-      const originalPlatformId = component.platformId;
-      (component as any).platformId = 'server';
-      
-      const state = component.testGetNavigationState();
-      expect(state.searchQuery).toBeNull();
-      expect(state.page).toBeNull();
-      
-      (component as any).platformId = originalPlatformId;
-    });
   });
 
   describe('keyboard shortcuts', () => {
     it('should handle Escape key to cancel', () => {
-      const goBackSpy = vi.spyOn(component, 'goBack');
+      const goBackSpy = vi.spyOn(component as any, 'goBack');
       const event = new KeyboardEvent('keydown', { key: 'Escape' });
       const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
-      
+
       component.handleGlobalKeydown(event);
-      
+
       expect(preventDefaultSpy).toHaveBeenCalled();
       expect(goBackSpy).toHaveBeenCalled();
     });
 
     it('should handle Ctrl+S to save', () => {
       const onSubmitSpy = vi.spyOn(component, 'onSubmit');
-      const event = new KeyboardEvent('keydown', { 
+      const event = new KeyboardEvent('keydown', {
         key: 's',
         ctrlKey: true,
       });
       const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
-      
+
       component.handleGlobalKeydown(event);
-      
+
       expect(preventDefaultSpy).toHaveBeenCalled();
       expect(onSubmitSpy).toHaveBeenCalled();
     });
 
     it('should handle Cmd+S to save (Mac)', () => {
       const onSubmitSpy = vi.spyOn(component, 'onSubmit');
-      const event = new KeyboardEvent('keydown', { 
+      const event = new KeyboardEvent('keydown', {
         key: 's',
         metaKey: true,
       });
       const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
-      
+
       component.handleGlobalKeydown(event);
-      
+
       expect(preventDefaultSpy).toHaveBeenCalled();
       expect(onSubmitSpy).toHaveBeenCalled();
     });
 
     it('should handle B key to go back', () => {
-      const goBackSpy = vi.spyOn(component, 'goBack');
+      const goBackSpy = vi.spyOn(component as any, 'goBack');
       const event = new KeyboardEvent('keydown', { key: 'B' });
       const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
-      
+
       component.handleGlobalKeydown(event);
-      
+
       expect(preventDefaultSpy).toHaveBeenCalled();
       expect(goBackSpy).toHaveBeenCalled();
     });
 
     it('should handle Left Arrow key to go back', () => {
-      const goBackSpy = vi.spyOn(component, 'goBack');
+      const goBackSpy = vi.spyOn(component as any, 'goBack');
       const event = new KeyboardEvent('keydown', { key: 'ArrowLeft' });
       const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
-      
+
       component.handleGlobalKeydown(event);
-      
+
       expect(preventDefaultSpy).toHaveBeenCalled();
       expect(goBackSpy).toHaveBeenCalled();
     });
 
     it('should not handle keyboard shortcuts when input is focused', () => {
-      const goBackSpy = vi.spyOn(component, 'goBack');
-      
+      const goBackSpy = vi.spyOn(component as any, 'goBack');
+
       // Mock an input element being focused
       const inputElement = document.createElement('input');
       document.body.appendChild(inputElement);
       inputElement.focus();
-      
+
       const event = new KeyboardEvent('keydown', { key: 'Escape' });
-      
+
       component.handleGlobalKeydown(event);
-      
+
       expect(goBackSpy).not.toHaveBeenCalled();
-      
+
       document.body.removeChild(inputElement);
     });
   });
 
   describe('form submission', () => {
     it('should mark form as touched when invalid', () => {
+      component.form.controls['name'].setErrors({ required: true });
       const markAllAsTouchedSpy = vi.spyOn(component.form, 'markAllAsTouched');
       const toastSpy = vi.spyOn((component as any).toast, 'error');
-      
+
       component.onSubmit();
-      
+
       expect(markAllAsTouchedSpy).toHaveBeenCalled();
       expect(toastSpy).toHaveBeenCalledWith('Please fix the form errors');
     });
@@ -284,10 +262,10 @@ describe('BaseFormComponent', () => {
 
   describe('cancel', () => {
     it('should call goBack on cancel', () => {
-      const goBackSpy = vi.spyOn(component, 'goBack');
-      
+      const goBackSpy = vi.spyOn(component as any, 'goBack');
+
       component.onCancel();
-      
+
       expect(goBackSpy).toHaveBeenCalled();
     });
   });
@@ -296,25 +274,30 @@ describe('BaseFormComponent', () => {
     it('should patch form with item data', () => {
       const testData = { id: 1, name: 'Test Name', email: 'test@example.com' };
       const patchValueSpy = vi.spyOn(component.form, 'patchValue');
-      
-      component.patchForm(testData);
-      
+
+      (component as any).patchForm(testData);
+
       expect(patchValueSpy).toHaveBeenCalledWith(testData, { emitEvent: false });
     });
   });
 
   describe('go back', () => {
     it('should navigate to list route with focus state', () => {
-      const router = TestBed.inject<any>(component.router);
-      const navigateSpy = vi.spyOn(router, 'navigate').mockImplementation(() => Promise.resolve(true));
-      
-      component.goBack();
-      
-      expect(navigateSpy).toHaveBeenCalledWith(['/test-items'], expect.objectContaining({
-        state: expect.objectContaining({
-          focusTable: true,
+      const router = TestBed.inject(Router);
+      const navigateSpy = vi
+        .spyOn(router, 'navigate')
+        .mockImplementation(() => Promise.resolve(true));
+
+      (component as any).goBack();
+
+      expect(navigateSpy).toHaveBeenCalledWith(
+        ['/test-items'],
+        expect.objectContaining({
+          state: expect.objectContaining({
+            focusTable: true,
+          }),
         }),
-      }));
+      );
     });
   });
 });

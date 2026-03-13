@@ -7,6 +7,7 @@ import {
   PLATFORM_ID,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
+  provideZonelessChangeDetection,
 } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
@@ -40,6 +41,7 @@ type AppTitleSettings = {
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    provideZonelessChangeDetection(),
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(withFetch(), withInterceptors([cacheInterceptor, authInterceptor])),
@@ -67,6 +69,14 @@ export const appConfig: ApplicationConfig = {
       return configService.loadConfig().then(() => {
         authService.initMockAuth();
         themeService.initializeTheme(configService.settings.theme as ThemeName);
+
+        // Inject Configurable Skeleton Debounce duration as CSS Variable
+        try {
+          const debounceMs = configService.settings.skeletonDebounceDurationMs ?? 500;
+          document.documentElement.style.setProperty('--skeleton-debounce-duration', `${debounceMs}ms`);
+        } catch (e) {
+          /* ignore on non-browser platforms */
+        }
 
         // If authenticated, attempt to fetch user settings and apply theme/darkMode from server
         const applyFromServer = async () => {

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { ZardSkeletonComponent } from './skeleton.component';
 
-import { ZardCardComponent } from '@/shared/components/card';
+import { ZardCardComponent } from '../card/card.component';
 
 @Component({
   selector: 'app-card-skeleton',

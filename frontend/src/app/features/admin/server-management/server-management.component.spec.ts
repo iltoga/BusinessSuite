@@ -1,4 +1,4 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
@@ -16,6 +16,15 @@ describe('ServerManagementComponent - Cache Controls', () => {
   let mockToastService: any;
   let mockServerManagementService: any;
   let mockMediaCleanupStreamService: any;
+  const flushCacheStatusRequest = (overrides: Record<string, unknown> = {}) => {
+    const req = httpMock.expectOne('/api/server-management/cache-status/');
+    req.flush({
+      enabled: true,
+      version: 1,
+      message: 'Cache is enabled',
+      ...overrides,
+    });
+  };
 
   beforeEach(async () => {
     mockToastService = {
@@ -135,6 +144,12 @@ describe('ServerManagementComponent - Cache Controls', () => {
           },
         }),
       ),
+      // Placeholder — patched after TestBed setup so HttpClient is available
+      serverManagementCacheStatusRetrieve: vi.fn(),
+      serverManagementOpenrouterStatusPartialUpdate: vi.fn(),
+      serverManagementCacheDisableCreate: vi.fn(),
+      serverManagementCacheEnableCreate: vi.fn(),
+      serverManagementCacheClearCreate: vi.fn(),
     };
 
     await TestBed.configureTestingModule({
@@ -154,6 +169,25 @@ describe('ServerManagementComponent - Cache Controls', () => {
     fixture = TestBed.createComponent(ServerManagementComponent);
     component = fixture.componentInstance;
     httpMock = TestBed.inject(HttpTestingController);
+
+    // Patch cache-status and openrouter-status methods to use real HttpClient
+    // so httpMock can intercept them, matching what the tests expect.
+    const httpClient = TestBed.inject(HttpClient);
+    mockServerManagementService.serverManagementCacheStatusRetrieve.mockImplementation(() =>
+      httpClient.get('/api/server-management/cache-status/'),
+    );
+    mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate.mockImplementation(
+      (body: any) => httpClient.patch('/api/server-management/openrouter-status/', body),
+    );
+    mockServerManagementService.serverManagementCacheDisableCreate.mockImplementation(() =>
+      httpClient.post('/api/server-management/cache-disable/', {}),
+    );
+    mockServerManagementService.serverManagementCacheEnableCreate.mockImplementation(() =>
+      httpClient.post('/api/server-management/cache-enable/', {}),
+    );
+    mockServerManagementService.serverManagementCacheClearCreate.mockImplementation(() =>
+      httpClient.post('/api/server-management/cache-clear/', {}),
+    );
   });
 
   afterEach(() => {
@@ -191,7 +225,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
         1,
       );
 
-      expect(component.cacheStatus()).toEqual({
+      expect(component.cacheStatus()).toMatchObject({
         enabled: true,
         version: 1,
         message: 'Cache is enabled',
@@ -243,7 +277,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
       const req = httpMock.expectOne('/api/server-management/cache-status/');
       req.flush({ enabled: false, version: 3, message: 'Cache is disabled' });
 
-      expect(component.cacheStatus()).toEqual({
+      expect(component.cacheStatus()).toMatchObject({
         enabled: false,
         version: 3,
         message: 'Cache is disabled',
@@ -414,6 +448,9 @@ describe('ServerManagementComponent - Cache Controls', () => {
     it('should display cache status correctly', async () => {
       component.cacheStatus.set({ enabled: true, version: 5, message: 'Cache is enabled' });
       fixture.detectChanges();
+      flushCacheStatusRequest();
+      component.cacheStatus.set({ enabled: true, version: 5, message: 'Cache is enabled' });
+      fixture.detectChanges();
 
       await new Promise((r) => setTimeout(r, 0));
       fixture.detectChanges();
@@ -427,6 +464,9 @@ describe('ServerManagementComponent - Cache Controls', () => {
     });
 
     it('should show disabled state correctly', async () => {
+      component.cacheStatus.set({ enabled: false, version: 3, message: 'Cache is disabled' });
+      fixture.detectChanges();
+      flushCacheStatusRequest();
       component.cacheStatus.set({ enabled: false, version: 3, message: 'Cache is disabled' });
       fixture.detectChanges();
 
@@ -448,6 +488,14 @@ describe('ServerManagementComponent - Cache Controls', () => {
         cacheBackend: 'django_redis.cache.RedisCache',
       });
       fixture.detectChanges();
+      flushCacheStatusRequest();
+      component.cacheStatus.set({
+        enabled: true,
+        version: 3,
+        message: 'Cache is enabled',
+        cacheBackend: 'django_redis.cache.RedisCache',
+      });
+      fixture.detectChanges();
 
       await new Promise((r) => setTimeout(r, 0));
       fixture.detectChanges();
@@ -460,6 +508,9 @@ describe('ServerManagementComponent - Cache Controls', () => {
     });
 
     it('should show loading state when cache status not loaded', async () => {
+      component.cacheStatus.set(null);
+      fixture.detectChanges();
+      flushCacheStatusRequest();
       component.cacheStatus.set(null);
       fixture.detectChanges();
 

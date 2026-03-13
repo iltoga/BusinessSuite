@@ -1,0 +1,1003 @@
+$ ng test --watch=false
+❯ Building...
+✔ Building...
+Initial chunk files                                                                             | Names                                                                                        |  Raw size
+chunk-VCLWZXGX.js                                                                               | -                                                                                            | 802.06 kB | 
+spec-app-features-applications-application-detail-application-detail.component.js               | spec-app-features-applications-application-detail-application-detail.component               | 391.90 kB | 
+spec-app-features-admin-server-management-server-management.component.js                        | spec-app-features-admin-server-management-server-management.component                        | 246.96 kB | 
+styles.css                                                                                      | styles                                                                                       | 138.58 kB | 
+chunk-TW2RKJSU.js                                                                               | -                                                                                            | 115.76 kB | 
+spec-app-app.js                                                                                 | spec-app-app                                                                                 | 113.62 kB | 
+spec-app-shared-components-calendar-calendar-integration.component.js                           | spec-app-shared-components-calendar-calendar-integration.component                           | 110.91 kB | 
+spec-app-features-products-product-list-product-list.component.js                               | spec-app-features-products-product-list-product-list.component                               |  99.12 kB | 
+chunk-H5M3HMAE.js                                                                               | -                                                                                            |  98.33 kB | 
+spec-app-features-customers-customer-form-customer-form.component.js                            | spec-app-features-customers-customer-form-customer-form.component                            |  96.46 kB | 
+spec-app-features-products-product-form-product-form.component.js                               | spec-app-features-products-product-form-product-form.component                               |  82.94 kB | 
+spec-app-features-customers-customer-detail-customer-detail.component.js                        | spec-app-features-customers-customer-detail-customer-detail.component                        |  76.84 kB | 
+chunk-PX45VYUR.js                                                                               | -                                                                                            |  62.29 kB | 
+spec-app-features-invoices-invoice-form-invoice-form.component.js                               | spec-app-features-invoices-invoice-form-invoice-form.component                               |  57.97 kB | 
+spec-app-features-applications-application-list-application-list.component.js                   | spec-app-features-applications-application-list-application-list.component                   |  51.07 kB | 
+spec-app-features-products-product-detail-product-detail.component.js                           | spec-app-features-products-product-detail-product-detail.component                           |  41.29 kB | 
+chunk-TH3T6PIF.js                                                                               | -                                                                                            |  34.87 kB | 
+chunk-G5VWLIQS.js                                                                               | -                                                                                            |  33.01 kB | 
+chunk-OQ6XXHCS.js                                                                               | -                                                                                            |  30.95 kB | 
+chunk-YIFFRNEJ.js                                                                               | -                                                                                            |  29.27 kB | 
+spec-app-features-letters-surat-permohonan-surat-permohonan.component.js                        | spec-app-features-letters-surat-permohonan-surat-permohonan.component                        |  28.85 kB | 
+chunk-S2OMWCYP.js                                                                               | -                                                                                            |  27.73 kB | 
+chunk-RTXBPDWV.js                                                                               | -                                                                                            |  27.34 kB | 
+chunk-WREQE34R.js                                                                               | -                                                                                            |  27.32 kB | 
+chunk-J3HD3B65.js                                                                               | -                                                                                            |  25.62 kB | 
+chunk-DPNCICJY.js                                                                               | -                                                                                            |  24.41 kB | 
+chunk-6N7Y5F5U.js                                                                               | -                                                                                            |  22.76 kB | 
+chunk-QWF6OBWS.js                                                                               | -                                                                                            |  22.48 kB | 
+chunk-56BJG4LI.js                                                                               | -                                                                                            |  21.78 kB | 
+spec-app-core-interceptors-cache.interceptor.js                                                 | spec-app-core-interceptors-cache.interceptor                                                 |  20.52 kB | 
+chunk-LTHCGZUI.js                                                                               | -                                                                                            |  19.21 kB | 
+chunk-BZRTFRCB.js                                                                               | -                                                                                            |  18.59 kB | 
+chunk-XVLUWMNU.js                                                                               | -                                                                                            |  18.11 kB | 
+spec-app-core-services-reminder-inbox.service.js                                                | spec-app-core-services-reminder-inbox.service                                                |  16.20 kB | 
+chunk-2MRJ6DHG.js                                                                               | -                                                                                            |  16.15 kB | 
+spec-app-features-applications-application-form-application-form-documents-section.component.js | spec-app-features-applications-application-form-application-form-documents-section.component |  16.14 kB | 
+chunk-PSZKOM2E.js                                                                               | -                                                                                            |  15.38 kB | 
+chunk-T5YTJZMX.js                                                                               | -                                                                                            |  15.00 kB | 
+chunk-255ZJB56.js                                                                               | -                                                                                            |  14.41 kB | 
+spec-app-features-admin-server-management-server-management-ai-workflow.facade.js               | spec-app-features-admin-server-management-server-management-ai-workflow.facade               |  13.45 kB | 
+chunk-55UNVEAM.js                                                                               | -                                                                                            |  13.03 kB | 
+spec-app-shared-core-base-detail.component.js                                                   | spec-app-shared-core-base-detail.component                                                   |  12.72 kB | 
+chunk-LLJZCWX3.js                                                                               | -                                                                                            |  12.56 kB | 
+chunk-C64W7HOC.js                                                                               | -                                                                                            |  11.85 kB | 
+chunk-MEO4J6X6.js                                                                               | -                                                                                            |  10.57 kB | 
+spec-app-shared-core-base-form.component.js                                                     | spec-app-shared-core-base-form.component                                                     |   9.22 kB | 
+spec-app-shared-core-base-list.component.js                                                     | spec-app-shared-core-base-list.component                                                     |   9.21 kB | 
+spec-app-shared-components-data-table-data-table.component.js                                   | spec-app-shared-components-data-table-data-table.component                                   |   8.96 kB | 
+chunk-XT7JNVDB.js                                                                               | -                                                                                            |   8.86 kB | 
+chunk-DLWWRWHW.js                                                                               | -                                                                                            |   8.40 kB | 
+chunk-FDOUGIUA.js                                                                               | -                                                                                            |   8.24 kB | 
+chunk-5RNZGTCW.js                                                                               | -                                                                                            |   8.18 kB | 
+spec-app-core-services-cache.service.js                                                         | spec-app-core-services-cache.service                                                         |   7.63 kB | 
+spec-app-core-interceptors-auth.interceptor.js                                                  | spec-app-core-interceptors-auth.interceptor                                                  |   7.26 kB | 
+chunk-JJBQ3QKH.js                                                                               | -                                                                                            |   6.52 kB | 
+chunk-2IO324YY.js                                                                               | -                                                                                            |   5.83 kB | 
+chunk-XSL2FFZO.js                                                                               | -                                                                                            |   5.54 kB | 
+chunk-ZQUHW2M5.js                                                                               | -                                                                                            |   5.18 kB | 
+chunk-EYVVC2XH.js                                                                               | -                                                                                            |   5.13 kB | 
+chunk-6U7TLUS2.js                                                                               | -                                                                                            |   5.08 kB | 
+spec-app-shared-services-help.service.js                                                        | spec-app-shared-services-help.service                                                        |   4.84 kB | 
+chunk-WYAZJY4U.js                                                                               | -                                                                                            |   4.81 kB | 
+spec-app-core-services-sse.service.js                                                           | spec-app-core-services-sse.service                                                           |   4.58 kB | 
+chunk-AO5AKBO3.js                                                                               | -                                                                                            |   4.26 kB | 
+chunk-PRDVONEX.js                                                                               | -                                                                                            |   4.13 kB | 
+spec-app-shared-components-search-toolbar-search-toolbar.component.js                           | spec-app-shared-components-search-toolbar-search-toolbar.component                           |   3.92 kB | 
+spec-app-shared-components-customer-select-customer-select.component.js                         | spec-app-shared-components-customer-select-customer-select.component                         |   3.27 kB | 
+chunk-2EIKJJY5.js                                                                               | -                                                                                            |   3.21 kB | 
+chunk-Y6K3EAEI.js                                                                               | -                                                                                            |   3.16 kB | 
+spec-app-core-services-config.service.js                                                        | spec-app-core-services-config.service                                                        |   3.10 kB | 
+spec-app-shared-utils-document-preview-source.js                                                | spec-app-shared-utils-document-preview-source                                                |   3.00 kB | 
+spec-app-core-services-auth.service.js                                                          | spec-app-core-services-auth.service                                                          |   2.83 kB | 
+chunk-UH7U3DMX.js                                                                               | -                                                                                            |   2.55 kB | 
+spec-app-core-utils-document-categorization-pipeline.js                                         | spec-app-core-utils-document-categorization-pipeline                                         |   2.41 kB | 
+chunk-ZLCFUDSW.js                                                                               | -                                                                                            |   2.37 kB | 
+chunk-AS6NYQIP.js                                                                               | -                                                                                            |   1.90 kB | 
+chunk-QAYPDP3K.js                                                                               | -                                                                                            |   1.81 kB | 
+spec-csp.js                                                                                     | spec-csp                                                                                     |   1.56 kB | 
+spec-app-shared-pipes-app-date-pipe.js                                                          | spec-app-shared-pipes-app-date-pipe                                                          |   1.52 kB | 
+spec-app-shared-utils-form-errors.js                                                            | spec-app-shared-utils-form-errors                                                            |   1.23 kB | 
+init-testbed.js                                                                                 | init-testbed                                                                                 |   1.21 kB | 
+spec-app-shared-utils-resource-url-sanitizer.js                                                 | spec-app-shared-utils-resource-url-sanitizer                                                 |   1.17 kB | 
+chunk-7UNY64KL.js                                                                               | -                                                                                            |   1.09 kB | 
+spec-app-shared-utils-html-content-sanitizer.js                                                 | spec-app-shared-utils-html-content-sanitizer                                                 |   1.05 kB | 
+spec-app-shared-components-data-table-shortcut-highlight.pipe.js                                | spec-app-shared-components-data-table-shortcut-highlight.pipe                                |   1.02 kB | 
+chunk-4DLIOLCN.js                                                                               | -                                                                                            | 994 bytes | 
+vitest-mock-patch.js                                                                            | vitest-mock-patch                                                                            | 704 bytes | 
+chunk-M7T7JCMT.js                                                                               | -                                                                                            | 543 bytes | 
+chunk-KSTYCSN6.js                                                                               | -                                                                                            | 426 bytes | 
+chunk-LMWICEGU.js                                                                               | -                                                                                            | 372 bytes | 
+chunk-536VKLCN.js                                                                               | -                                                                                            |  43 bytes | 
+chunk-JVYCQYI2.js                                                                               | -                                                                                            |  43 bytes | 
+
+                                                                                                | Initial total                                                                                |   3.36 MB
+
+Lazy chunk files                                                                                | Names                                                                                        |  Raw size
+chunk-KKIIHALO.js                                                                               | pdf-viewer-host-component                                                                    |  23.31 kB | 
+chunk-M7TD6L7X.js                                                                               | shortcut-highlight-pipe                                                                      | 172 bytes | 
+
+Application bundle generation complete. [6.884 seconds] - 2026-03-13T06:20:47.388Z
+
+
+[1m[46m RUN [49m[22m [36mv4.1.0 [39m[90m/Users/stefano.galassi/python/RevisBaliCRM/frontend[39m
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 20: should store and retrieve data correctly
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCleared cache entries for version 23
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 21: should include user identity and version in cached response
+[22m[39mCache cleared successfully
+
+ [31m❯[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/core/base-form.component.spec.ts [2m([22m[2m21 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 94[2mms[22m[39m
+     [32m✓[39m should create[32m 30[2mms[22m[39m
+     [32m✓[39m should initialize with default state[32m 3[2mms[22m[39m
+     [32m✓[39m should have form initialized[32m 7[2mms[22m[39m
+     [32m✓[39m should have formErrorLabels initialized[32m 3[2mms[22m[39m
+     [32m✓[39m should have fieldTooltips initialized[32m 2[2mms[22m[39m
+       [32m✓[39m should get correct list route[32m 2[2mms[22m[39m
+       [32m✓[39m should get correct edit route[32m 2[2mms[22m[39m
+       [32m✓[39m should get correct detail route[32m 4[2mms[22m[39m
+       [32m✓[39m should get navigation state from window.history[32m 2[2mms[22m[39m
+[31m       [31m×[31m should return null for navigation state when not in browser[39m[32m 6[2mms[22m[39m
+       [32m✓[39m should handle Escape key to cancel[32m 7[2mms[22m[39m
+       [32m✓[39m should handle Ctrl+S to save[32m 3[2mms[22m[39m
+       [32m✓[39m should handle Cmd+S to save (Mac)[32m 2[2mms[22m[39m
+       [32m✓[39m should handle B key to go back[32m 2[2mms[22m[39m
+       [32m✓[39m should handle Left Arrow key to go back[32m 4[2mms[22m[39m
+       [32m✓[39m should not handle keyboard shortcuts when input is focused[32m 3[2mms[22m[39m
+[31m       [31m×[31m should mark form as touched when invalid[39m[32m 3[2mms[22m[39m
+       [32m✓[39m should set isSaving to true during submission[32m 2[2mms[22m[39m
+       [32m✓[39m should call goBack on cancel[32m 2[2mms[22m[39m
+       [32m✓[39m should patch form with item data[32m 2[2mms[22m[39m
+       [32m✓[39m should navigate to list route with focus state[32m 2[2mms[22m[39m
+ [31m❯[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/core/base-detail.component.spec.ts [2m([22m[2m27 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 114[2mms[22m[39m
+     [32m✓[39m should create[32m 36[2mms[22m[39m
+     [32m✓[39m should initialize with default state[32m 4[2mms[22m[39m
+     [32m✓[39m should have navigation state signals initialized[32m 8[2mms[22m[39m
+       [32m✓[39m should get correct list route[32m 3[2mms[22m[39m
+       [32m✓[39m should get correct edit route[32m 2[2mms[22m[39m
+       [32m✓[39m should get correct detail route[32m 2[2mms[22m[39m
+       [32m✓[39m should navigate to edit[32m 8[2mms[22m[39m
+       [32m✓[39m should not navigate to edit if itemId is null[32m 4[2mms[22m[39m
+       [32m✓[39m should navigate to return URL if available[32m 3[2mms[22m[39m
+       [32m✓[39m should navigate to list route if no return URL[32m 3[2mms[22m[39m
+       [32m✓[39m should handle E key for edit[32m 2[2mms[22m[39m
+       [32m✓[39m should handle D key for delete when enabled[32m 2[2mms[22m[39m
+       [32m✓[39m should not handle D key for delete when disabled[32m 2[2mms[22m[39m
+       [32m✓[39m should not handle D key for delete when requires superuser but user is not superuser[32m 2[2mms[22m[39m
+       [32m✓[39m should handle B key for back[32m 2[2mms[22m[39m
+       [32m✓[39m should handle Left Arrow key for back[32m 2[2mms[22m[39m
+       [32m✓[39m should not handle keyboard shortcuts when input is focused[32m 3[2mms[22m[39m
+       [32m✓[39m should not delete if itemId is null[32m 2[2mms[22m[39m
+       [32m✓[39m should not delete if item is null[32m 2[2mms[22m[39m
+       [32m✓[39m should not delete if requires superuser and user is not superuser[32m 1[2mms[22m[39m
+       [32m✓[39m should show confirmation dialog before delete[32m 1[2mms[22m[39m
+       [32m✓[39m should call deleteItem and show success toast on confirmation[32m 2[2mms[22m[39m
+       [32m✓[39m should show error toast on delete failure[32m 2[2mms[22m[39m
+       [32m✓[39m should restore navigation state from window.history[32m 2[2mms[22m[39m
+       [32m✓[39m should not set returnUrl if it does not start with /[32m 1[2mms[22m[39m
+       [32m✓[39m should load item and set state[32m 2[2mms[22m[39m
+[31m       [31m×[31m should show error toast and navigate back on load error[39m[32m 13[2mms[22m[39m
+ [31m❯[39m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts [2m([22m[2m9 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[32m 29[2mms[22m[39m
+[31m     [31m×[31m resets a workflow model setting by sending null[39m[32m 16[2mms[22m[39m
+[31m     [31m×[31m clears workflow model combobox values by sending null[39m[32m 2[2mms[22m[39m
+     [32m✓[39m ignores clear for non-workflow model settings[32m 1[2mms[22m[39m
+[31m     [31m×[31m adds failover model to ordered list[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m reorders failover model list[39m[32m 1[2mms[22m[39m
+     [32m✓[39m reads the active groq primary model from GROQ_DEFAULT_MODEL[32m 1[2mms[22m[39m
+[31m     [31m×[31m updates the active groq primary model without mutating the non-groq default[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m keeps the primary model unchanged when adding a failover model[39m[32m 1[2mms[22m[39m
+     [32m✓[39m preserves multiple failover rows for the same provider when normalizing workflow status[32m 2[2mms[22m[39m
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCleared cache entries for version 100
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/components/calendar/calendar-integration.component.spec.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 232[2mms[22m[39m
+ [31m❯[39m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts [2m([22m[2m5 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[32m 16[2mms[22m[39m
+[31m     [31m×[31m refreshes immediately on SSE changes and updates unread count[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m refreshes immediately on reminder push notifications[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m uses a five-minute fallback poll instead of refreshing every minute[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m coalesces simultaneous push and SSE invalidations into one follow-up refresh[39m[32m 3[2mms[22m[39m
+[31m     [31m×[31m keeps fallback polling active for recovery after the live stream disconnects[39m[32m 1[2mms[22m[39m
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCleared cache entries for version 39
+
+Not implemented: Window's scrollTo() method
+ [31m❯[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/components/data-table/data-table.component.spec.ts [2m([22m[2m9 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 233[2mms[22m[39m
+     [32m✓[39m should auto-select when only one row is present[32m 71[2mms[22m[39m
+     [32m✓[39m selectRow should focus the provided row element when available[32m 17[2mms[22m[39m
+     [32m✓[39m handleRowKeydown should trigger matching action by first letter[32m 32[2mms[22m[39m
+     [32m✓[39m should focus first row when container is focused and none selected[32m 29[2mms[22m[39m
+     [32m✓[39m focusFirstRowIfNone should keep the previously selected row by id after data reload[32m 17[2mms[22m[39m
+[31m     [31m×[31m handleRowNavigationKeydown should navigate on Arrow keys[39m[32m 13[2mms[22m[39m
+     [32m✓[39m Tab should move focus out of the table (does not change selection)[32m 20[2mms[22m[39m
+     [32m✓[39m ArrowUp should move to previous row (wraps)[32m 14[2mms[22m[39m
+     [32m✓[39m ArrowLeft and ArrowRight should emit pageChange[32m 20[2mms[22m[39m
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCache cleared successfully
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/core/interceptors/auth.interceptor.spec.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/services/help.service.spec.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCleared cache entries for version 52
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/features/applications/application-detail/application-detail.component.spec.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [31m❯[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/core/base-list.component.spec.ts [2m([22m[2m22 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 365[2mms[22m[39m
+     [32m✓[39m should create[32m 96[2mms[22m[39m
+     [32m✓[39m should initialize with default config values[32m 17[2mms[22m[39m
+     [32m✓[39m should have isLoading as a signal[32m 20[2mms[22m[39m
+[31m     [31m×[31m should have totalPages computed correctly[39m[32m 40[2mms[22m[39m
+     [32m✓[39m should have bulkDeleteLabel computed correctly when query is empty[32m 12[2mms[22m[39m
+     [32m✓[39m should have bulkDeleteLabel computed correctly when query has value[32m 31[2mms[22m[39m
+       [32m✓[39m should get correct new route[32m 18[2mms[22m[39m
+       [32m✓[39m should get correct list route[32m 11[2mms[22m[39m
+       [32m✓[39m should get correct edit route[32m 8[2mms[22m[39m
+       [32m✓[39m should get correct detail route[32m 7[2mms[22m[39m
+       [32m✓[39m should get entity type label[32m 7[2mms[22m[39m
+       [32m✓[39m should handle query change[32m 18[2mms[22m[39m
+       [32m✓[39m should trim query value[32m 7[2mms[22m[39m
+       [32m✓[39m should handle page change[32m 13[2mms[22m[39m
+       [32m✓[39m should handle sort change with desc direction[32m 6[2mms[22m[39m
+       [32m✓[39m should handle sort change with asc direction[32m 5[2mms[22m[39m
+       [32m✓[39m should increment reload token when calling reload[32m 6[2mms[22m[39m
+       [32m✓[39m should open bulk delete dialog with correct data[32m 7[2mms[22m[39m
+       [32m✓[39m should open bulk delete dialog in selected mode when query exists[32m 8[2mms[22m[39m
+       [32m✓[39m should handle bulk delete cancellation[32m 11[2mms[22m[39m
+       [32m✓[39m should not handle keyboard shortcuts when input is focused[32m 8[2mms[22m[39m
+       [32m✓[39m should restore navigation state from window.history[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/core/services/sse.service.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+[90mstderr[2m | src/app/features/admin/server-management/server-management.component.spec.ts[2m > [22m[2mServerManagementComponent - Cache Controls[2m > [22m[2mUI State Management[2m > [22m[2mshould display cache status correctly
+[22m[39mHTTP verification warning: Error: Expected no open requests, found 1: GET /api/server-management/cache-status/
+    at HttpClientTestingBackend.verify [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@angular/common[24m/fesm2022/http-testing.mjs:214:13[90m)[39m
+    at [90m/Users/stefano.galassi/python/RevisBaliCRM/frontend/[39msrc/app/features/admin/server-management/server-management.component.spec.ts:174:16
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:296:11
+    at wrapper [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:683:10[90m)[39m
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1660:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1627:10[90m)[39m
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1975:52
+    at run [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-tasks.js:276:20[90m)[39m
+    at limiterFn [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-tasks.js:288:59[90m)[39m
+
+[90mstderr[2m | src/app/features/admin/server-management/server-management.component.spec.ts[2m > [22m[2mServerManagementComponent - Cache Controls[2m > [22m[2mUI State Management[2m > [22m[2mshould show disabled state correctly
+[22m[39mHTTP verification warning: Error: Expected no open requests, found 1: GET /api/server-management/cache-status/
+    at HttpClientTestingBackend.verify [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@angular/common[24m/fesm2022/http-testing.mjs:214:13[90m)[39m
+    at [90m/Users/stefano.galassi/python/RevisBaliCRM/frontend/[39msrc/app/features/admin/server-management/server-management.component.spec.ts:174:16
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:296:11
+    at wrapper [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:683:10[90m)[39m
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1660:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1627:10[90m)[39m
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1975:52
+    at run [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-tasks.js:276:20[90m)[39m
+    at limiterFn [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-tasks.js:288:59[90m)[39m
+
+[90mstderr[2m | src/app/features/admin/server-management/server-management.component.spec.ts[2m > [22m[2mServerManagementComponent - Cache Controls[2m > [22m[2mUI State Management[2m > [22m[2mshould show cache backend type when available
+[22m[39mHTTP verification warning: Error: Expected no open requests, found 1: GET /api/server-management/cache-status/
+    at HttpClientTestingBackend.verify [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@angular/common[24m/fesm2022/http-testing.mjs:214:13[90m)[39m
+    at [90m/Users/stefano.galassi/python/RevisBaliCRM/frontend/[39msrc/app/features/admin/server-management/server-management.component.spec.ts:174:16
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:296:11
+    at wrapper [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:683:10[90m)[39m
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1660:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1627:10[90m)[39m
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1975:52
+    at run [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-tasks.js:276:20[90m)[39m
+    at limiterFn [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-tasks.js:288:59[90m)[39m
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/features/customers/customer-form/customer-form.component.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 1[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/features/products/product-form/product-form.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+[90mstderr[2m | src/app/features/admin/server-management/server-management.component.spec.ts[2m > [22m[2mServerManagementComponent - Cache Controls[2m > [22m[2mUI State Management[2m > [22m[2mshould show loading state when cache status not loaded
+[22m[39mHTTP verification warning: Error: Expected no open requests, found 1: GET /api/server-management/cache-status/
+    at HttpClientTestingBackend.verify [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@angular/common[24m/fesm2022/http-testing.mjs:214:13[90m)[39m
+    at [90m/Users/stefano.galassi/python/RevisBaliCRM/frontend/[39msrc/app/features/admin/server-management/server-management.component.spec.ts:174:16
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:296:11
+    at wrapper [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:683:10[90m)[39m
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1660:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1627:10[90m)[39m
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1975:52
+    at run [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-tasks.js:276:20[90m)[39m
+    at limiterFn [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-tasks.js:288:59[90m)[39m
+
+[90mstderr[2m | src/app/core/services/config.service.spec.ts[2m > [22m[2mConfigService[2m > [22m[2mkeeps injected config if backend app-config request fails
+[22m[39m[ConfigService] Failed to load /api/app-config/. HttpErrorResponse {
+  headers: HttpHeaders {
+    headers: Map(0) {},
+    normalizedNames: Map(0) {},
+    lazyInit: [90mundefined[39m,
+    lazyUpdate: [1mnull[22m
+  },
+  status: [33m500[39m,
+  statusText: [32m'Server Error'[39m,
+  url: [32m'/api/app-config/'[39m,
+  ok: [33mfalse[39m,
+  type: [90mundefined[39m,
+  redirected: [90mundefined[39m,
+  responseType: [90mundefined[39m,
+  name: [32m'HttpErrorResponse'[39m,
+  message: [32m'Http failure response for /api/app-config/: 500 Server Error'[39m,
+  error: { detail: [32m'error'[39m }
+}
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/core/services/config.service.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/components/customer-select/customer-select.component.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCache cleared successfully
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/core/services/auth.service.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/utils/document-preview-source.spec.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+ [31m❯[39m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management.component.spec.ts [2m([22m[2m30 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[33m 497[2mms[22m[39m
+[31m       [31m×[31m should load cache status on init[39m[32m 109[2mms[22m[39m
+       [32m✓[39m should handle cache status load error[32m 13[2mms[22m[39m
+       [32m✓[39m should set loading state during request[32m 36[2mms[22m[39m
+[31m       [31m×[31m should update cache status on success[39m[32m 9[2mms[22m[39m
+[31m       [31m×[31m should enable cache when currently disabled[39m[32m 8[2mms[22m[39m
+[31m       [31m×[31m should disable cache when currently enabled[39m[32m 12[2mms[22m[39m
+       [32m✓[39m should show error when cache status not loaded[32m 15[2mms[22m[39m
+[31m       [31m×[31m should handle toggle error[39m[32m 30[2mms[22m[39m
+[31m       [31m×[31m should set loading state during toggle[39m[32m 10[2mms[22m[39m
+       [32m✓[39m should clear cache and refresh status[32m 11[2mms[22m[39m
+       [32m✓[39m should handle clear error[32m 7[2mms[22m[39m
+       [32m✓[39m should set loading state during clear[32m 5[2mms[22m[39m
+       [32m✓[39m should run cache probe and update health state[32m 6[2mms[22m[39m
+       [32m✓[39m should show info toast when cache probe is skipped because cache is disabled[32m 4[2mms[22m[39m
+       [32m✓[39m should handle cache probe request errors[32m 4[2mms[22m[39m
+       [32m✓[39m should display cache status correctly[32m 81[2mms[22m[39m
+       [32m✓[39m should show disabled state correctly[32m 32[2mms[22m[39m
+       [32m✓[39m should show cache backend type when available[32m 20[2mms[22m[39m
+       [32m✓[39m should show loading state when cache status not loaded[32m 21[2mms[22m[39m
+       [32m✓[39m should maintain existing clearCache functionality[32m 5[2mms[22m[39m
+       [32m✓[39m should handle existing clearCache errors[32m 4[2mms[22m[39m
+       [32m✓[39m should run dry-run media cleanup and store the results[32m 5[2mms[22m[39m
+       [32m✓[39m should not treat semantic local vault reset failures as success[32m 4[2mms[22m[39m
+       [32m✓[39m should have correct state when cache is disabled[32m 6[2mms[22m[39m
+       [32m✓[39m should have correct state when cache is enabled[32m 4[2mms[22m[39m
+       [32m✓[39m should have correct loading state[32m 4[2mms[22m[39m
+       [32m✓[39m should save AI runtime settings via patch endpoint[32m 13[2mms[22m[39m
+       [32m✓[39m should show backend validation error when saving AI runtime settings fails[32m 6[2mms[22m[39m
+       [32m✓[39m should autosave a single model setting change[32m 5[2mms[22m[39m
+       [32m✓[39m should autosave the active groq primary model via GROQ_DEFAULT_MODEL[32m 5[2mms[22m[39m
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCleared cache entries for version 83
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/core/utils/document-categorization-pipeline.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 1[2mms[22m[39m
+Not implemented: navigation to another Document
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/features/letters/surat-permohonan/surat-permohonan.component.spec.ts [2m([22m[2m1 test[22m[2m)[22m[32m 22[2mms[22m[39m
+ [31m❯[39m [30m[46m business-suite-frontend [49m[39m src/app/features/products/product-list/product-list.component.spec.ts [2m([22m[2m3 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 215[2mms[22m[39m
+[31m     [31m×[31m hides deprecated products by default and restores that default when the filter is cleared[39m[32m 114[2mms[22m[39m
+[31m     [31m×[31m shows all products only when both deprecated states are explicitly selected[39m[32m 50[2mms[22m[39m
+     [32m✓[39m loads category filter options from the server instead of deriving them from the current page[32m 51[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/features/products/product-detail/product-detail.component.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [31m❯[39m [30m[46m business-suite-frontend [49m[39m src/app/features/customers/customer-detail/customer-detail.component.spec.ts [2m([22m[2m3 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 2[2mms[22m[39m
+     [32m✓[39m allows invoice creation for uninvoiced applications regardless of readiness[32m 0[2mms[22m[39m
+     [32m✓[39m blocks invoice creation when the application already has an invoice[32m 0[2mms[22m[39m
+[31m     [31m×[31m returns to the stored route when opened from another detail page[39m[32m 1[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/pipes/app-date-pipe.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/components/search-toolbar/search-toolbar.component.spec.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 231[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/features/applications/application-list/application-list.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 0[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/utils/form-errors.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 1[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/features/applications/application-form/application-form-documents-section.component.spec.ts [2m([22m[2m1 test[22m[2m)[22m[32m 1[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/utils/resource-url-sanitizer.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/features/invoices/invoice-form/invoice-form.component.spec.ts [2m([22m[2m1 test[22m[2m)[22m[32m 0[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/components/data-table/shortcut-highlight.pipe.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 1[2mms[22m[39m
+[90mstderr[2m | src/app/shared/utils/html-content-sanitizer.spec.ts[2m > [22m[2msanitizeUntrustedHtml[2m > [22m[2mstrips unsafe html attributes and scripts
+[22m[39mWARNING: sanitizing HTML stripped some content, see https://angular.dev/best-practices/security#preventing-cross-site-scripting-xss
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/shared/utils/html-content-sanitizer.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/csp.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 24: should invalidate cache when version changes
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 25: should make network request on cache miss and store response
+[22m[39mCache cleared successfully
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/app.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 25: should make network request on cache miss and store response
+[22m[39mCleared cache entries for version 3
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 25: should make network request on cache miss and store response
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 25: should make network request on cache miss and store response
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 25: should make network request on cache miss and store response
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 25: should make network request on cache miss and store response
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 25: should make network request on cache miss and store response
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 26: should handle cache version headers in responses
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 26: should handle cache version headers in responses
+[22m[39mCleared cache entries for version 1
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 26: should handle cache version headers in responses
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 26: should handle cache version headers in responses
+[22m[39mCleared cache entries for version 1
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 26: should handle cache version headers in responses
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 26: should handle cache version headers in responses
+[22m[39mCleared cache entries for version 1
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 26: should handle cache version headers in responses
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 26: should handle cache version headers in responses
+[22m[39mCleared cache entries for version 1
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 26: should handle cache version headers in responses
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 26: should handle cache version headers in responses
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould identify cacheable endpoints correctly
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould bypass non-cacheable endpoints
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould generate correct cache keys
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould use correct TTL for different endpoints
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould return cached data without making network request
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould make network request on cache miss
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould make network request on cache miss
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould invalidate cache when version changes
+[22m[39mCleared cache entries for version 5
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould invalidate cache when version changes
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould bypass cache for non-cacheable endpoints
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould bypass cache storage for non-GET requests
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould sync cache version from non-GET responses
+[22m[39mCleared cache entries for version 5
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould sync cache version from non-GET responses
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould bypass cache for unauthenticated users
+[22m[39mCache cleared successfully
+
+[90mstderr[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould proceed with network request when cache operations fail
+[22m[39mCache check error: Error: Cache error
+    at [90m/Users/stefano.galassi/python/RevisBaliCRM/frontend/[39msrc/app/core/interceptors/cache.interceptor.spec.ts:539:68
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:296:11
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1258:26
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1681:20
+    at new Promise (<anonymous>)
+    at runWithCancel [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1678:10[90m)[39m
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1660:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1627:10[90m)[39m
+    at [90mfile:///Users/stefano.galassi/python/RevisBaliCRM/frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:2309:64
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould proceed with network request when cache operations fail
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould handle responses without X-Cache-Version header
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould handle invalid X-Cache-Version header values
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould store user ID from auth claims in cached response
+[22m[39mCleared cache entries for version 5
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould store user ID from auth claims in cached response
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould use default user ID when auth claims are missing
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould use distinct cache keys for different query strings
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/interceptors/cache.interceptor.spec.ts[2m > [22m[2mCache Interceptor[2m > [22m[2mUnit Tests[2m > [22m[2mshould isolate cache entries by user scope for the same URL
+[22m[39mCache cleared successfully
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/core/interceptors/cache.interceptor.spec.ts [2m([22m[2m23 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m[33m 6795[2mms[22m[39m
+       [33m[2m✓[22m[39m Property 24: should invalidate cache when version changes [33m 1042[2mms[22m[39m
+       [33m[2m✓[22m[39m Property 25: should make network request on cache miss and store response [33m 1029[2mms[22m[39m
+       [33m[2m✓[22m[39m Property 26: should handle cache version headers in responses [33m 1026[2mms[22m[39m
+       [33m[2m✓[22m[39m should use correct TTL for different endpoints [33m 414[2mms[22m[39m
+       [33m[2m✓[22m[39m should use distinct cache keys for different query strings [33m 410[2mms[22m[39m
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mProperty-Based Tests[2m > [22m[2mProperty 23: should not return expired entries
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould initialize IndexedDB with correct schema
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould return null for non-existent keys
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould store data with all required fields
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould clear all cache entries
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould clear all cache entries
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould clear only entries matching the specified version
+[22m[39mCleared cache entries for version 5
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould clear only entries matching the specified version
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould not return expired entries
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould get and set cache version
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould use default userId and current version when not provided
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould handle multiple entries with same key but different versions
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould handle complex data structures
+[22m[39mCache cleared successfully
+
+[90mstdout[2m | src/app/core/services/cache.service.spec.ts[2m > [22m[2mCacheService[2m > [22m[2mUnit Tests[2m > [22m[2mshould correctly calculate timestamp and expiresAt
+[22m[39mCache cleared successfully
+
+ [32m✓[39m [30m[46m business-suite-frontend [49m[39m src/app/core/services/cache.service.spec.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 9237[2mms[22m[39m
+       [33m[2m✓[22m[39m Property 23: should not return expired entries [33m 7516[2mms[22m[39m
+       [33m[2m✓[22m[39m should not return expired entries [33m 1514[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 25 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts[2m > [22mReminderInboxService[2m > [22mrefreshes immediately on SSE changes and updates unread count
+[31m[1mError[22m: Expected one matching request for criteria "Match by function: ", found none. Requests received are: GET http://localhost/api/calendar-reminders/inbox/.[39m
+[90m [2m❯[22m HttpClientTestingBackend.expectOne ../darwin_arm64-fastbuild-ST-fdfa778d11ba/bin/packages/common/http/testing/src/backend.ts:[2m112:12[22m[39m
+[36m [2m❯[22m expectInboxRequest src/app/core/services/reminder-inbox.service.spec.ts:[2m29:14[22m[39m
+    [90m 27|[39m
+    [90m 28|[39m   [35mconst[39m expectInboxRequest [33m=[39m () [33m=>[39m
+    [90m 29|[39m     httpMock.expectOne((req) => req.url === '/api/calendar-reminders/i…
+    [90m   |[39m              [31m^[39m
+    [90m 30|[39m
+    [90m 31|[39m   [34mbeforeEach[39m(() [33m=>[39m {
+[90m [2m❯[22m src/app/core/services/reminder-inbox.service.spec.ts:[2m90:24[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts[2m > [22mReminderInboxService[2m > [22mrefreshes immediately on SSE changes and updates unread count
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts[2m > [22mReminderInboxService[2m > [22mrefreshes immediately on reminder push notifications
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts[2m > [22mReminderInboxService[2m > [22muses a five-minute fallback poll instead of refreshing every minute
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts[2m > [22mReminderInboxService[2m > [22mcoalesces simultaneous push and SSE invalidations into one follow-up refresh
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts[2m > [22mReminderInboxService[2m > [22mkeeps fallback polling active for recovery after the live stream disconnects
+[31m[1mError[22m: Expected no open requests, found 1: GET http://localhost/api/calendar-reminders/inbox/[39m
+[90m [2m❯[22m HttpClientTestingBackend.verify ../darwin_arm64-fastbuild-ST-fdfa778d11ba/bin/packages/common/http/testing/src/backend.ts:[2m147:12[22m[39m
+[36m [2m❯[22m src/app/core/services/reminder-inbox.service.spec.ts:[2m80:16[22m[39m
+    [90m 78|[39m     [35mtry[39m {
+    [90m 79|[39m       service[33m.[39m[34mstop[39m()[33m;[39m
+    [90m 80|[39m       httpMock[33m.[39m[34mverify[39m()[33m;[39m
+    [90m   |[39m                [31m^[39m
+    [90m 81|[39m     } [35mfinally[39m {
+    [90m 82|[39m       [33mTestBed[39m[33m.[39m[34mresetTestingModule[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts[2m > [22mReminderInboxService[2m > [22mrefreshes immediately on reminder push notifications
+[31m[1mError[22m: Expected one matching request for criteria "Match by function: ", found none. Requests received are: GET http://localhost/api/calendar-reminders/inbox/.[39m
+[90m [2m❯[22m HttpClientTestingBackend.expectOne ../darwin_arm64-fastbuild-ST-fdfa778d11ba/bin/packages/common/http/testing/src/backend.ts:[2m112:12[22m[39m
+[36m [2m❯[22m expectInboxRequest src/app/core/services/reminder-inbox.service.spec.ts:[2m29:14[22m[39m
+    [90m 27|[39m
+    [90m 28|[39m   [35mconst[39m expectInboxRequest [33m=[39m () [33m=>[39m
+    [90m 29|[39m     httpMock.expectOne((req) => req.url === '/api/calendar-reminders/i…
+    [90m   |[39m              [31m^[39m
+    [90m 30|[39m
+    [90m 31|[39m   [34mbeforeEach[39m(() [33m=>[39m {
+[90m [2m❯[22m src/app/core/services/reminder-inbox.service.spec.ts:[2m118:5[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts[2m > [22mReminderInboxService[2m > [22muses a five-minute fallback poll instead of refreshing every minute
+[31m[1mError[22m: Expected one matching request for criteria "Match by function: ", found none. Requests received are: GET http://localhost/api/calendar-reminders/inbox/.[39m
+[90m [2m❯[22m HttpClientTestingBackend.expectOne ../darwin_arm64-fastbuild-ST-fdfa778d11ba/bin/packages/common/http/testing/src/backend.ts:[2m112:12[22m[39m
+[36m [2m❯[22m expectInboxRequest src/app/core/services/reminder-inbox.service.spec.ts:[2m29:14[22m[39m
+    [90m 27|[39m
+    [90m 28|[39m   [35mconst[39m expectInboxRequest [33m=[39m () [33m=>[39m
+    [90m 29|[39m     httpMock.expectOne((req) => req.url === '/api/calendar-reminders/i…
+    [90m   |[39m              [31m^[39m
+    [90m 30|[39m
+    [90m 31|[39m   [34mbeforeEach[39m(() [33m=>[39m {
+[90m [2m❯[22m src/app/core/services/reminder-inbox.service.spec.ts:[2m140:5[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts[2m > [22mReminderInboxService[2m > [22mcoalesces simultaneous push and SSE invalidations into one follow-up refresh
+[31m[1mError[22m: Expected one matching request for criteria "Match by function: ", found none. Requests received are: GET http://localhost/api/calendar-reminders/inbox/.[39m
+[90m [2m❯[22m HttpClientTestingBackend.expectOne ../darwin_arm64-fastbuild-ST-fdfa778d11ba/bin/packages/common/http/testing/src/backend.ts:[2m112:12[22m[39m
+[36m [2m❯[22m expectInboxRequest src/app/core/services/reminder-inbox.service.spec.ts:[2m29:14[22m[39m
+    [90m 27|[39m
+    [90m 28|[39m   [35mconst[39m expectInboxRequest [33m=[39m () [33m=>[39m
+    [90m 29|[39m     httpMock.expectOne((req) => req.url === '/api/calendar-reminders/i…
+    [90m   |[39m              [31m^[39m
+    [90m 30|[39m
+    [90m 31|[39m   [34mbeforeEach[39m(() [33m=>[39m {
+[90m [2m❯[22m src/app/core/services/reminder-inbox.service.spec.ts:[2m152:24[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/core/services/reminder-inbox.service.spec.ts[2m > [22mReminderInboxService[2m > [22mkeeps fallback polling active for recovery after the live stream disconnects
+[31m[1mError[22m: Expected one matching request for criteria "Match by function: ", found none. Requests received are: GET http://localhost/api/calendar-reminders/inbox/.[39m
+[90m [2m❯[22m HttpClientTestingBackend.expectOne ../darwin_arm64-fastbuild-ST-fdfa778d11ba/bin/packages/common/http/testing/src/backend.ts:[2m112:12[22m[39m
+[36m [2m❯[22m expectInboxRequest src/app/core/services/reminder-inbox.service.spec.ts:[2m29:14[22m[39m
+    [90m 27|[39m
+    [90m 28|[39m   [35mconst[39m expectInboxRequest [33m=[39m () [33m=>[39m
+    [90m 29|[39m     httpMock.expectOne((req) => req.url === '/api/calendar-reminders/i…
+    [90m   |[39m              [31m^[39m
+    [90m 30|[39m
+    [90m 31|[39m   [34mbeforeEach[39m(() [33m=>[39m {
+[90m [2m❯[22m src/app/core/services/reminder-inbox.service.spec.ts:[2m182:5[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/shared/core/base-detail.component.spec.ts[2m > [22mBaseDetailComponent[2m > [22mload item for detail[2m > [22mshould show error toast and navigate back on load error
+[31m[1mTypeError[22m: this.loadItem(...).pipe is not a function[39m
+[90m [2m❯[22m _TestDetailComponent.loadItemForDetail src/app/shared/core/base-detail.component.ts:[2m313:8[22m[39m
+[36m [2m❯[22m src/app/shared/core/base-detail.component.spec.ts:[2m387:26[22m[39m
+    [90m385|[39m       [35mconst[39m goBackSpy [33m=[39m vi[33m.[39m[34mspyOn[39m(component [35mas[39m any[33m,[39m [32m'goBack'[39m)[33m;[39m
+    [90m386|[39m
+    [90m387|[39m       (component [35mas[39m any)[33m.[39m[34mloadItemForDetail[39m([34m123[39m)[33m;[39m
+    [90m   |[39m                          [31m^[39m
+    [90m388|[39m
+    [90m389|[39m       [34mexpect[39m(toastSpy)[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/shared/core/base-form.component.spec.ts[2m > [22mBaseFormComponent[2m > [22mnavigation methods[2m > [22mshould return null for navigation state when not in browser
+[31m[1mAssertionError[22m: expected 'test search' to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+"test search"
+
+[36m [2m❯[22m src/app/shared/core/base-form.component.spec.ts:[2m169:33[22m[39m
+    [90m167|[39m
+    [90m168|[39m       [35mconst[39m state [33m=[39m component[33m.[39m[34mtestGetNavigationState[39m()[33m;[39m
+    [90m169|[39m       [34mexpect[39m(state[33m.[39msearchQuery)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m   |[39m                                 [31m^[39m
+    [90m170|[39m       [34mexpect[39m(state[33m.[39mpage)[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m171|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/shared/core/base-form.component.spec.ts[2m > [22mBaseFormComponent[2m > [22mform submission[2m > [22mshould mark form as touched when invalid
+[31m[1mAssertionError[22m: expected "markAllAsTouched" to be called at least once[39m
+[36m [2m❯[22m src/app/shared/core/base-form.component.spec.ts:[2m263:35[22m[39m
+    [90m261|[39m       component[33m.[39m[34monSubmit[39m()[33m;[39m
+    [90m262|[39m
+    [90m263|[39m       [34mexpect[39m(markAllAsTouchedSpy)[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m   |[39m                                   [31m^[39m
+    [90m264|[39m       expect(toastSpy).toHaveBeenCalledWith('Please fix the form error…
+    [90m265|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/shared/core/base-list.component.spec.ts[2m > [22mBaseListComponent[2m > [22mshould have totalPages computed correctly
+[31m[1mAssertionError[22m: expected 1 to be 3 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 3[39m
+[31m+ 1[39m
+
+[36m [2m❯[22m src/app/shared/core/base-list.component.spec.ts:[2m121:36[22m[39m
+    [90m119|[39m     component[33m.[39mpageSize[33m.[39m[35mset[39m([34m10[39m)[33m;[39m
+    [90m120|[39m     fixture[33m.[39m[34mdetectChanges[39m()[33m;[39m
+    [90m121|[39m     [34mexpect[39m(component[33m.[39m[34mtotalPages[39m())[33m.[39m[34mtoBe[39m([34m3[39m)[33m;[39m
+    [90m   |[39m                                    [31m^[39m
+    [90m122|[39m   })[33m;[39m
+    [90m123|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts[2m > [22mServerManagementAiWorkflowFacade[2m > [22mresets a workflow model setting by sending null
+[31m[1mTypeError[22m: this.serverManagementApi.serverManagementOpenrouterStatusPartialUpdate is not a function[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.patchAiWorkflowSettings src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m639:8[22m[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.resetAiWorkflowSetting src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m219:10[22m[39m
+[36m [2m❯[22m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts:[2m139:12[22m[39m
+    [90m137|[39m     })[33m;[39m
+    [90m138|[39m
+    [90m139|[39m     facade[33m.[39m[34mresetAiWorkflowSetting[39m([32m'INVOICE_IMPORT_MODEL'[39m)[33m;[39m
+    [90m   |[39m            [31m^[39m
+    [90m140|[39m
+    [90m141|[39m     const req = httpMock.expectOne('/api/server-management/openrouter-…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts[2m > [22mServerManagementAiWorkflowFacade[2m > [22mclears workflow model combobox values by sending null
+[31m[1mTypeError[22m: this.serverManagementApi.serverManagementOpenrouterStatusPartialUpdate is not a function[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.patchAiWorkflowSettings src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m639:8[22m[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.onModelSettingComboboxChange src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m197:14[22m[39m
+[36m [2m❯[22m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts:[2m166:12[22m[39m
+    [90m164|[39m     })[33m;[39m
+    [90m165|[39m
+    [90m166|[39m     facade[33m.[39m[34monModelSettingComboboxChange[39m([32m'INVOICE_IMPORT_MODEL'[39m[33m,[39m [35mnull[39m)[33m;[39m
+    [90m   |[39m            [31m^[39m
+    [90m167|[39m
+    [90m168|[39m     const req = httpMock.expectOne('/api/server-management/openrouter-…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts[2m > [22mServerManagementAiWorkflowFacade[2m > [22madds failover model to ordered list
+[31m[1mTypeError[22m: this.serverManagementApi.serverManagementOpenrouterStatusPartialUpdate is not a function[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.patchAiWorkflowSettings src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m639:8[22m[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.addFallbackChainStep src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m309:10[22m[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.addFallbackModel src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m290:10[22m[39m
+[36m [2m❯[22m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts:[2m204:12[22m[39m
+    [90m202|[39m     })[33m;[39m
+    [90m203|[39m
+    [90m204|[39m     facade[33m.[39m[34maddFallbackModel[39m([32m'google/gemini-3-flash-preview'[39m)[33m;[39m
+    [90m   |[39m            [31m^[39m
+    [90m205|[39m
+    [90m206|[39m     const req = httpMock.expectOne('/api/server-management/openrouter-…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts[2m > [22mServerManagementAiWorkflowFacade[2m > [22mreorders failover model list
+[31m[1mTypeError[22m: this.serverManagementApi.serverManagementOpenrouterStatusPartialUpdate is not a function[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.patchAiWorkflowSettings src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m639:8[22m[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.reorderFallbackChain src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m360:10[22m[39m
+[36m [2m❯[22m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts:[2m240:12[22m[39m
+    [90m238|[39m     })[33m;[39m
+    [90m239|[39m
+    [90m240|[39m     facade[33m.[39m[34mreorderFallbackChain[39m([34m1[39m[33m,[39m [34m0[39m)[33m;[39m
+    [90m   |[39m            [31m^[39m
+    [90m241|[39m
+    [90m242|[39m     const req = httpMock.expectOne('/api/server-management/openrouter-…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts[2m > [22mServerManagementAiWorkflowFacade[2m > [22mupdates the active groq primary model without mutating the non-groq default
+[31m[1mTypeError[22m: this.serverManagementApi.serverManagementOpenrouterStatusPartialUpdate is not a function[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.patchAiWorkflowSettings src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m639:8[22m[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.onPrimaryModelValueChange src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m181:10[22m[39m
+[36m [2m❯[22m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts:[2m304:12[22m[39m
+    [90m302|[39m     })[33m;[39m
+    [90m303|[39m
+    [90m304|[39m     facade[33m.[39m[34monPrimaryModelValueChange[39m([32m'qwen/qwen3-32b'[39m)[33m;[39m
+    [90m   |[39m            [31m^[39m
+    [90m305|[39m
+    [90m306|[39m     const req = httpMock.expectOne('/api/server-management/openrouter-…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts[2m > [22mServerManagementAiWorkflowFacade[2m > [22mkeeps the primary model unchanged when adding a failover model
+[31m[1mTypeError[22m: this.serverManagementApi.serverManagementOpenrouterStatusPartialUpdate is not a function[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.patchAiWorkflowSettings src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m639:8[22m[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.addFallbackChainStep src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m309:10[22m[39m
+[90m [2m❯[22m _ServerManagementAiWorkflowFacade.addFallbackModel src/app/features/admin/server-management/server-management-ai-workflow.facade.ts:[2m290:10[22m[39m
+[36m [2m❯[22m src/app/features/admin/server-management/server-management-ai-workflow.facade.spec.ts:[2m354:12[22m[39m
+    [90m352|[39m     })[33m;[39m
+    [90m353|[39m
+    [90m354|[39m     facade[33m.[39m[34maddFallbackModel[39m([32m'google/gemini-3-flash-preview'[39m)[33m;[39m
+    [90m   |[39m            [31m^[39m
+    [90m355|[39m
+    [90m356|[39m     const req = httpMock.expectOne('/api/server-management/openrouter-…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management.component.spec.ts[2m > [22mServerManagementComponent - Cache Controls[2m > [22mComponent Initialization[2m > [22mshould load cache status on init
+[31m[1mAssertionError[22m: expected { enabled: true, version: 1, …(5) } to deeply equal { enabled: true, version: 1, …(2) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "cacheBackend": "django_redis.cache.RedisCache",[22m
+[31m+   "cacheLocation": "",[39m
+[2m    "enabled": true,[22m
+[31m+   "globalEnabled": undefined,[39m
+[2m    "message": "Cache is enabled",[22m
+[31m+   "userEnabled": undefined,[39m
+[2m    "version": 1,[22m
+[2m  }[22m
+
+[36m [2m❯[22m src/app/features/admin/server-management/server-management.component.spec.ts:[2m207:39[22m[39m
+    [90m205|[39m       )[33m;[39m
+    [90m206|[39m
+    [90m207|[39m       [34mexpect[39m(component[33m.[39m[34mcacheStatus[39m())[33m.[39m[34mtoEqual[39m({
+    [90m   |[39m                                       [31m^[39m
+    [90m208|[39m         enabled[33m:[39m [35mtrue[39m[33m,[39m
+    [90m209|[39m         version[33m:[39m [34m1[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management.component.spec.ts[2m > [22mServerManagementComponent - Cache Controls[2m > [22mloadCacheStatus[2m > [22mshould update cache status on success
+[31m[1mAssertionError[22m: expected { enabled: false, version: 3, …(5) } to deeply equal { enabled: false, version: 3, …(1) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[31m+   "cacheBackend": "",[39m
+[31m+   "cacheLocation": "",[39m
+[2m    "enabled": false,[22m
+[31m+   "globalEnabled": undefined,[39m
+[2m    "message": "Cache is disabled",[22m
+[31m+   "userEnabled": undefined,[39m
+[2m    "version": 3,[22m
+[2m  }[22m
+
+[36m [2m❯[22m src/app/features/admin/server-management/server-management.component.spec.ts:[2m259:39[22m[39m
+    [90m257|[39m       req.flush({ enabled: false, version: 3, message: 'Cache is disab…
+    [90m258|[39m
+    [90m259|[39m       [34mexpect[39m(component[33m.[39m[34mcacheStatus[39m())[33m.[39m[34mtoEqual[39m({
+    [90m   |[39m                                       [31m^[39m
+    [90m260|[39m         enabled[33m:[39m [35mfalse[39m[33m,[39m
+    [90m261|[39m         version[33m:[39m [34m3[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management.component.spec.ts[2m > [22mServerManagementComponent - Cache Controls[2m > [22mtoggleCache[2m > [22mshould enable cache when currently disabled
+[31m[1mTypeError[22m: this.serverManagementApi.serverManagementCacheEnableCreate is not a function[39m
+[90m [2m❯[22m _ServerManagementComponent.toggleCache src/app/features/admin/server-management/server-management.component.ts:[2m290:34[22m[39m
+[36m [2m❯[22m src/app/features/admin/server-management/server-management.component.spec.ts:[2m271:17[22m[39m
+    [90m269|[39m       component.cacheStatus.set({ enabled: false, version: 1, message:…
+    [90m270|[39m
+    [90m271|[39m       component[33m.[39m[34mtoggleCache[39m()[33m;[39m
+    [90m   |[39m                 [31m^[39m
+    [90m272|[39m
+    [90m273|[39m       const req = httpMock.expectOne('/api/server-management/cache-ena…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management.component.spec.ts[2m > [22mServerManagementComponent - Cache Controls[2m > [22mtoggleCache[2m > [22mshould disable cache when currently enabled
+[31m[1mTypeError[22m: this.serverManagementApi.serverManagementCacheDisableCreate is not a function[39m
+[90m [2m❯[22m _ServerManagementComponent.toggleCache src/app/features/admin/server-management/server-management.component.ts:[2m289:34[22m[39m
+[36m [2m❯[22m src/app/features/admin/server-management/server-management.component.spec.ts:[2m285:17[22m[39m
+    [90m283|[39m       component.cacheStatus.set({ enabled: true, version: 1, message: …
+    [90m284|[39m
+    [90m285|[39m       component[33m.[39m[34mtoggleCache[39m()[33m;[39m
+    [90m   |[39m                 [31m^[39m
+    [90m286|[39m
+    [90m287|[39m       const req = httpMock.expectOne('/api/server-management/cache-dis…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management.component.spec.ts[2m > [22mServerManagementComponent - Cache Controls[2m > [22mtoggleCache[2m > [22mshould handle toggle error
+[31m[1mTypeError[22m: this.serverManagementApi.serverManagementCacheDisableCreate is not a function[39m
+[90m [2m❯[22m _ServerManagementComponent.toggleCache src/app/features/admin/server-management/server-management.component.ts:[2m289:34[22m[39m
+[36m [2m❯[22m src/app/features/admin/server-management/server-management.component.spec.ts:[2m309:17[22m[39m
+    [90m307|[39m       component.cacheStatus.set({ enabled: true, version: 1, message: …
+    [90m308|[39m
+    [90m309|[39m       component[33m.[39m[34mtoggleCache[39m()[33m;[39m
+    [90m   |[39m                 [31m^[39m
+    [90m310|[39m
+    [90m311|[39m       const req = httpMock.expectOne('/api/server-management/cache-dis…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/admin/server-management/server-management.component.spec.ts[2m > [22mServerManagementComponent - Cache Controls[2m > [22mtoggleCache[2m > [22mshould set loading state during toggle
+[31m[1mTypeError[22m: this.serverManagementApi.serverManagementCacheDisableCreate is not a function[39m
+[90m [2m❯[22m _ServerManagementComponent.toggleCache src/app/features/admin/server-management/server-management.component.ts:[2m289:34[22m[39m
+[36m [2m❯[22m src/app/features/admin/server-management/server-management.component.spec.ts:[2m322:17[22m[39m
+    [90m320|[39m       [34mexpect[39m(component[33m.[39m[34mcacheLoading[39m())[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m321|[39m
+    [90m322|[39m       component[33m.[39m[34mtoggleCache[39m()[33m;[39m
+    [90m   |[39m                 [31m^[39m
+    [90m323|[39m       [34mexpect[39m(component[33m.[39m[34mcacheLoading[39m())[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m324|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/customers/customer-detail/customer-detail.component.spec.ts[2m > [22mCustomerDetailComponent navigation[2m > [22mreturns to the stored route when opened from another detail page
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'set')[39m
+[36m [2m❯[22m src/app/features/customers/customer-detail/customer-detail.component.spec.ts:[2m36:20[22m[39m
+    [90m 34|[39m     component[33m.[39moriginSearchQuery [33m=[39m () [33m=>[39m [32m'stefano'[39m[33m;[39m
+    [90m 35|[39m     component[33m.[39moriginPage [33m=[39m () [33m=>[39m [34m2[39m[33m;[39m
+    [90m 36|[39m     component[33m.[39mitem[33m.[39m[35mset[39m({ id[33m:[39m [34m99[39m } [35mas[39m any)[33m;[39m
+    [90m   |[39m                    [31m^[39m
+    [90m 37|[39m     component[33m.[39mrouter [33m=[39m { navigate[33m:[39m vi[33m.[39m[34mfn[39m()[33m,[39m navigateByUrl[33m:[39m vi[33m.[39m[34mfn[39m() }[33m;[39m
+    [90m 38|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/products/product-list/product-list.component.spec.ts[2m > [22mProductListComponent[2m > [22mhides deprecated products by default and restores that default when the filter is cleared
+[31m[1mAssertionError[22m: expected last "vi.fn()" call to have been called with [ true, false, 'name', 1, 10, …(3) ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[33m@@ -1,7 +1,7 @@[39m
+[2m  [[22m
+[32m-   true,[39m
+[31m+   false,[39m
+[2m    false,[22m
+[2m    "name",[22m
+[2m    1,[22m
+[2m    10,[22m
+[2m    undefined,[22m
+
+[36m [2m❯[22m src/app/features/products/product-list/product-list.component.spec.ts:[2m136:46[22m[39m
+    [90m134|[39m
+    [90m135|[39m     component.onColumnFilterChange({ column: 'deprecated', values: ['d…
+    [90m136|[39m     [34mexpect[39m(mockProductsService[33m.[39mproductsList)[33m.[39m[34mtoHaveBeenLastCalledWith[39m(
+    [90m   |[39m                                              [31m^[39m
+    [90m137|[39m       [35mtrue[39m[33m,[39m
+    [90m138|[39m       [35mfalse[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/features/products/product-list/product-list.component.spec.ts[2m > [22mProductListComponent[2m > [22mshows all products only when both deprecated states are explicitly selected
+[31m[1mAssertionError[22m: expected last "vi.fn()" call to have been called with [ undefined, false, 'name', 1, …(4) ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[33m@@ -1,7 +1,7 @@[39m
+[2m  [[22m
+[32m-   undefined,[39m
+[31m+   false,[39m
+[2m    false,[22m
+[2m    "name",[22m
+[2m    1,[22m
+[2m    10,[22m
+[2m    undefined,[22m
+
+[36m [2m❯[22m src/app/features/products/product-list/product-list.component.spec.ts:[2m168:46[22m[39m
+    [90m166|[39m
+    [90m167|[39m     [90m// Both selected → deprecated=undefined, hideDeprecated=false[39m
+    [90m168|[39m     [34mexpect[39m(mockProductsService[33m.[39mproductsList)[33m.[39m[34mtoHaveBeenLastCalledWith[39m(
+    [90m   |[39m                                              [31m^[39m
+    [90m169|[39m       undefined[33m,[39m
+    [90m170|[39m       [35mfalse[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/30]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m business-suite-frontend [49m[39m src/app/shared/components/data-table/data-table.component.spec.ts[2m > [22mDataTableComponent (keyboard shortcuts)[2m > [22mhandleRowNavigationKeydown should navigate on Arrow keys
+[31m[1mAssertionError[22m: expected { id: 1 } to be { id: 2 } // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "id": 2,[39m
+[31m+   "id": 1,[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/app/shared/components/data-table/data-table.component.spec.ts:[2m164:30[22m[39m
+    [90m162|[39m     wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown'…
+    [90m163|[39m     fixture[33m.[39m[34mdetectChanges[39m()[33m;[39m
+    [90m164|[39m     [34mexpect[39m(dt[33m.[39m[34mselectedRow[39m())[33m.[39m[34mtoBe[39m(host[33m.[39mdata[[34m1[39m])[33m;[39m
+    [90m   |[39m                              [31m^[39m
+    [90m165|[39m
+    [90m166|[39m     [90m// ArrowUp -> wraps to previous (first)[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/30]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m9 failed[39m[22m[2m | [22m[1m[32m27 passed[39m[22m[90m (36)[39m
+[2m      Tests [22m [1m[31m25 failed[39m[22m[2m | [22m[1m[32m236 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (263)[39m
+[2m   Start at [22m 14:20:47
+[2m   Duration [22m 10.70s[2m (transform 2.72s, setup 1.78s, import 5.38s, tests 18.30s, environment 24.45s)[22m
+
+error: script "test" exited with code 1

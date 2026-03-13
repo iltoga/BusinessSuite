@@ -526,6 +526,15 @@ export abstract class BaseListComponent<T> implements OnInit {
   ngOnInit(): void {
     if (!this.isBrowser) return;
 
+    if (this.config) {
+      if (this.config.defaultPageSize !== undefined) {
+        this.pageSize.set(this.config.defaultPageSize);
+      }
+      if (this.config.defaultOrdering !== undefined) {
+        this.ordering.set(this.config.defaultOrdering);
+      }
+    }
+
     this.restoreNavigationState();
     // The rxResource will automatically start fetching because it was
     // created in the constructor and its signal dependencies are now set.

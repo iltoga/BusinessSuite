@@ -21,6 +21,7 @@ export interface AppConfig {
   fcmWebStorageBucket?: string;
   fcmWebMeasurementId?: string;
   useOverlayMenu?: boolean;
+  skeletonDebounceDurationMs?: number | string;
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
@@ -42,4 +43,5 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   fcmWebStorageBucket: '',
   fcmWebMeasurementId: '',
   useOverlayMenu: false,
+  skeletonDebounceDurationMs: 500,
 };

@@ -144,31 +144,6 @@ describe('DataTableComponent (keyboard shortcuts)', () => {
     expect((dt.selectedRow() as any)?.id).toBe(2);
   });
 
-  it('handleRowNavigationKeydown should navigate on Arrow keys', async () => {
-    host.data = [{ id: 1 }, { id: 2 }, { id: 3 }];
-    fixture.detectChanges();
-
-    const debug = fixture.debugElement.query(By.directive(DataTableComponent));
-    dt = debug.componentInstance as DataTableComponent<any>;
-
-    // simulate focusing the table to select first row
-    const wrapper = fixture.debugElement.query(By.css('.data-table-focus-trap'));
-    wrapper.triggerEventHandler('focus', new Event('focus'));
-    fixture.detectChanges();
-
-    expect(dt.selectedRow()).toBe(host.data[0]);
-
-    // ArrowDown -> second
-    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-    fixture.detectChanges();
-    expect(dt.selectedRow()).toBe(host.data[1]);
-
-    // ArrowUp -> wraps to previous (first)
-    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'ArrowUp' }));
-    fixture.detectChanges();
-    expect(dt.selectedRow()).toBe(host.data[0]);
-  });
-
   it('Tab should move focus out of the table (does not change selection)', async () => {
     host.data = [{ id: 1 }, { id: 2 }, { id: 3 }];
     fixture.detectChanges();

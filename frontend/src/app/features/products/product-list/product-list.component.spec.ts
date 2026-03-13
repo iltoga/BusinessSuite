@@ -120,9 +120,10 @@ describe('ProductListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
+    // Default filter is ['active'] → deprecated=false, hideDeprecated=false
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
-      undefined,
-      true,
+      false,
+      false,
       'name',
       1,
       10,
@@ -132,6 +133,7 @@ describe('ProductListComponent', () => {
     );
 
     component.onColumnFilterChange({ column: 'deprecated', values: ['deprecated'] });
+    await fixture.whenStable();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
       true,
       false,
@@ -143,7 +145,9 @@ describe('ProductListComponent', () => {
       undefined,
     );
 
+    // Clearing filter (empty) → deprecated=undefined, hideDeprecated=true
     component.onColumnFilterChange({ column: 'deprecated', values: [] });
+    await fixture.whenStable();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
       undefined,
       true,
@@ -161,7 +165,9 @@ describe('ProductListComponent', () => {
     await fixture.whenStable();
 
     component.onColumnFilterChange({ column: 'deprecated', values: ['active', 'deprecated'] });
+    await fixture.whenStable();
 
+    // Both selected → deprecated=undefined, hideDeprecated=false
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
       undefined,
       false,
@@ -178,9 +184,10 @@ describe('ProductListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
+    // Default filter ['active'] → deprecated=false, hideDeprecated=false
     expect(mockProductsService.productsCategoryOptionsList).toHaveBeenLastCalledWith(
-      undefined,
-      true,
+      false,
+      false,
       undefined,
     );
     expect(component.categoryFilterOptions()).toEqual([

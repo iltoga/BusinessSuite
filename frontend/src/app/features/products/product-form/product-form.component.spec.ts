@@ -35,9 +35,9 @@ describe('ProductFormComponent', () => {
     };
     component.itemId = 3;
 
-    component.form = ProductFormComponent.prototype.buildForm.call(component);
-    component.addTask = ProductFormComponent.prototype.addTask.bind(component);
-    component.patchForm = ProductFormComponent.prototype.patchForm.bind(component);
+    component.form = (ProductFormComponent.prototype as any).buildForm.call(component);
+    component.addTask = (ProductFormComponent.prototype as any).addTask.bind(component);
+    component.patchForm = (ProductFormComponent.prototype as any).patchForm.bind(component);
     Object.defineProperty(component, 'tasksArray', {
       get() {
         return component.form.get('tasks');
@@ -142,7 +142,7 @@ describe('ProductFormComponent', () => {
           lastStep: true,
         },
       ],
-    } as ProductDetail;
+    } as unknown as ProductDetail;
     component.productsApi.productsRetrieve.mockReturnValue(of(refreshedItem));
 
     component.saveUpdate({ name: 'KITAS' } as ProductCreateUpdate).subscribe();

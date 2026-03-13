@@ -15,8 +15,11 @@ This guide describes how to run Playwright against the frontend mock stack (`Pri
 - Backend schema up to date:
 
 ```bash
-python backend/manage.py generate_frontend_schema
-cd frontend && bun run generate:api
+./refresh-schema-and-api.sh
+#
+# Or manually:
+# cd backend && python manage.py spectacular --file schema.yaml
+# cd frontend && bun run generate:api
 ```
 
 ## Run locally
@@ -66,8 +69,7 @@ export default defineConfig({
 ## CI checklist
 
 ```bash
-python backend/manage.py generate_frontend_schema
-cd frontend && bun run generate:api
+./refresh-schema-and-api.sh
 cd frontend && bun run test:e2e
 ```
 

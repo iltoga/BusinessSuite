@@ -1,19 +1,22 @@
+import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AuthService } from '@/core/services/auth.service';
+import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  DataTableComponent,
+  type ColumnConfig,
+} from '@/shared/components/data-table/data-table.component';
+import { Component, signal } from '@angular/core';
+import { of, type Observable } from 'rxjs';
 import {
   BaseListComponent,
   BaseListConfig,
   type ListRequestParams,
   type PaginatedResponse,
 } from './base-list.component';
-import { AuthService } from '@/core/services/auth.service';
-import { GlobalToastService } from '@/core/services/toast.service';
-import { DataTableComponent, type ColumnConfig } from '@/shared/components/data-table/data-table.component';
-import { Component, signal } from '@angular/core';
-import { of, type Observable } from 'rxjs';
 
 // Mock test component extending BaseListComponent
 interface TestItem {
@@ -25,7 +28,7 @@ interface TestItem {
   selector: 'app-test-list',
   standalone: true,
   imports: [DataTableComponent],
-  template: '',
+  template: '<app-data-table [data]="items()" [columns]="columns()" [isLoading]="isLoading()" />',
 })
 class TestListComponent extends BaseListComponent<TestItem> {
   readonly columns = signal<ColumnConfig<TestItem>[]>([]);
@@ -82,10 +85,15 @@ describe('BaseListComponent', () => {
   let fixture: ComponentFixture<TestListComponent>;
 
   beforeEach(async () => {
+    Object.defineProperty(window.history, 'state', {
+      value: {},
+      writable: true,
+    });
+
     await TestBed.configureTestingModule({
       imports: [TestListComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: '**', redirectTo: '' }]),
         provideHttpClient(),
         { provide: AuthService, useValue: { isSuperuser: signal(false) } },
         { provide: GlobalToastService, useValue: { success: vi.fn(), error: vi.fn() } },
@@ -114,7 +122,8 @@ describe('BaseListComponent', () => {
     expect(typeof component.isLoading()).toBe('boolean');
   });
 
-  it('should have totalPages computed correctly', () => {
+  it('should have totalPages computed correctly', async () => {
+    await fixture.whenStable();
     component.totalItems.set(25);
     component.pageSize.set(10);
     fixture.detectChanges();
@@ -196,23 +205,25 @@ describe('BaseListComponent', () => {
     it('should open bulk delete dialog with correct data', () => {
       component.totalItems.set(100);
       component.query.set('');
-      
+
       component.openBulkDeleteDialog('Test Items', 'Test details');
-      
+
       expect(component.bulkDeleteOpen()).toBe(true);
-      expect(component.bulkDeleteData()).toEqual(expect.objectContaining({
-        entityLabel: 'Test Items',
-        totalCount: 100,
-        mode: 'all',
-        detailsText: 'Test details',
-      }));
+      expect(component.bulkDeleteData()).toEqual(
+        expect.objectContaining({
+          entityLabel: 'Test Items',
+          totalCount: 100,
+          mode: 'all',
+          detailsText: 'Test details',
+        }),
+      );
     });
 
     it('should open bulk delete dialog in selected mode when query exists', () => {
       component.query.set('search term');
-      
+
       component.openBulkDeleteDialog('Test Items', 'Test details');
-      
+
       expect(component.bulkDeleteData()?.mode).toBe('selected');
     });
 
@@ -220,9 +231,9 @@ describe('BaseListComponent', () => {
       component.bulkDeleteOpen.set(true);
       component.bulkDeleteData.set({ entityLabel: 'Test', totalCount: 10 });
       component.testBulkDeleteQuery.set('test');
-      
+
       component.onBulkDeleteCancelled();
-      
+
       expect(component.bulkDeleteOpen()).toBe(false);
       expect(component.bulkDeleteData()).toBeNull();
       expect(component.testBulkDeleteQuery()).toBe('');
@@ -235,11 +246,11 @@ describe('BaseListComponent', () => {
       const inputElement = document.createElement('input');
       document.body.appendChild(inputElement);
       inputElement.focus();
-      
+
       const event = new KeyboardEvent('keydown', { key: 'N' });
-      
+
       component.handleGlobalKeydown(event);
-      
+
       // Should not throw or cause errors
       document.body.removeChild(inputElement);
     });
