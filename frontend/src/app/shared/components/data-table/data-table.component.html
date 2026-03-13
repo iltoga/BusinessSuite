@@ -132,20 +132,20 @@
               }
             </tr>
           }
-        } @else {
-          @if (data().length === 0) {
-            <tr z-table-row>
-              <td
-                z-table-cell
-                [attr.colspan]="columns().length"
-                class="text-center text-foreground/70"
-              >
-                No results
-              </td>
-            </tr>
-          } @else {
-            <tr
-              *cdkVirtualFor="let row of data(); trackBy: trackByFn"
+        } @else if (data().length === 0) {
+          <tr z-table-row>
+            <td
+              z-table-cell
+              [attr.colspan]="columns().length"
+              class="text-center text-foreground/70"
+            >
+              No results
+            </td>
+          </tr>
+        }
+
+        <tr
+          *cdkVirtualFor="let row of virtualData(); trackBy: trackByFn"
               #rowRef
               z-table-row
               [attr.tabindex]="selectedRow() === row ? 0 : -1"
@@ -215,9 +215,7 @@
                     }
                   </td>
                 }
-              </tr>
-          }
-        }
+          </tr>
       </tbody>
     </table>
   </cdk-virtual-scroll-viewport>

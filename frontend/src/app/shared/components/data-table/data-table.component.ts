@@ -112,6 +112,12 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   data = input.required<readonly T[]>();
+  readonly virtualData = computed(() => {
+    if (this.isLoading() || this.data().length === 0) {
+      return [];
+    }
+    return this.data();
+  });
   columns = input.required<readonly ColumnConfig<T>[]>();
   actions = input<readonly DataTableAction<T>[] | null>(null);
   rowClass = input<((row: T) => string | null | undefined) | null>(null);
@@ -172,6 +178,9 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
           if (index !== -1) {
             // Delay to allow DOM update
             setTimeout(() => this.focusRowByIndex(index), 10);
+          } else {
+            // Reset viewport to top if we can't find the item
+            setTimeout(() => this.viewport()?.scrollToIndex(0), 10);
           }
         } else if (this._refocusFirstRowAfterLoad) {
           this._refocusFirstRowAfterLoad = false;
@@ -179,6 +188,10 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
             // Delay to allow DOM update
             setTimeout(() => this.focusRowByIndex(0), 10);
           }
+        } else {
+          // Standard pagination/search reload: always reset viewport to top 
+          // so large page offsets don't cause an empty virtual view
+          setTimeout(() => this.viewport()?.scrollToIndex(0), 10);
         }
       }
 
