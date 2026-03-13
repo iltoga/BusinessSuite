@@ -17,6 +17,7 @@
 .data-table-scroll table[z-table] {
   width: 100%;
   min-width: 52rem;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
 }

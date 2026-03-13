@@ -145,15 +145,17 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
       header: 'Invoice',
       sortable: true,
       sortKey: 'invoice_no',
+      width: '10%',
       template: this.numberTemplate(),
     },
-    { key: 'customer', header: 'Customer', template: this.customerTemplate() },
-    { key: 'items', header: 'Items', template: this.itemsTemplate() },
+    { key: 'customer', header: 'Customer', width: '20%', template: this.customerTemplate() },
+    { key: 'items', header: 'Items', width: '20%', template: this.itemsTemplate() },
     {
       key: 'dueDate',
       header: 'Due Date',
       sortable: true,
       sortKey: 'due_date',
+      width: '12%',
       template: this.dueTemplate(),
     },
     {
@@ -161,17 +163,19 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
       header: 'Status',
       sortable: true,
       sortKey: 'status',
+      width: '10%',
       template: this.statusTemplate(),
     },
-    { key: 'amounts', header: 'Totals', template: this.amountsTemplate() },
+    { key: 'amounts', header: 'Totals', width: '14%', template: this.amountsTemplate() },
     {
       key: 'createdAt',
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
+      width: '10%',
       template: this.createdAtTemplate(),
     },
-    { key: 'actions', header: 'Actions', template: this.actionsTemplate() },
+    { key: 'actions', header: 'Actions', width: '4%', template: this.actionsTemplate() },
   ]);
 
   // Actions configuration

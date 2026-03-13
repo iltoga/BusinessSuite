@@ -60,11 +60,11 @@ export class AiModelListComponent extends BaseListComponent<AiModelItem> {
 
   // Columns configuration
   readonly columns = computed<ColumnConfig<AiModelItem>[]>(() => [
-    { key: 'provider', header: 'Provider', sortable: true, sortKey: 'provider' },
-    { key: 'name', header: 'Name', sortable: true, sortKey: 'name' },
-    { key: 'model_id', header: 'Model ID', sortable: true, sortKey: 'model_id' },
-    { key: 'description', header: 'Description' },
-    { key: 'actions', header: 'Actions' },
+    { key: 'provider', header: 'Provider', sortable: true, sortKey: 'provider', width: '12%' },
+    { key: 'name', header: 'Name', sortable: true, sortKey: 'name', width: '20%' },
+    { key: 'model_id', header: 'Model ID', sortable: true, sortKey: 'model_id', width: '25%' },
+    { key: 'description', header: 'Description', width: '35%' },
+    { key: 'actions', header: 'Actions', width: '8%' },
   ]);
 
   // Actions configuration

@@ -121,12 +121,13 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
 
   // Columns configuration
   readonly columns = computed<ColumnConfig[]>(() => [
-    { key: 'id', header: 'ID', sortable: true, sortKey: 'id' },
+    { key: 'id', header: 'ID', sortable: true, sortKey: 'id', width: '5%' },
     {
       key: 'customer',
       header: 'Customer',
       sortable: true,
       sortKey: 'customer__first_name',
+      width: '22%',
       template: this.customerTemplate(),
     },
     {
@@ -134,6 +135,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       header: 'Product',
       sortable: true,
       sortKey: 'product__name',
+      width: '20%',
       template: this.productTemplate(),
       filter: {
         options: this.productFilterOptions(),
@@ -148,6 +150,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       subtitle: 'Last Date',
       sortable: true,
       sortKey: 'doc_date',
+      width: '16%',
       template: this.dateTemplate(),
     },
     {
@@ -155,6 +158,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       header: 'Status',
       sortable: true,
       sortKey: 'status',
+      width: '12%',
       template: this.statusTemplate(),
       filter: {
         options: this.statusFilterOptions(),
@@ -168,9 +172,10 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
+      width: '16%',
       template: this.createdAtTemplate(),
     },
-    { key: 'actions', header: 'Actions' },
+    { key: 'actions', header: 'Actions', width: '9%' },
   ]);
 
   // Actions configuration

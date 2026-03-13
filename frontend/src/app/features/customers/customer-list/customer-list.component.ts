@@ -120,12 +120,14 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
       header: 'Customer',
       sortable: true,
       sortKey: 'last_name',
+      width: '22%',
       template: this.customerTemplate(),
     },
     {
       key: 'passportNumber',
       header: 'Passport',
       subtitle: 'Valid till',
+      width: '12%',
       template: this.passportTemplate(),
     },
     {
@@ -133,6 +135,7 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
       header: 'Nationality',
       sortable: true,
       sortKey: 'nationality__country',
+      width: '12%',
       template: this.nationalityTemplate(),
     },
     {
@@ -140,11 +143,13 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
       header: 'Email',
       sortable: true,
       sortKey: 'email',
+      width: '24%',
       template: this.emailTemplate(),
     },
     {
       key: 'whatsapp',
       header: 'WhatsApp',
+      width: '10%',
       template: this.whatsappTemplate(),
     },
     {
@@ -152,11 +157,13 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
+      width: '12%',
       template: this.createdAtTemplate(),
     },
     {
       key: 'actions',
       header: 'Actions',
+      width: '8%',
     },
   ]);
 

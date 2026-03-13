@@ -155,14 +155,15 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
   // Columns configuration
   readonly columns = computed<ColumnConfig<Product>[]>(() => [
-    { key: 'code', header: 'Code', sortable: true, sortKey: 'code' },
-    { key: 'name', header: 'Name', sortable: true, sortKey: 'name', template: this.nameTemplate() },
-    { key: 'description', header: 'Description', template: this.descriptionTemplate() },
+    { key: 'code', header: 'Code', sortable: true, sortKey: 'code', width: '8%' },
+    { key: 'name', header: 'Name', sortable: true, sortKey: 'name', width: '18%', template: this.nameTemplate() },
+    { key: 'description', header: 'Description', width: '20%', template: this.descriptionTemplate() },
     {
       key: 'productType',
       header: 'Type',
       sortable: true,
       sortKey: 'product_type',
+      width: '8%',
       template: this.typeTemplate(),
     },
     {
@@ -170,6 +171,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Category',
       sortable: true,
       sortKey: 'product_category__name',
+      width: '10%',
       template: this.categoryTemplate(),
       filter: {
         options: this.categoryFilterOptions(),
@@ -183,6 +185,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Base Price',
       sortable: true,
       sortKey: 'base_price',
+      width: '9%',
       headerActionTemplate: this.basePriceHeaderTemplate(),
       template: this.priceTemplate(),
     },
@@ -191,16 +194,19 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Retail Price',
       sortable: true,
       sortKey: 'retail_price',
+      width: '9%',
       template: this.retailPriceTemplate(),
     },
     {
       key: 'unitProfit',
       header: 'Unit Profit',
+      width: '8%',
       template: this.profitTemplate(),
     },
     {
       key: 'deprecated',
       header: 'Deprecated',
+      width: '7%',
       template: this.deprecatedTemplate(),
       filter: {
         options: this.deprecatedFilterOptions,
@@ -214,9 +220,10 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
+      width: '9%',
       template: this.createdAtTemplate(),
     },
-    { key: 'actions', header: 'Actions' },
+    { key: 'actions', header: 'Actions', width: '4%' },
   ]);
 
   // Actions configuration

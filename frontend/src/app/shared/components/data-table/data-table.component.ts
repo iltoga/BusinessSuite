@@ -33,6 +33,13 @@ export interface ColumnConfig<T = any> {
   subtitle?: string;
   sortable?: boolean;
   sortKey?: string;
+  /**
+   * Optional CSS width for this column (e.g. '20%', '160px').
+   * When set on any column, a <colgroup> is rendered in the table to lock
+   * column widths before row data loads — preventing the layout shift that
+   * occurs during pagination when using table-layout: fixed without explicit widths.
+   */
+  width?: string;
   headerActionTemplate?: TemplateRef<{ column: ColumnConfig<T> }>;
   template?: TemplateRef<{ $implicit: T; value: any; row: T }>;
   filter?: ColumnFilterConfig;

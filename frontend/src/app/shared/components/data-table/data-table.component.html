@@ -8,6 +8,13 @@
 >
   <cdk-virtual-scroll-viewport itemSize="50" class="data-table-scroll h-[calc(100vh-280px)] w-full">
     <table z-table class="w-full relative">
+      @if (columns().some(c => c.width)) {
+        <colgroup>
+          @for (column of columns(); track column.key) {
+            <col [style.width]="column.width || ''">
+          }
+        </colgroup>
+      }
       <thead z-table-header class="sticky top-0 z-10 bg-background shadow-sm border-b">
         <tr z-table-row>
           @for (column of columns(); track column.key) {
