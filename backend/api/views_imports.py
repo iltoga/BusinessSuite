@@ -53,6 +53,8 @@ from api.serializers import (
     ProductDetailSerializer,
     ProductImportStartResponseSerializer,
     ProductImportStartSerializer,
+    ProductPriceListPrintStartResponseSerializer,
+    ProductPriceListPrintStartSerializer,
     ProductQuickCreateSerializer,
     ProductSerializer,
     PushNotificationTestSerializer,

@@ -16,15 +16,44 @@ import { ProductListComponent } from './product-list.component';
 describe('ProductListComponent', () => {
   let fixture: ComponentFixture<ProductListComponent>;
   let component: ProductListComponent;
+  let mockPreviewWindow: {
+    document: {
+      write: ReturnType<typeof vi.fn>;
+      close: ReturnType<typeof vi.fn>;
+    };
+    addEventListener: ReturnType<typeof vi.fn>;
+    close: ReturnType<typeof vi.fn>;
+    closed: boolean;
+  };
+  let mockToastService: {
+    success: ReturnType<typeof vi.fn>;
+    error: ReturnType<typeof vi.fn>;
+    info: ReturnType<typeof vi.fn>;
+    warning: ReturnType<typeof vi.fn>;
+  };
   let mockProductsService: {
     productsList: ReturnType<typeof vi.fn>;
     productsCategoryOptionsList: ReturnType<typeof vi.fn>;
     productsDeletePreviewRetrieve: ReturnType<typeof vi.fn>;
     productsForceDeleteCreate: ReturnType<typeof vi.fn>;
     productsDestroy: ReturnType<typeof vi.fn>;
+    productsPriceListPrintStartCreate: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
+
+    mockToastService = {
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+    };
+
     mockProductsService = {
       productsList: vi.fn().mockReturnValue(
         of({
@@ -71,7 +100,33 @@ describe('ProductListComponent', () => {
       ),
       productsForceDeleteCreate: vi.fn().mockReturnValue(of({ deleted: true })),
       productsDestroy: vi.fn().mockReturnValue(of({ deleted: true })),
+      productsPriceListPrintStartCreate: vi.fn().mockReturnValue(
+        of({
+          jobId: 'print-job-1',
+          status: 'pending',
+          progress: 0,
+          queued: true,
+          deduplicated: false,
+        }),
+      ),
     };
+
+    mockPreviewWindow = {
+      document: {
+        write: vi.fn(),
+        close: vi.fn(),
+      },
+      addEventListener: vi.fn(),
+      close: vi.fn(),
+      closed: false,
+    };
+
+    vi.stubGlobal(
+      'open',
+      vi.fn(() => mockPreviewWindow),
+    );
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:print-preview');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
 
     await TestBed.configureTestingModule({
       imports: [ProductListComponent],
@@ -85,12 +140,18 @@ describe('ProductListComponent', () => {
             startExport: vi.fn().mockReturnValue(of({ job_id: 'job-1' })),
             startImport: vi.fn().mockReturnValue(of({ job_id: 'job-2' })),
             downloadExport: vi.fn().mockReturnValue(of({ body: new Blob() })),
+            downloadPriceListPdf: vi
+              .fn()
+              .mockReturnValue(of(new Blob(['pdf'], { type: 'application/pdf' }))),
           },
         },
         {
           provide: JobService,
           useValue: {
             watchJob: vi.fn().mockReturnValue(of({ status: 'completed', progress: 100 })),
+            openProgressDialog: vi
+              .fn()
+              .mockReturnValue(of({ status: 'completed', progress: 100, message: 'Done' })),
           },
         },
         { provide: ConfigService, useValue: { settings: { baseCurrency: 'IDR' } } },
@@ -102,12 +163,7 @@ describe('ProductListComponent', () => {
         },
         {
           provide: GlobalToastService,
-          useValue: {
-            success: vi.fn(),
-            error: vi.fn(),
-            info: vi.fn(),
-            warning: vi.fn(),
-          },
+          useValue: mockToastService,
         },
       ],
     }).compileComponents();
@@ -194,5 +250,18 @@ describe('ProductListComponent', () => {
       { value: 'Visa Category', label: 'Visa Category' },
       { value: 'Zeta Category', label: 'Zeta Category' },
     ]);
+  });
+
+  it('starts the printable price list flow and opens print preview on success', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await component.startPrint();
+
+    expect(mockProductsService.productsPriceListPrintStartCreate).toHaveBeenCalledTimes(1);
+    expect(
+      (TestBed.inject(ProductImportExportService) as any).downloadPriceListPdf,
+    ).toHaveBeenCalledWith('print-job-1');
+    expect(mockToastService.success).toHaveBeenCalledWith('Printable price list opened');
   });
 });

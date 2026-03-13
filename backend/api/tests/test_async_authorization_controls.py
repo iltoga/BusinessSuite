@@ -101,7 +101,9 @@ class CronExecAuthorizationTests(TestCase):
 
 class AiModelAuthorizationTests(TestCase):
     def setUp(self):
-        self.staff_user = User.objects.create_user("ai-model-staff", "ai-model-staff@example.com", "pass", is_staff=True)
+        self.staff_user = User.objects.create_user(
+            "ai-model-staff", "ai-model-staff@example.com", "pass", is_staff=True
+        )
         self.regular_user = User.objects.create_user("ai-model-user", "ai-model-user@example.com", "pass")
 
         self.staff_client = APIClient()
@@ -486,6 +488,10 @@ class AsyncTriggerThrottleCoverageTests(TestCase):
 
         self.assertEqual(ProductViewSet.export_start.kwargs.get("throttle_scope"), "products_export_start")
         self.assertEqual(ProductViewSet.import_start.kwargs.get("throttle_scope"), "products_import_start")
+        self.assertEqual(
+            ProductViewSet.price_list_print_start.kwargs.get("throttle_scope"),
+            "products_price_list_print_start",
+        )
         self.assertEqual(InvoiceViewSet.download_async.kwargs.get("throttle_scope"), "invoice_download_async")
         self.assertEqual(InvoiceViewSet.import_batch.kwargs.get("throttle_scope"), "invoice_import_batch")
 
@@ -494,5 +500,6 @@ class AsyncTriggerThrottleCoverageTests(TestCase):
 
         self.assertEqual(rates.get("products_export_start"), "6/minute")
         self.assertEqual(rates.get("products_import_start"), "6/minute")
+        self.assertEqual(rates.get("products_price_list_print_start"), "6/minute")
         self.assertEqual(rates.get("invoice_download_async"), "10/minute")
         self.assertEqual(rates.get("invoice_import_batch"), "4/minute")

@@ -11,9 +11,9 @@ import {
 } from '@angular/core';
 
 import { RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, of, type Observable } from 'rxjs';
+import { firstValueFrom, forkJoin, map, type Observable } from 'rxjs';
 
-import { ProductsService, type Product } from '@/core/api';
+import { ProductsService, type AsyncJob, type Product } from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
 import { JobService } from '@/core/services/job.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
@@ -37,11 +37,20 @@ import {
 } from '@/shared/components/product-delete-dialog/product-delete-dialog.component';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
-import { BaseListComponent, BaseListConfig, type ListRequestParams, type PaginatedResponse } from '@/shared/core/base-list.component';
+import {
+  BaseListComponent,
+  BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
+} from '@/shared/core/base-list.component';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
+import {
+  openPdfPrintPreview,
+  openPendingPdfPrintPreviewWindow,
+} from '@/shared/utils/pdf-print-preview';
 
 /**
  * Product list component
@@ -92,6 +101,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
   readonly exportProgress = signal<number | null>(null);
   readonly importInProgress = signal(false);
   readonly importProgress = signal<number | null>(null);
+  readonly printInProgress = signal(false);
   readonly basePricesVisible = signal(false);
 
   // Product delete dialog state
@@ -156,8 +166,20 @@ export class ProductListComponent extends BaseListComponent<Product> {
   // Columns configuration
   readonly columns = computed<ColumnConfig<Product>[]>(() => [
     { key: 'code', header: 'Code', sortable: true, sortKey: 'code', width: '8%' },
-    { key: 'name', header: 'Name', sortable: true, sortKey: 'name', width: '18%', template: this.nameTemplate() },
-    { key: 'description', header: 'Description', width: '20%', template: this.descriptionTemplate() },
+    {
+      key: 'name',
+      header: 'Name',
+      sortable: true,
+      sortKey: 'name',
+      width: '18%',
+      template: this.nameTemplate(),
+    },
+    {
+      key: 'description',
+      header: 'Description',
+      width: '20%',
+      template: this.descriptionTemplate(),
+    },
     {
       key: 'productType',
       header: 'Type',
@@ -463,6 +485,60 @@ export class ProductListComponent extends BaseListComponent<Product> {
   }
 
   /**
+   * Start public price list print preparation and open the browser print preview.
+   */
+  async startPrint(): Promise<void> {
+    if (this.printInProgress() || this.exportInProgress() || this.importInProgress()) {
+      return;
+    }
+
+    this.printInProgress.set(true);
+    let previewWindow: Window | null = null;
+
+    try {
+      previewWindow = openPendingPdfPrintPreviewWindow();
+      const response = await firstValueFrom(this.productsApi.productsPriceListPrintStartCreate());
+      const jobId = String(response.jobId ?? '').trim();
+
+      if (!jobId) {
+        throw new Error('Print job was started but no job id was returned.');
+      }
+
+      const finalJob = await firstValueFrom(
+        this.jobService.openProgressDialog(jobId, 'Preparing printable price list...'),
+      );
+
+      if (!finalJob) {
+        return;
+      }
+
+      if (this.isCompletedJob(finalJob)) {
+        await this.openPrintedPriceList(jobId, previewWindow);
+        this.toast.success('Printable price list opened');
+        return;
+      }
+
+      if (this.isFailedJob(finalJob)) {
+        this.toast.error(finalJob.errorMessage || 'Printable price list generation failed');
+      }
+    } catch (error) {
+      try {
+        previewWindow?.close();
+      } catch {
+        // Ignore popup cleanup failures.
+      }
+      const message = extractServerErrorMessage(error);
+      this.toast.error(
+        message
+          ? `Failed to open printable price list: ${message}`
+          : 'Failed to open printable price list',
+      );
+    } finally {
+      this.printInProgress.set(false);
+    }
+  }
+
+  /**
    * Open import file picker
    */
   openImportPicker(): void {
@@ -705,6 +781,19 @@ export class ProductListComponent extends BaseListComponent<Product> {
         this.toast.error('Failed to download export file');
       },
     });
+  }
+
+  private async openPrintedPriceList(jobId: string, previewWindow?: Window | null): Promise<void> {
+    const blob = await firstValueFrom(this.productImportExportApi.downloadPriceListPdf(jobId));
+    await openPdfPrintPreview(blob, previewWindow);
+  }
+
+  private isCompletedJob(job: AsyncJob): boolean {
+    return job.status === 'completed';
+  }
+
+  private isFailedJob(job: AsyncJob): boolean {
+    return job.status === 'failed';
   }
 
   /**

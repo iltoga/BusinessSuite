@@ -357,6 +357,18 @@ class ProductImportStartResponseSerializer(serializers.Serializer):
     deduplicated = serializers.BooleanField()
 
 
+class ProductPriceListPrintStartSerializer(serializers.Serializer):
+    pass
+
+
+class ProductPriceListPrintStartResponseSerializer(serializers.Serializer):
+    job_id = serializers.UUIDField()
+    status = serializers.CharField()
+    progress = serializers.IntegerField()
+    queued = serializers.BooleanField()
+    deduplicated = serializers.BooleanField()
+
+
 class ProductCategoryFilterOptionSerializer(serializers.Serializer):
     value = serializers.CharField(source="name")
     label = serializers.CharField(source="name")

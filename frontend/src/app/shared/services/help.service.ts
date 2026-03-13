@@ -69,7 +69,17 @@ export class HelpService {
       '/applications/bulk-delete',
       { id: '/applications/bulk-delete', contentUrl: '/help/applications/bulk-delete.md' },
     ],
-    ['/products', { id: '/products', contentUrl: '/help/products/list.md' }],
+    [
+      '/products',
+      {
+        id: '/products',
+        contentUrl: '/help/products/list.md',
+        briefExplanation:
+          'Browse the product catalog and launch public-facing export and print actions.',
+        details:
+          'Use Export for spreadsheets, Import to bulk update products, and Print to generate the grouped retail-only price list with live progress updates.',
+      },
+    ],
     ['/products/new', { id: '/products/new', contentUrl: '/help/products/new.md' }],
     ['/products/', { id: '/products/', contentUrl: '/help/products/detail.md' }],
     ['/products/search', { id: '/products/search', contentUrl: '/help/products/search.md' }],

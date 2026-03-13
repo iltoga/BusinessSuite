@@ -23,12 +23,23 @@ export class ProductImportExportService {
   startImport(file: File): Observable<ProductImportExportStartResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<ProductImportExportStartResponse>('/api/products/import/start/', formData);
+    return this.http.post<ProductImportExportStartResponse>(
+      '/api/products/import/start/',
+      formData,
+    );
   }
 
   downloadExport(jobId: string): Observable<HttpResponse<Blob>> {
     return this.http.get(`/api/products/export/download/${jobId}/`, {
       observe: 'response',
+      responseType: 'blob',
+    });
+  }
+
+  // Manual HttpClient call – the generated OpenAPI client sends Accept: application/json
+  // for binary endpoints, which breaks PDF downloads.
+  downloadPriceListPdf(jobId: string): Observable<Blob> {
+    return this.http.get(`/api/products/price-list/print/download/${jobId}/`, {
       responseType: 'blob',
     });
   }

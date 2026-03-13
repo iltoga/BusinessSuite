@@ -93,8 +93,9 @@ model/payment.ts
 model/product-category-filter-option.ts
 model/product-create-update.ts
 model/product-detail.ts
-model/product-import-start.ts
+model/product-import-start-response.ts
 model/product-minimal.ts
+model/product-price-list-print-start-response.ts
 model/product.ts
 model/push-notification-test.ts
 model/surat-permohonan-customer-data.ts

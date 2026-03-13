@@ -4192,11 +4192,49 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductImportStartResponse'
+          description: ''
+  /api/products/price-list/print/download/{jobId}/:
+    get:
+      operationId: productsPriceListPrintDownloadRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - products
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProductImportStart'
+                type: string
+                format: binary
+          description: ''
+  /api/products/price-list/print/start/:
+    post:
+      operationId: productsPriceListPrintStartCreate
+      tags:
+      - products
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPriceListPrintStartResponse'
           description: ''
   /api/push-notifications/fcm-register-proxy/:
     post:
@@ -9569,11 +9607,49 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductImportStartResponse'
+          description: ''
+  /api/v1/products/price-list/print/download/{jobId}/:
+    get:
+      operationId: v1ProductsPriceListPrintDownloadRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProductImportStart'
+                type: string
+                format: binary
+          description: ''
+  /api/v1/products/price-list/print/start/:
+    post:
+      operationId: v1ProductsPriceListPrintStartCreate
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPriceListPrintStartResponse'
           description: ''
   /api/v1/push-notifications/fcm-register-proxy/:
     post:
@@ -14052,6 +14128,26 @@ components:
           format: uri
       required:
       - file
+    ProductImportStartResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+      required:
+      - deduplicated
+      - job_id
+      - progress
+      - queued
+      - status
     ProductMinimal:
       type: object
       properties:
@@ -14066,6 +14162,26 @@ components:
       required:
       - id
       - name
+    ProductPriceListPrintStartResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+      required:
+      - deduplicated
+      - job_id
+      - progress
+      - queued
+      - status
     PushNotificationTest:
       type: object
       properties:

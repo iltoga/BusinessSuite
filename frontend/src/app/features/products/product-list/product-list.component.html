@@ -22,8 +22,17 @@
         <z-button
           zType="default"
           zSize="sm"
+          [zLoading]="printInProgress()"
+          [zDisabled]="printInProgress() || exportInProgress() || importInProgress()"
+          (click)="startPrint()"
+        >
+          Print
+        </z-button>
+        <z-button
+          zType="default"
+          zSize="sm"
           [zLoading]="exportInProgress()"
-          [zDisabled]="exportInProgress() || importInProgress()"
+          [zDisabled]="printInProgress() || exportInProgress() || importInProgress()"
           (click)="startExport()"
         >
           Export
@@ -35,7 +44,7 @@
           zType="default"
           zSize="sm"
           [zLoading]="importInProgress()"
-          [zDisabled]="importInProgress() || exportInProgress()"
+          [zDisabled]="printInProgress() || importInProgress() || exportInProgress()"
           (click)="openImportPicker()"
         >
           Import
