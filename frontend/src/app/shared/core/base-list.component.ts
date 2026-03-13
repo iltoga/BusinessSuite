@@ -226,10 +226,19 @@ export abstract class BaseListComponent<T> implements OnInit {
     effect(() => {
       const response = this.listResource.value();
       if (response) {
-        this.items.set(response.results ?? []);
-        this.totalItems.set(response.count ?? 0);
-        // Defer focus management to ensure Angular has flushed the items signal to the template bindings
-        setTimeout(() => this.focusAfterLoad(), 0);
+        // Prevent state drop to 0 during rxResource Reloading phases 
+        // which momentarily emits the defaultValue, causing search box buttons to flicker.
+        const isTransientLoadingState =
+          this.listResource.isLoading() &&
+          response.count === 0 &&
+          (!response.results || response.results.length === 0);
+
+        if (!isTransientLoadingState) {
+          this.items.set(response.results ?? []);
+          this.totalItems.set(response.count ?? 0);
+          // Defer focus management to ensure Angular has flushed the items signal to the template bindings
+          setTimeout(() => this.focusAfterLoad(), 0);
+        }
       }
     });
   }
