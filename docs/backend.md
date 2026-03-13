@@ -1,0 +1,19 @@
+# Backend
+
+- Framework: Django 6 + DRF; Python 3.12+.
+- Apps: `core`, `cache`, `api`, `customers`, `products`, `customer_applications`, `invoices`, `payments`, `letters`, `reports`, `admin_tools`, `landing`.
+- Models: domain models per app; audit logging enabled for customers/products/invoices/customer_applications.
+- Services: `core/services/*` host business logic (AI client, Redis client, app settings, storage helpers, logger).
+- API: DRF viewsets/APIViews under `backend/api`; camelCase serializers; throttling scopes for OCR, cron, invoice jobs; exception handler `api.utils.exception_handler.custom_exception_handler`.
+- Authentication: JWT via SimpleJWT (`JwtOrMockAuthentication`), `Authorization: Bearer`; optional mock auth (env driven) for demos; session auth for admin.
+- Validation: serializer validation plus service-level guards; invoice/application relationships protected; file access through `default_storage`.
+- Caching: middleware `cache.middleware.CacheMiddleware` + cacheops; Redis DB allocation per `cache/ARCHITECTURE.md`; per-user namespace prefixing.
+- OpenAPI: drf-spectacular with preprocessing hooks to include serializer metadata; schema at `/api/schema/`.
+- Settings highlights:
+  - Host/Redis resolution adapts to Docker vs host.
+  - CORS via env; default localhost + APP_DOMAIN variants.
+  - SimpleJWT lifetimes: 1 day access, 7 days refresh.
+  - DRAMATIQ namespace/results namespaces configurable; workers default counts in settings.
+- Logging: structured logging via Logger service; performance middleware; logs in `logs/`.
+- Feature flags: django-waffle flag `disable_django_views` plus env override.
+- Tests: pytest with strict markers; e2e Redis/Dramatiq tests; caching and task runtime policies covered.

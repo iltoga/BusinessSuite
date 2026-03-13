@@ -9,11 +9,11 @@ import {
   viewChild,
   type TemplateRef,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
-import { catchError, forkJoin, of, Subject, switchMap } from 'rxjs';
 
-import { ProductsService, type Product } from '@/core/api';
+import { RouterLink } from '@angular/router';
+import { firstValueFrom, forkJoin, map, type Observable } from 'rxjs';
+
+import { ProductsService, type AsyncJob, type Product } from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
 import { JobService } from '@/core/services/job.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
@@ -37,11 +37,20 @@ import {
 } from '@/shared/components/product-delete-dialog/product-delete-dialog.component';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
-import { BaseListComponent, BaseListConfig } from '@/shared/core/base-list.component';
+import {
+  BaseListComponent,
+  BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
+} from '@/shared/core/base-list.component';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
+import {
+  openPdfPrintPreview,
+  openPendingPdfPrintPreviewWindow,
+} from '@/shared/utils/pdf-print-preview';
 
 /**
  * Product list component
@@ -81,7 +90,6 @@ export class ProductListComponent extends BaseListComponent<Product> {
   private readonly productImportExportApi = inject(ProductImportExportService);
   private readonly jobService = inject(JobService);
   private readonly configService = inject(ConfigService);
-  private readonly loadProductsTrigger$ = new Subject<void>();
 
   // Expose products for template compatibility
   get products() {
@@ -93,6 +101,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
   readonly exportProgress = signal<number | null>(null);
   readonly importInProgress = signal(false);
   readonly importProgress = signal<number | null>(null);
+  readonly printInProgress = signal(false);
   readonly basePricesVisible = signal(false);
 
   // Product delete dialog state
@@ -156,14 +165,27 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
   // Columns configuration
   readonly columns = computed<ColumnConfig<Product>[]>(() => [
-    { key: 'code', header: 'Code', sortable: true, sortKey: 'code' },
-    { key: 'name', header: 'Name', sortable: true, sortKey: 'name', template: this.nameTemplate() },
-    { key: 'description', header: 'Description', template: this.descriptionTemplate() },
+    { key: 'code', header: 'Code', sortable: true, sortKey: 'code', width: '8%' },
+    {
+      key: 'name',
+      header: 'Name',
+      sortable: true,
+      sortKey: 'name',
+      width: '18%',
+      template: this.nameTemplate(),
+    },
+    {
+      key: 'description',
+      header: 'Description',
+      width: '20%',
+      template: this.descriptionTemplate(),
+    },
     {
       key: 'productType',
       header: 'Type',
       sortable: true,
       sortKey: 'product_type',
+      width: '8%',
       template: this.typeTemplate(),
     },
     {
@@ -171,6 +193,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Category',
       sortable: true,
       sortKey: 'product_category__name',
+      width: '10%',
       template: this.categoryTemplate(),
       filter: {
         options: this.categoryFilterOptions(),
@@ -184,6 +207,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Base Price',
       sortable: true,
       sortKey: 'base_price',
+      width: '9%',
       headerActionTemplate: this.basePriceHeaderTemplate(),
       template: this.priceTemplate(),
     },
@@ -192,16 +216,19 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Retail Price',
       sortable: true,
       sortKey: 'retail_price',
+      width: '9%',
       template: this.retailPriceTemplate(),
     },
     {
       key: 'unitProfit',
       header: 'Unit Profit',
+      width: '8%',
       template: this.profitTemplate(),
     },
     {
       key: 'deprecated',
       header: 'Deprecated',
+      width: '7%',
       template: this.deprecatedTemplate(),
       filter: {
         options: this.deprecatedFilterOptions,
@@ -215,9 +242,10 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
+      width: '9%',
       template: this.createdAtTemplate(),
     },
-    { key: 'actions', header: 'Actions' },
+    { key: 'actions', header: 'Actions', width: '4%' },
   ]);
 
   // Actions configuration
@@ -257,62 +285,41 @@ export class ProductListComponent extends BaseListComponent<Product> {
       enableBulkDelete: true,
       enableDelete: true,
     } as BaseListConfig<Product>;
-
-    // Setup load trigger with rxjs pattern
-    this.loadProductsTrigger$
-      .pipe(
-        switchMap(() => {
-          this.isLoading.set(true);
-          const ordering = this.ordering();
-          const search = this.query().trim();
-          const deprecatedFilter = this.resolveDeprecatedFilter();
-          const categoryParam = this.resolveCategoryFilter();
-
-          return forkJoin({
-            products: this.productsApi.productsList(
-              deprecatedFilter.deprecated,
-              deprecatedFilter.hideDeprecated,
-              ordering,
-              this.page(),
-              this.pageSize(),
-              categoryParam,
-              search || undefined,
-              undefined,
-            ),
-            categoryOptions: this.productsApi.productsCategoryOptionsList(
-              deprecatedFilter.deprecated,
-              deprecatedFilter.hideDeprecated,
-              undefined,
-            ),
-          }).pipe(
-            catchError(() => {
-              this.toast.error('Failed to load products');
-              return of(null);
-            }),
-          );
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((response) => {
-        if (!response) {
-          this.isLoading.set(false);
-          return;
-        }
-
-        this.items.set(response.products.results ?? []);
-        this.totalItems.set(response.products.count ?? 0);
-        this.categoryFilterOptions.set(response.categoryOptions ?? []);
-        this.isLoading.set(false);
-        this.focusAfterLoad();
-      });
   }
 
   /**
-   * Load products from service
+   * Create the Observable that fetches a page of products.
+   * Also fetches category options as a side-effect.
    */
-  protected override loadItems(): void {
-    if (!this.isBrowser) return;
-    this.loadProductsTrigger$.next();
+  protected override createListLoader(
+    params: ListRequestParams,
+  ): Observable<PaginatedResponse<Product>> {
+    const deprecatedFilter = this.resolveDeprecatedFilter();
+    const categoryParam = this.resolveCategoryFilter();
+    const search = params.query?.trim();
+
+    return forkJoin({
+      products: this.productsApi.productsList(
+        deprecatedFilter.deprecated,
+        deprecatedFilter.hideDeprecated,
+        params.ordering,
+        params.page,
+        params.pageSize,
+        categoryParam,
+        search || undefined,
+        undefined,
+      ),
+      categoryOptions: this.productsApi.productsCategoryOptionsList(
+        deprecatedFilter.deprecated,
+        deprecatedFilter.hideDeprecated,
+        undefined,
+      ),
+    }).pipe(
+      map((response) => {
+        this.categoryFilterOptions.set(response.categoryOptions ?? []);
+        return response.products;
+      }),
+    );
   }
 
   /**
@@ -327,7 +334,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       [event.column]: event.values,
     }));
     this.page.set(1);
-    this.loadItems();
+    this.reload();
   }
 
   /**
@@ -371,7 +378,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       next: () => {
         this.toast.success(result.forceDelete ? 'Product force deleted' : 'Product deleted');
         this.resetProductDeleteDialog();
-        this.loadItems();
+        this.reload();
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
@@ -425,7 +432,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
         this.bulkDeleteOpen.set(false);
         this.bulkDeleteData.set(null);
         this.productBulkDeleteQuery.set('');
-        this.loadItems();
+        this.reload();
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
@@ -475,6 +482,60 @@ export class ProductListComponent extends BaseListComponent<Product> {
         this.exportProgress.set(null);
       },
     });
+  }
+
+  /**
+   * Start public price list print preparation and open the browser print preview.
+   */
+  async startPrint(): Promise<void> {
+    if (this.printInProgress() || this.exportInProgress() || this.importInProgress()) {
+      return;
+    }
+
+    this.printInProgress.set(true);
+    let previewWindow: Window | null = null;
+
+    try {
+      previewWindow = openPendingPdfPrintPreviewWindow();
+      const response = await firstValueFrom(this.productsApi.productsPriceListPrintStartCreate());
+      const jobId = String(response.jobId ?? '').trim();
+
+      if (!jobId) {
+        throw new Error('Print job was started but no job id was returned.');
+      }
+
+      const finalJob = await firstValueFrom(
+        this.jobService.openProgressDialog(jobId, 'Preparing printable price list...'),
+      );
+
+      if (!finalJob) {
+        return;
+      }
+
+      if (this.isCompletedJob(finalJob)) {
+        await this.openPrintedPriceList(jobId, previewWindow);
+        this.toast.success('Printable price list opened');
+        return;
+      }
+
+      if (this.isFailedJob(finalJob)) {
+        this.toast.error(finalJob.errorMessage || 'Printable price list generation failed');
+      }
+    } catch (error) {
+      try {
+        previewWindow?.close();
+      } catch {
+        // Ignore popup cleanup failures.
+      }
+      const message = extractServerErrorMessage(error);
+      this.toast.error(
+        message
+          ? `Failed to open printable price list: ${message}`
+          : 'Failed to open printable price list',
+      );
+    } finally {
+      this.printInProgress.set(false);
+    }
   }
 
   /**
@@ -689,7 +750,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
           this.toast.success('Import completed successfully');
           this.importInProgress.set(false);
           this.importProgress.set(null);
-          this.loadItems();
+          this.reload();
         } else if (job.status === 'failed') {
           this.toast.error(job.errorMessage || 'Product import failed');
           this.importInProgress.set(false);
@@ -720,6 +781,19 @@ export class ProductListComponent extends BaseListComponent<Product> {
         this.toast.error('Failed to download export file');
       },
     });
+  }
+
+  private async openPrintedPriceList(jobId: string, previewWindow?: Window | null): Promise<void> {
+    const blob = await firstValueFrom(this.productImportExportApi.downloadPriceListPdf(jobId));
+    await openPdfPrintPreview(blob, previewWindow);
+  }
+
+  private isCompletedJob(job: AsyncJob): boolean {
+    return job.status === 'completed';
+  }
+
+  private isFailedJob(job: AsyncJob): boolean {
+    return job.status === 'failed';
   }
 
   /**

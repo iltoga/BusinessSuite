@@ -83,7 +83,7 @@ import { PaginatedCustomerUninvoicedApplicationList } from '../model/paginated-c
 // @ts-ignore
 import { PaginatedDocApplicationInvoiceList } from '../model/paginated-doc-application-invoice-list';
 // @ts-ignore
-import { PaginatedDocApplicationSerializerWithRelationsList } from '../model/paginated-doc-application-serializer-with-relations-list';
+import { PaginatedDocApplicationListList } from '../model/paginated-doc-application-list-list';
 // @ts-ignore
 import { PaginatedInvoiceListList } from '../model/paginated-invoice-list-list';
 // @ts-ignore
@@ -101,7 +101,9 @@ import { ProductCreateUpdate } from '../model/product-create-update';
 // @ts-ignore
 import { ProductDetail } from '../model/product-detail';
 // @ts-ignore
-import { ProductImportStart } from '../model/product-import-start';
+import { ProductImportStartResponse } from '../model/product-import-start-response';
+// @ts-ignore
+import { ProductPriceListPrintStartResponse } from '../model/product-price-list-print-start-response';
 // @ts-ignore
 import { PushNotificationTest } from '../model/push-notification-test';
 // @ts-ignore
@@ -3272,20 +3274,16 @@ export class V1Service extends BaseService {
      * Force close an application by setting its status to completed.  This mirrors the legacy Django view behavior and bypasses automatic status recalculation by saving with skip_status_calculation&#x3D;True.
      * @endpoint post /api/v1/customer-applications/{id}/force-close/
      * @param id A unique integer value identifying this doc application.
-     * @param docApplicationSerializerWithRelations 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1CustomerApplicationsForceCloseCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<DocApplicationDetail>;
-    public v1CustomerApplicationsForceCloseCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<DocApplicationDetail>>;
-    public v1CustomerApplicationsForceCloseCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<DocApplicationDetail>>;
-    public v1CustomerApplicationsForceCloseCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1CustomerApplicationsForceCloseCreate(id: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<DocApplicationDetail>;
+    public v1CustomerApplicationsForceCloseCreate(id: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<DocApplicationDetail>>;
+    public v1CustomerApplicationsForceCloseCreate(id: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<DocApplicationDetail>>;
+    public v1CustomerApplicationsForceCloseCreate(id: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling v1CustomerApplicationsForceCloseCreate.');
-        }
-        if (docApplicationSerializerWithRelations === null || docApplicationSerializerWithRelations === undefined) {
-            throw new Error('Required parameter docApplicationSerializerWithRelations was null or undefined when calling v1CustomerApplicationsForceCloseCreate.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -3307,17 +3305,6 @@ export class V1Service extends BaseService {
         const localVarTransferCache: boolean = options?.transferCache ?? true;
 
 
-        // to determine the Content-Type header
-        const consumes: string[] = [
-            'application/json',
-            'application/x-www-form-urlencoded',
-            'multipart/form-data'
-        ];
-        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
-        if (httpContentTypeSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-        }
-
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
             if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -3334,7 +3321,6 @@ export class V1Service extends BaseService {
         return this.httpClient.request<DocApplicationDetail>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: docApplicationSerializerWithRelations,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -3355,9 +3341,9 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PaginatedDocApplicationSerializerWithRelationsList>;
-    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PaginatedDocApplicationSerializerWithRelationsList>>;
-    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PaginatedDocApplicationSerializerWithRelationsList>>;
+    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PaginatedDocApplicationListList>;
+    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PaginatedDocApplicationListList>>;
+    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PaginatedDocApplicationListList>>;
     public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
@@ -3430,7 +3416,7 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/customer-applications/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<PaginatedDocApplicationSerializerWithRelationsList>('get', `${basePath}${localVarPath}`,
+        return this.httpClient.request<PaginatedDocApplicationListList>('get', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters.toHttpParams(),
@@ -10674,9 +10660,9 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1ProductsImportStartCreate(file: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<ProductImportStart>;
-    public v1ProductsImportStartCreate(file: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<ProductImportStart>>;
-    public v1ProductsImportStartCreate(file: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<ProductImportStart>>;
+    public v1ProductsImportStartCreate(file: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<ProductImportStartResponse>;
+    public v1ProductsImportStartCreate(file: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<ProductImportStartResponse>>;
+    public v1ProductsImportStartCreate(file: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<ProductImportStartResponse>>;
     public v1ProductsImportStartCreate(file: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (file === null || file === undefined) {
             throw new Error('Required parameter file was null or undefined when calling v1ProductsImportStartCreate.');
@@ -10734,7 +10720,7 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/products/import/start/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<ProductImportStart>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<ProductImportStartResponse>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
@@ -10953,6 +10939,111 @@ export class V1Service extends BaseService {
             {
                 context: localVarHttpContext,
                 body: productCreateUpdate,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * @endpoint get /api/v1/products/price-list/print/download/{jobId}/
+     * @param jobId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public v1ProductsPriceListPrintDownloadRetrieve(jobId: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Blob>;
+    public v1ProductsPriceListPrintDownloadRetrieve(jobId: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Blob>>;
+    public v1ProductsPriceListPrintDownloadRetrieve(jobId: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Blob>>;
+    public v1ProductsPriceListPrintDownloadRetrieve(jobId: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (jobId === null || jobId === undefined) {
+            throw new Error('Required parameter jobId was null or undefined when calling v1ProductsPriceListPrintDownloadRetrieve.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let localVarPath = `/api/v1/products/price-list/print/download/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: "blob",
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * @endpoint post /api/v1/products/price-list/print/start/
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public v1ProductsPriceListPrintStartCreate(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<ProductPriceListPrintStartResponse>;
+    public v1ProductsPriceListPrintStartCreate(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<ProductPriceListPrintStartResponse>>;
+    public v1ProductsPriceListPrintStartCreate(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<ProductPriceListPrintStartResponse>>;
+    public v1ProductsPriceListPrintStartCreate(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/products/price-list/print/start/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<ProductPriceListPrintStartResponse>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,

@@ -10,11 +10,14 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { map, type Observable } from 'rxjs';
 
 import { CustomersService, type CustomerListItem } from '@/core/services/customers.service';
 import {
   BaseListComponent,
   BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
 } from '@/shared/core/base-list.component';
 import { ZardBadgeComponent } from '@/shared/components/badge/badge.component';
 import {
@@ -117,12 +120,14 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
       header: 'Customer',
       sortable: true,
       sortKey: 'last_name',
+      width: '22%',
       template: this.customerTemplate(),
     },
     {
       key: 'passportNumber',
       header: 'Passport',
       subtitle: 'Valid till',
+      width: '12%',
       template: this.passportTemplate(),
     },
     {
@@ -130,6 +135,7 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
       header: 'Nationality',
       sortable: true,
       sortKey: 'nationality__country',
+      width: '12%',
       template: this.nationalityTemplate(),
     },
     {
@@ -137,11 +143,13 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
       header: 'Email',
       sortable: true,
       sortKey: 'email',
+      width: '24%',
       template: this.emailTemplate(),
     },
     {
       key: 'whatsapp',
       header: 'WhatsApp',
+      width: '10%',
       template: this.whatsappTemplate(),
     },
     {
@@ -149,11 +157,13 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
+      width: '12%',
       template: this.createdAtTemplate(),
     },
     {
       key: 'actions',
       header: 'Actions',
+      width: '8%',
     },
   ]);
 
@@ -216,32 +226,18 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
   }
 
   /**
-   * Load customers from service
+   * Create the Observable that fetches a page of customers.
    */
-  protected override loadItems(): void {
-    if (!this.isBrowser) return;
-
-    this.isLoading.set(true);
-
-    this.customersService
+  protected override createListLoader(
+    params: ListRequestParams,
+  ): Observable<PaginatedResponse<CustomerListItem>> {
+    return this.customersService
       .list({
-        page: this.page(),
-        pageSize: this.pageSize(),
-        query: this.query() || undefined,
-        ordering: this.ordering() || undefined,
+        page: params.page,
+        pageSize: params.pageSize,
+        query: params.query || undefined,
+        ordering: params.ordering || undefined,
         status: this.statusFilter(),
-      })
-      .subscribe({
-        next: (response) => {
-          this.items.set(response.results ?? []);
-          this.totalItems.set(response.count ?? 0);
-          this.isLoading.set(false);
-          this.focusAfterLoad();
-        },
-        error: () => {
-          this.toast.error('Failed to load customers');
-          this.isLoading.set(false);
-        },
       });
   }
 
@@ -252,7 +248,7 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
     if (typeof value === 'string') {
       this.statusFilter.set(value as 'all' | 'active' | 'disabled');
       this.page.set(1);
-      this.loadItems();
+      this.reload();
     }
   }
 
@@ -273,7 +269,7 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
     this.customersService.toggleActive(customer.id).subscribe({
       next: () => {
         this.toast.success(`Customer ${customer.active ? 'disabled' : 'enabled'}`);
-        this.loadItems();
+        this.reload();
       },
       error: () => {
         this.toast.error('Failed to update customer status');
@@ -292,7 +288,7 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
     this.customersService.deleteCustomer(customer.id).subscribe({
       next: () => {
         this.toast.success('Customer deleted');
-        this.loadItems();
+        this.reload();
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
@@ -341,7 +337,7 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
           this.bulkDeleteOpen.set(false);
           this.bulkDeleteData.set(null);
           this.bulkDeleteContext.set(null);
-          this.loadItems();
+          this.reload();
         },
         error: (error) => {
           const message = extractServerErrorMessage(error);

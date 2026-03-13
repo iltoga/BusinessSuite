@@ -1,8 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ServerManagementService } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
@@ -83,7 +82,6 @@ const buildAiWorkflowStatus = (
 
 describe('ServerManagementAiWorkflowFacade', () => {
   let facade: ServerManagementAiWorkflowFacade;
-  let httpMock: HttpTestingController;
   let mockToastService: {
     success: ReturnType<typeof vi.fn>;
     error: ReturnType<typeof vi.fn>;
@@ -91,6 +89,7 @@ describe('ServerManagementAiWorkflowFacade', () => {
   };
   let mockServerManagementService: {
     serverManagementOpenrouterStatusRetrieve: ReturnType<typeof vi.fn>;
+    serverManagementOpenrouterStatusPartialUpdate: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -104,12 +103,14 @@ describe('ServerManagementAiWorkflowFacade', () => {
       serverManagementOpenrouterStatusRetrieve: vi
         .fn()
         .mockReturnValue(of(buildAiWorkflowStatus())),
+      serverManagementOpenrouterStatusPartialUpdate: vi
+        .fn()
+        .mockReturnValue(of(buildAiWorkflowStatus())),
     };
 
     await TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
-        provideHttpClientTesting(),
         ServerManagementAiWorkflowFacade,
         { provide: GlobalToastService, useValue: mockToastService },
         { provide: ServerManagementService, useValue: mockServerManagementService },
@@ -117,11 +118,6 @@ describe('ServerManagementAiWorkflowFacade', () => {
     }).compileComponents();
 
     facade = TestBed.inject(ServerManagementAiWorkflowFacade);
-    httpMock = TestBed.inject(HttpTestingController);
-  });
-
-  afterEach(() => {
-    httpMock.verify();
   });
 
   it('resets a workflow model setting by sending null', () => {
@@ -138,15 +134,11 @@ describe('ServerManagementAiWorkflowFacade', () => {
 
     facade.resetAiWorkflowSetting('INVOICE_IMPORT_MODEL');
 
-    const req = httpMock.expectOne('/api/server-management/openrouter-status/');
-    expect(req.request.method).toBe('PATCH');
-    expect(req.request.body.settings).toEqual({ INVOICE_IMPORT_MODEL: null });
-    req.flush(
-      buildAiWorkflowStatus({
-        LLM_PROVIDER: 'openrouter',
-        INVOICE_IMPORT_MODEL: '',
-      }),
-    );
+    expect(
+      mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
+    ).toHaveBeenCalledWith({
+      settings: { INVOICE_IMPORT_MODEL: null },
+    });
 
     expect(facade.getAiSettingValue('INVOICE_IMPORT_MODEL')).toBe('');
   });
@@ -165,15 +157,11 @@ describe('ServerManagementAiWorkflowFacade', () => {
 
     facade.onModelSettingComboboxChange('INVOICE_IMPORT_MODEL', null);
 
-    const req = httpMock.expectOne('/api/server-management/openrouter-status/');
-    expect(req.request.method).toBe('PATCH');
-    expect(req.request.body.settings).toEqual({ INVOICE_IMPORT_MODEL: null });
-    req.flush(
-      buildAiWorkflowStatus({
-        LLM_PROVIDER: 'openrouter',
-        INVOICE_IMPORT_MODEL: '',
-      }),
-    );
+    expect(
+      mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
+    ).toHaveBeenCalledWith({
+      settings: { INVOICE_IMPORT_MODEL: null },
+    });
   });
 
   it('ignores clear for non-workflow model settings', () => {
@@ -188,7 +176,9 @@ describe('ServerManagementAiWorkflowFacade', () => {
 
     facade.onModelSettingComboboxChange('OPENAI_DEFAULT_MODEL', null);
 
-    httpMock.expectNone('/api/server-management/openrouter-status/');
+    expect(
+      mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
+    ).not.toHaveBeenCalled();
   });
 
   it('adds failover model to ordered list', () => {
@@ -203,22 +193,16 @@ describe('ServerManagementAiWorkflowFacade', () => {
 
     facade.addFallbackModel('google/gemini-3-flash-preview');
 
-    const req = httpMock.expectOne('/api/server-management/openrouter-status/');
-    expect(req.request.method).toBe('PATCH');
-    expect(req.request.body.settings).toEqual({
-      LLM_FALLBACK_MODEL_CHAIN: [
-        { model: 'gpt-5-mini', timeoutSeconds: 120 },
-        { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
-      ],
-    });
-    req.flush(
-      buildAiWorkflowStatus({
+    expect(
+      mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
+    ).toHaveBeenCalledWith({
+      settings: {
         LLM_FALLBACK_MODEL_CHAIN: [
           { model: 'gpt-5-mini', timeoutSeconds: 120 },
           { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
         ],
-      }),
-    );
+      },
+    });
   });
 
   it('reorders failover model list', () => {
@@ -239,21 +223,16 @@ describe('ServerManagementAiWorkflowFacade', () => {
 
     facade.reorderFallbackChain(1, 0);
 
-    const req = httpMock.expectOne('/api/server-management/openrouter-status/');
-    expect(req.request.body.settings).toEqual({
-      LLM_FALLBACK_MODEL_CHAIN: [
-        { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
-        { model: 'gpt-5-mini', timeoutSeconds: 120 },
-      ],
-    });
-    req.flush(
-      buildAiWorkflowStatus({
+    expect(
+      mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
+    ).toHaveBeenCalledWith({
+      settings: {
         LLM_FALLBACK_MODEL_CHAIN: [
           { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
           { model: 'gpt-5-mini', timeoutSeconds: 120 },
         ],
-      }),
-    );
+      },
+    });
   });
 
   it('reads the active groq primary model from GROQ_DEFAULT_MODEL', () => {
@@ -300,29 +279,33 @@ describe('ServerManagementAiWorkflowFacade', () => {
       LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
       GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
     });
+    mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate.mockReturnValueOnce(
+      of(
+        buildAiWorkflowStatus(
+          {
+            LLM_PROVIDER: 'groq',
+            LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+            GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+          },
+          {
+            provider: 'groq',
+            providerName: 'Groq',
+            defaultModel: 'qwen/qwen3-32b',
+          },
+        ),
+      ),
+    );
 
     facade.onPrimaryModelValueChange('qwen/qwen3-32b');
 
-    const req = httpMock.expectOne('/api/server-management/openrouter-status/');
-    expect(req.request.method).toBe('PATCH');
-    expect(req.request.body.settings).toEqual({
-      LLM_PROVIDER: 'groq',
-      GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+    expect(
+      mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
+    ).toHaveBeenCalledWith({
+      settings: {
+        LLM_PROVIDER: 'groq',
+        GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+      },
     });
-    req.flush(
-      buildAiWorkflowStatus(
-        {
-          LLM_PROVIDER: 'groq',
-          LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
-          GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
-        },
-        {
-          provider: 'groq',
-          providerName: 'Groq',
-          defaultModel: 'qwen/qwen3-32b',
-        },
-      ),
-    );
 
     expect(facade.getPrimaryModelValue()).toBe('qwen/qwen3-32b');
     expect(facade.getAiSettingValue('LLM_DEFAULT_MODEL')).toBe('google/gemini-3-flash-preview');
@@ -350,33 +333,35 @@ describe('ServerManagementAiWorkflowFacade', () => {
       GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
       LLM_FALLBACK_MODEL_CHAIN: [],
     });
+    mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate.mockReturnValueOnce(
+      of(
+        buildAiWorkflowStatus(
+          {
+            LLM_PROVIDER: 'groq',
+            LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+            GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+            LLM_FALLBACK_MODEL_CHAIN: [
+              { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+            ],
+          },
+          {
+            provider: 'groq',
+            providerName: 'Groq',
+            defaultModel: 'qwen/qwen3-32b',
+          },
+        ),
+      ),
+    );
 
     facade.addFallbackModel('google/gemini-3-flash-preview');
 
-    const req = httpMock.expectOne('/api/server-management/openrouter-status/');
-    expect(req.request.method).toBe('PATCH');
-    expect(req.request.body.settings).toEqual({
-      LLM_FALLBACK_MODEL_CHAIN: [
-        { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
-      ],
+    expect(
+      mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
+    ).toHaveBeenCalledWith({
+      settings: {
+        LLM_FALLBACK_MODEL_CHAIN: [{ model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 }],
+      },
     });
-    req.flush(
-      buildAiWorkflowStatus(
-        {
-          LLM_PROVIDER: 'groq',
-          LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
-          GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
-          LLM_FALLBACK_MODEL_CHAIN: [
-            { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
-          ],
-        },
-        {
-          provider: 'groq',
-          providerName: 'Groq',
-          defaultModel: 'qwen/qwen3-32b',
-        },
-      ),
-    );
 
     expect(facade.getPrimaryModelValue()).toBe('qwen/qwen3-32b');
   });

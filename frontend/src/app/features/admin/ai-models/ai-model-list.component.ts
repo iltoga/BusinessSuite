@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { map, type Observable } from 'rxjs';
 
 import { AiModelsService } from '@/core/api/api/ai-models.service';
 import type { AiModel } from '@/core/api/model/ai-model';
@@ -14,7 +15,7 @@ import {
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
-import { BaseListComponent, BaseListConfig } from '@/shared/core/base-list.component';
+import { BaseListComponent, BaseListConfig, type ListRequestParams, type PaginatedResponse } from '@/shared/core/base-list.component';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 interface AiModelItem {
@@ -59,11 +60,11 @@ export class AiModelListComponent extends BaseListComponent<AiModelItem> {
 
   // Columns configuration
   readonly columns = computed<ColumnConfig<AiModelItem>[]>(() => [
-    { key: 'provider', header: 'Provider', sortable: true, sortKey: 'provider' },
-    { key: 'name', header: 'Name', sortable: true, sortKey: 'name' },
-    { key: 'model_id', header: 'Model ID', sortable: true, sortKey: 'model_id' },
-    { key: 'description', header: 'Description' },
-    { key: 'actions', header: 'Actions' },
+    { key: 'provider', header: 'Provider', sortable: true, sortKey: 'provider', width: '12%' },
+    { key: 'name', header: 'Name', sortable: true, sortKey: 'name', width: '20%' },
+    { key: 'model_id', header: 'Model ID', sortable: true, sortKey: 'model_id', width: '25%' },
+    { key: 'description', header: 'Description', width: '35%' },
+    { key: 'actions', header: 'Actions', width: '8%' },
   ]);
 
   // Actions configuration
@@ -95,28 +96,24 @@ export class AiModelListComponent extends BaseListComponent<AiModelItem> {
   }
 
   /**
-   * Load AI models from API
+   * Create the Observable that fetches AI models.
+   * The API returns a flat array, so we wrap it in a PaginatedResponse.
    */
-  protected override loadItems(): void {
-    if (!this.isBrowser) return;
+  protected override createListLoader(
+    params: ListRequestParams,
+  ): Observable<PaginatedResponse<AiModelItem>> {
+    const ordering = params.ordering ?? 'provider,name';
+    const search = params.query;
 
-    const ordering = this.ordering() ?? 'provider,name';
-    const search = this.query();
-
-    this.isLoading.set(true);
-    this.aiModelsApi.aiModelsList(ordering, search || undefined).subscribe({
-      next: (rows) => {
+    return this.aiModelsApi.aiModelsList(ordering, search || undefined).pipe(
+      map((rows) => {
         const mappedRows = (rows ?? []).map((item) => this.mapAiModel(item));
-        this.items.set(mappedRows);
-        this.totalItems.set(mappedRows.length);
-        this.isLoading.set(false);
-        this.focusAfterLoad();
-      },
-      error: (error) => {
-        this.isLoading.set(false);
-        this.toast.error(extractServerErrorMessage(error) || 'Failed to load models');
-      },
-    });
+        return {
+          results: mappedRows,
+          count: mappedRows.length,
+        };
+      }),
+    );
   }
 
   /**
@@ -125,7 +122,7 @@ export class AiModelListComponent extends BaseListComponent<AiModelItem> {
   override onSortChange(event: SortEvent): void {
     const sortPrefix = event.direction === 'desc' ? '-' : '';
     this.ordering.set(`${sortPrefix}${event.column}`);
-    this.loadItems();
+    this.reload();
   }
 
   /**
@@ -170,15 +167,13 @@ export class AiModelListComponent extends BaseListComponent<AiModelItem> {
     const model = this.pendingDelete();
     if (!model) return;
 
-    this.isLoading.set(true);
     this.aiModelsApi.aiModelsDestroy(model.id).subscribe({
       next: () => {
         this.toast.success('Model deleted');
         this.pendingDelete.set(null);
-        this.loadItems();
+        this.reload();
       },
       error: (error) => {
-        this.isLoading.set(false);
         this.toast.error(extractServerErrorMessage(error) || 'Failed to delete model');
       },
     });

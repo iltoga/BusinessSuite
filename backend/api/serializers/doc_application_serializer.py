@@ -61,6 +61,77 @@ class DocApplicationSerializer(serializers.ModelSerializer):
         return representation
 
 
+class ProductMinimalSerializer(serializers.ModelSerializer):
+    class Meta:
+        from products.models import Product
+        model = Product
+        fields = ["id", "name", "deprecated"]
+
+
+class CustomerMinimalSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(read_only=True)
+    class Meta:
+        from customers.models import Customer
+        model = Customer
+        fields = ["id", "first_name", "last_name", "full_name"]
+
+
+class DocApplicationListSerializer(serializers.ModelSerializer):
+    customer = CustomerMinimalSerializer(read_only=True)  # type: ignore[call-arg]
+    product = ProductMinimalSerializer(read_only=True)  # type: ignore[call-arg]
+    has_invoice = serializers.SerializerMethodField()
+    invoice_id = serializers.SerializerMethodField()
+    ready_for_invoice = serializers.SerializerMethodField()
+    can_force_close = serializers.SerializerMethodField()
+    submission_window_last_date = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocApplication
+        fields = [
+            "id",
+            "customer",
+            "product",
+            "doc_date",
+            "due_date",
+            "status",
+            "created_at",
+            "updated_at",
+            "has_invoice",
+            "invoice_id",
+            "ready_for_invoice",
+            "can_force_close",
+            "submission_window_last_date",
+        ]
+
+    def get_has_invoice(self, instance) -> bool:
+        return instance.has_invoice()
+
+    def get_invoice_id(self, instance) -> int | None:
+        invoice = instance.get_invoice()
+        return invoice.id if invoice else None
+
+    def get_ready_for_invoice(self, instance) -> bool:
+        return is_ready_for_invoice(instance)
+
+    def get_can_force_close(self, instance) -> bool:
+        request = self.context.get("request") if hasattr(self, "context") else None
+        user = getattr(request, "user", None) if request is not None else None
+        if user is not None and getattr(user, "is_authenticated", False):
+            # pyre-ignore[16]
+            return user.has_perm("customer_applications.change_docapplication") and instance.status not in (
+                DocApplication.STATUS_COMPLETED,
+                DocApplication.STATUS_REJECTED,
+            )
+        return False
+
+    def get_submission_window_last_date(self, instance) -> str | None:
+        window = StayPermitSubmissionWindowService().get_submission_window(
+            product=getattr(instance, "product", None),
+            application=instance,
+        )
+        return window.last_date.isoformat() if window else None
+
+
 class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
     has_invoice = serializers.SerializerMethodField()
     invoice_id = serializers.SerializerMethodField()
@@ -106,12 +177,14 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
     def get_can_force_close(self, instance) -> bool:
         """Return True if the current user can force close this application."""
         request = self.context.get("request") if hasattr(self, "context") else None
-        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
-            return False
-        return request.user.has_perm("customer_applications.change_docapplication") and instance.status not in (
-            DocApplication.STATUS_COMPLETED,
-            DocApplication.STATUS_REJECTED,
-        )
+        user = getattr(request, "user", None) if request is not None else None
+        if user is not None and getattr(user, "is_authenticated", False):
+            # pyre-ignore[16]
+            return user.has_perm("customer_applications.change_docapplication") and instance.status not in (
+                DocApplication.STATUS_COMPLETED,
+                DocApplication.STATUS_REJECTED,
+            )
+        return False
 
     def get_submission_window_last_date(self, instance) -> str | None:
         window = StayPermitSubmissionWindowService().get_submission_window(
@@ -160,7 +233,7 @@ class CustomerUninvoicedApplicationSerializer(DocApplicationInvoiceSerializer):
     is_document_collection_completed = serializers.BooleanField(read_only=True)
     ready_for_invoice = serializers.SerializerMethodField()
 
-    class Meta(DocApplicationInvoiceSerializer.Meta):
+    class Meta(DocApplicationInvoiceSerializer.Meta):  # type: ignore[misc]
         fields = DocApplicationInvoiceSerializer.Meta.fields + [
             "status_display",
             "product_type_display",
@@ -194,7 +267,7 @@ class CustomerApplicationHistorySerializer(CustomerUninvoicedApplicationSerializ
     invoice_status_display = serializers.SerializerMethodField()
     submission_window_last_date = serializers.SerializerMethodField()
 
-    class Meta(CustomerUninvoicedApplicationSerializer.Meta):
+    class Meta(CustomerUninvoicedApplicationSerializer.Meta):  # type: ignore[misc]
         fields = CustomerUninvoicedApplicationSerializer.Meta.fields + [
             "payment_status",
             "payment_status_display",
@@ -321,12 +394,14 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
 
     def get_can_force_close(self, instance) -> bool:
         request = self.context.get("request") if hasattr(self, "context") else None
-        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
-            return False
-        return request.user.has_perm("customer_applications.change_docapplication") and instance.status not in (
-            DocApplication.STATUS_COMPLETED,
-            DocApplication.STATUS_REJECTED,
-        )
+        user = getattr(request, "user", None) if request is not None else None
+        if user is not None and getattr(user, "is_authenticated", False):
+            # pyre-ignore[16]
+            return user.has_perm("customer_applications.change_docapplication") and instance.status not in (
+                DocApplication.STATUS_COMPLETED,
+                DocApplication.STATUS_REJECTED,
+            )
+        return False
 
 
 class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
@@ -680,6 +755,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         product = getattr(application, "product", None)
         if product is not None:
             product_prefetched = getattr(product, "_prefetched_objects_cache", None) or {}
+            # pyre-ignore[16]
             product_prefetched["tasks"] = list(product.tasks.all().order_by("step"))
             product._prefetched_objects_cache = product_prefetched
 

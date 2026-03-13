@@ -11,11 +11,14 @@ import {
   type TemplateRef,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { type Observable } from 'rxjs';
 
 import { InvoicesService, type InvoiceList, type PaginatedInvoiceListList } from '@/core/api';
 import {
   BaseListComponent,
   BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
 } from '@/shared/core/base-list.component';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import {
@@ -142,15 +145,17 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
       header: 'Invoice',
       sortable: true,
       sortKey: 'invoice_no',
+      width: '10%',
       template: this.numberTemplate(),
     },
-    { key: 'customer', header: 'Customer', template: this.customerTemplate() },
-    { key: 'items', header: 'Items', template: this.itemsTemplate() },
+    { key: 'customer', header: 'Customer', width: '20%', template: this.customerTemplate() },
+    { key: 'items', header: 'Items', width: '20%', template: this.itemsTemplate() },
     {
       key: 'dueDate',
       header: 'Due Date',
       sortable: true,
       sortKey: 'due_date',
+      width: '12%',
       template: this.dueTemplate(),
     },
     {
@@ -158,17 +163,19 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
       header: 'Status',
       sortable: true,
       sortKey: 'status',
+      width: '10%',
       template: this.statusTemplate(),
     },
-    { key: 'amounts', header: 'Totals', template: this.amountsTemplate() },
+    { key: 'amounts', header: 'Totals', width: '14%', template: this.amountsTemplate() },
     {
       key: 'createdAt',
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
+      width: '10%',
       template: this.createdAtTemplate(),
     },
-    { key: 'actions', header: 'Actions', template: this.actionsTemplate() },
+    { key: 'actions', header: 'Actions', width: '4%', template: this.actionsTemplate() },
   ]);
 
   // Actions configuration
@@ -208,36 +215,18 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
   }
 
   /**
-   * Load invoices from service
+   * Create the Observable that fetches a page of invoices.
    */
-  protected override loadItems(): void {
-    if (!this.isBrowser) return;
-
-    this.isLoading.set(true);
-    const ordering = this.ordering();
-
-    const params: any = {
-      ordering: ordering ?? undefined,
-      page: this.page(),
-      pageSize: this.pageSize(),
-      search: this.query() || undefined,
-      hidePaid: this.hidePaid() ? true : undefined,
-    };
-
-    this.invoicesApi
-      .invoicesList(params.hidePaid, params.ordering, params.page, params.pageSize, params.search)
-      .subscribe({
-        next: (response: PaginatedInvoiceListList) => {
-          this.items.set(response.results ?? []);
-          this.totalItems.set(response.count ?? 0);
-          this.isLoading.set(false);
-          this.focusAfterLoad();
-        },
-        error: () => {
-          this.toast.error('Failed to load invoices');
-          this.isLoading.set(false);
-        },
-      });
+  protected override createListLoader(
+    params: ListRequestParams,
+  ): Observable<PaginatedResponse<InvoiceList>> {
+    return this.invoicesApi.invoicesList(
+      this.hidePaid() ? true : undefined,
+      params.ordering ?? undefined,
+      params.page,
+      params.pageSize,
+      params.query || undefined,
+    );
   }
 
   /**
@@ -247,7 +236,7 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
     const checked = (event.target as HTMLInputElement).checked;
     this.hidePaid.set(checked);
     this.page.set(1);
-    this.loadItems();
+    this.reload();
   }
 
   /**
@@ -388,7 +377,7 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
           this.bulkDeleteOpen.set(false);
           this.bulkDeleteData.set(null);
           this.bulkDeleteContext.set(null);
-          this.loadItems();
+          this.reload();
         },
         error: (error) => {
           const message = extractServerErrorMessage(error);
@@ -488,7 +477,7 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
           this.invoiceDeleteOpen.set(false);
           this.invoiceDeleteData.set(null);
           this.pendingInvoiceId.set(null);
-          this.loadItems();
+          this.reload();
         },
         error: (error) => {
           const message = extractServerErrorMessage(error);

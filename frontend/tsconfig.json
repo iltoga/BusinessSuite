@@ -19,7 +19,11 @@
       "@/*": [
         "src/app/*"
       ]
-    }
+    },
+    "types": [
+      "node",
+      "vitest"
+    ]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

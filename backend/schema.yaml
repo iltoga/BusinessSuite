@@ -1186,7 +1186,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedDocApplicationSerializerWithRelationsList'
+                $ref: '#/components/schemas/PaginatedDocApplicationListList'
           description: ''
     post:
       operationId: customerApplicationsCreate
@@ -1396,21 +1396,6 @@ paths:
         required: true
       tags:
       - customer-applications
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
-        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4207,11 +4192,49 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductImportStartResponse'
+          description: ''
+  /api/products/price-list/print/download/{jobId}/:
+    get:
+      operationId: productsPriceListPrintDownloadRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - products
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProductImportStart'
+                type: string
+                format: binary
+          description: ''
+  /api/products/price-list/print/start/:
+    post:
+      operationId: productsPriceListPrintStartCreate
+      tags:
+      - products
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPriceListPrintStartResponse'
           description: ''
   /api/push-notifications/fcm-register-proxy/:
     post:
@@ -6578,7 +6601,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedDocApplicationSerializerWithRelationsList'
+                $ref: '#/components/schemas/PaginatedDocApplicationListList'
           description: ''
     post:
       operationId: v1CustomerApplicationsCreate
@@ -6788,21 +6811,6 @@ paths:
         required: true
       tags:
       - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
-        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -9599,11 +9607,49 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductImportStartResponse'
+          description: ''
+  /api/v1/products/price-list/print/download/{jobId}/:
+    get:
+      operationId: v1ProductsPriceListPrintDownloadRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProductImportStart'
+                type: string
+                format: binary
+          description: ''
+  /api/v1/products/price-list/print/start/:
+    post:
+      operationId: v1ProductsPriceListPrintStartCreate
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPriceListPrintStartResponse'
           description: ''
   /api/v1/push-notifications/fcm-register-proxy/:
     post:
@@ -12160,6 +12206,26 @@ components:
       - status_display
       - str_field
       - submission_window_last_date
+    CustomerMinimal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 50
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 50
+        full_name:
+          type: string
+          readOnly: true
+      required:
+      - full_name
+      - id
     CustomerUninvoicedApplication:
       type: object
       properties:
@@ -12507,6 +12573,77 @@ components:
       - product
       - status
       - str_field
+    DocApplicationList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/CustomerMinimal'
+          readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/ProductMinimal'
+          readOnly: true
+        doc_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          enum:
+          - pending
+          - processing
+          - completed
+          - rejected
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `processing` - Processing
+            * `completed` - Completed
+            * `rejected` - Rejected
+          x-spec-enum-id: 5197c6d22c3675f4
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        has_invoice:
+          type: boolean
+          readOnly: true
+        invoice_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        ready_for_invoice:
+          type: boolean
+          readOnly: true
+        can_force_close:
+          type: boolean
+          readOnly: true
+        submission_window_last_date:
+          type: string
+          nullable: true
+          readOnly: true
+      required:
+      - can_force_close
+      - created_at
+      - customer
+      - doc_date
+      - has_invoice
+      - id
+      - invoice_id
+      - product
+      - ready_for_invoice
+      - submission_window_last_date
+      - updated_at
     DocApplicationSerializerWithRelations:
       type: object
       properties:
@@ -13519,7 +13656,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DocApplicationInvoice'
-    PaginatedDocApplicationSerializerWithRelationsList:
+    PaginatedDocApplicationListList:
       type: object
       required:
       - count
@@ -13541,7 +13678,7 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+            $ref: '#/components/schemas/DocApplicationList'
     PaginatedInvoiceListList:
       type: object
       required:
@@ -13991,6 +14128,60 @@ components:
           format: uri
       required:
       - file
+    ProductImportStartResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+      required:
+      - deduplicated
+      - job_id
+      - progress
+      - queued
+      - status
+    ProductMinimal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        deprecated:
+          type: boolean
+      required:
+      - id
+      - name
+    ProductPriceListPrintStartResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+      required:
+      - deduplicated
+      - job_id
+      - progress
+      - queued
+      - status
     PushNotificationTest:
       type: object
       properties:

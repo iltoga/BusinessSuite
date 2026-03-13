@@ -241,6 +241,36 @@ html.app-brand-ready img[data-app-logo] {
   will-change: transform;
 }
 
+/* 
+  Debounce Skeleton Loaders to avoid 200ms flashes on fast data.
+  0-300ms: opacity 0
+  300-500ms: fade in
+  Then custom-pulse runs infinitely.
+*/
+@keyframes skeleton-appear {
+  0%, 60% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-custom {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.skeleton-delay {
+  animation: 
+    skeleton-appear var(--skeleton-debounce-duration, 500ms) ease-out forwards, 
+    pulse-custom 2s cubic-bezier(0.4, 0, 0.6, 1) infinite var(--skeleton-debounce-duration, 500ms);
+}
+
 /* Remove top padding from main element for detail views with sticky headers */
 main:has(.application-header),
 main:has(.invoice-header),

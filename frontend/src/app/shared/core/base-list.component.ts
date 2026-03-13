@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   HostListener,
   inject,
   PLATFORM_ID,
@@ -11,11 +12,12 @@ import {
   Signal,
   viewChild,
   type OnInit,
+  type ResourceRef,
   type WritableSignal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { Subject, catchError, of, switchMap } from 'rxjs';
+import { catchError, type Observable, of } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
@@ -25,6 +27,26 @@ import {
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
+
+/**
+ * Paginated response shape expected from list API calls.
+ */
+export interface PaginatedResponse<T> {
+  results?: T[];
+  count?: number;
+}
+
+/**
+ * Parameters passed to the list loader function.
+ */
+export interface ListRequestParams {
+  query: string;
+  page: number;
+  pageSize: number;
+  ordering: string | undefined;
+  /** Monotonically increasing counter — change triggers a reload */
+  reloadToken: number;
+}
 
 /**
  * Configuration for list component behavior
@@ -48,7 +70,10 @@ export interface BaseListConfig<T> {
 
 /**
  * Base list component providing common patterns for list views
- * 
+ *
+ * Uses Angular's `rxResource()` API for declarative, signal‑native data
+ * fetching with automatic request cancellation and built-in loading state.
+ *
  * Features:
  * - Signal-based state management
  * - Keyboard shortcuts (Shift+N for new, B/Left for back)
@@ -56,14 +81,13 @@ export interface BaseListConfig<T> {
  * - Pagination, sorting, search
  * - Focus management after navigation
  * - Bulk delete support
- * 
+ *
  * @example
  * ```typescript
- * @Component({
- *   selector: 'app-customer-list',
- *   templateUrl: './customer-list.component.html',
- * })
+ * @Component({ ... })
  * export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
+ *   private readonly service = inject(CustomersService);
+ *
  *   constructor() {
  *     super({
  *       entityType: 'customers',
@@ -72,9 +96,11 @@ export interface BaseListConfig<T> {
  *       enableDelete: true,
  *     });
  *   }
- * 
- *   protected override loadItems(): void {
- *     // Custom implementation
+ *
+ *   protected override createListLoader(
+ *     params: ListRequestParams,
+ *   ): Observable<PaginatedResponse<CustomerListItem>> {
+ *     return this.service.list({ ... });
  *   }
  * }
  * ```
@@ -94,9 +120,8 @@ export abstract class BaseListComponent<T> implements OnInit {
   protected readonly destroyRef = inject(DestroyRef);
   protected readonly isBrowser = isPlatformBrowser(this.platformId);
 
-  // State signals
+  // ── State signals ──────────────────────────────────────────────────
   readonly items: WritableSignal<T[]> = signal([]);
-  readonly isLoading = signal(false);
   readonly query = signal('');
   readonly page = signal(1);
   readonly totalItems = signal(0);
@@ -106,7 +131,13 @@ export abstract class BaseListComponent<T> implements OnInit {
   readonly pageSize: WritableSignal<number>;
   readonly ordering: WritableSignal<string | undefined>;
 
-  // Bulk delete signals
+  /**
+   * Bump this signal to force `listResource` to re-fetch even when the
+   * query/page/ordering signals have not changed (e.g. after a delete).
+   */
+  protected readonly reloadToken = signal(0);
+
+  // ── Bulk delete signals ────────────────────────────────────────────
   readonly bulkDeleteOpen = signal(false);
   readonly bulkDeleteData = signal<any | null>(null);
   protected readonly bulkDeleteQuery = signal<string>('');
@@ -118,15 +149,24 @@ export abstract class BaseListComponent<T> implements OnInit {
     this.query().trim() ? `Delete Selected ${this.getEntityTypeLabel()}` : `Delete All ${this.getEntityTypeLabel()}`,
   );
 
-  // Focus management
+  // ── Focus management ───────────────────────────────────────────────
   private readonly focusTableOnInit = signal(false);
   private readonly focusIdOnInit = signal<number | null>(null);
 
   // Data table reference for focus management
   protected readonly dataTable = viewChild.required(DataTableComponent);
 
-  // Load trigger for rxMethod pattern
-  protected readonly loadItemsTrigger$ = new Subject<void>();
+  // ── rxResource ─────────────────────────────────────────────────────
+  /**
+   * The core reactive resource that drives data fetching.
+   * Re-fetches automatically when any tracked signal changes.
+   */
+  protected readonly listResource: ResourceRef<PaginatedResponse<T>>;
+
+  /**
+   * Derived `isLoading` signal that mirrors the resource's loading state.
+   */
+  readonly isLoading: Signal<boolean>;
 
   /**
    * Columns configuration - must be implemented by child
@@ -153,12 +193,82 @@ export abstract class BaseListComponent<T> implements OnInit {
   constructor() {
     this.pageSize = signal(10);
     this.ordering = signal(undefined);
+
+    // Create the rxResource — the `request` function captures all signal
+    // dependencies so the resource automatically re-fetches when any of
+    // them change.
+    this.listResource = rxResource<PaginatedResponse<T>, ListRequestParams>({
+      params: () => ({
+        query: this.query(),
+        page: this.page(),
+        pageSize: this.pageSize(),
+        ordering: this.ordering(),
+        reloadToken: this.reloadToken(),
+      }),
+      stream: ({ params }) => {
+        if (!this.isBrowser) {
+          return of({ results: [], count: 0 });
+        }
+        return this.createListLoader(params).pipe(
+          catchError((err) => {
+            this.toast.error(this.getLoadErrorMessage(err));
+            return of({ results: [], count: 0 });
+          }),
+        );
+      },
+      defaultValue: { results: [], count: 0 },
+    });
+
+    this.isLoading = this.listResource.isLoading;
+
+    // Sync resource value → items + totalItems signals whenever
+    // a new page of data arrives.
+    effect(() => {
+      const response = this.listResource.value();
+      if (response) {
+        // Prevent state drop to 0 during rxResource Reloading phases 
+        // which momentarily emits the defaultValue, causing search box buttons to flicker.
+        const isTransientLoadingState =
+          this.listResource.isLoading() &&
+          response.count === 0 &&
+          (!response.results || response.results.length === 0);
+
+        if (!isTransientLoadingState) {
+          this.items.set(response.results ?? []);
+          this.totalItems.set(response.count ?? 0);
+          // Defer focus management to ensure Angular has flushed the items signal to the template bindings
+          setTimeout(() => this.focusAfterLoad(), 0);
+        }
+      }
+    });
   }
 
   /**
-   * Load items from service - must be implemented by child class
+   * Create the Observable that fetches a page of data.
+   * Child classes implement this to call their API service.
    */
-  protected abstract loadItems(): void;
+  protected abstract createListLoader(
+    params: ListRequestParams,
+  ): Observable<PaginatedResponse<T>>;
+
+  /**
+   * Imperatively trigger a reload (e.g. after a delete or mutation).
+   * This bumps `reloadToken`, which the resource is tracking.
+   */
+  reload(): void {
+    this.reloadToken.update((t) => t + 1);
+  }
+
+  /**
+   * Get the error message for a failed load operation.
+   * Override in child to customize.
+   */
+  protected getLoadErrorMessage(_err?: unknown): string {
+    const label = this.getEntityTypeLabel().toLowerCase();
+    return `Failed to load ${label}`;
+  }
+
+  // ── Route helpers ──────────────────────────────────────────────────
 
   /**
    * Get the route for creating a new item
@@ -194,6 +304,8 @@ export abstract class BaseListComponent<T> implements OnInit {
   protected getEntityTypeLabel(): string {
     return this.config.entityLabel ?? this.config.entityType;
   }
+
+  // ── Navigation helpers ─────────────────────────────────────────────
 
   /**
    * Navigate to create new item
@@ -252,6 +364,8 @@ export abstract class BaseListComponent<T> implements OnInit {
     });
   }
 
+  // ── Event handlers ─────────────────────────────────────────────────
+
   /**
    * Handle query change
    */
@@ -260,7 +374,7 @@ export abstract class BaseListComponent<T> implements OnInit {
     if (this.query() === trimmed) return;
     this.query.set(trimmed);
     this.page.set(1);
-    this.loadItems();
+    // rxResource re-fetches automatically because query() changed
   }
 
   /**
@@ -268,7 +382,7 @@ export abstract class BaseListComponent<T> implements OnInit {
    */
   onPageChange(page: number): void {
     this.page.set(page);
-    this.loadItems();
+    // rxResource re-fetches automatically because page() changed
   }
 
   /**
@@ -278,7 +392,7 @@ export abstract class BaseListComponent<T> implements OnInit {
     const ordering = sort.direction === 'desc' ? `-${sort.column}` : sort.column;
     this.ordering.set(ordering);
     this.page.set(1);
-    this.loadItems();
+    // rxResource re-fetches automatically because ordering() changed
   }
 
   /**
@@ -308,6 +422,8 @@ export abstract class BaseListComponent<T> implements OnInit {
       this.goBack();
     }
   }
+
+  // ── Bulk delete ────────────────────────────────────────────────────
 
   /**
    * Open bulk delete dialog
@@ -344,7 +460,7 @@ export abstract class BaseListComponent<T> implements OnInit {
         this.bulkDeleteOpen.set(false);
         this.bulkDeleteData.set(null);
         this.bulkDeleteQuery.set('');
-        this.loadItems();
+        this.reload();
       },
       error: (error: any) => {
         const message = extractServerErrorMessage(error);
@@ -365,6 +481,8 @@ export abstract class BaseListComponent<T> implements OnInit {
     this.bulkDeleteData.set(null);
     this.bulkDeleteQuery.set('');
   }
+
+  // ── Navigation state restoration ───────────────────────────────────
 
   /**
    * Restore navigation state from window.history
@@ -417,7 +535,17 @@ export abstract class BaseListComponent<T> implements OnInit {
   ngOnInit(): void {
     if (!this.isBrowser) return;
 
+    if (this.config) {
+      if (this.config.defaultPageSize !== undefined) {
+        this.pageSize.set(this.config.defaultPageSize);
+      }
+      if (this.config.defaultOrdering !== undefined) {
+        this.ordering.set(this.config.defaultOrdering);
+      }
+    }
+
     this.restoreNavigationState();
-    this.loadItems();
+    // The rxResource will automatically start fetching because it was
+    // created in the constructor and its signal dependencies are now set.
   }
 }

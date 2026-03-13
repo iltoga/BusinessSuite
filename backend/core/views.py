@@ -41,6 +41,7 @@ def public_app_config(request):
         "title": global_settings.get("SITE_NAME", "BusinessSuite"),
         "dateFormat": str(AppSettingService.get_effective_raw("DATE_FORMAT_JS", "dd-MM-yyyy") or "dd-MM-yyyy"),
         "baseCurrency": str(AppSettingService.get_effective_raw("BASE_CURRENCY", "IDR") or "IDR"),
+        "skeletonDebounceDurationMs": int(AppSettingService.get_effective_raw("SKELETON_DEBOUNCE_DURATION_MS", 500)),
         "calendarTodoColorId": GoogleCalendarEventColors.todo_color_id(),
         "calendarDoneColorId": GoogleCalendarEventColors.done_color_id(),
         "fcmSenderId": global_settings.get("FCM_SENDER_ID", settings.FCM_SENDER_ID),

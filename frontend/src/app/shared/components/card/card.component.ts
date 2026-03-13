@@ -12,7 +12,8 @@ import {
 import type { ClassValue } from 'clsx';
 
 import { ZardButtonComponent } from '@/shared/components/button';
-import { ZardIdDirective, ZardStringTemplateOutletDirective } from '@/shared/core';
+import { ZardIdDirective } from '@/shared/core/directives/id.directive';
+import { ZardStringTemplateOutletDirective } from '@/shared/core/directives/string-template-outlet/string-template-outlet.directive';
 import { mergeClasses } from '@/shared/utils/merge-classes';
 
 import {

@@ -9,7 +9,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { catchError, EMPTY, finalize, of, Subscription } from 'rxjs';
+import { catchError, EMPTY, finalize, map, of, Subscription, type Observable } from 'rxjs';
 
 import { BackupsService } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
@@ -17,6 +17,8 @@ import { SseService } from '@/core/services/sse.service';
 import {
   BaseListComponent,
   BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
 } from '@/shared/core/base-list.component';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
@@ -128,25 +130,21 @@ export class BackupsComponent extends BaseListComponent<Backup> {
   }
 
   /**
-   * Load backups from API
+   * Create the Observable that fetches backups.
+   * The API returns a nested response, so we unwrap and wrap it in PaginatedResponse.
    */
-  protected override loadItems(): void {
-    this.isLoading.set(true);
-    this.backupsApi
-      .backupsRetrieve()
-      .pipe(
-        catchError(() => {
-          this.toast.error('Failed to load backups');
-          return EMPTY;
-        }),
-        finalize(() => this.isLoading.set(false)),
-      )
-      .subscribe((response: any) => {
+  protected override createListLoader(
+    _params: ListRequestParams,
+  ): Observable<PaginatedResponse<Backup>> {
+    return this.backupsApi.backupsRetrieve().pipe(
+      map((response: any) => {
         const backups = response?.backups?.map((b: Backup) => ({ ...b, selected: false })) || [];
-        this.items.set(backups);
-        this.totalItems.set(backups.length);
-        this.focusAfterLoad();
-      });
+        return {
+          results: backups,
+          count: backups.length,
+        };
+      }),
+    );
   }
 
   /**
@@ -215,7 +213,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
             this.isOperationRunning.set(false);
             this.operationProgress.set(100);
             this.toast.success('Backup completed successfully');
-            this.loadItems();
+            this.reload();
             this.clearSseSubscription();
             setTimeout(() => this.operationProgress.set(null), 1500);
           }
@@ -354,7 +352,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
         this.uploadProgress.set(100);
         this.uploadHelperText.set('Upload complete');
         this.toast.success('Backup uploaded successfully');
-        this.loadItems();
+        this.reload();
         setTimeout(() => this.uploadProgress.set(null), 1500);
       } else {
         this.uploadProgress.set(null);
@@ -403,7 +401,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
       .subscribe((response: any) => {
         if (response.ok) {
           this.toast.success(`Deleted ${response.deleted} backup files`);
-          this.loadItems();
+          this.reload();
         } else {
           this.toast.error(response.error || 'Delete failed');
         }
@@ -431,7 +429,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
       .subscribe((response: any) => {
         if (response.ok) {
           this.toast.success(`Deleted ${response.deleted}`);
-          this.loadItems();
+          this.reload();
           this.selectedFiles.set(this.selectedFiles().filter((f) => f !== filename));
           const allSelected = this.items().every((b) => b.selected);
           this.selectAllValue.set(allSelected);
@@ -504,7 +502,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
           this.items.update((backups) => backups.map((b) => ({ ...b, selected: false })));
           this.selectedFiles.set([]);
           this.selectAllValue.set(false);
-          this.loadItems();
+          this.reload();
         }
       });
   }

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { AsyncJob } from '@/core/api';
 import { SseService } from '@/core/services/sse.service';
 import { ZardDialogService } from '@/shared/components/dialog';
+import { JobProgressDialogComponent } from '@/shared/components/job-progress-dialog/job-progress-dialog.component';
 
 @Injectable({
   providedIn: 'root',
@@ -31,9 +32,6 @@ export class JobService {
    * @returns Observable that emits the final job state when closed
    */
   openProgressDialog(jobId: string, title?: string): Observable<AsyncJob> {
-    const {
-      JobProgressDialogComponent,
-    } = require('@/shared/components/job-progress-dialog/job-progress-dialog.component');
 
     const dialogRef = this.dialogService.create({
       zContent: JobProgressDialogComponent,

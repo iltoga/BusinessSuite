@@ -48,6 +48,8 @@ from .product_serializer import (
     ProductDetailSerializer,
     ProductImportStartResponseSerializer,
     ProductImportStartSerializer,
+    ProductPriceListPrintStartResponseSerializer,
+    ProductPriceListPrintStartSerializer,
     ProductSerializer,
     ordered_document_types,
 )

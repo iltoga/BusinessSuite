@@ -701,6 +701,8 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             "get_product_by_id",
             "get_products_by_product_type",
             "export_start",
+            "price_list_print_download",
+            "price_list_print_start",
             "import_start",
         }
     )
@@ -712,6 +714,8 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return ProductCategoryFilterOptionSerializer
         if self.action == "import_start":
             return ProductImportStartSerializer
+        if self.action == "price_list_print_start":
+            return ProductPriceListPrintStartSerializer
         if self.action == "retrieve":
             return ProductDetailSerializer
         return ProductSerializer
@@ -1030,6 +1034,97 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
 
     @extend_schema(
+        request=None,
+        responses={202: ProductPriceListPrintStartResponseSerializer},
+    )
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="price-list/print/start",
+        throttle_scope="products_price_list_print_start",
+        throttle_classes=[AnonRateThrottle, UserRateThrottle, ScopedRateThrottle],
+    )
+    def price_list_print_start(self, request):
+        from products.tasks import run_product_price_list_print_job
+
+        namespace = "products_price_list_print"
+        guard = prepare_async_enqueue(
+            namespace=namespace,
+            user=request.user,
+            inflight_queryset=AsyncJob.objects.filter(task_name=namespace, created_by=request.user),
+            inflight_statuses=ASYNC_JOB_INFLIGHT_STATUSES,
+            busy_message="Price list print preparation is already being processed. Please retry in a moment.",
+            deduplicated_response_builder=lambda existing_job: Response(
+                {
+                    "job_id": str(existing_job.id),
+                    "status": existing_job.status,
+                    "progress": existing_job.progress,
+                    "queued": False,
+                    "deduplicated": True,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            ),
+            error_response_builder=self.error_response,
+        )
+        if guard.response is not None:
+            return guard.response
+
+        lock_key = guard.lock_key
+        lock_token = guard.lock_token
+        try:
+            job = AsyncJob.objects.create(
+                task_name=namespace,
+                status=AsyncJob.STATUS_PENDING,
+                progress=0,
+                message="Queued printable price list generation...",
+                created_by=request.user,
+            )
+
+            run_product_price_list_print_job(str(job.id), request.user.id if request.user else None)
+        finally:
+            if lock_key and lock_token:
+                release_enqueue_guard(lock_key, lock_token)
+
+        return Response(
+            {
+                "job_id": str(job.id),
+                "status": job.status,
+                "progress": job.progress,
+                "queued": True,
+                "deduplicated": False,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ],
+        responses={200: OpenApiTypes.BINARY},
+    )
+    @action(detail=False, methods=["get"], url_path=r"price-list/print/download/(?P<job_id>[^/.]+)")
+    def price_list_print_download(self, request, job_id=None):
+        try:
+            job = AsyncJob.objects.get(id=job_id, created_by=request.user)
+        except AsyncJob.DoesNotExist:
+            return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
+
+        if job.status != AsyncJob.STATUS_COMPLETED:
+            return self.error_response("Job not completed yet", status.HTTP_400_BAD_REQUEST)
+
+        result = job.result or {}
+        file_path = result.get("file_path")
+        filename = result.get("filename") or "public_price_list.pdf"
+        if not file_path:
+            return self.error_response("Printable price list file is not available", status.HTTP_400_BAD_REQUEST)
+        if not default_storage.exists(file_path):
+            return self.error_response("Printable price list file not found", status.HTTP_404_NOT_FOUND)
+
+        response = FileResponse(default_storage.open(file_path, "rb"), content_type="application/pdf")
+        response["Content-Disposition"] = f'inline; filename="{filename}"'
+        return response
+
+    @extend_schema(
         parameters=[
             OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
         ],
@@ -1059,6 +1154,10 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
+    @extend_schema(
+        request=ProductImportStartSerializer,
+        responses={202: ProductImportStartResponseSerializer},
+    )
     @action(
         detail=False,
         methods=["post"],
@@ -1066,10 +1165,6 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         parser_classes=[MultiPartParser, FormParser],
         throttle_scope="products_import_start",
         throttle_classes=[AnonRateThrottle, UserRateThrottle, ScopedRateThrottle],
-    )
-    @extend_schema(
-        request=ProductImportStartSerializer,
-        responses={202: ProductImportStartResponseSerializer},
     )
     def import_start(self, request):
         from products.tasks import run_product_import_job

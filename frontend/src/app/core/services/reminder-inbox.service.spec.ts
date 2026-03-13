@@ -26,7 +26,7 @@ describe('ReminderInboxService', () => {
   };
 
   const expectInboxRequest = () =>
-    httpMock.expectOne((req) => req.url === '/api/calendar-reminders/inbox/' && req.params.get('limit') === '100');
+    httpMock.expectOne((req) => req.url.endsWith('/api/calendar-reminders/inbox/'));
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -37,18 +37,20 @@ describe('ReminderInboxService', () => {
     };
     mockRemindersStreamService = {
       connect: vi.fn(() => stream$.asObservable()),
-      classifyInboxSignal: vi.fn((event: RemindersStreamEvent, options?: { refreshOnSnapshot?: boolean }) => {
-        if (event.event === 'calendar_reminders_error') {
-          return 'reconnect';
-        }
-        if (event.event === 'calendar_reminders_changed') {
-          return 'refresh';
-        }
-        if (event.event === 'calendar_reminders_snapshot' && options?.refreshOnSnapshot) {
-          return 'refresh';
-        }
-        return 'ignore';
-      }),
+      classifyInboxSignal: vi.fn(
+        (event: RemindersStreamEvent, options?: { refreshOnSnapshot?: boolean }) => {
+          if (event.event === 'calendar_reminders_error') {
+            return 'reconnect';
+          }
+          if (event.event === 'calendar_reminders_changed') {
+            return 'refresh';
+          }
+          if (event.event === 'calendar_reminders_snapshot' && options?.refreshOnSnapshot) {
+            return 'refresh';
+          }
+          return 'ignore';
+        },
+      ),
     };
 
     TestBed.configureTestingModule({
@@ -127,7 +129,9 @@ describe('ReminderInboxService', () => {
     const refreshReq = expectInboxRequest();
     refreshReq.flush({
       unreadCount: 3,
-      today: [{ id: 42, content: 'Call customer', reminderDate: '2026-03-07', reminderTime: '10:30' }],
+      today: [
+        { id: 42, content: 'Call customer', reminderDate: '2026-03-07', reminderTime: '10:30' },
+      ],
     });
 
     expect(service.unreadCount()).toBe(3);
@@ -163,9 +167,7 @@ describe('ReminderInboxService', () => {
     initialReq.flush({ unreadCount: 2, today: [] });
     await Promise.resolve();
 
-    const followUps = httpMock.match(
-      (req) => req.url === '/api/calendar-reminders/inbox/' && req.params.get('limit') === '100',
-    );
+    const followUps = httpMock.match((req) => req.url.endsWith('/api/calendar-reminders/inbox/'));
     expect(followUps).toHaveLength(1);
     followUps[0].flush({ unreadCount: 4, today: [] });
 

@@ -52,6 +52,7 @@ model/change-password.ts
 model/country-code.ts
 model/custom-token-obtain.ts
 model/customer-application-history.ts
+model/customer-minimal.ts
 model/customer-uninvoiced-application.ts
 model/customer.ts
 model/dashboard-stats.ts
@@ -59,6 +60,7 @@ model/delete-multiple-backups.ts
 model/doc-application-create-update.ts
 model/doc-application-detail.ts
 model/doc-application-invoice.ts
+model/doc-application-list.ts
 model/doc-application-serializer-with-relations.ts
 model/doc-workflow.ts
 model/document-action.ts
@@ -83,7 +85,7 @@ model/paginated-customer-application-history-list.ts
 model/paginated-customer-list.ts
 model/paginated-customer-uninvoiced-application-list.ts
 model/paginated-doc-application-invoice-list.ts
-model/paginated-doc-application-serializer-with-relations-list.ts
+model/paginated-doc-application-list-list.ts
 model/paginated-invoice-list-list.ts
 model/paginated-payment-list.ts
 model/paginated-product-list.ts
@@ -91,7 +93,9 @@ model/payment.ts
 model/product-category-filter-option.ts
 model/product-create-update.ts
 model/product-detail.ts
-model/product-import-start.ts
+model/product-import-start-response.ts
+model/product-minimal.ts
+model/product-price-list-print-start-response.ts
 model/product.ts
 model/push-notification-test.ts
 model/surat-permohonan-customer-data.ts

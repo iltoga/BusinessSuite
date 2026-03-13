@@ -9,15 +9,16 @@ import {
   viewChild,
   type TemplateRef,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { Subject, catchError, of, switchMap } from 'rxjs';
+import { type Observable } from 'rxjs';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
-import { DocApplicationSerializerWithRelations } from '@/core/api/model/doc-application-serializer-with-relations';
+import { DocApplicationList } from '@/core/api/model/doc-application-list';
 import {
   BaseListComponent,
   BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
 } from '@/shared/core/base-list.component';
 import {
   ApplicationDeleteDialogComponent,
@@ -77,9 +78,8 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   styleUrls: ['./application-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ApplicationListComponent extends BaseListComponent<DocApplicationSerializerWithRelations> {
+export class ApplicationListComponent extends BaseListComponent<DocApplicationList> {
   private readonly service = inject(CustomerApplicationsService);
-  private readonly loadTrigger$ = new Subject<void>();
 
   // Application-specific state
   readonly columnFilters = signal<Record<string, string[]>>({
@@ -90,30 +90,30 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
   // Delete confirmation dialogs
   readonly confirmOpen = signal(false);
   readonly confirmMessage = signal('');
-  readonly pendingDelete = signal<DocApplicationSerializerWithRelations | null>(null);
+  readonly pendingDelete = signal<DocApplicationList | null>(null);
   readonly deleteWithInvoiceOpen = signal(false);
   readonly deleteWithInvoiceData = signal<ApplicationDeleteDialogData | null>(null);
 
   // Template references
   private readonly customerTemplate =
     viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
+      TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>
     >('columnCustomer');
   private readonly productTemplate =
     viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
+      TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>
     >('columnProduct');
   private readonly dateTemplate =
     viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
+      TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>
     >('columnDate');
   private readonly statusTemplate =
     viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
+      TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>
     >('columnStatus');
   private readonly createdAtTemplate =
     viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
+      TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>
     >('columnCreatedAt');
 
   // Application-specific bulk delete query
@@ -121,12 +121,13 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
 
   // Columns configuration
   readonly columns = computed<ColumnConfig[]>(() => [
-    { key: 'id', header: 'ID', sortable: true, sortKey: 'id' },
+    { key: 'id', header: 'ID', sortable: true, sortKey: 'id', width: '5%' },
     {
       key: 'customer',
       header: 'Customer',
       sortable: true,
       sortKey: 'customer__first_name',
+      width: '22%',
       template: this.customerTemplate(),
     },
     {
@@ -134,6 +135,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
       header: 'Product',
       sortable: true,
       sortKey: 'product__name',
+      width: '20%',
       template: this.productTemplate(),
       filter: {
         options: this.productFilterOptions(),
@@ -148,6 +150,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
       subtitle: 'Last Date',
       sortable: true,
       sortKey: 'doc_date',
+      width: '16%',
       template: this.dateTemplate(),
     },
     {
@@ -155,6 +158,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
       header: 'Status',
       sortable: true,
       sortKey: 'status',
+      width: '12%',
       template: this.statusTemplate(),
       filter: {
         options: this.statusFilterOptions(),
@@ -168,13 +172,14 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
+      width: '16%',
       template: this.createdAtTemplate(),
     },
-    { key: 'actions', header: 'Actions' },
+    { key: 'actions', header: 'Actions', width: '9%' },
   ]);
 
   // Actions configuration
-  override readonly actions = computed<DataTableAction<DocApplicationSerializerWithRelations>[]>(() => [
+  override readonly actions = computed<DataTableAction<DocApplicationList>[]>(() => [
     {
       label: 'Manage',
       icon: 'eye',
@@ -235,7 +240,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
   ]);
 
   // Row class for rejected or deprecated products
-  readonly rowClassFn = (row: DocApplicationSerializerWithRelations): string =>
+  readonly rowClassFn = (row: DocApplicationList): string =>
     row.status === 'rejected' ? 'row-danger-soft' : '';
 
   // Filtered items based on column filters
@@ -243,7 +248,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
     const selectedProducts = new Set(this.columnFilters()['product'] ?? []);
     const selectedStatuses = new Set(this.columnFilters()['status'] ?? []);
 
-    return this.items().filter((item: DocApplicationSerializerWithRelations) => {
+    return this.items().filter((item: DocApplicationList) => {
       const productName = this.getProductLabel(item);
       const statusValue = this.getStatusValue(item);
 
@@ -278,6 +283,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
 
   constructor() {
     super();
+    // Setup base config
     this.config = {
       entityType: 'applications',
       entityLabel: 'Applications',
@@ -285,43 +291,21 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
       defaultOrdering: '-id',
       enableBulkDelete: true,
       enableDelete: true,
-    } as BaseListConfig<DocApplicationSerializerWithRelations>;
-
-    // Setup load trigger with rxjs pattern
-    this.loadTrigger$
-      .pipe(
-        switchMap(() => {
-          this.isLoading.set(true);
-          return this.service
-            .customerApplicationsList(this.ordering(), this.page(), this.pageSize(), this.query())
-            .pipe(
-              catchError(() => {
-                this.toast.error('Failed to load applications');
-                return of(null);
-              }),
-            );
-        }),
-        takeUntilDestroyed(),
-      )
-      .subscribe((res) => {
-        if (!res) {
-          this.isLoading.set(false);
-          return;
-        }
-
-        this.items.set(res.results ?? []);
-        this.totalItems.set(res.count ?? 0);
-        this.isLoading.set(false);
-        this.focusAfterLoad();
-      });
+    } as BaseListConfig<DocApplicationList>;
   }
 
   /**
-   * Load applications from service
+   * Create the Observable that fetches a page of applications.
    */
-  protected override loadItems(): void {
-    if (!this.isBrowser) return;
-    this.loadTrigger$.next();
+  protected override createListLoader(
+    params: ListRequestParams,
+  ): Observable<PaginatedResponse<DocApplicationList>> {
+    return this.service.customerApplicationsList(
+      params.ordering,
+      params.page,
+      params.pageSize,
+      params.query,
+    );
   }
 
   /**
@@ -337,7 +321,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
   /**
    * Confirm delete for an application
    */
-  confirmDelete(row: DocApplicationSerializerWithRelations) {
+  confirmDelete(row: DocApplicationList) {
     if (!this.isSuperuser()) {
       return;
     }
@@ -349,7 +333,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
   /**
    * Confirm delete with invoice
    */
-  confirmDeleteWithInvoice(row: DocApplicationSerializerWithRelations): void {
+  confirmDeleteWithInvoice(row: DocApplicationList): void {
     if (!this.isSuperuser()) {
       return;
     }
@@ -373,7 +357,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
     this.service.customerApplicationsDestroy(row.id).subscribe({
       next: () => {
         this.toast.success('Application deleted');
-        this.loadItems();
+        this.reload();
         this.confirmOpen.set(false);
         this.pendingDelete.set(null);
       },
@@ -417,7 +401,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
     this.service.customerApplicationsDestroy(row.id, true).subscribe({
       next: () => {
         this.toast.success('Application deleted');
-        this.loadItems();
+        this.reload();
         this.deleteWithInvoiceOpen.set(false);
         this.deleteWithInvoiceData.set(null);
         this.pendingDelete.set(null);
@@ -455,31 +439,31 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
   /**
    * Check if application can be force closed
    */
-  canForceClose(row: DocApplicationSerializerWithRelations): boolean {
+  canForceClose(row: DocApplicationList): boolean {
     return !!row.canForceClose && row.status !== 'completed' && row.status !== 'rejected';
   }
 
   /**
    * Check if invoice can be created
    */
-  canCreateInvoice(row: DocApplicationSerializerWithRelations): boolean {
+  canCreateInvoice(row: DocApplicationList): boolean {
     return !row.hasInvoice;
   }
 
   /**
    * Confirm force close application
    */
-  confirmForceClose(row: DocApplicationSerializerWithRelations) {
+  confirmForceClose(row: DocApplicationList) {
     if (!this.canForceClose(row)) {
       this.toast.error('You cannot force close this application');
       return;
     }
 
     if (confirm(`Force close application #${row.id}? This will mark it as completed.`)) {
-      this.service.customerApplicationsForceCloseCreate(row.id, row).subscribe({
+      this.service.customerApplicationsForceCloseCreate(row.id).subscribe({
         next: () => {
           this.toast.success('Application force closed');
-          this.loadItems();
+          this.reload();
         },
         error: (err: any) => {
           const msg = err?.error?.detail || err?.error || 'Failed to force close application';
@@ -492,7 +476,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
   /**
    * Build application detail state
    */
-  applicationDetailState(item: DocApplicationSerializerWithRelations): Record<string, unknown> {
+  applicationDetailState(item: DocApplicationList): Record<string, unknown> {
     return {
       from: 'applications',
       focusId: item.id,
@@ -538,7 +522,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
           this.bulkDeleteOpen.set(false);
           this.bulkDeleteData.set(null);
           this.applicationBulkDeleteQuery.set('');
-          this.loadItems();
+          this.reload();
         },
         error: (error) => {
           const message = extractServerErrorMessage(error);
@@ -563,21 +547,21 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
   /**
    * Get product label from item
    */
-  private getProductLabel(item: DocApplicationSerializerWithRelations): string {
+  private getProductLabel(item: DocApplicationList): string {
     return (item as any)?.product?.name?.trim() || '';
   }
 
   /**
    * Check if product is deprecated
    */
-  isDeprecatedProduct(item: DocApplicationSerializerWithRelations): boolean {
+  isDeprecatedProduct(item: DocApplicationList): boolean {
     return Boolean((item as any)?.product?.deprecated);
   }
 
   /**
    * Get status value from item
    */
-  private getStatusValue(item: DocApplicationSerializerWithRelations): string {
+  private getStatusValue(item: DocApplicationList): string {
     return (item?.status || 'pending').toString();
   }
 
