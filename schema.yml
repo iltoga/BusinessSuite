@@ -1396,6 +1396,21 @@ paths:
         required: true
       tags:
       - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -6773,6 +6788,21 @@ paths:
         required: true
       tags:
       - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []

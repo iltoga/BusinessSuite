@@ -83,7 +83,7 @@ import { PaginatedCustomerUninvoicedApplicationList } from '../model/paginated-c
 // @ts-ignore
 import { PaginatedDocApplicationInvoiceList } from '../model/paginated-doc-application-invoice-list';
 // @ts-ignore
-import { PaginatedDocApplicationSerializerWithRelationsList } from '../model/paginated-doc-application-serializer-with-relations-list';
+import { PaginatedDocApplicationListList } from '../model/paginated-doc-application-list-list';
 // @ts-ignore
 import { PaginatedInvoiceListList } from '../model/paginated-invoice-list-list';
 // @ts-ignore
@@ -3272,20 +3272,16 @@ export class V1Service extends BaseService {
      * Force close an application by setting its status to completed.  This mirrors the legacy Django view behavior and bypasses automatic status recalculation by saving with skip_status_calculation&#x3D;True.
      * @endpoint post /api/v1/customer-applications/{id}/force-close/
      * @param id A unique integer value identifying this doc application.
-     * @param docApplicationSerializerWithRelations 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1CustomerApplicationsForceCloseCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<DocApplicationDetail>;
-    public v1CustomerApplicationsForceCloseCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<DocApplicationDetail>>;
-    public v1CustomerApplicationsForceCloseCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<DocApplicationDetail>>;
-    public v1CustomerApplicationsForceCloseCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1CustomerApplicationsForceCloseCreate(id: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<DocApplicationDetail>;
+    public v1CustomerApplicationsForceCloseCreate(id: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<DocApplicationDetail>>;
+    public v1CustomerApplicationsForceCloseCreate(id: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<DocApplicationDetail>>;
+    public v1CustomerApplicationsForceCloseCreate(id: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling v1CustomerApplicationsForceCloseCreate.');
-        }
-        if (docApplicationSerializerWithRelations === null || docApplicationSerializerWithRelations === undefined) {
-            throw new Error('Required parameter docApplicationSerializerWithRelations was null or undefined when calling v1CustomerApplicationsForceCloseCreate.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -3307,17 +3303,6 @@ export class V1Service extends BaseService {
         const localVarTransferCache: boolean = options?.transferCache ?? true;
 
 
-        // to determine the Content-Type header
-        const consumes: string[] = [
-            'application/json',
-            'application/x-www-form-urlencoded',
-            'multipart/form-data'
-        ];
-        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
-        if (httpContentTypeSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-        }
-
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
             if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -3334,7 +3319,6 @@ export class V1Service extends BaseService {
         return this.httpClient.request<DocApplicationDetail>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: docApplicationSerializerWithRelations,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -3355,9 +3339,9 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PaginatedDocApplicationSerializerWithRelationsList>;
-    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PaginatedDocApplicationSerializerWithRelationsList>>;
-    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PaginatedDocApplicationSerializerWithRelationsList>>;
+    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PaginatedDocApplicationListList>;
+    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PaginatedDocApplicationListList>>;
+    public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PaginatedDocApplicationListList>>;
     public v1CustomerApplicationsList(ordering?: string, page?: number, pageSize?: number, search?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
@@ -3430,7 +3414,7 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/customer-applications/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<PaginatedDocApplicationSerializerWithRelationsList>('get', `${basePath}${localVarPath}`,
+        return this.httpClient.request<PaginatedDocApplicationListList>('get', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters.toHttpParams(),

@@ -36,7 +36,7 @@ class TrackingHook(BaseDocumentTypeHook):
 
     def __init__(self, document_type_name: str):
         self.document_type_name = document_type_name
-        self.calls = []
+        self.calls: list[tuple] = []
 
     def on_init(self, document):
         self.calls.append(("on_init", document))
@@ -203,12 +203,18 @@ class TestLifecycleSignalDispatch(HypothesisTestCase):
             },
         )
 
+        from products.models import ProductCategory
+        category, _ = ProductCategory.objects.get_or_create(
+            name="Other",
+            defaults={"product_type": "other"},
+        )
+        
         # Create test product (no created_by field on Product model)
         self.product, _ = Product.objects.get_or_create(
             code=f"TESTLC{unique_id}",
             defaults={
                 "name": "Test Product Lifecycle",
-                "product_type": "other",
+                "product_category": category,
             },
         )
 

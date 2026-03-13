@@ -82,6 +82,11 @@ def _build_document_ocr_stream_payload(stream_payload: dict[str, Any]) -> dict[s
     return response_data
 
 
+from api.serializers.doc_application_serializer import DocApplicationListSerializer
+
+@extend_schema_view(
+    list=extend_schema(responses={200: DocApplicationListSerializer(many=True)})
+)
 class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
@@ -141,6 +146,9 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             from api.serializers.doc_application_serializer import DocApplicationCreateUpdateSerializer
 
             return DocApplicationCreateUpdateSerializer
+        if self.action == "list":
+            from api.serializers.doc_application_serializer import DocApplicationListSerializer
+            return DocApplicationListSerializer
         if self.action == "retrieve":
             return DocApplicationDetailSerializer
         return DocApplicationSerializerWithRelations
@@ -495,7 +503,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return self.error_response("Application is not completed", status.HTTP_400_BAD_REQUEST)
         return Response({"success": True})
 
-    @extend_schema(responses=DocApplicationDetailSerializer)
+    @extend_schema(request=None, responses=DocApplicationDetailSerializer)
     @action(detail=True, methods=["post"], url_path="force-close")
     def force_close(self, request, pk=None):
         """Force close an application by setting its status to completed.
@@ -1353,7 +1361,7 @@ def customer_quick_create(request):
         # Handle validation errors
         if hasattr(e, "message_dict"):
             # Django ValidationError
-            return Response({"success": False, "errors": e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST)
 
         logger.exception("Error in customer_quick_create")
         return Response(
@@ -1418,7 +1426,7 @@ def customer_application_quick_create(request):
 
         if hasattr(e, "message_dict"):
             # Django ValidationError
-            return Response({"success": False, "errors": e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(
             {"success": False, "error": "Server error while creating customer application."},
@@ -1465,7 +1473,7 @@ def product_quick_create(request):
         # Handle validation errors
         if hasattr(e, "message_dict"):
             # Django ValidationError
-            return Response({"success": False, "errors": e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST)
 
         logger.exception("Error in product_quick_create")
         return Response(

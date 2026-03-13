@@ -172,6 +172,7 @@
                     } @else if (column.key === 'actions' && actions()?.length) {
                       <div class="flex items-center justify-end">
                         <button
+                          #actionTrigger
                           z-dropdown
                           [zDropdownMenu]="rowActionsMenu"
                           z-button
@@ -187,22 +188,24 @@
                           <z-icon zType="ellipsis-vertical" />
                         </button>
                         <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
-                          @for (action of actions() ?? []; track action.label) {
-                            @if (!action.isVisible || action.isVisible(row)) {
-                              <button
-                                z-dropdown-menu-item
-                                type="button"
-                                [variant]="
-                                  action.variant ??
-                                  (action.isDestructive ? 'destructive' : 'default')
-                                "
-                                (click)="onActionSelect(action, row, $event)"
-                              >
-                                <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
-                                <span
-                                  [innerHTML]="action.label | shortcutHighlight: action.shortcut"
-                                ></span>
-                              </button>
+                          @defer (on interaction(actionTrigger)) {
+                            @for (action of actions() ?? []; track action.label) {
+                              @if (!action.isVisible || action.isVisible(row)) {
+                                <button
+                                  z-dropdown-menu-item
+                                  type="button"
+                                  [variant]="
+                                    action.variant ??
+                                    (action.isDestructive ? 'destructive' : 'default')
+                                  "
+                                  (click)="onActionSelect(action, row, $event)"
+                                >
+                                  <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
+                                  <span
+                                    [innerHTML]="action.label | shortcutHighlight: action.shortcut"
+                                  ></span>
+                                </button>
+                              }
                             }
                           }
                         </z-dropdown-menu-content>
