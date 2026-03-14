@@ -253,6 +253,15 @@ class RestoreCompatibilityTests(TestCase):
     def test_restore_tar_zst_falls_back_when_native_zst_mode_unavailable(self):
         objects = [
             {
+                "model": "products.productcategory",
+                "pk": 1,
+                "fields": {
+                    "name": "Visa",
+                    "product_type": "visa",
+                    "description": "",
+                },
+            },
+            {
                 "model": "products.product",
                 "pk": 11,
                 "fields": {
@@ -296,6 +305,15 @@ class RestoreCompatibilityTests(TestCase):
 
     def test_restore_handles_legacy_dict_fk_fixture(self):
         legacy_objects = [
+            {
+                "model": "products.productcategory",
+                "pk": 1,
+                "fields": {
+                    "name": "Visa",
+                    "product_type": "visa",
+                    "description": "",
+                },
+            },
             {
                 "model": "products.product",
                 "fields": {
@@ -436,6 +454,15 @@ class RestoreCompatibilityTests(TestCase):
 
     def test_restore_does_not_capture_local_sync_changelog_during_loaddata(self):
         objects = [
+            {
+                "model": "products.productcategory",
+                "pk": 1,
+                "fields": {
+                    "name": "Visa",
+                    "product_type": "visa",
+                    "description": "",
+                },
+            },
             {
                 "model": "products.product",
                 "pk": 31,
