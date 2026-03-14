@@ -164,6 +164,28 @@ def read_stream_blocking(
     return events
 
 
+async def read_stream_blocking_async(
+    stream_key: str,
+    *,
+    last_event_id: str | None,
+    block_ms: int = 15_000,
+    count: int = 200,
+) -> list[StreamEvent]:
+    from core.services.redis_client import get_async_redis_client
+    socket_timeout = max(5.0, (block_ms / 1000.0) + 5.0)
+    client = get_async_redis_client(socket_timeout=socket_timeout)
+    cursor = last_event_id or "$"
+    result = await client.xread(streams={stream_key: cursor}, block=block_ms, count=count)
+    if not result:
+        return []
+
+    events: list[StreamEvent] = []
+    for _, entries in result:
+        for stream_id, raw_fields in entries:
+            events.append(_to_stream_event(stream_id, raw_fields))
+    return events
+
+
 
 def resolve_last_event_id(request) -> str | None:
     last_event_id = request.headers.get("Last-Event-ID") or request.GET.get("last_event_id")

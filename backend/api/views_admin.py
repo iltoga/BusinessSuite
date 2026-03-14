@@ -19,7 +19,7 @@ from api.permissions import (
 )
 from api.serializers.local_resilience_serializer import LocalResilienceSettingsSerializer
 from api.serializers.ui_settings_serializer import UiSettingsSerializer
-from api.utils.redis_sse import iter_replay_and_live_events
+from api.utils.redis_sse import iter_replay_and_live_events_async
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from core.models import AppSetting
@@ -102,15 +102,17 @@ def _stream_admin_events(
     accepted_events: set[str],
     enqueue_callback,
 ):
-    def event_stream():
+    from asgiref.sync import sync_to_async
+
+    async def _async_stream():
         if start_new:
             try:
-                enqueue_callback()
+                await sync_to_async(enqueue_callback)()
             except Exception as exc:
                 yield format_sse_event(data={"message": f"Error: {exc}"})
                 return
 
-        for stream_event in iter_replay_and_live_events(
+        async for stream_event in iter_replay_and_live_events_async(
             stream_key=stream_user_key(user_id), last_event_id=replay_cursor
         ):
             if stream_event is None:
@@ -126,7 +128,7 @@ def _stream_admin_events(
             if terminal:
                 break
 
-    return _build_sse_response(event_stream())
+    return _build_sse_response(_async_stream())
 
 
 # ============================================================================

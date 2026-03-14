@@ -18,11 +18,10 @@ import {
   type CustomerDetail,
 } from '@/core/services/customers.service';
 import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service';
+import { JobService } from '@/core/services/job.service';
 import { SseService } from '@/core/services/sse.service';
-import {
-  BaseFormComponent,
-  BaseFormConfig,
-} from '@/shared/core/base-form.component';
+import { BaseFormComponent, BaseFormConfig } from '@/shared/core/base-form.component';
+import { AsyncJob } from '@/core/api';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardCheckboxComponent } from '@/shared/components/checkbox';
@@ -114,6 +113,7 @@ export class CustomerFormComponent extends BaseFormComponent<
   private readonly customersService = inject(CustomersService);
   private readonly ocrService = inject(OcrService);
   private readonly sseService = inject(SseService);
+  private readonly jobService = inject(JobService);
 
   // Customer-specific state
   readonly countries = signal<CountryCode[]>([]);
@@ -150,8 +150,7 @@ export class CustomerFormComponent extends BaseFormComponent<
   readonly customer = signal<CustomerDetail | null>(null);
 
   // OCR tracking
-  private ocrPollTimer: number | null = null;
-  private ocrStreamSubscription: Subscription | null = null;
+  private pollSub: Subscription | null = null;
 
   // Form error labels
   override readonly formErrorLabels: Record<string, string> = {
@@ -591,18 +590,12 @@ export class CustomerFormComponent extends BaseFormComponent<
       })
       .subscribe({
         next: (response) => {
-          const statusUrl =
-            ('statusUrl' in response && response.statusUrl) ||
-            (response as { status_url?: string }).status_url;
-          const streamUrl =
-            ('streamUrl' in response && response.streamUrl) ||
-            (response as { stream_url?: string }).stream_url;
-          if (streamUrl) {
-            this.subscribeToOcrStream(streamUrl, statusUrl);
-            return;
-          }
-          if (statusUrl) {
-            this.scheduleOcrPoll(statusUrl, 0);
+          const jobId =
+            ('jobId' in response && response.jobId) ||
+            (response as { job_id?: string }).job_id;
+          
+          if (jobId && typeof jobId === 'string') {
+            this.subscribeToOcrStream(jobId);
             return;
           }
           this.handleOcrResult(response as OcrStatusResponse);
@@ -615,176 +608,56 @@ export class CustomerFormComponent extends BaseFormComponent<
       });
   }
 
-  private subscribeToOcrStream(streamUrl: string, statusUrl?: string): void {
+  private subscribeToOcrStream(jobId: string): void {
     this.clearOcrAsyncTracking();
 
-    let terminalEventReceived = false;
-    this.ocrStreamSubscription = this.sseService.connect<OcrStatusResponse>(streamUrl).subscribe({
-      next: (payload) => {
-        const isTerminal = this.processOcrStatusUpdate(payload);
-        if (isTerminal) {
-          terminalEventReceived = true;
+    this.pollSub = this.jobService.watchJob(jobId).subscribe({
+      next: (jobStatus: AsyncJob) => {
+        if (jobStatus.status === 'completed') {
+          // Job is complete, get the final result mapping it as OcrStatusResponse
+          const jobResult = (jobStatus.result as Record<string, any>) || {};
+          const result: OcrStatusResponse = {
+            ...jobResult,
+            status: 'completed',
+            jobId: jobStatus.id,
+          };
+          this.handleOcrResult(result);
           this.clearOcrAsyncTracking();
-        }
-      },
-      error: () => {
-        this.ocrStreamSubscription = null;
-        if (statusUrl && this.ocrProcessing()) {
-          this.ocrMessage.set('Realtime connection dropped. Retrying status checks...');
-          this.ocrMessageTone.set('warning');
-          this.scheduleOcrPoll(statusUrl, 0);
           return;
         }
+
+        if (jobStatus.status === 'failed') {
+          this.clearOcrAsyncTracking();
+          this.ocrProcessing.set(false);
+          const jobResult = (jobStatus.result as Record<string, any>) || {};
+          this.ocrMessage.set((jobResult['error'] as string) || 'OCR failed');
+          this.ocrMessageTone.set('error');
+          return;
+        }
+
+        if (typeof jobStatus.progress === 'number') {
+          this.ocrMessage.set(`Processing... ${jobStatus.progress}%`);
+        } else {
+          this.ocrMessage.set('Processing...');
+        }
+        this.ocrMessageTone.set('info');
+      },
+      error: (error: any) => {
+        this.pollSub = null;
         this.ocrProcessing.set(false);
-        this.ocrMessage.set('Realtime OCR updates failed');
+        this.ocrMessage.set(this.extractOcrError(error) || 'Realtime OCR updates failed');
         this.ocrMessageTone.set('error');
       },
       complete: () => {
-        this.ocrStreamSubscription = null;
-        if (!terminalEventReceived && statusUrl && this.ocrProcessing()) {
-          this.scheduleOcrPoll(statusUrl, 0);
-        }
+        this.pollSub = null;
       },
     });
   }
 
-  private scheduleOcrPoll(
-    statusUrl: string,
-    attempt: number,
-    retryAfterSeconds?: number | null,
-  ): void {
-    const maxAttempts = 10;
-
-    if (attempt >= maxAttempts) {
-      this.ocrProcessing.set(false);
-      this.ocrMessage.set('OCR processing timed out');
-      this.ocrMessageTone.set('error');
-      return;
-    }
-
-    this.clearOcrPollTimer();
-    const delayMs = this.computeOcrPollingDelay(attempt, retryAfterSeconds);
-    this.ocrPollTimer = window.setTimeout(() => {
-      this.ocrPollTimer = null;
-      this.ocrService.getOcrStatusResponse(statusUrl).subscribe({
-        next: (response) => {
-          const body = response.body;
-          if (!body) {
-            this.ocrProcessing.set(false);
-            this.ocrMessage.set('OCR status check returned no payload');
-            this.ocrMessageTone.set('error');
-            return;
-          }
-
-          const isTerminal = this.processOcrStatusUpdate(body);
-          if (isTerminal) {
-            return;
-          }
-
-          this.scheduleOcrPoll(statusUrl, attempt + 1, this.parseRetryAfterHeader(response));
-        },
-        error: (error) => {
-          const nextAttempt = attempt + 1;
-          const retryAfterHeader = this.parseRetryAfterHeader(
-            (error as { headers?: HttpResponse<unknown>['headers'] })?.headers,
-          );
-          if (nextAttempt < maxAttempts && this.shouldRetryOcrPolling(error)) {
-            this.ocrMessage.set('Retrying OCR status check...');
-            this.ocrMessageTone.set('warning');
-            this.scheduleOcrPoll(statusUrl, nextAttempt, retryAfterHeader);
-            return;
-          }
-
-          this.ocrProcessing.set(false);
-          this.ocrMessage.set(this.extractOcrError(error) ?? 'OCR status check failed');
-          this.ocrMessageTone.set('error');
-        },
-      });
-    }, delayMs);
-  }
-
-  private processOcrStatusUpdate(status: OcrStatusResponse): boolean {
-    if (status.status === 'completed') {
-      this.handleOcrResult(status);
-      return true;
-    }
-    if (status.status === 'failed') {
-      this.clearOcrAsyncTracking();
-      this.ocrProcessing.set(false);
-      this.ocrMessage.set(status.error ?? 'OCR failed');
-      this.ocrMessageTone.set('error');
-      return true;
-    }
-    if (typeof status.progress === 'number') {
-      this.ocrMessage.set(`Processing... ${status.progress}%`);
-    } else {
-      this.ocrMessage.set('Processing...');
-    }
-    this.ocrMessageTone.set('info');
-    return false;
-  }
-
-  private computeOcrPollingDelay(attempt: number, retryAfterSeconds?: number | null): number {
-    if (typeof retryAfterSeconds === 'number' && retryAfterSeconds >= 0) {
-      return Math.max(0, Math.round(retryAfterSeconds * 1000));
-    }
-
-    const baseDelayMs = 1000;
-    const maxDelayMs = 20000;
-    const exponentialDelay = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
-    const jitter = exponentialDelay * (0.15 + Math.random() * 0.2);
-    return Math.round(exponentialDelay + jitter);
-  }
-
-  private shouldRetryOcrPolling(error: unknown): boolean {
-    const statusCode = (error as { status?: number })?.status;
-    return statusCode === undefined || statusCode === 0 || statusCode === 429 || statusCode >= 500;
-  }
-
-  private parseRetryAfterHeader(
-    responseOrHeaders: HttpResponse<unknown> | HttpResponse<unknown>['headers'] | undefined,
-  ): number | null {
-    const headers =
-      responseOrHeaders instanceof HttpResponse ? responseOrHeaders.headers : responseOrHeaders;
-    const rawValue = headers?.get?.('Retry-After')?.trim();
-    if (!rawValue) {
-      return null;
-    }
-
-    const seconds = Number(rawValue);
-    if (Number.isFinite(seconds) && seconds >= 0) {
-      return seconds;
-    }
-
-    const retryDateMs = Date.parse(rawValue);
-    if (Number.isNaN(retryDateMs)) {
-      return null;
-    }
-    return Math.max(0, Math.ceil((retryDateMs - Date.now()) / 1000));
-  }
-
   private clearOcrAsyncTracking(): void {
-    this.clearOcrPollTimer();
-    if (this.ocrStreamSubscription) {
-      this.ocrStreamSubscription.unsubscribe();
-      this.ocrStreamSubscription = null;
-    }
-  }
-
-  private clearOcrPollTimer(): void {
-    if (!this.ocrPollTimer) {
-      return;
-    }
-    try {
-      if (typeof window !== 'undefined') {
-        window.clearTimeout(this.ocrPollTimer);
-      } else {
-        clearTimeout(this.ocrPollTimer as any);
-      }
-    } catch {
-      // ignore cleanup failures
-    } finally {
-      this.ocrPollTimer = null;
+    if (this.pollSub) {
+      this.pollSub.unsubscribe();
+      this.pollSub = null;
     }
   }
 

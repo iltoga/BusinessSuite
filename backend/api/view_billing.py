@@ -453,80 +453,93 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return response
 
     def _stream_download_job(self, request, job, *, last_event_id: str | None = None):
-        stream_key = stream_job_key(job.id)
-        last_progress = None
-        last_status = None
-        initial_payload = _download_stream_payload_from_job(job)
+        from asgiref.sync import sync_to_async
 
-        yield self._send_download_event(
-            "start", {"message": "Starting invoice generation...", "progress": job.progress}
-        )
+        async def _async_stream():
+            stream_key = stream_job_key(job.id)
+            last_progress = None
+            last_status = None
+            initial_payload = _download_stream_payload_from_job(job)
 
-        def _emit_updates(payload: dict[str, Any], *, event_id: str | None = None) -> Generator[str, None, bool]:
-            nonlocal last_progress
-            nonlocal last_status
+            yield self._send_download_event(
+                "start", {"message": "Starting invoice generation...", "progress": job.progress}
+            )
 
-            if last_progress != payload["progress"] or last_status != payload["status"]:
-                yield self._send_download_event(
-                    "progress",
-                    {"progress": payload["progress"], "status": payload["status"]},
-                    event_id=event_id,
-                )
-                last_progress = payload["progress"]
-                last_status = payload["status"]
+            async def _emit_updates(payload: dict[str, Any], *, event_id: str | None = None):
+                nonlocal last_progress, last_status
 
-            if payload["status"] == InvoiceDownloadJob.STATUS_COMPLETED:
-                verified_payload = _load_download_stream_payload(job.id) or payload
-                yield self._send_download_event(
-                    "complete",
-                    {
-                        "message": "Invoice ready",
-                        "download_url": request.build_absolute_uri(
-                            reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
-                        ),
-                        "status": verified_payload["status"],
-                    },
-                    event_id=event_id,
-                )
-                return True
-
-            if payload["status"] == InvoiceDownloadJob.STATUS_FAILED:
-                verified_payload = _load_download_stream_payload(job.id) or payload
-                yield self._send_download_event(
-                    "error",
-                    {
-                        "message": verified_payload.get("errorMessage") or "Invoice generation failed",
-                        "status": verified_payload["status"],
-                    },
-                    event_id=event_id,
-                )
-                return True
-            return False
-
-        done = yield from _emit_updates(initial_payload)
-        if done:
-            return
-
-        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
-            if stream_event is None:
-                yield ": keep-alive\n\n"
-                continue
-            payload = normalize_invoice_download_job_payload(stream_event.payload)
-            if payload is None or payload["status"] in {
-                InvoiceDownloadJob.STATUS_COMPLETED,
-                InvoiceDownloadJob.STATUS_FAILED,
-            }:
-                payload = _load_download_stream_payload(job.id)
-                if payload is None:
+                if last_progress != payload["progress"] or last_status != payload["status"]:
                     yield self._send_download_event(
-                        "error",
-                        {"message": "Invoice generation failed", "status": InvoiceDownloadJob.STATUS_FAILED},
-                        event_id=stream_event.id,
+                        "progress",
+                        {"progress": payload["progress"], "status": payload["status"]},
+                        event_id=event_id,
+                    )
+                    last_progress = payload["progress"]
+                    last_status = payload["status"]
+
+                if payload["status"] == InvoiceDownloadJob.STATUS_COMPLETED:
+                    verified_payload = (await sync_to_async(_load_download_stream_payload)(job.id)) or payload
+                    yield self._send_download_event(
+                        "complete",
+                        {
+                            "message": "Invoice ready",
+                            "download_url": request.build_absolute_uri(
+                                reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
+                            ),
+                            "status": verified_payload["status"],
+                        },
+                        event_id=event_id,
                     )
                     return
-            done = yield from _emit_updates(payload, event_id=stream_event.id)
-            if done:
+
+                if payload["status"] == InvoiceDownloadJob.STATUS_FAILED:
+                    verified_payload = (await sync_to_async(_load_download_stream_payload)(job.id)) or payload
+                    yield self._send_download_event(
+                        "error",
+                        {
+                            "message": verified_payload.get("errorMessage") or "Invoice generation failed",
+                            "status": verified_payload["status"],
+                        },
+                        event_id=event_id,
+                    )
+                    return
+
+            def _is_terminal_payload(payload: dict[str, Any]) -> bool:
+                return payload["status"] in {
+                    InvoiceDownloadJob.STATUS_COMPLETED,
+                    InvoiceDownloadJob.STATUS_FAILED,
+                }
+
+            async for chunk in _emit_updates(initial_payload):
+                yield chunk
+            if _is_terminal_payload(initial_payload):
                 return
+
+            async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=last_event_id):
+                if stream_event is None:
+                    yield ": keep-alive\n\n"
+                    continue
+                payload = normalize_invoice_download_job_payload(stream_event.payload)
+                if payload is None or payload["status"] in {
+                    InvoiceDownloadJob.STATUS_COMPLETED,
+                    InvoiceDownloadJob.STATUS_FAILED,
+                }:
+                    payload = await sync_to_async(_load_download_stream_payload)(job.id)
+                    if payload is None:
+                        yield self._send_download_event(
+                            "error",
+                            {"message": "Invoice generation failed", "status": InvoiceDownloadJob.STATUS_FAILED},
+                            event_id=stream_event.id,
+                        )
+                        return
+                done = False
+                async for chunk in _emit_updates(payload, event_id=stream_event.id):
+                    yield chunk
+                if _is_terminal_payload(payload):
+                    return
+
+        return _async_stream()
+
 
     @staticmethod
     def _send_download_event(event_type, data, *, event_id: str | None = None):
@@ -1130,215 +1143,220 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     def _stream_import_job(self, job_id, request=None, *, last_event_id: str | None = None):
         """Stream SSE updates for a running import job."""
+        from asgiref.sync import sync_to_async
         from invoices.models import InvoiceImportItem, InvoiceImportJob
 
-        stream_key = stream_job_key(job_id)
-        sent_states: dict[str, dict[str, bool]] = {}
-        job = InvoiceImportJob.objects.prefetch_related("items").get(id=job_id)
-        job_state = _import_job_stream_payload_from_job(job)
-        ordered_items = list(job.items.all().order_by("sort_index"))
-        item_order = [str(item.id) for item in ordered_items]
-        item_states = {str(item.id): _import_item_stream_payload_from_item(item) for item in ordered_items}
-        total_files = job_state["totalFiles"]
+        async def _async_stream():
+            stream_key = stream_job_key(job_id)
+            sent_states: dict[str, dict[str, bool]] = {}
+            job = await sync_to_async(InvoiceImportJob.objects.prefetch_related("items").get)(id=job_id)
+            job_state = _import_job_stream_payload_from_job(job)
+            ordered_items = await sync_to_async(lambda: list(job.items.all().order_by("sort_index")))()
+            item_order = [str(item.id) for item in ordered_items]
+            item_states = {str(item.id): _import_item_stream_payload_from_item(item) for item in ordered_items}
+            total_files = job_state["totalFiles"]
 
-        yield self._send_import_event(
-            "start",
-            {
-                "total": total_files,
-                "message": f"Starting background import of {total_files} file(s)...",
-            },
-        )
-
-        terminal_statuses = {
-            InvoiceImportJob.STATUS_COMPLETED,
-            InvoiceImportJob.STATUS_FAILED,
-        }
-        terminal_item_statuses = {
-            InvoiceImportItem.STATUS_IMPORTED,
-            InvoiceImportItem.STATUS_DUPLICATE,
-            InvoiceImportItem.STATUS_ERROR,
-        }
-
-        def _refresh_job_state_from_db() -> None:
-            nonlocal job_state
-            refreshed_job = InvoiceImportJob.objects.get(id=job_id)
-            job_state = _import_job_stream_payload_from_job(refreshed_job)
-
-        def _refresh_item_state_from_db(raw_item_id: str | None) -> str | None:
-            if not raw_item_id:
-                return None
-            try:
-                refreshed_item = InvoiceImportItem.objects.get(id=raw_item_id)
-            except InvoiceImportItem.DoesNotExist:
-                return None
-            normalized_item = _import_item_stream_payload_from_item(refreshed_item)
-            item_id = normalized_item["itemId"]
-            item_states[item_id] = normalized_item
-            if item_id not in item_order:
-                item_order.append(item_id)
-            return item_id
-
-        def _build_import_result_from_state(item_state: dict[str, Any]) -> dict[str, Any]:
-            result = item_state.get("result")
-            if isinstance(result, dict) and result.get("status"):
-                return result
-            return {
-                "success": item_state.get("status") == InvoiceImportItem.STATUS_IMPORTED,
-                "status": item_state.get("status"),
-                "message": item_state.get("errorMessage") or "Processing",
-                "filename": item_state.get("filename"),
-            }
-
-        def _build_import_summary_from_state() -> dict[str, Any]:
-            results = [_build_import_result_from_state(item_states[item_id]) for item_id in item_order]
-            summary = {
-                "total": job_state["totalFiles"],
-                "imported": job_state["importedCount"],
-                "duplicates": job_state["duplicateCount"],
-                "errors": job_state["errorCount"],
-            }
-            return {"summary": summary, "results": results}
-
-        def _collect_updates(
-            *,
-            event_id: str | None = None,
-            changed_item_ids: set[str] | None = None,
-        ) -> tuple[list[str], bool]:
-            messages: list[str] = []
-            item_ids = (
-                item_order
-                if changed_item_ids is None
-                else [item_id for item_id in item_order if item_id in changed_item_ids]
+            yield self._send_import_event(
+                "start",
+                {
+                    "total": total_files,
+                    "message": f"Starting background import of {total_files} file(s)...",
+                },
             )
 
-            for item_id in item_ids:
-                item = item_states[item_id]
+            terminal_statuses = {
+                InvoiceImportJob.STATUS_COMPLETED,
+                InvoiceImportJob.STATUS_FAILED,
+            }
+            terminal_item_statuses = {
+                InvoiceImportItem.STATUS_IMPORTED,
+                InvoiceImportItem.STATUS_DUPLICATE,
+                InvoiceImportItem.STATUS_ERROR,
+            }
 
-                state = sent_states.get(item_id, {"file_start": False, "parsing": False, "done": False})
+            async def _refresh_job_state_from_db() -> None:
+                nonlocal job_state
+                refreshed_job = await sync_to_async(InvoiceImportJob.objects.get)(id=job_id)
+                job_state = _import_job_stream_payload_from_job(refreshed_job)
 
-                if item["status"] == InvoiceImportItem.STATUS_PROCESSING and not state["file_start"]:
-                    messages.append(
-                        self._send_import_event(
-                            "file_start",
-                            {
-                                "index": item["index"],
-                                "filename": item["filename"],
-                                "message": f"Processing {item['filename']}...",
-                            },
-                            event_id=event_id,
+            async def _refresh_item_state_from_db(raw_item_id: str | None) -> str | None:
+                if not raw_item_id:
+                    return None
+                try:
+                    refreshed_item = await sync_to_async(InvoiceImportItem.objects.get)(id=raw_item_id)
+                except InvoiceImportItem.DoesNotExist:
+                    return None
+                normalized_item = _import_item_stream_payload_from_item(refreshed_item)
+                item_id = normalized_item["itemId"]
+                item_states[item_id] = normalized_item
+                if item_id not in item_order:
+                    item_order.append(item_id)
+                return item_id
+
+            def _build_import_result_from_state(item_state: dict[str, Any]) -> dict[str, Any]:
+                result = item_state.get("result")
+                if isinstance(result, dict) and result.get("status"):
+                    return result
+                return {
+                    "success": item_state.get("status") == InvoiceImportItem.STATUS_IMPORTED,
+                    "status": item_state.get("status"),
+                    "message": item_state.get("errorMessage") or "Processing",
+                    "filename": item_state.get("filename"),
+                }
+
+            def _build_import_summary_from_state() -> dict[str, Any]:
+                results = [_build_import_result_from_state(item_states[item_id]) for item_id in item_order]
+                summary = {
+                    "total": job_state["totalFiles"],
+                    "imported": job_state["importedCount"],
+                    "duplicates": job_state["duplicateCount"],
+                    "errors": job_state["errorCount"],
+                }
+                return {"summary": summary, "results": results}
+
+            def _collect_updates(
+                *,
+                event_id: str | None = None,
+                changed_item_ids: set[str] | None = None,
+            ) -> tuple[list[str], bool]:
+                messages: list[str] = []
+                item_ids = (
+                    item_order
+                    if changed_item_ids is None
+                    else [item_id for item_id in item_order if item_id in changed_item_ids]
+                )
+
+                for item_id in item_ids:
+                    item = item_states[item_id]
+
+                    state = sent_states.get(item_id, {"file_start": False, "parsing": False, "done": False})
+
+                    if item["status"] == InvoiceImportItem.STATUS_PROCESSING and not state["file_start"]:
+                        messages.append(
+                            self._send_import_event(
+                                "file_start",
+                                {
+                                    "index": item["index"],
+                                    "filename": item["filename"],
+                                    "message": f"Processing {item['filename']}...",
+                                },
+                                event_id=event_id,
+                            )
                         )
-                    )
-                    state["file_start"] = True
+                        state["file_start"] = True
+
+                    if (
+                        item["status"] == InvoiceImportItem.STATUS_PROCESSING
+                        and isinstance(item.get("result"), dict)
+                        and item["result"].get("stage") == "parsing"
+                        and not state["parsing"]
+                    ):
+                        messages.append(
+                            self._send_import_event(
+                                "parsing",
+                                {
+                                    "index": item["index"],
+                                    "filename": item["filename"],
+                                    "message": f"Parsing {item['filename']} with AI...",
+                                },
+                                event_id=event_id,
+                            )
+                        )
+                        state["parsing"] = True
+
+                    if item["status"] in terminal_item_statuses and not state["done"]:
+                        result_data = _build_import_result_from_state(item)
+                        if item["status"] == InvoiceImportItem.STATUS_IMPORTED:
+                            event_type = "file_success"
+                            message = f"✓ Successfully imported {item['filename']}"
+                        elif item["status"] == InvoiceImportItem.STATUS_DUPLICATE:
+                            event_type = "file_duplicate"
+                            message = f"⚠ Duplicate invoice detected: {item['filename']}"
+                        else:
+                            event_type = "file_error"
+                            message = (
+                                f"✗ Error processing {item['filename']}: {result_data.get('message', 'Unknown error')}"
+                            )
+
+                        messages.append(
+                            self._send_import_event(
+                                event_type,
+                                {
+                                    "index": item["index"],
+                                    "filename": item["filename"],
+                                    "message": message,
+                                    "result": result_data,
+                                },
+                                event_id=event_id,
+                            )
+                        )
+                        state["done"] = True
+
+                    sent_states[item_id] = state
 
                 if (
-                    item["status"] == InvoiceImportItem.STATUS_PROCESSING
-                    and isinstance(item.get("result"), dict)
-                    and item["result"].get("stage") == "parsing"
-                    and not state["parsing"]
+                    job_state["status"] in terminal_statuses
+                    and job_state["processedFiles"] >= job_state["totalFiles"]
+                    and all(item_states[item_id]["status"] in terminal_item_statuses for item_id in item_order)
                 ):
+                    summary = _build_import_summary_from_state()
                     messages.append(
                         self._send_import_event(
-                            "parsing",
+                            "complete",
                             {
-                                "index": item["index"],
-                                "filename": item["filename"],
-                                "message": f"Parsing {item['filename']} with AI...",
+                                "message": f"Import complete: {summary['summary']['imported']} imported, "
+                                f"{summary['summary']['duplicates']} duplicates, {summary['summary']['errors']} errors",
+                                **summary,
                             },
                             event_id=event_id,
                         )
                     )
-                    state["parsing"] = True
+                    return messages, True
+                return messages, False
 
-                if item["status"] in terminal_item_statuses and not state["done"]:
-                    result_data = _build_import_result_from_state(item)
-                    if item["status"] == InvoiceImportItem.STATUS_IMPORTED:
-                        event_type = "file_success"
-                        message = f"✓ Successfully imported {item['filename']}"
-                    elif item["status"] == InvoiceImportItem.STATUS_DUPLICATE:
-                        event_type = "file_duplicate"
-                        message = f"⚠ Duplicate invoice detected: {item['filename']}"
-                    else:
-                        event_type = "file_error"
-                        message = (
-                            f"✗ Error processing {item['filename']}: {result_data.get('message', 'Unknown error')}"
-                        )
-
-                    messages.append(
-                        self._send_import_event(
-                            event_type,
-                            {
-                                "index": item["index"],
-                                "filename": item["filename"],
-                                "message": message,
-                                "result": result_data,
-                            },
-                            event_id=event_id,
-                        )
-                    )
-                    state["done"] = True
-
-                sent_states[item_id] = state
-
-            if (
-                job_state["status"] in terminal_statuses
-                and job_state["processedFiles"] >= job_state["totalFiles"]
-                and all(item_states[item_id]["status"] in terminal_item_statuses for item_id in item_order)
-            ):
-                summary = _build_import_summary_from_state()
-                messages.append(
-                    self._send_import_event(
-                        "complete",
-                        {
-                            "message": f"Import complete: {summary['summary']['imported']} imported, "
-                            f"{summary['summary']['duplicates']} duplicates, {summary['summary']['errors']} errors",
-                            **summary,
-                        },
-                        event_id=event_id,
-                    )
-                )
-                return messages, True
-            return messages, False
-
-        initial_messages, done = _collect_updates()
-        for message in initial_messages:
-            yield message
-        if done:
-            return
-
-        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
-            if stream_event is None:
-                yield ": keep-alive\n\n"
-                continue
-
-            changed_ids: set[str] | None = None
-            if stream_event.event == "invoice_import_job_changed":
-                payload = normalize_invoice_import_job_payload(stream_event.payload)
-                if payload is None:
-                    _refresh_job_state_from_db()
-                else:
-                    job_state = payload
-                changed_ids = None
-            elif stream_event.event == "invoice_import_item_changed":
-                payload = normalize_invoice_import_item_payload(stream_event.payload)
-                if payload is None:
-                    raw_item_id = first_present(stream_event.payload, "itemId", "item_id")
-                    refreshed_item_id = _refresh_item_state_from_db(str(raw_item_id) if raw_item_id else None)
-                    changed_ids = {refreshed_item_id} if refreshed_item_id else None
-                else:
-                    item_id = payload["itemId"]
-                    item_states[item_id] = payload
-                    if item_id not in item_order:
-                        item_order.append(item_id)
-                    changed_ids = {item_id}
-            else:
-                _refresh_job_state_from_db()
-                changed_ids = None
-
-            messages, done = _collect_updates(event_id=stream_event.id, changed_item_ids=changed_ids)
-            for message in messages:
+            initial_messages, done = _collect_updates()
+            for message in initial_messages:
                 yield message
             if done:
                 return
+
+            async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=last_event_id):
+                if stream_event is None:
+                    yield ": keep-alive\n\n"
+                    continue
+
+                changed_ids: set[str] | None = None
+                if stream_event.event == "invoice_import_job_changed":
+                    payload = normalize_invoice_import_job_payload(stream_event.payload)
+                    if payload is None:
+                        await _refresh_job_state_from_db()
+                    else:
+                        job_state = payload
+                    changed_ids = None
+                elif stream_event.event == "invoice_import_item_changed":
+                    payload = normalize_invoice_import_item_payload(stream_event.payload)
+                    if payload is None:
+                        raw_item_id = first_present(stream_event.payload, "itemId", "item_id")
+                        refreshed_item_id = await _refresh_item_state_from_db(str(raw_item_id) if raw_item_id else None)
+                        changed_ids = {refreshed_item_id} if refreshed_item_id else None
+                    else:
+                        item_id = payload["itemId"]
+                        item_states[item_id] = payload
+                        if item_id not in item_order:
+                            item_order.append(item_id)
+                        changed_ids = {item_id}
+                else:
+                    await _refresh_job_state_from_db()
+                    changed_ids = None
+
+                messages, done = _collect_updates(event_id=stream_event.id, changed_item_ids=changed_ids)
+                for message in messages:
+                    yield message
+                if done:
+                    return
+
+        return _async_stream()
+
 
     @staticmethod
     def _send_import_event(event_type, data, *, event_id: str | None = None):

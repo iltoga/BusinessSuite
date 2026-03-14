@@ -481,7 +481,7 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if timezone_query:
             zones = [zone for zone in zones if timezone_query in zone.lower()]
 
-        window = zones[offset : offset + page_size]
+        window = [z for i, z in enumerate(zones) if offset <= i < offset + page_size]
         payload = [{"value": zone, "label": zone} for zone in window]
         return Response(payload)
 
@@ -489,8 +489,8 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def ack(self, request, pk=None):
         """Record delivery channel for a reminder (in_app or system)."""
         reminder = self.get_object()
-        channel = (request.data.get("channel") or "").strip()
-        device_label = (request.data.get("device_label") or "").strip()
+        channel = str(request.data.get("channel") or "").strip()
+        device_label = str(request.data.get("device_label") or "").strip()
         allowed = {CalendarReminder.DELIVERY_IN_APP, CalendarReminder.DELIVERY_SYSTEM}
         if channel not in allowed:
             return self.error_response(
@@ -516,12 +516,12 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
 
 
-class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
+class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = WebPushSubscriptionSerializer
 
     def get_serializer_class(self):
-        action = getattr(self, "action", None)
+        action = str(getattr(self, "action", ""))
         action_map = {
             "subscriptions": WebPushSubscriptionSerializer,
             "register": WebPushSubscriptionUpsertSerializer,
@@ -530,7 +530,7 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             "send_test": AdminPushNotificationSendSerializer,
             "send_test_whatsapp": AdminWhatsappTestSendSerializer,
         }
-        return action_map.get(action, self.serializer_class)
+        return action_map.get(action, super().get_serializer_class())
 
     def _ensure_admin(self, request):
         if not request.user or not request.user.is_staff:
@@ -903,6 +903,9 @@ def calendar_reminders_stream_sse(request):
     if not (user and user.is_authenticated):
         return JsonResponse({"error": "Authentication required"}, status=403)
 
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
     def _latest_reminder_state():
         latest = (
             CalendarReminder.objects.filter(created_by=user)
@@ -938,11 +941,12 @@ def calendar_reminders_stream_sse(request):
             payload["changedReminderId"] = changed_reminder_id
         return payload
 
-    def event_stream():
+    from api.utils.redis_sse import iter_replay_and_live_events_async
+    async def event_stream():
         stream_key = stream_user_key(user.id)
         replay_cursor = resolve_last_event_id(request)
         current_cursor = replay_cursor or "0-0"
-        last_reminder_id, last_updated_at = _latest_reminder_state()
+        last_reminder_id, last_updated_at = await _latest_reminder_state()
         fallback_refresh_interval_seconds = 1.0
         last_fallback_refresh_at = time.monotonic()
 
@@ -955,7 +959,7 @@ def calendar_reminders_stream_sse(request):
         )
         yield format_sse_event(data=snapshot_payload)
 
-        for stream_event in iter_replay_and_live_events(
+        async for stream_event in iter_replay_and_live_events_async(
             stream_key=stream_key,
             last_event_id=replay_cursor,
             block_ms=1_000,
@@ -965,7 +969,7 @@ def calendar_reminders_stream_sse(request):
                     yield ": keepalive\n\n"
                     now = time.monotonic()
                     if (now - last_fallback_refresh_at) >= fallback_refresh_interval_seconds:
-                        current_reminder_id, current_last_updated_at = _latest_reminder_state()
+                        current_reminder_id, current_last_updated_at = await _latest_reminder_state()
                         if (current_reminder_id, current_last_updated_at) != (last_reminder_id, last_updated_at):
                             payload = _build_payload(
                                 event="calendar_reminders_changed",
@@ -988,7 +992,7 @@ def calendar_reminders_stream_sse(request):
                 except (TypeError, ValueError):
                     changed_reminder_id = None
 
-                current_reminder_id, current_last_updated_at = _latest_reminder_state()
+                current_reminder_id, current_last_updated_at = await _latest_reminder_state()
                 payload = _build_payload(
                     event="calendar_reminders_changed",
                     cursor=stream_event.id,
@@ -1019,9 +1023,16 @@ def calendar_reminders_stream_sse(request):
 def workflow_notifications_stream_sse(request):
     """SSE endpoint for workflow notification center live updates."""
     user = request.user
-    if not is_staff_or_admin_group(user):
+    from api.views_imports import is_staff_or_admin_group
+    
+    is_admin = is_staff_or_admin_group(user)
+    if not is_admin:
+        from api.views_imports import STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR
         return JsonResponse({"error": STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
 
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
     def _latest_recent_notification_state():
         cutoff = timezone.now() - timedelta(hours=RECENT_WORKFLOW_NOTIFICATION_WINDOW_HOURS)
         latest = (
@@ -1059,11 +1070,12 @@ def workflow_notifications_stream_sse(request):
             payload["changedNotificationId"] = changed_notification_id
         return payload
 
-    def event_stream():
+    from api.utils.redis_sse import iter_replay_and_live_events_async
+    async def event_stream():
         stream_key = stream_job_key("workflow-notifications")
         replay_cursor = resolve_last_event_id(request)
         current_cursor = replay_cursor or "0-0"
-        last_notification_id, last_updated_at = _latest_recent_notification_state()
+        last_notification_id, last_updated_at = await _latest_recent_notification_state()
         fallback_refresh_interval_seconds = 1.0
         last_fallback_refresh_at = time.monotonic()
 
@@ -1076,7 +1088,7 @@ def workflow_notifications_stream_sse(request):
         )
         yield format_sse_event(data=snapshot_payload)
 
-        for stream_event in iter_replay_and_live_events(
+        async for stream_event in iter_replay_and_live_events_async(
             stream_key=stream_key,
             last_event_id=replay_cursor,
             block_ms=1_000,
@@ -1086,7 +1098,7 @@ def workflow_notifications_stream_sse(request):
                     yield ": keepalive\n\n"
                     now = time.monotonic()
                     if (now - last_fallback_refresh_at) >= fallback_refresh_interval_seconds:
-                        current_notification_id, current_last_updated_at = _latest_recent_notification_state()
+                        current_notification_id, current_last_updated_at = await _latest_recent_notification_state()
                         if (current_notification_id, current_last_updated_at) != (
                             last_notification_id,
                             last_updated_at,
@@ -1114,7 +1126,7 @@ def workflow_notifications_stream_sse(request):
                     except (TypeError, ValueError):
                         changed_notification_id = None
 
-                current_notification_id, current_last_updated_at = _latest_recent_notification_state()
+                current_notification_id, current_last_updated_at = await _latest_recent_notification_state()
                 payload = _build_payload(
                     event="workflow_notifications_changed",
                     cursor=stream_event.id,
@@ -1144,30 +1156,49 @@ def workflow_notifications_stream_sse(request):
 @sse_token_auth_required
 def async_job_status_sse(request, job_id):
     """Generic SSE endpoint for tracking AsyncJob status."""
-    job_queryset = restrict_to_owner_unless_privileged(AsyncJob.objects.filter(id=job_id), request.user)
-    if not job_queryset.exists():
+    from api.views_imports import restrict_to_owner_unless_privileged
+    
+    def _get_job_queryset():
+        return restrict_to_owner_unless_privileged(AsyncJob.objects.filter(id=job_id), request.user)
+    
+    def _job_exists(job_queryset):
+        return job_queryset.exists()
+
+    job_queryset = _get_job_queryset()
+    exists = _job_exists(job_queryset)
+    if not exists:
         return JsonResponse({"error": "Job not found"}, status=404)
 
-    def event_stream():
+    from api.utils.redis_sse import iter_replay_and_live_events_async
+    async def event_stream():
         replay_cursor = resolve_last_event_id(request)
         stream_key = stream_job_key(job_id)
         last_progress = None
         last_status = None
 
+        def _get_job():
+            return job_queryset.get()
+            
+        def _serialize_job(job):
+            from api.utils.stream_payloads import serialize_async_job_payload
+            return serialize_async_job_payload(job)
+
+        from asgiref.sync import sync_to_async
         try:
-            job = job_queryset.get()
+            job = await sync_to_async(_get_job)()
         except AsyncJob.DoesNotExist:
             yield format_sse_event(data={"error": "Job not found"})
             return
 
-        initial_payload = serialize_async_job_payload(job)
+        initial_payload = await sync_to_async(_serialize_job)(job)
         yield format_sse_event(data=initial_payload)
         last_progress = job.progress
         last_status = job.status
         if job.status in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
             return
 
-        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
+        from api.utils.stream_payloads import normalize_async_job_payload
+        async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=replay_cursor):
             try:
                 if stream_event is None:
                     yield ": keepalive\n\n"
@@ -1175,8 +1206,9 @@ def async_job_status_sse(request, job_id):
 
                 data = normalize_async_job_payload(stream_event.payload)
                 if data is None or data["status"] in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
-                    job = job_queryset.get()
-                    data = serialize_async_job_payload(job)
+                    from asgiref.sync import sync_to_async
+                    job = await sync_to_async(_get_job)()
+                    data = await sync_to_async(_serialize_job)(job)
 
                 if data["progress"] == last_progress and data["status"] == last_status:
                     continue

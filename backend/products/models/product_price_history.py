@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 
 from django.db import models
 from django.db.models import Q
@@ -18,8 +19,8 @@ class ProductPriceHistory(models.Model):
         related_name="price_history",
         on_delete=models.CASCADE,
     )
-    base_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=0.00)
-    retail_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=0.00)
+    base_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=Decimal("0.00"))
+    retail_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=Decimal("0.00"))
     currency = models.CharField(max_length=3)
     effective_from = models.DateTimeField(db_index=True)
     effective_to = models.DateTimeField(blank=True, null=True, db_index=True)

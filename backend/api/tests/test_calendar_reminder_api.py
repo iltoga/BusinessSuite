@@ -37,26 +37,53 @@ class CalendarReminderApiTests(TestCase):
         self.assertTrue(data_line, f"Expected SSE data line in chunk: {chunk!r}")
         return json.loads(data_line.replace("data: ", "", 1))
 
+    def _sse_iter(self, stream):
+        """Return a per-stream SyncAsyncIter that runs in a dedicated event loop thread.
+        
+        NOTE: For tests that also do ORM writes between reads, use the async_to_sync
+        pattern (wrapping the whole test body) instead, which guarantees the main
+        thread handles all DB access.
+        """
+        key = id(stream)
+        if not hasattr(self, '_sync_iters'):
+            self._sync_iters = {}
+        if key not in self._sync_iters:
+            from api.tests.async_iter_helper import SyncAsyncIter
+            self._sync_iters[key] = SyncAsyncIter(stream)
+        return self._sync_iters[key]
+
     def _next_sse_payload_with_timeout(self, stream, timeout_seconds: int = 5):
-        while True:
-            chunk = self._next_sse_chunk_with_timeout(stream, timeout_seconds)
-            if isinstance(chunk, bytes):
-                chunk = chunk.decode("utf-8")
-            if chunk.startswith(":"):
-                continue
-            return self._decode_sse_payload(chunk)
+        """Consume chunks from the stream, skipping keepalive lines, and return the first JSON payload."""
+        import asyncio
+        from asgiref.sync import async_to_sync
+
+        async def _read():
+            import asyncio
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(stream.__anext__(), timeout=timeout_seconds)
+                except asyncio.TimeoutError:
+                    raise TimeoutError(f"SSE stream read exceeded {timeout_seconds}s")
+                if isinstance(chunk, bytes):
+                    chunk = chunk.decode("utf-8")
+                if chunk.startswith(":"):
+                    continue
+                return self._decode_sse_payload(chunk)
+
+        return async_to_sync(_read)()
 
     def _next_sse_chunk_with_timeout(self, stream, timeout_seconds: int = 5):
-        def _on_timeout(signum, frame):  # pragma: no cover - signal handler
-            raise TimeoutError(f"SSE stream read exceeded {timeout_seconds}s")
+        """Read the next raw chunk from the stream."""
+        import asyncio
+        from asgiref.sync import async_to_sync
 
-        previous_handler = signal.signal(signal.SIGALRM, _on_timeout)
-        signal.setitimer(signal.ITIMER_REAL, timeout_seconds)
-        try:
-            return next(stream)
-        finally:
-            signal.setitimer(signal.ITIMER_REAL, 0)
-            signal.signal(signal.SIGALRM, previous_handler)
+        async def _read():
+            try:
+                return await asyncio.wait_for(stream.__anext__(), timeout=timeout_seconds)
+            except asyncio.TimeoutError:
+                raise TimeoutError(f"SSE stream read exceeded {timeout_seconds}s")
+
+        return async_to_sync(_read)()
 
     def test_bulk_create_creates_one_record_per_user(self):
         response = self.client.post(
@@ -374,32 +401,63 @@ class CalendarReminderApiTests(TestCase):
         self.assertEqual(reminder.delivery_device_label, "Desktop Chrome")
 
     def test_stream_returns_snapshot_and_changed_event(self):
-        reminder = CalendarReminder.objects.create(
-            user=self.user,
-            created_by=self.user,
-            reminder_date=timezone.localdate(),
-            reminder_time=timezone.localtime().time().replace(second=0, microsecond=0),
-            timezone="Asia/Makassar",
-            content="SSE reminder",
-            status=CalendarReminder.STATUS_PENDING,
-        )
+        from asgiref.sync import async_to_sync
 
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
-        response = self.client.get("/api/calendar-reminders/stream/")
-        self.assertEqual(response.status_code, 200)
-        payload = self._next_sse_payload_with_timeout(response.streaming_content)
-        self.assertEqual(payload["event"], "calendar_reminders_snapshot")
-        self.assertEqual(payload["reason"], "initial")
-        self.assertEqual(payload["lastReminderId"], reminder.id)
+        @async_to_sync
+        async def run_test():
+            from asgiref.sync import sync_to_async
+            import asyncio
+            import json
 
-        reminder.status = CalendarReminder.STATUS_FAILED
-        reminder.error_message = "Delivery error"
-        reminder.save(update_fields=["status", "error_message", "updated_at"])
+            reminder = await sync_to_async(CalendarReminder.objects.create)(
+                user=self.user,
+                created_by=self.user,
+                reminder_date=timezone.localdate(),
+                reminder_time=timezone.localtime().time().replace(second=0, microsecond=0),
+                timezone="Asia/Makassar",
+                content="SSE reminder",
+                status=CalendarReminder.STATUS_PENDING,
+            )
 
-        changed_payload = self._next_sse_payload_with_timeout(response.streaming_content)
-        self.assertEqual(changed_payload["event"], "calendar_reminders_changed")
-        self.assertEqual(changed_payload["lastReminderId"], reminder.id)
-        self.assertIn(changed_payload["reason"], {"signal", "db_state_change"})
+            await sync_to_async(self.client.credentials)(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+            response = await sync_to_async(self.client.get)("/api/calendar-reminders/stream/")
+            await sync_to_async(self.assertEqual)(response.status_code, 200)
+
+            stream = response.streaming_content
+
+            async def get_payload():
+                while True:
+                    try:
+                        chunk = await asyncio.wait_for(anext(stream), timeout=5.0)
+                    except asyncio.TimeoutError:
+                        raise TimeoutError("SSE stream read exceeded 5s")
+                    if isinstance(chunk, bytes):
+                        chunk = chunk.decode("utf-8")
+                    if chunk.startswith(":"):
+                        continue
+                    data_line = next((line for line in chunk.splitlines() if line.startswith("data: ")), "")
+                    if not data_line:
+                        continue
+                    return json.loads(data_line.replace("data: ", "", 1))
+
+            payload = await get_payload()
+            await sync_to_async(self.assertEqual)(payload["event"], "calendar_reminders_snapshot")
+            await sync_to_async(self.assertEqual)(payload["reason"], "initial")
+            await sync_to_async(self.assertEqual)(payload["lastReminderId"], reminder.id)
+
+            reminder.status = CalendarReminder.STATUS_FAILED
+            reminder.error_message = "Delivery error"
+            await sync_to_async(reminder.save)(update_fields=["status", "error_message", "updated_at"])
+
+            changed_payload = await get_payload()
+            if changed_payload.get("event") == "calendar_reminders_error":
+                print("\n\nERROR PAYLOAD:", changed_payload, "\n\n")
+                
+            await sync_to_async(self.assertEqual)(changed_payload["event"], "calendar_reminders_changed")
+            await sync_to_async(self.assertEqual)(changed_payload["lastReminderId"], reminder.id)
+            await sync_to_async(self.assertIn)(changed_payload["reason"], {"signal", "db_state_change"})
+
+        run_test()
 
     def test_stream_ignores_updates_for_other_creators_cursor_still_advances(self):
         reminder = CalendarReminder.objects.create(
@@ -417,14 +475,34 @@ class CalendarReminderApiTests(TestCase):
         after_cursor = get_calendar_reminder_stream_cursor()
         self.assertGreater(after_cursor, before_cursor)
 
-    @patch("api.view_notifications.iter_replay_and_live_events", return_value=iter([None]))
-    def test_stream_emits_keepalive_when_idle(self, _iter_events):
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
-        response = self.client.get("/api/calendar-reminders/stream/")
+    async def _mock_keepalive_events(*args, **kwargs):
+        yield None
 
-        self.assertEqual(response.status_code, 200)
-        _ = self._decode_sse_payload(next(response.streaming_content))
-        keepalive_chunk = next(response.streaming_content)
-        if isinstance(keepalive_chunk, bytes):
-            keepalive_chunk = keepalive_chunk.decode("utf-8")
-        self.assertEqual(keepalive_chunk, ": keepalive\n\n")
+    @patch("api.utils.redis_sse.iter_replay_and_live_events_async", side_effect=_mock_keepalive_events)
+    def test_stream_emits_keepalive_when_idle(self, _iter_events):
+        from asgiref.sync import async_to_sync
+
+        @async_to_sync
+        async def run_test():
+            import asyncio
+            from asgiref.sync import sync_to_async
+
+            await sync_to_async(self.client.credentials)(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+            response = await sync_to_async(self.client.get)("/api/calendar-reminders/stream/")
+            await sync_to_async(self.assertEqual)(response.status_code, 200)
+
+            stream = response.streaming_content
+
+            # First item: initial snapshot
+            snapshot_chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
+            if isinstance(snapshot_chunk, bytes):
+                snapshot_chunk = snapshot_chunk.decode("utf-8")
+            _ = self._decode_sse_payload(snapshot_chunk)
+
+            # Second item: keepalive
+            keepalive_chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
+            if isinstance(keepalive_chunk, bytes):
+                keepalive_chunk = keepalive_chunk.decode("utf-8")
+            await sync_to_async(self.assertEqual)(keepalive_chunk, ": keepalive\n\n")
+
+        run_test()

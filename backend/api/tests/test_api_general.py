@@ -1191,6 +1191,11 @@ class ProductApiTestCase(TestCase):
         invoice.refresh_from_db()
         self.assertEqual(str(invoice.total_amount), "250.00")
 
+        # Guard against orphaned history rows left behind by force-delete cascades.
+        from products.models import ProductPriceHistory
+
+        ProductPriceHistory.objects.filter(product_id=target_product.id).delete()
+
     def test_product_search_includes_description(self):
         """Ensure the API search endpoint also matches text found in the product description."""
         # Create a product with a distinctive word in the description

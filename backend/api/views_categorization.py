@@ -11,10 +11,10 @@ Endpoints for AI-powered document classification:
 import os
 import time
 import traceback as tb_module
-from typing import Any, Generator, cast
+from typing import Any, cast
 
 from api.serializers.categorization_serializer import CategorizationApplySerializer, DocumentCategorizationJobSerializer
-from api.utils.redis_sse import iter_replay_and_live_events
+from api.utils.redis_sse import iter_replay_and_live_events_async
 from api.utils.sse_auth import sse_token_auth_required
 from core.services.ai_document_categorizer import (
     AIDocumentCategorizer,
@@ -453,7 +453,10 @@ def categorization_stream_sse(request, job_id):
     replay_cursor = resolve_last_event_id(request)
     stream_key = stream_job_key(job.id)
 
-    def event_stream():
+    from asgiref.sync import sync_to_async
+
+    async def _async_stream():
+        nonlocal job
         sent_states = {}
         total_files = job.total_files
 
@@ -486,13 +489,14 @@ def categorization_stream_sse(request, job_id):
             },
         )
 
-        def _collect_updates(
+        async def _collect_updates(
             *,
             event_id: str | None = None,
             changed_item_ids: set[str] | None = None,
         ) -> tuple[list[str], bool]:
+            nonlocal job, total_files
             messages: list[str] = []
-            job.refresh_from_db()
+            await sync_to_async(job.refresh_from_db)()
             total_files = job.total_files
 
             job_result = job.result if isinstance(job.result, dict) else {}
@@ -593,9 +597,11 @@ def categorization_stream_sse(request, job_id):
                 upload_state["complete_sent"] = True
 
             if changed_item_ids is None:
-                items = list(job.items.all().order_by("sort_index"))
+                items = await sync_to_async(lambda: list(job.items.all().order_by("sort_index")))()
             elif changed_item_ids:
-                items = list(job.items.filter(id__in=changed_item_ids).order_by("sort_index"))
+                items = await sync_to_async(
+                    lambda: list(job.items.filter(id__in=changed_item_ids).order_by("sort_index"))
+                )()
             else:
                 items = []
 
@@ -781,7 +787,9 @@ def categorization_stream_sse(request, job_id):
             )
 
             if total_files > 0 and job.processed_files >= total_files and all_done:
-                summary_items = items if changed_item_ids is None else list(job.items.all().order_by("sort_index"))
+                summary_items = items if changed_item_ids is None else await sync_to_async(
+                    lambda: list(job.items.all().order_by("sort_index"))
+                )()
                 # Build final results
                 results = []
                 for item in summary_items:
@@ -840,7 +848,7 @@ def categorization_stream_sse(request, job_id):
             normalized = str(raw_item_id).strip()
             return normalized or None
 
-        messages, done = _collect_updates()
+        messages, done = await _collect_updates()
         for message in messages:
             yield message
         if done:
@@ -854,14 +862,14 @@ def categorization_stream_sse(request, job_id):
         pending_item_ids: set[str] = set()
         force_full_refresh = False
 
-        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
+        async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=replay_cursor):
             if stream_event is None:
                 if pending_event_id is not None:
                     should_full_refresh = force_full_refresh or (
                         time.monotonic() - last_full_refresh_at >= full_refresh_interval_seconds
                     )
                     changed_ids = None if should_full_refresh else set(pending_item_ids)
-                    messages, done = _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
+                    messages, done = await _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
                     pending_event_id = None
                     pending_item_ids.clear()
                     force_full_refresh = False
@@ -887,7 +895,7 @@ def categorization_stream_sse(request, job_id):
 
             should_full_refresh = force_full_refresh or (now - last_full_refresh_at >= full_refresh_interval_seconds)
             changed_ids = None if should_full_refresh else set(pending_item_ids)
-            messages, done = _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
+            messages, done = await _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
             pending_event_id = None
             pending_item_ids.clear()
             force_full_refresh = False
@@ -902,13 +910,11 @@ def categorization_stream_sse(request, job_id):
         if pending_event_id is not None:
             should_full_refresh = force_full_refresh or (time.monotonic() - last_full_refresh_at >= full_refresh_interval_seconds)
             changed_ids = None if should_full_refresh else set(pending_item_ids)
-            messages, done = _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
+            messages, done = await _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
             for message in messages:
                 yield message
-            if done:
-                return
 
-    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response = StreamingHttpResponse(_async_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
     return response
@@ -1206,7 +1212,10 @@ def document_validation_stream_sse(request, document_id):
     replay_cursor = resolve_last_event_id(request)
     stream_key = stream_file_key(document.id)
 
-    def event_stream():
+    from asgiref.sync import sync_to_async
+
+    async def _async_stream():
+        nonlocal document
         yield _send_event(
             "start",
             {
@@ -1216,10 +1225,15 @@ def document_validation_stream_sse(request, document_id):
         )
 
         last_status = None
+        terminal_statuses = {
+            Document.AI_VALIDATION_VALID,
+            Document.AI_VALIDATION_INVALID,
+            Document.AI_VALIDATION_ERROR,
+        }
 
-        def _emit_status(*, event_id: str | None = None) -> Generator[str, None, bool]:
-            nonlocal last_status
-            document.refresh_from_db()
+        async def _emit_status(*, event_id: str | None = None):
+            nonlocal last_status, document
+            await sync_to_async(document.refresh_from_db)()
             current_status = document.ai_validation_status
 
             if current_status != last_status:
@@ -1233,11 +1247,7 @@ def document_validation_stream_sse(request, document_id):
                         event_id=event_id,
                     )
 
-                elif current_status in (
-                    Document.AI_VALIDATION_VALID,
-                    Document.AI_VALIDATION_INVALID,
-                    Document.AI_VALIDATION_ERROR,
-                ):
+                elif current_status in terminal_statuses:
                     v_result = document.ai_validation_result or {}
                     v_runtime = _extract_ai_runtime_metadata(v_result)
                     yield _send_event(
@@ -1254,29 +1264,23 @@ def document_validation_stream_sse(request, document_id):
                         },
                         event_id=event_id,
                     )
-                    return True
-
                 last_status = current_status
 
-            return current_status in (
-                Document.AI_VALIDATION_VALID,
-                Document.AI_VALIDATION_INVALID,
-                Document.AI_VALIDATION_ERROR,
-            )
-
-        done = yield from _emit_status()
-        if done:
+        async for chunk in _emit_status():
+            yield chunk
+        if last_status in terminal_statuses:
             return
 
-        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
+        async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=replay_cursor):
             if stream_event is None:
                 yield ": keep-alive\n\n"
                 continue
-            done = yield from _emit_status(event_id=stream_event.id)
-            if done:
+            async for chunk in _emit_status(event_id=stream_event.id):
+                yield chunk
+            if last_status in terminal_statuses:
                 return
 
-    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response = StreamingHttpResponse(_async_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
     return response

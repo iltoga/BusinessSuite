@@ -1,17 +1,24 @@
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
 
 import redis
 from django.conf import settings
+
+if TYPE_CHECKING:
+    # `redis.asyncio` is not exported in redis' __all__, so type checkers will
+    # complain if imported unconditionally. Keep it under TYPE_CHECKING for
+    # static typing only.
+    from redis.asyncio import Redis as AsyncRedis
 
 _LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
 def _replace_db(redis_url: str, db: int) -> str:
     parsed = urlparse(redis_url)
-    return urlunparse(parsed._replace(path=f"/{int(db)}"))
+    return str(urlunparse(parsed._replace(path=f"/{int(db)}")))
 
 
 def _setting_or_env(name: str, default: str = "") -> str:
@@ -47,16 +54,19 @@ def _normalize_redis_url(redis_url: str) -> str:
         return text
 
     netloc = ""
-    if parsed.username is not None:
-        netloc += parsed.username
-        if parsed.password is not None:
-            netloc += f":{parsed.password}"
+    username = parsed.username
+    if username is not None:
+        netloc += str(username)
+        password = parsed.password
+        if password is not None:
+            netloc += f":{password}"
         netloc += "@"
     netloc += normalized_host
-    if parsed.port is not None:
-        netloc += f":{parsed.port}"
+    port = parsed.port
+    if port is not None:
+        netloc += f":{port}"
 
-    return urlunparse(parsed._replace(netloc=netloc))
+    return str(urlunparse(parsed._replace(netloc=netloc)))
 
 
 def _build_redis_url() -> str:
@@ -99,6 +109,26 @@ def get_redis_client(
     socket_connect_timeout: float = 5,
 ) -> redis.Redis:
     return redis.Redis.from_url(
+        build_redis_url(db=db),
+        decode_responses=decode_responses,
+        socket_timeout=socket_timeout,
+        socket_connect_timeout=socket_connect_timeout,
+        retry_on_timeout=True,
+    )
+
+
+def get_async_redis_client(
+    *,
+    db: int | None = None,
+    decode_responses: bool = False,
+    socket_timeout: float = 5,
+    socket_connect_timeout: float = 5,
+) -> "AsyncRedis":
+    # `redis.asyncio` is not exported in redis' __all__, so type checkers may raise
+    # `reportPrivateImportUsage`. We still import it at runtime for async support.
+    import redis.asyncio as aioredis  # type: ignore[reportPrivateImportUsage]
+
+    return aioredis.from_url(
         build_redis_url(db=db),
         decode_responses=decode_responses,
         socket_timeout=socket_timeout,

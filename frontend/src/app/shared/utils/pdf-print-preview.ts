@@ -1,42 +1,58 @@
 function writePreviewShell(targetWindow: Window, bodyMarkup: string): void {
-  targetWindow.document.write(`
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>Print Preview</title>
-        <style>
-          html, body {
-            margin: 0;
-            height: 100%;
-            background: #111;
-            color: #f5f5f5;
-            font-family: Inter, system-ui, sans-serif;
-          }
-          .preview-loading {
-            display: grid;
-            place-items: center;
-            height: 100%;
-            text-align: center;
-            padding: 2rem;
-          }
-          .preview-loading p {
-            opacity: 0.8;
-            margin: 0;
-          }
-          embed {
-            width: 100%;
-            height: 100%;
-            border: 0;
-          }
-        </style>
-      </head>
-      <body>
-        ${bodyMarkup}
-      </body>
-    </html>
-  `);
-  targetWindow.document.close();
+  const doc = targetWindow.document;
+  const html = doc.documentElement;
+
+  let head = doc.head;
+  if (!head) {
+    head = doc.createElement('head');
+    html.insertBefore(head, doc.body ?? null);
+  }
+
+  let body = doc.body;
+  if (!body) {
+    body = doc.createElement('body');
+    html.appendChild(body);
+  }
+
+  head.replaceChildren();
+
+  const charset = doc.createElement('meta');
+  charset.setAttribute('charset', 'utf-8');
+
+  const title = doc.createElement('title');
+  title.textContent = 'Print Preview';
+
+  const style = doc.createElement('style');
+  style.textContent = `
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #111;
+      color: #f5f5f5;
+      font-family: Inter, system-ui, sans-serif;
+    }
+    .preview-loading {
+      display: grid;
+      place-items: center;
+      height: 100%;
+      text-align: center;
+      padding: 2rem;
+    }
+    .preview-loading p {
+      opacity: 0.8;
+      margin: 0;
+    }
+    embed {
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+  `;
+
+  head.append(charset, title, style);
+
+  body.replaceChildren();
+  body.innerHTML = bodyMarkup;
 }
 
 export function openPendingPdfPrintPreviewWindow(): Window {
@@ -107,20 +123,35 @@ export async function openPdfPrintPreview(
     popup,
     `
       <embed src="${blobUrl}" type="application/pdf" />
-      <script>
-        window.addEventListener('load', () => {
-          setTimeout(() => {
-            try {
-              window.focus();
-              window.print();
-            } catch (error) {
-              console.error(error);
-            }
-          }, 700);
-        });
-      </script>
     `,
   );
+
+  let didPrint = false;
+  const triggerPrint = () => {
+    if (didPrint) {
+      return;
+    }
+    didPrint = true;
+    try {
+      popup.focus();
+      popup.print();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const embed = popup.document.querySelector('embed');
+  if (embed) {
+    embed.addEventListener(
+      'load',
+      () => {
+        window.setTimeout(triggerPrint, 200);
+      },
+      { once: true },
+    );
+  }
+
+  window.setTimeout(triggerPrint, 700);
 
   const cleanup = () => {
     try {

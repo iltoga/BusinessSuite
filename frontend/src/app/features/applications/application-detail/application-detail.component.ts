@@ -20,6 +20,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { DocumentTypesService } from '@/core/api/api/document-types.service';
+import { AsyncJob } from '@/core/api';
 import {
   ApplicationsService,
   type ApplicationDetail,
@@ -69,6 +70,7 @@ import { downloadBlob } from '@/shared/utils/file-download';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { catchError, forkJoin, of, Subscription } from 'rxjs';
 
+import { JobService } from '@/core/services/job.service';
 import { MultiFileUploadComponent } from '@/shared/components/multi-file-upload/multi-file-upload.component';
 import { ApplicationWorkflowTimelineComponent } from './application-workflow-timeline.component';
 import {
@@ -149,6 +151,7 @@ export class ApplicationDetailComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   readonly isDevelopmentMode = isDevMode();
   private categorizationService = inject(DocumentCategorizationService);
+  private jobService = inject(JobService);
 
   readonly application = signal<ApplicationDetail | null>(null);
   readonly isLoading = signal(true);
@@ -451,7 +454,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   private readonly workflowTimezone = 'Asia/Singapore';
 
-  private pollTimer: number | null = null;
+  private pollSub: Subscription | null = null;
   private pendingPassportRefreshTimer: number | null = null;
   private pendingPassportRefreshEnabled = false;
   private pendingPassportRefreshAttempts = 0;
@@ -634,11 +637,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.loadDocumentTypes();
 
     this.destroyRef.onDestroy(() => {
-      if (this.pollTimer) {
-        if (this.isBrowser) {
-          window.clearTimeout(this.pollTimer);
-        }
-      }
+      this.pollSub?.unsubscribe();
       this.clearPendingPassportRefresh();
       this.clearUploadPreview();
       this.clearExistingPreview();
@@ -1193,12 +1192,14 @@ export class ApplicationDetailComponent implements OnInit {
       })
       .subscribe({
         next: (response) => {
-          const statusUrl =
-            ('statusUrl' in response && response.statusUrl) ||
-            (response as { status_url?: string }).status_url;
-          if (statusUrl) {
-            this.pollOcrStatus(statusUrl, 0);
+          // If the backend returned a job_id, subscribe to the SSE stream
+          const jobId =
+            ('jobId' in response && response.jobId) ||
+            (response as { job_id?: string }).job_id;
+          if (jobId && typeof jobId === 'string') {
+            this.trackOcrJob(jobId);
           } else {
+            // Fallback for immediate complete or legacy response
             this.handleOcrResult(response as unknown as OcrStatusResponse);
           }
         },
@@ -2561,41 +2562,43 @@ export class ApplicationDetailComponent implements OnInit {
     return new Date(Date.UTC(year, month - 1, day));
   }
 
-  private pollOcrStatus(statusUrl: string, attempt: number): void {
-    const maxAttempts = 180;
-    const intervalMs = 1000;
+  private trackOcrJob(jobId: string): void {
+    this.pollSub?.unsubscribe();
 
-    if (attempt >= maxAttempts) {
-      this.toast.error('OCR processing timed out');
-      this.ocrPolling.set(false);
-      return;
-    }
+    this.pollSub = this.jobService.watchJob(jobId).subscribe({
+      next: (jobStatus: AsyncJob) => {
+        if (jobStatus.status === 'completed') {
+          // Job is complete, get the final result mapping it as OcrStatusResponse
+          const jobResult = (jobStatus.result as Record<string, any>) || {};
+          const result: OcrStatusResponse = {
+            ...jobResult,
+            status: 'completed',
+            jobId: jobStatus.id,
+          };
+          this.handleOcrResult(result);
+          this.pollSub?.unsubscribe();
+          return;
+        }
 
-    this.pollTimer = window.setTimeout(() => {
-      this.applicationsService.getDocumentOcrStatus(statusUrl).subscribe({
-        next: (status) => {
-          if (status.status === 'completed') {
-            this.handleOcrResult(status as unknown as OcrStatusResponse);
-            return;
-          }
-          if (status.status === 'failed') {
-            this.toast.error(status.error ?? 'OCR failed');
-            this.ocrPolling.set(false);
-            return;
-          }
-          if (typeof status.progress === 'number') {
-            this.ocrStatus.set(`Processing ${status.progress}%`);
-          } else {
-            this.ocrStatus.set('Processing');
-          }
-          this.pollOcrStatus(statusUrl, attempt + 1);
-        },
-        error: (error) => {
-          this.toast.error(extractServerErrorMessage(error) || 'Failed to check OCR status');
+        if (jobStatus.status === 'failed') {
+          const jobResult = (jobStatus.result as Record<string, any>) || {};
+          this.toast.error((jobResult['error'] as string) || 'OCR failed');
           this.ocrPolling.set(false);
-        },
-      });
-    }, intervalMs);
+          this.pollSub?.unsubscribe();
+          return;
+        }
+
+        if (typeof jobStatus.progress === 'number') {
+          this.ocrStatus.set(`Processing ${jobStatus.progress}%`);
+        } else {
+          this.ocrStatus.set('Processing...');
+        }
+      },
+      error: (error: any) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to track OCR status');
+        this.ocrPolling.set(false);
+      },
+    });
   }
 
   private handleOcrResult(status: OcrStatusResponse): void {

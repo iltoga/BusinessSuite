@@ -57,6 +57,8 @@ class TestCacheManager:
         >>> print(state['total_keys'])
     """
 
+    __test__ = False
+
     def __init__(self):
         """Initialize the test cache manager."""
         self._test_redis_client: Optional[redis.Redis] = None
