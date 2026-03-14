@@ -6,7 +6,6 @@ from django.core.validators import RegexValidator
 from django.db import models
 from django.db.utils import OperationalError, ProgrammingError
 from django.utils import timezone
-
 from products.models.product_category import ProductCategory
 from products.models.product_price_history import ProductPriceHistory
 
@@ -48,8 +47,8 @@ class Product(models.Model):
         db_index=True,
     )
     immigration_id = models.UUIDField(blank=True, null=True, db_index=True)
-    base_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=0.00)
-    retail_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, default=0.00)
+    base_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=Decimal("0.00"))
+    retail_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, default=Decimal("0.00"))
     currency = models.CharField(
         max_length=3,
         default=default_product_currency,
@@ -156,7 +155,8 @@ class Product(models.Model):
         product_cache = getattr(self, "_prefetched_objects_cache", None) or {}
         if "tasks" in product_cache:
             return bool(product_cache["tasks"])
-        return self.tasks.exists()
+        tasks = getattr(self, "tasks", None)
+        return bool(tasks and tasks.exists())
 
     def recompute_uses_customer_app_workflow(self) -> bool:
         return bool(self.has_configured_documents or self.has_configured_tasks)
@@ -196,7 +196,7 @@ class Product(models.Model):
             self.deprecated = False
 
     def save(self, *args, **kwargs):
-        if not self.product_category_id:
+        if not getattr(self, "product_category_id", None):
             self.product_category = ProductCategory.get_default_for_type(self._product_type_hint)
         # Preserve legacy creates where base_price is provided but retail_price is omitted.
         if (
@@ -220,7 +220,7 @@ class Product(models.Model):
         try:
             now = timezone.now()
             active = (
-                ProductPriceHistory.objects.filter(product_id=self.id, effective_to__isnull=True)
+                ProductPriceHistory.objects.filter(product_id=self.pk, effective_to__isnull=True)
                 .order_by("-effective_from")
                 .first()
             )
@@ -245,7 +245,7 @@ class Product(models.Model):
                 effective_from = now
 
             ProductPriceHistory.objects.create(
-                product_id=self.id,
+                product_id=self.pk,
                 base_price=self.base_price,
                 retail_price=self.retail_price,
                 currency=self.currency,
@@ -255,27 +255,26 @@ class Product(models.Model):
             # Schema not ready (e.g. during migrations). Skip history sync.
             return
 
-    def can_be_deleted(self):
+    def can_be_deleted(self) -> tuple[bool, str | None]:
         # Block deletion if directly referenced by invoice lines or by linked applications.
-        if hasattr(self, "invoice_applications") and self.invoice_applications.exists():
+        invoice_apps = getattr(self, "invoice_applications", None)
+        if invoice_apps is not None and invoice_apps.exists():
             return False, "Cannot delete product: related invoices exist."
-        if (
-            hasattr(self, "doc_applications")
-            and self.doc_applications.filter(invoice_applications__isnull=False).exists()
-        ):
+        doc_apps = getattr(self, "doc_applications", None)
+        if doc_apps is not None and doc_apps.filter(invoice_applications__isnull=False).exists():
             return False, "Cannot delete product: related invoices exist."
         # Alert if related applications/workflows exist
-        if hasattr(self, "doc_applications") and self.doc_applications.exists():
+        if doc_apps is not None and doc_apps.exists():
             return True, "Warning: related applications/workflows exist."
         return True, None
 
-    def delete(self, *args, **kwargs):
+    def delete(self, *args, **kwargs) -> tuple[int, dict[str, int]]:
         can_delete, msg = self.can_be_deleted()
         if not can_delete:
             from django.db.models import ProtectedError
 
-            raise ProtectedError(msg, self)
-        super().delete(*args, **kwargs)
+            raise ProtectedError(str(msg or "Cannot delete product."), {self})
+        return super().delete(*args, **kwargs)
 
     def __init__(self, *args, **kwargs):
         self._product_type_hint = kwargs.pop("product_type", None)

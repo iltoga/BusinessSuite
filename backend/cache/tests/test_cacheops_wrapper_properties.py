@@ -32,6 +32,7 @@ user_id_strategy = st.integers(min_value=1, max_value=1_000_000)
 # Test models for property testing
 class TestPost(models.Model):
     """Test model for property-based testing."""
+    __test__ = False
     title = models.CharField(max_length=200)
     content = models.TextField()
     published = models.BooleanField(default=False)
@@ -43,6 +44,7 @@ class TestPost(models.Model):
 
 class TestComment(models.Model):
     """Test model with foreign key for property-based testing."""
+    __test__ = False
     post = models.ForeignKey(TestPost, on_delete=models.CASCADE, related_name='comments')
     text = models.TextField()
     
@@ -53,6 +55,7 @@ class TestComment(models.Model):
 
 class TestTag(models.Model):
     """Test model for many-to-many testing."""
+    __test__ = False
     name = models.CharField(max_length=100)
     posts = models.ManyToManyField(TestPost, related_name='tags')
     

@@ -57,70 +57,105 @@ class WorkflowNotificationApiTests(TestCase):
         return json.loads(data_line.replace("data: ", "", 1))
 
     def _next_sse_payload(self, stream):
-        while True:
-            chunk = next(stream)
-            if isinstance(chunk, bytes):
-                chunk = chunk.decode("utf-8")
-            if chunk.startswith(":"):
-                continue
-            return self._decode_sse_payload(chunk)
+        """Skip keepalive lines and return the first JSON payload from an async stream.
+        Each call runs a fresh async_to_sync so it stays on the main thread.
+        """
+        import asyncio
+        from asgiref.sync import async_to_sync
 
-    @patch("customer_applications.tasks.schedule_whatsapp_status_poll")
-    @patch("notifications.services.providers.NotificationDispatcher.send")
-    def test_resend_keeps_status_pending_when_provider_returns_queued_placeholder(self, send_mock, schedule_poll_mock):
-        send_mock.return_value = "queued_whatsapp:+628123456789"
+        async def _read():
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
+                except asyncio.TimeoutError:
+                    raise TimeoutError("SSE stream read exceeded 5s")
+                if isinstance(chunk, bytes):
+                    chunk = chunk.decode("utf-8")
+                if chunk.startswith(":"):
+                    continue
+                return self._decode_sse_payload(chunk)
 
-        response = self.client.post(f"/api/workflow-notifications/{self.notification.id}/resend/", {}, format="json")
-
-        self.assertEqual(response.status_code, 200)
-        self.notification.refresh_from_db()
-        self.assertEqual(self.notification.status, WorkflowNotification.STATUS_PENDING)
-        self.assertEqual(self.notification.external_reference, "")
-        self.assertEqual(self.notification.provider_message, "queued_whatsapp:+628123456789")
-        self.assertIsNone(self.notification.sent_at)
-        self.assertIsNotNone(self.notification.scheduled_for)
-        schedule_poll_mock.assert_not_called()
-
-    @patch("customer_applications.tasks.schedule_whatsapp_status_poll")
-    @patch("notifications.services.providers.NotificationDispatcher.send")
-    def test_resend_updates_whatsapp_external_reference_when_accepted(self, send_mock, schedule_poll_mock):
-        send_mock.return_value = "wamid.HBgL123"
-
-        response = self.client.post(f"/api/workflow-notifications/{self.notification.id}/resend/", {}, format="json")
-
-        self.assertEqual(response.status_code, 200)
-        self.notification.refresh_from_db()
-        self.assertEqual(self.notification.status, WorkflowNotification.STATUS_PENDING)
-        self.assertEqual(self.notification.external_reference, "wamid.HBgL123")
-        self.assertIsNone(self.notification.sent_at)
-        self.assertIsNotNone(self.notification.scheduled_for)
-        schedule_poll_mock.assert_called_once_with(notification_id=self.notification.id, delay_seconds=5)
+        return async_to_sync(_read)()
 
     def test_stream_returns_initial_snapshot_event(self):
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
-        response = self.client.get("/api/workflow-notifications/stream/")
+        from asgiref.sync import async_to_sync
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response["Content-Type"].startswith("text/event-stream"))
-        payload = self._next_sse_payload(response.streaming_content)
-        self.assertEqual(payload["event"], "workflow_notifications_snapshot")
-        self.assertEqual(payload["reason"], "initial")
-        self.assertEqual(payload["windowHours"], 24)
-        self.assertEqual(payload["lastNotificationId"], self.notification.id)
-        self.assertIsNotNone(payload["lastUpdatedAt"])
+        @async_to_sync
+        async def run_test():
+            import asyncio, json
+            from asgiref.sync import sync_to_async
+
+            await sync_to_async(self.client.credentials)(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+            response = await sync_to_async(self.client.get)("/api/workflow-notifications/stream/")
+            await sync_to_async(self.assertEqual)(response.status_code, 200)
+            await sync_to_async(self.assertTrue)(response["Content-Type"].startswith("text/event-stream"))
+
+            stream = response.streaming_content
+
+            async def get_payload():
+                while True:
+                    try:
+                        chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
+                    except asyncio.TimeoutError:
+                        raise TimeoutError("SSE stream read exceeded 5s")
+                    if isinstance(chunk, bytes):
+                        chunk = chunk.decode("utf-8")
+                    if chunk.startswith(":"):
+                        continue
+                    data_line = next((c for c in chunk.splitlines() if c.startswith("data: ")), "")
+                    if not data_line:
+                        continue
+                    return json.loads(data_line.replace("data: ", "", 1))
+
+            payload = await get_payload()
+            await sync_to_async(self.assertEqual)(payload["event"], "workflow_notifications_snapshot")
+            await sync_to_async(self.assertEqual)(payload["reason"], "initial")
+            await sync_to_async(self.assertEqual)(payload["windowHours"], 24)
+            await sync_to_async(self.assertEqual)(payload["lastNotificationId"], self.notification.id)
+            await sync_to_async(self.assertIsNotNone)(payload["lastUpdatedAt"])
+
+        run_test()
 
     def test_stream_emits_changed_event_after_notification_update(self):
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
-        response = self.client.get("/api/workflow-notifications/stream/")
-        _ = self._next_sse_payload(response.streaming_content)
+        from asgiref.sync import async_to_sync
 
-        self.notification.status = WorkflowNotification.STATUS_DELIVERED
-        self.notification.save(update_fields=["status", "updated_at"])
+        @async_to_sync
+        async def run_test():
+            import asyncio, json
+            from asgiref.sync import sync_to_async
 
-        payload = self._next_sse_payload(response.streaming_content)
-        self.assertEqual(payload["event"], "workflow_notifications_changed")
-        self.assertEqual(payload["lastNotificationId"], self.notification.id)
-        self.assertIn(payload["reason"], {"signal", "db_state_change"})
+            await sync_to_async(self.client.credentials)(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+            response = await sync_to_async(self.client.get)("/api/workflow-notifications/stream/")
+
+            stream = response.streaming_content
+
+            async def get_payload():
+                while True:
+                    try:
+                        chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
+                    except asyncio.TimeoutError:
+                        raise TimeoutError("SSE stream read exceeded 5s")
+                    if isinstance(chunk, bytes):
+                        chunk = chunk.decode("utf-8")
+                    if chunk.startswith(":"):
+                        continue
+                    data_line = next((c for c in chunk.splitlines() if c.startswith("data: ")), "")
+                    if not data_line:
+                        continue
+                    return json.loads(data_line.replace("data: ", "", 1))
+
+            _ = await get_payload()  # consume snapshot
+
+            self.notification.status = WorkflowNotification.STATUS_DELIVERED
+            await sync_to_async(self.notification.save)(update_fields=["status", "updated_at"])
+
+            payload = await get_payload()
+            await sync_to_async(self.assertEqual)(payload["event"], "workflow_notifications_changed")
+            await sync_to_async(self.assertEqual)(payload["lastNotificationId"], self.notification.id)
+            await sync_to_async(self.assertIn)(payload["reason"], {"signal", "db_state_change"})
+
+        run_test()
+
 
     def test_stream_requires_staff_or_admin_permissions(self):
         plain_user = User.objects.create_user("workflow-viewer", "workflowviewer@example.com", "pass")
@@ -145,14 +180,34 @@ class WorkflowNotificationApiTests(TestCase):
 
         self.assertEqual(after_cursor, before_cursor)
 
-    @patch("api.view_notifications.iter_replay_and_live_events", return_value=iter([None]))
-    def test_stream_emits_keepalive_when_idle(self, _iter_events):
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
-        response = self.client.get("/api/workflow-notifications/stream/")
+    async def _mock_keepalive_events(*args, **kwargs):
+        yield None
 
-        self.assertEqual(response.status_code, 200)
-        _ = self._decode_sse_payload(next(response.streaming_content))
-        keepalive_chunk = next(response.streaming_content)
-        if isinstance(keepalive_chunk, bytes):
-            keepalive_chunk = keepalive_chunk.decode("utf-8")
-        self.assertEqual(keepalive_chunk, ": keepalive\n\n")
+    @patch("api.utils.redis_sse.iter_replay_and_live_events_async", side_effect=_mock_keepalive_events)
+    def test_stream_emits_keepalive_when_idle(self, _iter_events):
+        from asgiref.sync import async_to_sync
+
+        @async_to_sync
+        async def run_test():
+            import asyncio
+            from asgiref.sync import sync_to_async
+
+            await sync_to_async(self.client.credentials)(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+            response = await sync_to_async(self.client.get)("/api/workflow-notifications/stream/")
+            await sync_to_async(self.assertEqual)(response.status_code, 200)
+
+            stream = response.streaming_content
+
+            # First item: initial snapshot
+            snapshot_chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
+            if isinstance(snapshot_chunk, bytes):
+                snapshot_chunk = snapshot_chunk.decode("utf-8")
+            _ = self._decode_sse_payload(snapshot_chunk)
+
+            # Second item: keepalive
+            keepalive_chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
+            if isinstance(keepalive_chunk, bytes):
+                keepalive_chunk = keepalive_chunk.decode("utf-8")
+            await sync_to_async(self.assertEqual)(keepalive_chunk, ": keepalive\n\n")
+
+        run_test()

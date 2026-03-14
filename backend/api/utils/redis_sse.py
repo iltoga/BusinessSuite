@@ -45,3 +45,47 @@ def iter_replay_and_live_events(
         for event in events:
             cursor = event.id
             yield event
+
+
+import asyncio
+from collections.abc import AsyncGenerator
+
+async def iter_replay_and_live_events_async(
+    *,
+    stream_key: str,
+    last_event_id: str | None,
+    block_ms: int = 15_000,
+    replay_count: int = 500,
+) -> AsyncGenerator[StreamEvent | None, None]:
+    cursor = last_event_id
+
+    if last_event_id:
+        try:
+            replay_events = read_stream_replay(stream_key, last_event_id=last_event_id, count=replay_count)
+        except Exception as exc:
+            logger.warning("SSE replay read failed for stream '%s': %s", stream_key, exc)
+        else:
+            for event in replay_events:
+                cursor = event.id
+                yield event
+
+    from core.services.redis_streams import read_stream_blocking_async
+    while True:
+        try:
+            events = await read_stream_blocking_async(stream_key, last_event_id=cursor, block_ms=block_ms, count=200)
+        except asyncio.CancelledError:
+            break
+        except Exception as exc:
+            logger.warning("SSE live async read failed for stream '%s': %s", stream_key, exc)
+            # Avoid tight-looping when Redis is unavailable.
+            await asyncio.sleep(min(max(block_ms, 250), 1000) / 1000.0)
+            yield None
+            continue
+            
+        if not events:
+            yield None
+            continue
+
+        for event in events:
+            cursor = event.id
+            yield event

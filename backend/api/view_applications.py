@@ -941,43 +941,49 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         return response
 
     def _stream_ocr_job(self, request, job_queryset, job: OCRJob, *, last_event_id: str | None = None):
-        stream_key = stream_job_key(job.id)
-        initial_payload = _build_ocr_status_payload(job, request)
-        last_progress = initial_payload["progress"]
-        last_status = initial_payload["status"]
+        from asgiref.sync import sync_to_async
 
-        yield format_sse_event(data=initial_payload)
-        if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
-            return
+        async def _async_stream():
+            stream_key = stream_job_key(job.id)
+            initial_payload = _build_ocr_status_payload(job, request)
+            last_progress = initial_payload["progress"]
+            last_status = initial_payload["status"]
 
-        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
-            try:
-                if stream_event is None:
-                    yield ": keepalive\n\n"
-                    continue
+            yield format_sse_event(data=initial_payload)
+            if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
+                return
 
-                data = normalize_ocr_job_payload(stream_event.payload)
-                if data is None or data["status"] in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
-                    refreshed_job = job_queryset.get()
-                    data = _build_ocr_status_payload(refreshed_job, request)
-                else:
-                    data = _build_ocr_stream_payload(data)
+            async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=last_event_id):
+                try:
+                    if stream_event is None:
+                        yield ": keepalive\n\n"
+                        continue
 
-                if data["progress"] == last_progress and data["status"] == last_status:
-                    continue
+                    data = normalize_ocr_job_payload(stream_event.payload)
+                    if data is None or data["status"] in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
+                        refreshed_job = await sync_to_async(job_queryset.get)()
+                        data = _build_ocr_status_payload(refreshed_job, request)
+                    else:
+                        data = _build_ocr_stream_payload(data)
 
-                yield format_sse_event(event_id=stream_event.id, data=data)
-                last_progress = data["progress"]
-                last_status = data["status"]
+                    if data["progress"] == last_progress and data["status"] == last_status:
+                        continue
 
-                if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
+                    yield format_sse_event(event_id=stream_event.id, data=data)
+                    last_progress = data["progress"]
+                    last_status = data["status"]
+
+                    if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
+                        return
+                except OCRJob.DoesNotExist:
+                    yield format_sse_event(data={"error": "OCR job not found"})
                     return
-            except OCRJob.DoesNotExist:
-                yield format_sse_event(data={"error": "OCR job not found"})
-                return
-            except Exception as exc:
-                yield format_sse_event(data={"error": str(exc)})
-                return
+                except Exception as exc:
+                    yield format_sse_event(data={"error": str(exc)})
+                    return
+
+        return _async_stream()
+
 
 
 class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
@@ -1167,43 +1173,49 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         return response
 
     def _stream_document_ocr_job(self, job_queryset, job: DocumentOCRJob, *, last_event_id: str | None = None):
-        stream_key = stream_job_key(job.id)
-        initial_payload = _build_document_ocr_status_payload(job)
-        last_progress = initial_payload["progress"]
-        last_status = initial_payload["status"]
+        from asgiref.sync import sync_to_async
 
-        yield format_sse_event(data=initial_payload)
-        if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
-            return
+        async def _async_stream():
+            stream_key = stream_job_key(job.id)
+            initial_payload = _build_document_ocr_status_payload(job)
+            last_progress = initial_payload["progress"]
+            last_status = initial_payload["status"]
 
-        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
-            try:
-                if stream_event is None:
-                    yield ": keepalive\n\n"
-                    continue
+            yield format_sse_event(data=initial_payload)
+            if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
+                return
 
-                data = normalize_document_ocr_job_payload(stream_event.payload)
-                if data is None or data["status"] in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
-                    refreshed_job = job_queryset.get()
-                    data = _build_document_ocr_status_payload(refreshed_job)
-                else:
-                    data = _build_document_ocr_stream_payload(data)
+            async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=last_event_id):
+                try:
+                    if stream_event is None:
+                        yield ": keepalive\n\n"
+                        continue
 
-                if data["progress"] == last_progress and data["status"] == last_status:
-                    continue
+                    data = normalize_document_ocr_job_payload(stream_event.payload)
+                    if data is None or data["status"] in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
+                        refreshed_job = await sync_to_async(job_queryset.get)()
+                        data = _build_document_ocr_status_payload(refreshed_job)
+                    else:
+                        data = _build_document_ocr_stream_payload(data)
 
-                yield format_sse_event(event_id=stream_event.id, data=data)
-                last_progress = data["progress"]
-                last_status = data["status"]
+                    if data["progress"] == last_progress and data["status"] == last_status:
+                        continue
 
-                if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
+                    yield format_sse_event(event_id=stream_event.id, data=data)
+                    last_progress = data["progress"]
+                    last_status = data["status"]
+
+                    if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
+                        return
+                except DocumentOCRJob.DoesNotExist:
+                    yield format_sse_event(data={"error": "Document OCR job not found"})
                     return
-            except DocumentOCRJob.DoesNotExist:
-                yield format_sse_event(data={"error": "Document OCR job not found"})
-                return
-            except Exception as exc:
-                yield format_sse_event(data={"error": str(exc)})
-                return
+                except Exception as exc:
+                    yield format_sse_event(data={"error": str(exc)})
+                    return
+
+        return _async_stream()
+
 
 
 # the urlpattern for this view is:

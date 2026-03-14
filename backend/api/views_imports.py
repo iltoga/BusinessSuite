@@ -70,7 +70,7 @@ from api.serializers import (
 )
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
 from api.serializers.passport_check_serializer import PassportCheckSerializer
-from api.utils.redis_sse import iter_replay_and_live_events
+from api.utils.redis_sse import iter_replay_and_live_events, iter_replay_and_live_events_async
 from api.utils.sse_auth import sse_token_auth_required
 from business_suite.authentication import JwtOrMockAuthentication
 from core.models import (

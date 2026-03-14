@@ -22,6 +22,7 @@ from cache.namespace import namespace_manager
 # Test model for cache bypass testing
 class TestCacheBypassModel(models.Model):
     """Test model for cache bypass property testing."""
+    __test__ = False
     name = models.CharField(max_length=200)
     value = models.IntegerField(default=0)
     

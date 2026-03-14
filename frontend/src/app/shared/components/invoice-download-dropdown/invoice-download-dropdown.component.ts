@@ -11,7 +11,8 @@ import { PdfViewerHostComponent } from '@/shared/components/pdf-viewer-host/pdf-
 import { downloadBlob } from '@/shared/utils/file-download';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { JobService } from '@/core/services/job.service';
+import { firstValueFrom, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-invoice-download-dropdown',
@@ -29,6 +30,7 @@ import { firstValueFrom } from 'rxjs';
 export class InvoiceDownloadDropdownComponent {
   private invoicesService = inject(InvoicesService);
   private authService = inject(AuthService);
+  private jobService = inject(JobService);
 
   invoiceId = input.required<number>();
   invoiceNumber = input.required<string>();
@@ -141,16 +143,13 @@ export class InvoiceDownloadDropdownComponent {
         this.invoicesService.invoicesDownloadAsyncCreate(this.invoiceId(), { format: 'pdf' }),
       );
       const jobId = payload?.['job_id'] || payload?.['jobId'];
-      const streamUrl = payload?.['stream_url'] || payload?.['streamUrl'];
       const downloadUrl = payload?.['download_url'] || payload?.['downloadUrl'];
       let finalUrl: string;
 
       if (jobId) {
-        finalUrl = await this.pollDownloadStatus(jobId, downloadUrl, onProgress);
-      } else if (streamUrl) {
-        finalUrl = await this.streamDownloadProgress(streamUrl, downloadUrl, onProgress);
+        finalUrl = await this.trackJobStatus(jobId, downloadUrl, onProgress);
       } else {
-        throw new Error('Missing stream URL and job ID in PDF generation response');
+        throw new Error('Missing job ID in PDF generation response');
       }
 
       return this.fetchFile(finalUrl);
@@ -160,49 +159,41 @@ export class InvoiceDownloadDropdownComponent {
     }
   }
 
-  private async pollDownloadStatus(
+  private async trackJobStatus(
     jobId: string,
     downloadUrl: string | undefined,
     onProgress: (progress: number) => void,
   ): Promise<string> {
-    const timeoutMs = 120 * 1000;
-    const queuedStallMs = 12 * 1000;
-    const startedAt = Date.now();
-    let queuedSince: number | null = null;
-
-    while (Date.now() - startedAt < timeoutMs) {
-      const statusPayload = await firstValueFrom(this.invoicesService.invoicesDownloadAsyncStatusRetrieve(jobId));
-      const progress = typeof statusPayload?.['progress'] === 'number' ? statusPayload['progress'] : 0;
-      const statusValue = (statusPayload?.['status'] || '').toString().toLowerCase();
-      onProgress(progress);
-
-      if (statusValue === 'queued' && progress <= 0) {
-        if (queuedSince === null) {
-          queuedSince = Date.now();
-        } else if (Date.now() - queuedSince >= queuedStallMs) {
-          throw new Error('Async queue stalled at 0%');
-        }
-      } else {
-        queuedSince = null;
-      }
-
-      if (statusValue === 'completed') {
-        const finalUrl =
-          statusPayload?.['download_url'] || statusPayload?.['downloadUrl'] || downloadUrl;
-        if (!finalUrl) {
-          throw new Error('PDF generation completed without a download URL');
-        }
-        return finalUrl;
-      }
-
-      if (statusValue === 'failed') {
-        throw new Error(statusPayload?.['error'] || 'PDF generation failed');
-      }
-
-      await this.sleep(1000);
-    }
-
-    throw new Error('PDF generation timed out while waiting for job completion');
+    return new Promise((resolve, reject) => {
+      let sub: Subscription | null = null;
+      sub = this.jobService.watchJob(jobId).subscribe({
+        next: (jobStatus) => {
+          if (typeof jobStatus.progress === 'number') {
+            onProgress(jobStatus.progress);
+          }
+          if (jobStatus.status === 'completed') {
+            const result = jobStatus.result as Record<string, any> | undefined;
+            const finalUrl =
+              result?.['download_url'] || result?.['downloadUrl'] || downloadUrl;
+            if (!finalUrl) {
+              sub?.unsubscribe();
+              reject(new Error('PDF generation completed without a download URL'));
+              return;
+            }
+            sub?.unsubscribe();
+            resolve(finalUrl as string);
+          } else if (jobStatus.status === 'failed') {
+            const result = jobStatus.result as Record<string, any> | undefined;
+            sub?.unsubscribe();
+            reject(new Error((result?.['error'] as string) || 'PDF generation failed'));
+          }
+        },
+        error: (err) => {
+          sub?.unsubscribe();
+          reject(err);
+        },
+      });
+    });
   }
 
   private async fetchSyncPdfBlob(
@@ -212,124 +203,6 @@ export class InvoiceDownloadDropdownComponent {
     const blob = await firstValueFrom(this.invoicesService.invoicesDownloadRetrieve(this.invoiceId(), 'pdf'));
     onProgress(100);
     return { blob, filename: this.defaultPdfFilename() };
-  }
-
-  private async streamDownloadProgress(
-    streamUrl: string,
-    downloadUrl: string | undefined,
-    onProgress: (progress: number) => void,
-  ): Promise<string> {
-    try {
-      const token = this.authService.getToken();
-      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await fetch(streamUrl, {
-        headers,
-        credentials: 'same-origin',
-      });
-
-      if (!response.ok || !response.body) {
-        throw new Error('Unable to open download stream');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      const processEvent = (eventText: string): string | null => {
-        if (!eventText.trim()) return null;
-        const lines = eventText.split('\n');
-        let eventType = 'message';
-        let eventData = '';
-        lines.forEach((line) => {
-          if (line.startsWith('event: ')) {
-            eventType = line.substring(7);
-          } else if (line.startsWith('data: ')) {
-            eventData = line.substring(6);
-          }
-        });
-
-        if (!eventData) return null;
-        let data: any;
-        try {
-          data = JSON.parse(eventData);
-        } catch (err) {
-          console.error('Failed to parse download stream event', err);
-          throw err;
-        }
-        const result = this.handleStreamEvent(eventType, data, downloadUrl, onProgress);
-        if (result.status === 'complete') {
-          return result.url;
-        }
-        if (result.status === 'error') {
-          throw new Error(result.message);
-        }
-        return null;
-      };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split('\n\n');
-        buffer = events.pop() || '';
-
-        for (const eventText of events) {
-          const completedUrl = processEvent(eventText);
-          if (completedUrl) {
-            return completedUrl;
-          }
-        }
-      }
-
-      if (buffer.trim()) {
-        const trailingEvents = buffer.split('\n\n').filter((eventText) => eventText.trim());
-        for (const eventText of trailingEvents) {
-          const completedUrl = processEvent(eventText);
-          if (completedUrl) {
-            return completedUrl;
-          }
-        }
-      }
-
-      throw new Error('Download stream closed before completion');
-    } catch (err) {
-      console.error('Download stream error', err);
-      throw err;
-    }
-  }
-
-  private handleStreamEvent(
-    eventType: string,
-    data: any,
-    downloadUrl: string | undefined,
-    onProgress: (progress: number) => void,
-  ):
-    | { status: 'continue' }
-    | { status: 'complete'; url: string }
-    | { status: 'error'; message: string } {
-    switch (eventType) {
-      case 'start':
-      case 'progress': {
-        const progress = typeof data.progress === 'number' ? data.progress : 0;
-        onProgress(progress);
-        return { status: 'continue' };
-      }
-      case 'complete': {
-        const finalUrl = data.download_url || data.downloadUrl || downloadUrl;
-        if (!finalUrl) {
-          return {
-            status: 'error',
-            message: 'PDF generation completed without a download URL',
-          };
-        }
-        return { status: 'complete', url: finalUrl };
-      }
-      case 'error':
-      default:
-        return {
-          status: 'error',
-          message: data?.message || data?.detail || 'PDF generation failed',
-        };
-    }
   }
 
   private async fetchFile(url: string): Promise<{ blob: Blob; filename: string }> {

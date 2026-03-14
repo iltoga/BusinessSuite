@@ -233,8 +233,17 @@ class ServerManagementClearCacheApiTests(TestCase):
         self.assertEqual(payload["cleanup"]["deletedFiles"], 2)
         cleanup_mock.assert_called_once_with(dry_run=False)
 
+    @patch("api.views_admin.iter_replay_and_live_events_async")
     @patch("api.views_admin.admin_tasks.run_media_cleanup_stream.delay")
-    def test_media_cleanup_stream_starts_background_scan(self, media_cleanup_delay_mock):
+    def test_media_cleanup_stream_starts_background_scan(self, media_cleanup_delay_mock, stream_iter_mock):
+        from api.tests.async_iter_helper import SyncAsyncIter
+
+        async def _empty():
+            return
+            yield  # make it an async generator
+
+        stream_iter_mock.return_value = _empty()
+
         token = Token.objects.create(user=self.user)
         response = self.client.get(
             "/api/server-management/media-cleanup/stream/?dry_run=1",
@@ -243,5 +252,8 @@ class ServerManagementClearCacheApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response["Content-Type"].startswith("text/event-stream"))
-        next(response.streaming_content)
+        try:
+            next(SyncAsyncIter(response.streaming_content))
+        except StopIteration:
+            pass  # Stream ended immediately — that's fine for this test
         media_cleanup_delay_mock.assert_called_once_with(user_id=self.user.id, dry_run=True)

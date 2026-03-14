@@ -1,6 +1,6 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, switchMap, timer } from 'rxjs';
+import { Observable } from 'rxjs';
 
 interface ProductImportExportStartResponse {
   job_id: string;
@@ -42,9 +42,5 @@ export class ProductImportExportService {
     return this.http.get(`/api/products/price-list/print/download/${jobId}/`, {
       responseType: 'blob',
     });
-  }
-
-  pollJob(jobId: string): Observable<any> {
-    return timer(0, 1000).pipe(switchMap(() => this.http.get(`/api/async-jobs/${jobId}/`)));
   }
 }
