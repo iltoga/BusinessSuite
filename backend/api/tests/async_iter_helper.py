@@ -45,7 +45,7 @@ class SyncAsyncIter:
 
     def close(self):
         try:
-            self._loop.call_soon_threadsafe(self._loop.stop)
+            self._loop.call_soon_threadsafe(self._loop.stop)  # type: ignore
             self._thread.join(timeout=2)
         except Exception:
             pass

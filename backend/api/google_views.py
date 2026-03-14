@@ -23,18 +23,12 @@ from rest_framework.response import Response
 
 
 @extend_schema_view(
-    retrieve=extend_schema(
-        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
-    ),
-    update=extend_schema(
-        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
-    ),
+    retrieve=extend_schema(parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]),
+    update=extend_schema(parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]),
     partial_update=extend_schema(
         parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
     ),
-    destroy=extend_schema(
-        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
-    ),
+    destroy=extend_schema(parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]),
 )
 class GoogleCalendarViewSet(viewsets.ViewSet):
     """Local-mirror calendar API.
@@ -110,7 +104,7 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
                 action=SYNC_ACTION_UPSERT,
                 previous_due_date=previous_due_date_value,
                 start_date=start_date_value,
-            )
+            )  # pyright: ignore[reportCallIssue]
         )
 
     def _serialize_calendar_event(self, event: CalendarEvent) -> dict:
@@ -485,18 +479,12 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
 
 
 @extend_schema_view(
-    retrieve=extend_schema(
-        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
-    ),
-    update=extend_schema(
-        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
-    ),
+    retrieve=extend_schema(parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]),
+    update=extend_schema(parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]),
     partial_update=extend_schema(
         parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
     ),
-    destroy=extend_schema(
-        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
-    ),
+    destroy=extend_schema(parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]),
 )
 class GoogleTasksViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]

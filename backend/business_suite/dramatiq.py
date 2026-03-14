@@ -114,6 +114,8 @@ def setup() -> RedisBroker:
         url=_build_redis_url(),
         namespace=str(getattr(settings, "DRAMATIQ_NAMESPACE", "dramatiq:queue") or "dramatiq:queue"),
     )
+    from core.middleware.dramatiq_realtime import RealtimeJobMiddleware
+    broker.add_middleware(RealtimeJobMiddleware())
     broker.add_middleware(DramatiqTracingMiddleware())
     if bool(getattr(settings, "DRAMATIQ_RESULTS_ENABLED", True)):
         broker.add_middleware(

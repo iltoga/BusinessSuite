@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { AsyncJob } from '@/core/api';
+import { RealtimeNotificationService } from '@/core/services/realtime-notification.service';
 import { SseService } from '@/core/services/sse.service';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { JobProgressDialogComponent } from '@/shared/components/job-progress-dialog/job-progress-dialog.component';
@@ -12,7 +13,10 @@ import { JobProgressDialogComponent } from '@/shared/components/job-progress-dia
 export class JobService {
   private dialogService = inject(ZardDialogService);
 
-  constructor(private sseService: SseService) {}
+  constructor(
+    private sseService: SseService,
+    private realtimeService: RealtimeNotificationService
+  ) {}
 
   /**
    * Connects to the SSE endpoint for a specific job and returns an observable of job updates.
@@ -21,7 +25,8 @@ export class JobService {
    * @returns Observable of AsyncJob updates
    */
   watchJob(jobId: string): Observable<AsyncJob> {
-    return this.sseService.connect<AsyncJob>(`/api/async-jobs/status/${jobId}/`);
+    // Uses the global multiplexed SSE stream rather than opening a new HTTP connection per job
+    return this.realtimeService.watchJob(jobId);
   }
 
   /**

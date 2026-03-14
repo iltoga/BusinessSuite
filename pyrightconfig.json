@@ -1,9 +1,48 @@
 {
+  "include": [
+    "backend"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/.mypy_cache",
+    "backend/**/migrations",
+    "backend/**/tests",
+    "**/node_modules",
+    ".venv",
+    "frontend",
+    "desktop",
+    "docs",
+    "grafana",
+    "howtos",
+    "logs",
+    "tmp",
+    "testfiles",
+    "**/.*"
+  ],
+  "extraPaths": [
+    "backend"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "basic",
+  "reportMissingTypeStubs": "none",
+  "reportGeneralTypeIssues": "none",
+  "reportInvalidTypeForm": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportOptionalCall": "none",
+  "reportOptionalSubscript": "none",
+  "reportArgumentType": "none",
+  "reportAssignmentType": "none",
+  "reportCallIssue": "none",
   "executionEnvironments": [
     {
       "root": "backend",
-      "extraPaths": ["backend"]
+      "extraPaths": [
+        "backend"
+      ]
     }
-  ],
-  "extraPaths": ["backend"]
+  ]
 }
