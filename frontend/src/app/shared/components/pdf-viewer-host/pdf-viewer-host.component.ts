@@ -2,11 +2,16 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   EventEmitter,
   HostListener,
   Input,
   OnChanges,
+  OnDestroy,
+  OnInit,
   Output,
+  Renderer2,
+  inject,
 } from '@angular/core';
 import { NgxExtendedPdfViewerModule, pdfDefaultOptions } from 'ngx-extended-pdf-viewer';
 import { downloadBlob } from '@/shared/utils/file-download';
@@ -28,7 +33,7 @@ import { ZardSkeletonComponent } from '@/shared/components/skeleton';
   styleUrls: ['./pdf-viewer-host.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PdfViewerHostComponent implements OnChanges {
+export class PdfViewerHostComponent implements OnChanges, OnInit, OnDestroy {
   @Input() src: Blob | string | null = null;
   @Input() isBusy = false;
   @Input() errorMessage: string | null = null;
@@ -40,6 +45,21 @@ export class PdfViewerHostComponent implements OnChanges {
   isLoading = true;
   loadError: string | null = null;
   private blobUrl: string | null = null;
+
+  private el = inject(ElementRef);
+  private renderer = inject(Renderer2);
+
+  ngOnInit(): void {
+    if (typeof document !== 'undefined') {
+      this.renderer.appendChild(document.body, this.el.nativeElement);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.el.nativeElement && this.el.nativeElement.parentNode) {
+      this.renderer.removeChild(this.el.nativeElement.parentNode, this.el.nativeElement);
+    }
+  }
 
   ngOnChanges(): void {
     if (this.isBusy) {
