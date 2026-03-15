@@ -309,6 +309,8 @@ class AIInvoiceParser:
                 messages=messages,
                 json_schema=self.INVOICE_SCHEMA,
                 schema_name="invoice_data",
+                temperature=0.1,
+                strict=True,
             )
 
             logger.info("Successfully parsed invoice data from vision API")
@@ -434,6 +436,8 @@ class AIInvoiceParser:
                 messages=messages,
                 json_schema=self.INVOICE_SCHEMA,
                 schema_name="invoice_data",
+                temperature=0.1,
+                strict=True,
             )
 
             logger.info("Successfully parsed invoice data from structured document")

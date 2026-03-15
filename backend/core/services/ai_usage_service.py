@@ -96,16 +96,19 @@ class AIUsageService:
         try:
             from core.tasks.ai_usage import capture_ai_usage_task
 
-            capture_ai_usage_task(
-                feature=feature or AIUsageFeature.UNKNOWN,
-                provider=provider or "unknown",
-                model=model or "unknown",
-                request_type=request_type,
-                request_id=request_id or None,
-                usage_data=serialized_usage_data or None,
-                success=success,
-                error_type=error_type or "",
-                latency_ms=latency_ms,
+            capture_ai_usage_task.send_with_options(
+                kwargs=dict(
+                    feature=feature or AIUsageFeature.UNKNOWN,
+                    provider=provider or "unknown",
+                    model=model or "unknown",
+                    request_type=request_type,
+                    request_id=request_id or None,
+                    usage_data=serialized_usage_data or None,
+                    success=success,
+                    error_type=error_type or "",
+                    latency_ms=latency_ms,
+                ),
+                delay=20000,  # 20s: OpenRouter can take 15-20s to index generation data
             )
         except Exception as exc:
             logger.warning("Failed to enqueue AI usage capture task: %s", str(exc))

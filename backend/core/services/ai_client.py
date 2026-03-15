@@ -96,6 +96,7 @@ class AIClient:
         "internal_server",
         "status_error",
         "schema_validation_failed",
+        "bad_request",
     }
 
     def __init__(
@@ -459,13 +460,20 @@ class AIClient:
         if response_format:
             request_kwargs["response_format"] = response_format
 
-        attempted_routes = [
-            _AttemptRoute(
-                provider_key=self.provider_key,
-                model=self.model,
-                timeout=self._initial_timeout_override,
-            )
-        ] + self._fallback_candidates(self.provider_key, self.model)
+        primary_route = _AttemptRoute(
+            provider_key=self.provider_key,
+            model=self.model,
+            timeout=self._initial_timeout_override,
+        )
+
+        router_enabled = self._router_enabled()
+        if router_enabled:
+            # Failover enabled: try primary once, then follow the fallback chain immediately on error
+            attempted_routes = [primary_route] + self._fallback_candidates(self.provider_key, self.model)
+        else:
+            # Failover disabled: retry same model up to 3 times (no cross-provider failover)
+            attempted_routes = [primary_route, primary_route, primary_route]
+
         last_error: Optional[AIConnectionError] = None
 
         for index, route in enumerate(attempted_routes):
@@ -487,15 +495,32 @@ class AIClient:
                 should_retry = exc.error_code in self.RETRIABLE_ERROR_CODES and not is_last_attempt
                 if not should_retry:
                     raise
-                logger.warning(
-                    "AI provider '%s' model '%s' failed with %s. Retrying with fallback provider '%s' model '%s' (timeout=%ss).",
-                    self.provider_key,
-                    self.model,
-                    exc.error_code,
-                    attempted_routes[index + 1].provider_key,
-                    attempted_routes[index + 1].model,
-                    attempted_routes[index + 1].timeout or self.timeout,
-                )
+
+                next_route = attempted_routes[index + 1]
+                if not router_enabled:
+                    # Same-provider retry: brief exponential backoff (2s, 4s)
+                    backoff = 2.0 * (2 ** index)
+                    logger.warning(
+                        "AI provider '%s' model '%s' failed with %s (attempt %d/3). "
+                        "Retrying same model in %.0fs.",
+                        self.provider_key,
+                        self.model,
+                        exc.error_code,
+                        index + 1,
+                        backoff,
+                    )
+                    time.sleep(backoff)
+                else:
+                    logger.warning(
+                        "AI provider '%s' model '%s' failed with %s. "
+                        "Retrying with fallback provider '%s' model '%s' (timeout=%ss).",
+                        self.provider_key,
+                        self.model,
+                        exc.error_code,
+                        next_route.provider_key,
+                        next_route.model,
+                        next_route.timeout or self.timeout,
+                    )
 
         if last_error is not None:
             raise last_error
@@ -505,9 +530,22 @@ class AIClient:
         started_at = time.perf_counter()
         attempt_kwargs = {"model": self.model, **request_kwargs}
 
-        # OpenRouter-specific provider hints should not be sent to other providers.
+        # OpenRouter-specific hints (plugins, provider sorting) should not be
+        # sent to other providers.  For OpenRouter requests, ensure the
+        # provider-sorting preference from settings is present.
         if self.provider_key != "openrouter":
             attempt_kwargs.pop("extra_body", None)
+        else:
+            extra_body_raw = attempt_kwargs.get("extra_body")
+            extra_body = dict(extra_body_raw) if isinstance(extra_body_raw, dict) else {}
+
+            if "provider" not in extra_body:
+                sort_pref = AIRuntimeSettingsService.get("OPENROUTER_PROVIDER_SORTING_PRIORITY")
+                if sort_pref:
+                    extra_body["provider"] = {"sort": sort_pref}
+
+            if extra_body:
+                attempt_kwargs["extra_body"] = extra_body
 
         try:
             response = self.client.chat.completions.create(**attempt_kwargs)
@@ -711,12 +749,25 @@ class AIClient:
         """
         logger.debug(f"Using json_schema mode for model: {self.model} (strict={strict})")
 
+        if self.provider_key == "openrouter":
+            extra_body = kwargs.get("extra_body") or {}
+            plugins = extra_body.get("plugins") or []
+            if not any(isinstance(p, dict) and p.get("id") == "response-healing" for p in plugins):
+                plugins.append({"id": "response-healing"})
+            extra_body["plugins"] = plugins
+            kwargs["extra_body"] = extra_body
+
+        # Normalize nullable type arrays to anyOf syntax for strict mode compatibility.
+        # Standard JSON Schema allows {"type": ["string", "null"]} but OpenAI strict
+        # mode requires {"anyOf": [{"type": "string"}, {"type": "null"}]}.
+        normalized_schema = self._normalize_schema_for_strict(json_schema) if strict else json_schema
+
         response_format = {
             "type": "json_schema",
             "json_schema": {
                 "name": schema_name,
                 "strict": strict,
-                "schema": json_schema,
+                "schema": normalized_schema,
             },
         }
 
@@ -778,7 +829,10 @@ class AIClient:
             return self._parse_json_dict(response_text)
         except ValueError as first_exc:
             if not retry_on_invalid_json:
-                raise ValueError(f"Invalid JSON response from {self.provider_name}: {first_exc}") from first_exc
+                raise AIConnectionError(
+                    f"Invalid JSON response from {self.provider_name}: {first_exc}",
+                    error_code="schema_validation_failed",
+                ) from first_exc
             logger.warning(
                 "Received malformed JSON from %s. Retrying once with corrective prompt. Error: %s",
                 self.provider_name,
@@ -805,9 +859,43 @@ class AIClient:
             try:
                 return self._parse_json_dict(retry_text)
             except ValueError as retry_exc:
-                raise ValueError(
-                    f"Invalid JSON response from {self.provider_name} after retry: {retry_exc}"
+                raise AIConnectionError(
+                    f"Invalid JSON response from {self.provider_name} after retry: {retry_exc}",
+                    error_code="schema_validation_failed",
                 ) from retry_exc
+
+    @staticmethod
+    def _normalize_schema_for_strict(schema: Any) -> Any:
+        """Recursively normalize a JSON schema for OpenAI strict mode compatibility.
+
+        Converts ``{"type": ["string", "null"]}`` (valid JSON Schema but rejected
+        by OpenAI strict mode) into ``{"anyOf": [{"type": "string"}, {"type": "null"}]}``.
+
+        Also strips ``minimum`` / ``maximum`` / ``minItems`` / ``maxItems`` /
+        ``pattern`` constraints that OpenAI strict mode does not support.
+        """
+        if not isinstance(schema, dict):
+            return schema
+
+        result = {}
+        for key, value in schema.items():
+            if key == "type" and isinstance(value, list):
+                # Convert type array to anyOf
+                result["anyOf"] = [{"type": t} for t in value]
+            elif key == "properties" and isinstance(value, dict):
+                result[key] = {
+                    prop_name: AIClient._normalize_schema_for_strict(prop_schema)
+                    for prop_name, prop_schema in value.items()
+                }
+            elif key == "items" and isinstance(value, dict):
+                result[key] = AIClient._normalize_schema_for_strict(value)
+            elif key in ("minimum", "maximum", "minItems", "maxItems", "pattern"):
+                # OpenAI strict mode does not support these constraints; skip them.
+                continue
+            else:
+                result[key] = value
+
+        return result
 
     @classmethod
     def _parse_json_dict(cls, response_text: Any) -> dict:

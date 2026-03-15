@@ -3,6 +3,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+import time
+
 import requests
 from django.conf import settings
 from core.tasks.runtime import QUEUE_DEFAULT, db_task
@@ -61,48 +63,73 @@ def _fetch_openrouter_generation_data(request_id: str) -> dict[str, Any]:
     ]
 
     last_error: Exception | None = None
-    for url, params in candidate_calls:
-        try:
-            response = requests.get(url, headers=headers, params=params, timeout=timeout)
-        except requests.RequestException as exc:
-            last_error = exc
-            continue
 
-        if response.status_code == 404:
-            continue
-        if response.status_code != 200:
-            last_error = RuntimeError(
-                f"OpenRouter generation fetch failed ({response.status_code}): {(response.text or '')[:200]}"
+    for attempt in range(4):
+        for url, params in candidate_calls:
+            try:
+                response = requests.get(url, headers=headers, params=params, timeout=timeout)
+            except requests.RequestException as exc:
+                last_error = exc
+                continue
+
+            if response.status_code == 404:
+                continue
+            if response.status_code != 200:
+                last_error = RuntimeError(
+                    f"OpenRouter generation fetch failed ({response.status_code}): {(response.text or '')[:200]}"
+                )
+                continue
+
+            try:
+                payload = response.json()
+            except ValueError as exc:
+                last_error = exc
+                continue
+
+            data = _extract_openrouter_generation_payload(payload)
+            if data is None:
+                last_error = RuntimeError("OpenRouter generation payload missing object data.")
+                continue
+
+            prompt_tokens = _to_int(
+                data.get("tokens_prompt")
+                or data.get("tokensPrompt")
+                or data.get("native_tokens_prompt")
+                or data.get("nativeTokensPrompt")
             )
-            continue
+            completion_tokens = _to_int(
+                data.get("tokens_completion")
+                or data.get("tokensCompletion")
+                or data.get("native_tokens_completion")
+                or data.get("nativeTokensCompletion")
+            )
+            total_tokens = _to_int(
+                data.get("total_tokens")
+                or data.get("totalTokens")
+                or data.get("tokensTotal")
+            )
+            if total_tokens is None and prompt_tokens is not None and completion_tokens is not None:
+                total_tokens = prompt_tokens + completion_tokens
 
-        try:
-            payload = response.json()
-        except ValueError as exc:
-            last_error = exc
-            continue
+            # Use `.get()` then explicit None-check to avoid `or` swallowing 0 (free model)
+            raw_cost = data.get("total_cost")
+            if raw_cost is None:
+                raw_cost = data.get("totalCost")
 
-        data = _extract_openrouter_generation_payload(payload)
-        if data is None:
-            last_error = RuntimeError("OpenRouter generation payload missing object data.")
-            continue
+            usage_data = {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+                "cost_usd": _to_decimal(raw_cost),
+            }
+            return {
+                "model": data.get("model"),
+                "usage_data": usage_data,
+            }
 
-        prompt_tokens = _to_int(data.get("tokensPrompt") or data.get("tokens_prompt") or data.get("nativeTokensPrompt"))
-        completion_tokens = _to_int(data.get("tokensCompletion") or data.get("tokens_completion"))
-        total_tokens = _to_int(data.get("totalTokens") or data.get("tokensTotal") or data.get("total_tokens"))
-        if total_tokens is None and prompt_tokens is not None and completion_tokens is not None:
-            total_tokens = prompt_tokens + completion_tokens
-
-        usage_data = {
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "total_tokens": total_tokens,
-            "cost_usd": _to_decimal(data.get("totalCost") or data.get("total_cost")),
-        }
-        return {
-            "model": data.get("model"),
-            "usage_data": usage_data,
-        }
+        # If we got here, none of the candidate URLs succeeded
+        if attempt < 3:
+            time.sleep(5.0)  # Wait before retrying; OpenRouter may need up to 20s to index
 
     if last_error:
         raise last_error

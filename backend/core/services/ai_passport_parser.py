@@ -406,6 +406,7 @@ class AIPassportParser:
             return self._parse_with_vision(file_bytes, filename, analysis_context=analysis_context)
 
         except Exception as e:
+            # Includes AIConnectionError propagated from _parse_with_vision after all retries
             return AIPassportResult(
                 passport_data=PassportData(),
                 success=False,
@@ -480,32 +481,39 @@ class AIPassportParser:
             )
 
     def _call_vision_api(self, image_bytes: bytes, filename: str, prompt: str) -> AIPassportResult:
-        """Make a single vision API call and return the result."""
+        """Make a single vision API call and return the result.
+
+        NOTE: AIConnectionError is intentionally NOT caught here so that
+        `chat_completion_json`'s built-in retry / failover loop can operate.
+        Only structural errors (unexpected response format, JSON parse issues
+        unhandled by the client) are caught and converted to a failed result.
+        """
+        messages = self.ai_client.build_vision_message(
+            prompt=prompt,
+            image_bytes=image_bytes,
+            filename=filename,
+            system_prompt=self.SYSTEM_PROMPT,
+        )
+
+        logger.info(f"Sending passport image to {self.ai_client.provider_name} vision API")
+
+        # AIConnectionError propagates here — caught by chat_completion's retry/failover,
+        # or ultimately by parse_passport_image / _parse_with_vision
+        parsed_data = self.ai_client.chat_completion_json(
+            messages=messages,
+            json_schema=self.PASSPORT_SCHEMA,
+            schema_name="passport_data",
+        )
+
+        logger.info("Successfully parsed passport data from vision API")
+
         try:
-            messages = self.ai_client.build_vision_message(
-                prompt=prompt,
-                image_bytes=image_bytes,
-                filename=filename,
-                system_prompt=self.SYSTEM_PROMPT,
-            )
-
-            logger.info(f"Sending passport image to {self.ai_client.provider_name} vision API")
-
-            parsed_data = self.ai_client.chat_completion_json(
-                messages=messages,
-                json_schema=self.PASSPORT_SCHEMA,
-                schema_name="passport_data",
-            )
-
-            logger.info("Successfully parsed passport data from vision API")
             return self._convert_to_result(parsed_data)
-
         except Exception as e:
-            # error_message will contain the detailed message from AIClient
             return AIPassportResult(
                 passport_data=PassportData(),
                 success=False,
-                error_message=str(e),
+                error_message=f"Failed to convert parsed passport data: {e}",
             )
 
     def _build_retry_prompt(

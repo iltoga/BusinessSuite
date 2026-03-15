@@ -3,8 +3,9 @@ Tests for the AI Passport Parser service.
 """
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 
+from core.services.ai_client import AIClient, AIConnectionError
 from core.services.ai_passport_parser import AIPassportParser, AIPassportResult, PassportData
 from django.test import TestCase, override_settings
 from PIL import Image
@@ -12,10 +13,35 @@ from PIL import Image
 # Patch target for OpenAI client (in ai_client module)
 OPENAI_PATCH_TARGET = "core.services.ai_client.OpenAI"
 
+_VALID_PASSPORT_DICT = {
+    "first_name": "Mario",
+    "last_name": "Rossi",
+    "full_name": "Mario Rossi",
+    "nationality": "ITA",
+    "nationality_code": "ITA",
+    "gender": "M",
+    "date_of_birth": "1985-03-15",
+    "birth_place": "Rome",
+    "passport_number": "YA1234567",
+    "passport_issue_date": "2020-01-10",
+    "passport_expiration_date": "2030-01-09",
+    "issuing_country": "Italy",
+    "issuing_country_code": "ITA",
+    "issuing_authority": "Ministry of Interior",
+    "height_cm": 175,
+    "eye_color": "Brown",
+    "address_abroad": None,
+    "document_type": "P",
+    "confidence_score": 0.92,
+    "full_page_visible": True,
+    "all_corners_visible": True,
+    "mrz_fully_visible": True,
+    "is_blurry": False,
+}
+
 
 class AIPassportParserTestCase(TestCase):
     """Test cases for AIPassportParser class."""
-
 
 
     def test_passport_data_dataclass(self):
@@ -190,3 +216,60 @@ class AIPassportResultTestCase(TestCase):
         )
         self.assertFalse(result.success)
         self.assertEqual(result.error_message, "Test error message")
+
+
+class AIPassportParserFailoverTestCase(TestCase):
+    """Tests verifying that AIConnectionError propagates through _call_vision_api
+    so that the AIClient's built-in failover/retry loop can operate."""
+
+    _FAKE_IMAGE = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
+
+    @override_settings(
+        OPENROUTER_API_KEY="test-key",
+        LLM_PROVIDER="openrouter",
+    )
+    @patch(OPENAI_PATCH_TARGET)
+    def test_call_vision_api_propagates_ai_connection_error(self, mock_openai):
+        """AIConnectionError must NOT be caught inside _call_vision_api so that
+        the AIClient's failover route loop can handle it."""
+        parser = AIPassportParser()
+        conn_error = AIConnectionError("provider gone", error_code="connection_error")
+
+        with patch.object(parser.ai_client, "chat_completion_json", side_effect=conn_error):
+            with self.assertRaises(AIConnectionError):
+                parser._call_vision_api(self._FAKE_IMAGE, "passport.jpeg", "Extract passport data.")
+
+    @override_settings(
+        OPENROUTER_API_KEY="test-key",
+        LLM_PROVIDER="openrouter",
+    )
+    @patch(OPENAI_PATCH_TARGET)
+    def test_parse_passport_image_converts_ai_connection_error_to_failed_result(self, mock_openai):
+        """parse_passport_image must catch any propagated AIConnectionError and
+        return a failed AIPassportResult instead of raising."""
+        parser = AIPassportParser()
+        conn_error = AIConnectionError("provider gone", error_code="connection_error")
+
+        with patch.object(parser.ai_client, "chat_completion_json", side_effect=conn_error):
+            result = parser.parse_passport_image(self._FAKE_IMAGE, filename="passport.jpeg")
+
+        self.assertFalse(result.success)
+        self.assertIn("provider gone", result.error_message)
+
+    @override_settings(
+        OPENROUTER_API_KEY="test-key",
+        LLM_PROVIDER="openrouter",
+    )
+    @patch(OPENAI_PATCH_TARGET)
+    def test_call_vision_api_success_returns_passport_result(self, mock_openai):
+        """_call_vision_api returns a successful AIPassportResult when
+        chat_completion_json succeeds."""
+        parser = AIPassportParser()
+
+        with patch.object(parser.ai_client, "chat_completion_json", return_value=dict(_VALID_PASSPORT_DICT)):
+            result = parser._call_vision_api(self._FAKE_IMAGE, "passport.jpeg", "Extract passport data.")
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.passport_data.passport_number, "YA1234567")
+        self.assertEqual(result.passport_data.first_name, "Mario")
+

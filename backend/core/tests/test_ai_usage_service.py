@@ -26,7 +26,8 @@ class AIUsageServiceTests(SimpleTestCase):
             response=response,
         )
 
-        self.assertEqual(capture_task_mock.call_count, 1)
-        kwargs = capture_task_mock.call_args.kwargs
+        # Task is dispatched via send_with_options(kwargs=..., delay=5000)
+        capture_task_mock.send_with_options.assert_called_once()
+        kwargs = capture_task_mock.send_with_options.call_args.kwargs["kwargs"]
         self.assertEqual(kwargs["request_id"], "req-123")
         self.assertEqual(kwargs["usage_data"]["cost_usd"], "0.1234")

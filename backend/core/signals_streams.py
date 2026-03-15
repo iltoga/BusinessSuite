@@ -10,6 +10,7 @@ from api.utils.stream_payloads import (
 )
 from core.models import AsyncJob, CalendarReminder, DocumentOCRJob, OCRJob
 from core.services.logger_service import Logger
+from core.services.realtime_dispatcher import RealtimeEventDispatcherService
 from core.services.redis_streams import publish_stream_event as _publish_stream_event
 from core.services.redis_streams import stream_file_key, stream_job_key, stream_user_key
 from customer_applications.models import Document, WorkflowNotification
@@ -60,6 +61,21 @@ def streams_async_job_post_save(sender, instance: AsyncJob, created, **kwargs):
         job_id=str(instance.id),
         user_id=str(instance.created_by_id) if instance.created_by_id else None,
     )
+
+    if instance.created_by_id:
+        RealtimeEventDispatcherService.publish_job_update(
+            user_id=instance.created_by_id,
+            job_id=str(instance.id),
+            status=instance.status,
+            progress=int(instance.progress or 0),
+            payload={
+                "id": str(instance.id),
+                "message": instance.message,
+                "result": instance.result,
+                "errorMessage": instance.error_message,
+                "error_message": instance.error_message,
+            },
+        )
 
 
 @receiver(post_save, sender=OCRJob, dispatch_uid="streams_ocr_job_post_save")

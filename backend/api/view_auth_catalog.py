@@ -654,7 +654,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
 
         # Enqueue task
-        check_passport_uploadability_task(str(job.id), saved_path, method)
+        check_passport_uploadability_task.delay(str(job.id), saved_path, method)
 
         return Response({"job_id": str(job.id)}, status=status.HTTP_202_ACCEPTED)
 
