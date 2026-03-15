@@ -45,6 +45,7 @@ from .views_categorization import (
     validate_document_category,
 )
 from .views_sync import SyncViewSet
+from . import view_realtime
 
 # DRF Router for RESTful API endpoints
 # These ViewSets provide CRUD operations for Angular frontend consumption
@@ -108,6 +109,7 @@ urlpatterns = [
     path("cache/", include("cache.urls")),
     # SSE endpoints (plain Django views, bypass DRF content negotiation)
     # Used for real-time updates in Angular components
+    path("core/realtime/stream/", view_realtime.realtime_stream_sse, name="api-realtime-stream-sse"),
     path("backups/start/", backup_start_sse, name="api-backup-start-sse"),
     path("backups/restore/", backup_restore_sse, name="api-backup-restore-sse"),
     path(

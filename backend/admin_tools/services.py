@@ -1,3 +1,5 @@
+# pyright: reportMissingImports=false
+# pyright: reportMissingModuleSource=false
 # Vanilla Django backup/restore using only dumpdata/loaddata/flush
 import datetime
 import gzip
@@ -14,6 +16,7 @@ from collections.abc import Callable
 from contextlib import contextmanager, nullcontext
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 from urllib.parse import unquote, urlparse
 
 from core.services.ocr_preview_storage import get_ocr_preview_storage_prefix
@@ -31,7 +34,8 @@ from django.utils import timezone
 from django.utils.module_loading import import_string
 
 try:
-    from django_redis import get_redis_connection
+    # django-redis is optional; silence missing-imports when it isn't installed.
+    from django_redis import get_redis_connection  # type: ignore[reportMissingImports]
 except Exception:  # pragma: no cover - optional import fallback
     get_redis_connection = None
 
@@ -145,12 +149,14 @@ def _extract_archive_to_dir(path: str, extracted_tmp: str, comp: str) -> None:
     do not support mode 'r:zst' (e.g. Python 3.13).
     """
     if comp != "zst":
-        with tarfile.open(path, f"r:{comp}") as tar:
+        # `tarfile.open` type hints expect a literal mode string; use type ignore for dynamic modes.
+        with tarfile.open(path, f"r:{comp}") as tar:  # type: ignore[arg-type]
             _safe_extract_tar(tar, extracted_tmp)
         return
 
     try:
-        with tarfile.open(path, "r:zst") as tar:
+        # `r:zst` is supported on newer Python versions. Type stubs may not include it.
+        with tarfile.open(path, "r:zst") as tar:  # type: ignore[arg-type]
             _safe_extract_tar(tar, extracted_tmp)
         return
     except (tarfile.CompressionError, tarfile.ReadError, ValueError):
@@ -521,6 +527,8 @@ def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None
             continue
 
         pk_field = model._meta.pk
+        if pk_field is None:
+            continue
         if pk_field.get_internal_type() not in {
             "AutoField",
             "BigAutoField",
@@ -936,7 +944,7 @@ def backup_all(include_users=False):
             # write a manifest.json with included files metadata
             manifest_files = []
             for rel_path in filepaths:
-                manifest_entry = {"path": rel_path}
+                manifest_entry: dict[str, Any] = {"path": rel_path}
                 # Preserve sizes only when we embed media in backup archive.
                 if not uses_external_media_storage:
                     try:
@@ -1042,7 +1050,10 @@ def restore_from_file(path, include_users=False):
 
             if path.endswith(".zst") and zstd:
                 with zstd.open(path, "rb") as f_in, open(tmp_path, "wb") as f_out:
-                    f_out.write(f_in.read())
+                    data = f_in.read()
+                    if isinstance(data, str):
+                        data = data.encode("utf-8")
+                    f_out.write(data)
             elif path.endswith(".zst"):
                 raise RuntimeError(
                     "Cannot decompress .zst backup: no zstd support available. "
@@ -1050,7 +1061,10 @@ def restore_from_file(path, include_users=False):
                 )
             else:
                 with gzip.open(path, "rb") as f_in, open(tmp_path, "wb") as f_out:
-                    f_out.write(f_in.read())
+                    data = f_in.read()
+                    if isinstance(data, str):
+                        data = data.encode("utf-8")
+                    f_out.write(data)
             fixture_path = tmp_path
         else:
             fixture_path = path
@@ -1929,7 +1943,7 @@ def repair_media_paths():
                         setattr(obj, field_name, resolved_path)
                         update_fields.append(field_name)
                     if needs_link_update and desired_file_link is not None:
-                        obj.file_link = desired_file_link
+                        setattr(obj, "file_link", desired_file_link)
                         update_fields.append("file_link")
 
                     if update_fields:

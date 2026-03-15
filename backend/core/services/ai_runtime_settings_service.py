@@ -183,6 +183,12 @@ AI_RUNTIME_SETTING_DEFINITIONS: dict[str, RuntimeSettingDefinition] = {
         scope=AppSettingScope.BACKEND,
         description="OpenRouter API base URL.",
     ),
+    "OPENROUTER_PROVIDER_SORTING_PRIORITY": RuntimeSettingDefinition(
+        name="OPENROUTER_PROVIDER_SORTING_PRIORITY",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Sorting priority for OpenRouter providers (price, throughput, latency).",
+    ),
     "OPENROUTER_TIMEOUT": RuntimeSettingDefinition(
         name="OPENROUTER_TIMEOUT",
         value_type="float",
@@ -261,7 +267,6 @@ AI_RUNTIME_SETTING_DEFINITIONS: dict[str, RuntimeSettingDefinition] = {
         scope=AppSettingScope.BACKEND,
         description="Optional dedicated Redis URL for Dramatiq results backend.",
     ),
-
     "AUDIT_ENABLED": RuntimeSettingDefinition(
         name="AUDIT_ENABLED",
         value_type="bool",
@@ -505,9 +510,7 @@ class AIRuntimeSettingsService:
                     or ""
                 ).strip()
                 raw_timeout = (
-                    raw_step.get("timeoutSeconds")
-                    or raw_step.get("timeout_seconds")
-                    or raw_step.get("timeout")
+                    raw_step.get("timeoutSeconds") or raw_step.get("timeout_seconds") or raw_step.get("timeout")
                 )
             else:
                 if strict:
@@ -543,9 +546,7 @@ class AIRuntimeSettingsService:
                     timeout_seconds = default_timeout
             if timeout_seconds <= 0:
                 if strict:
-                    raise ValueError(
-                        f"Fallback timeout for model '{step_model}' must be greater than zero."
-                    )
+                    raise ValueError(f"Fallback timeout for model '{step_model}' must be greater than zero.")
                 timeout_seconds = default_timeout
 
             dedupe_key = (provider, step_model)
@@ -568,9 +569,7 @@ class AIRuntimeSettingsService:
     @classmethod
     def defaults(cls) -> dict[str, Any]:
         llm_provider = (
-            str(cls._default_from_settings_and_env("LLM_PROVIDER", "openrouter") or "openrouter")
-            .strip()
-            .lower()
+            str(cls._default_from_settings_and_env("LLM_PROVIDER", "openrouter") or "openrouter").strip().lower()
         )
         llm_default_model = (
             str(
@@ -611,16 +610,16 @@ class AIRuntimeSettingsService:
                 str(cls._default_from_settings_and_env("OPENROUTER_DEFAULT_MODEL", llm_default_model) or "").strip()
                 or llm_default_model
             ),
+            "OPENROUTER_PROVIDER_SORTING_PRIORITY": (
+                str(cls._default_from_settings_and_env("OPENROUTER_PROVIDER_SORTING_PRIORITY", "price") or "").strip()
+                or "price"
+            ),
             "OPENAI_DEFAULT_MODEL": (
                 str(cls._default_from_settings_and_env("OPENAI_DEFAULT_MODEL", "gpt-5-mini") or "").strip()
                 or "gpt-5-mini"
             ),
-            "INVOICE_IMPORT_MODEL": str(
-                cls._default_from_settings_and_env("INVOICE_IMPORT_MODEL", "") or ""
-            ).strip(),
-            "PASSPORT_OCR_MODEL": str(
-                cls._default_from_settings_and_env("PASSPORT_OCR_MODEL", "") or ""
-            ).strip(),
+            "INVOICE_IMPORT_MODEL": str(cls._default_from_settings_and_env("INVOICE_IMPORT_MODEL", "") or "").strip(),
+            "PASSPORT_OCR_MODEL": str(cls._default_from_settings_and_env("PASSPORT_OCR_MODEL", "") or "").strip(),
             "DOCUMENT_CATEGORIZER_MODEL": str(
                 cls._default_from_settings_and_env("DOCUMENT_CATEGORIZER_MODEL", "") or ""
             ).strip(),
@@ -633,9 +632,7 @@ class AIRuntimeSettingsService:
             "DOCUMENT_OCR_STRUCTURED_MODEL": str(
                 cls._default_from_settings_and_env("DOCUMENT_OCR_STRUCTURED_MODEL", "") or ""
             ).strip(),
-            "CHECK_PASSPORT_MODEL": str(
-                cls._default_from_settings_and_env("CHECK_PASSPORT_MODEL", "") or ""
-            ).strip(),
+            "CHECK_PASSPORT_MODEL": str(cls._default_from_settings_and_env("CHECK_PASSPORT_MODEL", "") or "").strip(),
             "CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD": float(
                 cls._default_from_settings_and_env("CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD", 0.95)
             ),
@@ -685,9 +682,7 @@ class AIRuntimeSettingsService:
             ),
             "LLM_FALLBACK_MODEL_ORDER": fallback_model_order,
             "LLM_FALLBACK_MODEL_CHAIN": fallback_model_chain,
-            "LLM_FALLBACK_STICKY_SECONDS": int(
-                cls._default_from_settings_and_env("LLM_FALLBACK_STICKY_SECONDS", 3600)
-            ),
+            "LLM_FALLBACK_STICKY_SECONDS": int(cls._default_from_settings_and_env("LLM_FALLBACK_STICKY_SECONDS", 3600)),
             "LLM_FALLBACK_STICKY_CACHE_KEY": (
                 str(
                     cls._default_from_settings_and_env(
@@ -710,16 +705,13 @@ class AIRuntimeSettingsService:
             ),
             "OPENROUTER_TIMEOUT": float(cls._default_from_settings_and_env("OPENROUTER_TIMEOUT", 120.0)),
             "OPENAI_TIMEOUT": float(cls._default_from_settings_and_env("OPENAI_TIMEOUT", 120.0)),
-            "DRAMATIQ_REDIS_URL": str(
-                cls._default_from_settings_and_env("DRAMATIQ_REDIS_URL", "") or ""
-            ).strip(),
+            "DRAMATIQ_REDIS_URL": str(cls._default_from_settings_and_env("DRAMATIQ_REDIS_URL", "") or "").strip(),
             "REDIS_URL": str(cls._default_from_settings_and_env("REDIS_URL", "") or "").strip(),
             "REDIS_HOST": str(cls._default_from_settings_and_env("REDIS_HOST", "") or "").strip(),
             "REDIS_PORT": int(cls._default_from_settings_and_env("REDIS_PORT", 6379)),
             "DRAMATIQ_REDIS_DB": int(cls._default_from_settings_and_env("DRAMATIQ_REDIS_DB", 0)),
             "DRAMATIQ_NAMESPACE": str(
-                cls._default_from_settings_and_env("DRAMATIQ_NAMESPACE", "dramatiq:queue")
-                or "dramatiq:queue"
+                cls._default_from_settings_and_env("DRAMATIQ_NAMESPACE", "dramatiq:queue") or "dramatiq:queue"
             ).strip()
             or "dramatiq:queue",
             "DRAMATIQ_RESULTS_ENABLED": AppSettingService.parse_bool(
@@ -730,9 +722,7 @@ class AIRuntimeSettingsService:
                 cls._default_from_settings_and_env("DRAMATIQ_RESULTS_STORE_RESULTS", True),
                 True,
             ),
-            "DRAMATIQ_RESULTS_TTL_MS": int(
-                cls._default_from_settings_and_env("DRAMATIQ_RESULTS_TTL_MS", 300000)
-            ),
+            "DRAMATIQ_RESULTS_TTL_MS": int(cls._default_from_settings_and_env("DRAMATIQ_RESULTS_TTL_MS", 300000)),
             "DRAMATIQ_RESULTS_NAMESPACE": str(
                 cls._default_from_settings_and_env("DRAMATIQ_RESULTS_NAMESPACE", "dramatiq:results")
                 or "dramatiq:results"
@@ -741,8 +731,6 @@ class AIRuntimeSettingsService:
             "DRAMATIQ_RESULTS_REDIS_URL": str(
                 cls._default_from_settings_and_env("DRAMATIQ_RESULTS_REDIS_URL", "") or ""
             ).strip(),
-
-
             "AUDIT_ENABLED": AppSettingService.parse_bool(
                 cls._default_from_settings_and_env("AUDIT_ENABLED", True),
                 True,
@@ -755,16 +743,11 @@ class AIRuntimeSettingsService:
                 cls._default_from_settings_and_env("AUDIT_FORWARD_TO_LOKI", True),
                 True,
             ),
-            "AUDITLOG_RETENTION_DAYS": int(
-                cls._default_from_settings_and_env("AUDITLOG_RETENTION_DAYS", 14)
-            ),
+            "AUDITLOG_RETENTION_DAYS": int(cls._default_from_settings_and_env("AUDITLOG_RETENTION_DAYS", 14)),
             "AUDITLOG_RETENTION_SCHEDULE": str(
-                cls._default_from_settings_and_env("AUDITLOG_RETENTION_SCHEDULE", "04:00")
-                or ""
+                cls._default_from_settings_and_env("AUDITLOG_RETENTION_SCHEDULE", "04:00") or ""
             ).strip(),
-            "DJANGO_LOG_LEVEL": str(
-                cls._default_from_settings_and_env("DJANGO_LOG_LEVEL", "INFO") or "INFO"
-            ).strip()
+            "DJANGO_LOG_LEVEL": str(cls._default_from_settings_and_env("DJANGO_LOG_LEVEL", "INFO") or "INFO").strip()
             or "INFO",
             "DJANGO_DEBUG": AppSettingService.parse_bool(
                 cls._default_from_settings_and_env("DJANGO_DEBUG", False),
@@ -778,17 +761,12 @@ class AIRuntimeSettingsService:
                 cls._default_from_settings_and_env("MOCK_AUTH_ENABLED", False),
                 False,
             ),
-            "INVOICE_IMPORT_MAX_WORKERS": int(
-                cls._default_from_settings_and_env("INVOICE_IMPORT_MAX_WORKERS", 3)
-            ),
+            "INVOICE_IMPORT_MAX_WORKERS": int(cls._default_from_settings_and_env("INVOICE_IMPORT_MAX_WORKERS", 3)),
             "DATE_FORMAT_JS": str(
                 cls._default_from_settings_and_env("DATE_FORMAT_JS", "dd-MM-yyyy") or "dd-MM-yyyy"
             ).strip()
             or "dd-MM-yyyy",
-            "BASE_CURRENCY": str(
-                cls._default_from_settings_and_env("BASE_CURRENCY", "IDR") or "IDR"
-            ).strip()
-            or "IDR",
+            "BASE_CURRENCY": str(cls._default_from_settings_and_env("BASE_CURRENCY", "IDR") or "IDR").strip() or "IDR",
             "DEFAULT_DOCUMENT_LANGUAGE_CODE": str(
                 cls._default_from_settings_and_env("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id") or "id"
             ).strip()
@@ -799,8 +777,7 @@ class AIRuntimeSettingsService:
             ).strip()
             or "sample_email@gmail.com",
             "GOOGLE_TIMEZONE": str(
-                cls._default_from_settings_and_env("GOOGLE_TIMEZONE", "Asia/Makassar")
-                or "Asia/Makassar"
+                cls._default_from_settings_and_env("GOOGLE_TIMEZONE", "Asia/Makassar") or "Asia/Makassar"
             ).strip()
             or "Asia/Makassar",
             "GOOGLE_CALENDAR_ID": str(
@@ -1028,7 +1005,7 @@ class AIRuntimeSettingsService:
     @classmethod
     def get_openrouter_timeout(cls) -> float:
         value = float(cls.get("OPENROUTER_TIMEOUT"))
-        return value if value > 0 else 120.0
+        return value if value > 0 else 30.0
 
     @classmethod
     def get_openai_timeout(cls) -> float:
@@ -1175,7 +1152,6 @@ class AIRuntimeSettingsService:
             return json.dumps(normalized_json)
         return str(value if value is not None else "").strip()
 
-
     @classmethod
     def replace_deleted_model_references(cls, deleted_model_id: str) -> None:
         normalized_deleted_model_id = str(deleted_model_id or "").strip()
@@ -1210,12 +1186,15 @@ class AIRuntimeSettingsService:
             )
             safe_workflow_default = safe_llm_default or safe_openai_default
         elif active_provider == "groq":
-            safe_llm_default = cls._pick_available_model_for_provider(
-                "openrouter",
-                cls.get_llm_default_model(),
-                defaults.get("LLM_DEFAULT_MODEL"),
-                safe_openrouter_default,
-            ) or safe_openai_default
+            safe_llm_default = (
+                cls._pick_available_model_for_provider(
+                    "openrouter",
+                    cls.get_llm_default_model(),
+                    defaults.get("LLM_DEFAULT_MODEL"),
+                    safe_openrouter_default,
+                )
+                or safe_openai_default
+            )
             safe_workflow_default = safe_groq_default
         else:
             safe_llm_default = cls._pick_available_model_for_provider(
@@ -1265,8 +1244,7 @@ class AIRuntimeSettingsService:
             if step.model != normalized_deleted_model_id
         ]
         if chain_without_deleted_model != [
-            {"model": step.model, "timeoutSeconds": step.timeout_seconds}
-            for step in cls.get_fallback_model_chain()
+            {"model": step.model, "timeoutSeconds": step.timeout_seconds} for step in cls.get_fallback_model_chain()
         ]:
             cls.update_runtime_settings(
                 {
@@ -1308,9 +1286,7 @@ class AIRuntimeSettingsService:
                 raise ValueError(f"LLM_FALLBACK_MODEL_ORDER contains unknown models: {unknown}.")
             deduped_models = list(dict.fromkeys(models))
             normalized_updates["LLM_FALLBACK_MODEL_ORDER"] = deduped_models
-            normalized_updates["LLM_FALLBACK_MODEL_CHAIN"] = cls._fallback_chain_from_model_order(
-                deduped_models
-            )
+            normalized_updates["LLM_FALLBACK_MODEL_CHAIN"] = cls._fallback_chain_from_model_order(deduped_models)
             cleared_setting_names.discard("LLM_FALLBACK_MODEL_CHAIN")
 
         if "LLM_FALLBACK_MODEL_CHAIN" in cleared_setting_names:

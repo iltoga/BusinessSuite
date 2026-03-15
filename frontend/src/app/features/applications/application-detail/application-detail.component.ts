@@ -508,9 +508,9 @@ export class ApplicationDetailComponent implements OnInit {
   );
   readonly documentCollectionStatus = computed<{
     label:
-      | 'Document Collection Pending'
-      | 'Document Collection Incomplete'
-      | 'Document Collection Complete';
+    | 'Document Collection Pending'
+    | 'Document Collection Incomplete'
+    | 'Document Collection Complete';
     type: 'default' | 'secondary' | 'warning' | 'success' | 'destructive';
   }>(() => {
     const documents = this.application()?.documents ?? [];
@@ -885,18 +885,18 @@ export class ApplicationDetailComponent implements OnInit {
       existingResult && typeof existingResult === 'object'
         ? this.normalizeValidationResultShape(existingResult as Record<string, unknown>)
         : {
-            valid: status === 'valid',
-            confidence: Number(response.confidence ?? 0),
-            positive_analysis: status === 'valid' ? String(response.reasoning ?? '') : '',
-            negative_issues:
-              status === 'invalid'
-                ? [String(response.reasoning ?? 'Validation failed')].filter(Boolean)
-                : [],
-            reasoning: String(response.reasoning ?? ''),
-            extracted_expiration_date: null,
-            extracted_doc_number: null,
-            extracted_details_markdown: null,
-          };
+          valid: status === 'valid',
+          confidence: Number(response.confidence ?? 0),
+          positive_analysis: status === 'valid' ? String(response.reasoning ?? '') : '',
+          negative_issues:
+            status === 'invalid'
+              ? [String(response.reasoning ?? 'Validation failed')].filter(Boolean)
+              : [],
+          reasoning: String(response.reasoning ?? ''),
+          extracted_expiration_date: null,
+          extracted_doc_number: null,
+          extracted_details_markdown: null,
+        };
 
     const runtimeFromResponse = this.extractValidationRuntimeMetadata(responseRecord);
     const runtimeFromResult = this.extractValidationRuntimeMetadata(result);
@@ -993,16 +993,16 @@ export class ApplicationDetailComponent implements OnInit {
         validationResult['extracted_expiration_date'] ?? validationResult['extractedExpirationDate']
       ) === 'string'
         ? ((validationResult['extracted_expiration_date'] ??
-            validationResult['extractedExpirationDate']) as string)
+          validationResult['extractedExpirationDate']) as string)
         : null;
     const extractedDocNumber =
       typeof (
         validationResult['extracted_doc_number'] ?? validationResult['extractedDocNumber']
       ) === 'string'
         ? (
-            (validationResult['extracted_doc_number'] ??
-              validationResult['extractedDocNumber']) as string
-          ).trim() || null
+          (validationResult['extracted_doc_number'] ??
+            validationResult['extractedDocNumber']) as string
+        ).trim() || null
         : null;
     const extractedDetails =
       typeof (
@@ -1010,9 +1010,9 @@ export class ApplicationDetailComponent implements OnInit {
         validationResult['extractedDetailsMarkdown']
       ) === 'string'
         ? (
-            (validationResult['extracted_details_markdown'] ??
-              validationResult['extractedDetailsMarkdown']) as string
-          ).trim() || null
+          (validationResult['extracted_details_markdown'] ??
+            validationResult['extractedDetailsMarkdown']) as string
+        ).trim() || null
         : null;
 
     return {
@@ -1080,21 +1080,21 @@ export class ApplicationDetailComponent implements OnInit {
 
     const provider = this.readOptionalString(
       source['validationProvider'] ??
-        source['validation_provider'] ??
-        source['aiProvider'] ??
-        source['ai_provider'],
+      source['validation_provider'] ??
+      source['aiProvider'] ??
+      source['ai_provider'],
     );
     const providerName = this.readOptionalString(
       source['validationProviderName'] ??
-        source['validation_provider_name'] ??
-        source['aiProviderName'] ??
-        source['ai_provider_name'],
+      source['validation_provider_name'] ??
+      source['aiProviderName'] ??
+      source['ai_provider_name'],
     );
     const model = this.readOptionalString(
       source['validationModel'] ??
-        source['validation_model'] ??
-        source['aiModel'] ??
-        source['ai_model'],
+      source['validation_model'] ??
+      source['aiModel'] ??
+      source['ai_model'],
     );
 
     return {
@@ -2978,7 +2978,7 @@ export class ApplicationDetailComponent implements OnInit {
       next: (response) => {
         this.categorizationJobId.set(response.jobId);
         this.categorizationTotalFiles.set(response.totalFiles || files.length);
-        this.categorizationStatusMessage.set('Connecting to progress stream...');
+        this.categorizationStatusMessage.set('Processing...');
         this.watchCategorizationJob(response.jobId);
 
         this.categorizationService.uploadFilesToJob(response.jobId, files).subscribe({

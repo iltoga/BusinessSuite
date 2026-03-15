@@ -65,7 +65,7 @@ def extract_document_structured_output(
         messages=messages,
         json_schema=build_strict_structured_schema(fields),
         schema_name="document_ocr_structured_output",
-        temperature=0.0,
+        temperature=0.1,
         strict=True,
         **extra_kwargs,
     )

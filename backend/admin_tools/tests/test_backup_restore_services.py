@@ -6,10 +6,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, TestCase
-
 from admin_tools import services
 from customers.models import Customer
+from django.test import SimpleTestCase, TestCase
 from invoices.models.invoice import Invoice
 from products.models.product import Product
 from products.models.task import Task
@@ -117,9 +116,7 @@ class BackupSerializationTests(SimpleTestCase):
         def _call_command(*args, **kwargs):
             attempts.append(args)
             if len(attempts) == 1:
-                raise Exception(
-                    "Unable to serialize database: column core_userprofile.cache_enabled does not exist"
-                )
+                raise Exception("Unable to serialize database: column core_userprofile.cache_enabled does not exist")
             raise _StopBackup(args)
 
         with tempfile.TemporaryDirectory() as tmpdir, patch.object(services, "BACKUPS_DIR", tmpdir), patch(
@@ -159,6 +156,7 @@ class RestoreFixtureSanitizationUnitTests(SimpleTestCase):
         ]
 
         with tempfile.TemporaryDirectory() as tmpdir:
+
             fixture_path = Path(tmpdir) / "fixture.json"
             fixture_path.write_text(json.dumps(objects), encoding="utf-8")
 
@@ -170,8 +168,11 @@ class RestoreFixtureSanitizationUnitTests(SimpleTestCase):
             self.assertEqual(dropped_count, 0)
             self.assertEqual(dropped_by_model, {})
 
-            with open(sanitized_path, "r", encoding="utf-8") as handle:
-                sanitized_objects = json.load(handle)
+            if sanitized_path is not None:
+                with open(sanitized_path, "r", encoding="utf-8") as handle:
+                    sanitized_objects = json.load(handle)
+            else:
+                sanitized_objects = []
 
         document_type_fields = sanitized_objects[0]["fields"]
         self.assertNotIn("has_ocr_check", document_type_fields)
@@ -206,8 +207,11 @@ class RestoreFixtureSanitizationUnitTests(SimpleTestCase):
             self.assertEqual(dropped_count, 1)
             self.assertEqual(dropped_by_model, {"products.product": 1})
 
-            with open(sanitized_path, "r", encoding="utf-8") as handle:
-                sanitized_objects = json.load(handle)
+            if sanitized_path is not None:
+                with open(sanitized_path, "r", encoding="utf-8") as handle:
+                    sanitized_objects = json.load(handle)
+            else:
+                self.fail("sanitized_path is None, cannot open file.")
 
         fields = sanitized_objects[0]["fields"]
         self.assertNotIn("non_existing_field", fields)
@@ -281,7 +285,7 @@ class RestoreCompatibilityTests(TestCase):
                     "created_by": None,
                     "updated_by": None,
                 },
-            }
+            },
         ]
 
         real_tarfile_open = tarfile.open
@@ -483,7 +487,7 @@ class RestoreCompatibilityTests(TestCase):
                     "created_by": None,
                     "updated_by": None,
                 },
-            }
+            },
         ]
 
         with tempfile.TemporaryDirectory() as tmpdir:

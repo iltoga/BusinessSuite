@@ -22,25 +22,24 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from django.core.management.base import BaseCommand
-
 from core.services.ai_client import AIClient
 from core.services.ai_passport_parser import AIPassportParser
+from django.core.management.base import BaseCommand
 
 DEFAULT_MODELS = [
     # "qwen/qwen2.5-vl-32b-instruct",
-    "google/gemma-3-12b-it",
-    "google/gemini-2.5-flash-lite",
+    "qwen/qwen3.5-flash-02-23",
+    # "google/gemma-3-12b-it",
+    # "google/gemini-2.5-flash-lite",
     # "google/gemini-2.0-flash-lite-001",
-    "mistralai/mistral-small-3.2-24b-instruct",
+    # "mistralai/mistral-small-3.2-24b-instruct",
 ]
 
 DEFAULT_FILES = [
     # Only include the single file by default. Add more as needed.
-    "tmp/passport.jpeg",
     "tmp/passport_1.jpg",
-    "tmp/passport_2.jpeg",
-    "tmp/passport_3.jpeg",
+    # "tmp/passport_2.jpeg",
+    # "tmp/passport_3.jpeg",
 ]
 
 

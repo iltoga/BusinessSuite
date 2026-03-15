@@ -1,7 +1,8 @@
 import { signal } from '@angular/core';
 import { of, Subject, throwError } from 'rxjs';
-import { vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { type AsyncJob } from '@/core/api';
 import { type OcrStatusResponse } from '@/core/services/ocr.service';
 
 import { CustomerFormComponent } from './customer-form.component';
@@ -23,30 +24,24 @@ describe('CustomerFormComponent OCR flow', () => {
     (component as any).passportPreviewUrl = signal<string | null>(null);
     (component as any).passportPasteStatus = signal<string | null>(null);
     (component as any).passportMetadata = signal<Record<string, unknown> | null>(null);
-    (component as any).ocrPollTimer = null;
-    (component as any).ocrStreamSubscription = null;
-
+    (component as any).pollSub = null;
+    
     (component as any).ocrService = {
       startPassportOcr: vi.fn(),
-      getOcrStatusResponse: vi.fn(),
     };
-    (component as any).sseService = {
-      connect: vi.fn(),
+    (component as any).jobService = {
+      watchJob: vi.fn(),
     };
 
     (component as any).extractOcrError = vi.fn().mockReturnValue('Upload failed');
     (component as any).handleOcrResult = vi.fn();
-    (component as any).clearOcrPollTimer =
-      CustomerFormComponent.prototype['clearOcrPollTimer'].bind(component);
     (component as any).clearOcrAsyncTracking =
       CustomerFormComponent.prototype['clearOcrAsyncTracking'].bind(component);
-    (component as any).scheduleOcrPoll = vi.fn();
-    (component as any).processOcrStatusUpdate = vi.fn().mockReturnValue(false);
 
     return component;
   };
 
-  it('prefers SSE over polling when the OCR queue response includes a stream URL', () => {
+  it('subscribes to job updates via jobService when an OCR job starts', () => {
     const component = createHarness();
     const subscribeToOcrStream = vi
       .spyOn(component as any, 'subscribeToOcrStream')
@@ -57,65 +52,50 @@ describe('CustomerFormComponent OCR flow', () => {
       of({
         job_id: 'job-1',
         status: 'queued',
-        status_url: '/api/ocr/status/job-1/',
-        stream_url: '/api/ocr/stream/job-1/',
       }),
     );
 
     (component as any)['runPassportImport'](file);
 
-    expect(subscribeToOcrStream).toHaveBeenCalledWith(
-      '/api/ocr/stream/job-1/',
-      '/api/ocr/status/job-1/',
-    );
-    expect(component.scheduleOcrPoll).not.toHaveBeenCalled();
+    expect(subscribeToOcrStream).toHaveBeenCalledWith('job-1');
     expect(component.handleOcrResult).not.toHaveBeenCalled();
   });
 
-  it('falls back to polling when the SSE connection fails', () => {
+  it('handles job failure appropriately', () => {
     const component = createHarness();
+    const stream$ = new Subject<AsyncJob>();
 
     component.ocrProcessing.set(true);
-    component.sseService.connect.mockReturnValue(throwError(() => new Error('stream failed')));
+    (component as any).jobService.watchJob.mockReturnValue(stream$);
 
-    component['subscribeToOcrStream']('/api/ocr/stream/job-1/', '/api/ocr/status/job-1/');
+    component['subscribeToOcrStream']('job-1');
+    stream$.next({ status: 'failed', progress: 100, id: 'job-1', error_message: 'Realtime OCR failed' } as unknown as AsyncJob);
 
-    expect(component.scheduleOcrPoll).toHaveBeenCalledWith('/api/ocr/status/job-1/', 0);
-    expect(component.ocrMessage()).toBe('Realtime connection dropped. Retrying status checks...');
-    expect(component.ocrMessageTone()).toBe('warning');
+    expect(component.ocrProcessing()).toBe(false);
   });
 
-  it('uses SSE updates as the primary path without issuing status polls', () => {
+  it('uses realtime stream updates as the primary path to completion', () => {
     const component = createHarness();
-    const stream$ = new Subject<OcrStatusResponse>();
+    const stream$ = new Subject<AsyncJob>();
 
     component.ocrProcessing.set(true);
-    (component as any).sseService.connect.mockReturnValue(stream$);
-    (component as any).processOcrStatusUpdate.mockImplementation((payload: OcrStatusResponse) => {
-      if (payload.status === 'completed') {
-        component.ocrProcessing.set(false);
-        return true;
-      }
-      return false;
-    });
+    (component as any).jobService.watchJob.mockReturnValue(stream$);
 
-    component['subscribeToOcrStream']('/api/ocr/stream/job-1/', '/api/ocr/status/job-1/');
-    stream$.next({ status: 'processing', progress: 55, jobId: 'job-1' });
+    component['subscribeToOcrStream']('job-1');
+    stream$.next({ status: 'processing', progress: 55, id: 'job-1' } as unknown as AsyncJob);
     stream$.next({
       status: 'completed',
       progress: 100,
-      jobId: 'job-1',
-      mrzData: { number: 'X123' },
-    });
+      id: 'job-1',
+      result: { number: 'X123' },
+    } as unknown as AsyncJob);
 
-    expect((component as any).processOcrStatusUpdate).toHaveBeenCalledTimes(2);
-    expect(component.scheduleOcrPoll).not.toHaveBeenCalled();
-    expect((component as any).ocrService.getOcrStatusResponse).not.toHaveBeenCalled();
-  });
-
-  it('honors Retry-After when computing polling delays', () => {
-    const component = createHarness();
-
-    expect(component['computeOcrPollingDelay'](3, 7)).toBe(7000);
+    expect(component.handleOcrResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'completed',
+        jobId: 'job-1',
+        number: 'X123',
+      })
+    );
   });
 });
