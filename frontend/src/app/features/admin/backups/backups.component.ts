@@ -82,7 +82,9 @@ export class BackupsComponent extends BaseListComponent<Backup> {
 
   private readonly backupsApi = inject(BackupsService);
   private readonly sseService = inject(SseService);
-  readonly canRestoreBackups = inject(AuthService).isInAdminGroup;
+  readonly canRestoreBackups = computed(
+    () => this.authService.isSuperuser() && this.authService.isInAdminGroup(),
+  );
 
   // Backups-specific state
   private sseSubscription: Subscription | null = null;
@@ -232,7 +234,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
    */
   restoreBackup(filename: string): void {
     if (!this.canRestoreBackups()) {
-      this.toast.error('Only users in admin group can restore backups');
+      this.toast.error('Only administrators can restore backups');
       return;
     }
 
