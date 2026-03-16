@@ -16,12 +16,29 @@ import { ProductListComponent } from './product-list.component';
 describe('ProductListComponent', () => {
   let fixture: ComponentFixture<ProductListComponent>;
   let component: ProductListComponent;
+  let mockEmbedElement: {
+    addEventListener: ReturnType<typeof vi.fn>;
+  };
   let mockPreviewWindow: {
     document: {
-      write: ReturnType<typeof vi.fn>;
-      close: ReturnType<typeof vi.fn>;
+      documentElement: {
+        insertBefore: ReturnType<typeof vi.fn>;
+        appendChild: ReturnType<typeof vi.fn>;
+      };
+      head: {
+        replaceChildren: ReturnType<typeof vi.fn>;
+        append: ReturnType<typeof vi.fn>;
+      };
+      body: {
+        replaceChildren: ReturnType<typeof vi.fn>;
+        innerHTML: string;
+      };
+      createElement: ReturnType<typeof vi.fn>;
+      querySelector: ReturnType<typeof vi.fn>;
     };
     addEventListener: ReturnType<typeof vi.fn>;
+    focus: ReturnType<typeof vi.fn>;
+    print: ReturnType<typeof vi.fn>;
     close: ReturnType<typeof vi.fn>;
     closed: boolean;
   };
@@ -111,12 +128,38 @@ describe('ProductListComponent', () => {
       ),
     };
 
+    mockEmbedElement = {
+      addEventListener: vi.fn(),
+    };
+
+    const mockHead = {
+      replaceChildren: vi.fn(),
+      append: vi.fn(),
+    };
+
+    const mockBody = {
+      replaceChildren: vi.fn(),
+      innerHTML: '',
+    };
+
     mockPreviewWindow = {
       document: {
-        write: vi.fn(),
-        close: vi.fn(),
+        documentElement: {
+          insertBefore: vi.fn(),
+          appendChild: vi.fn(),
+        },
+        head: mockHead,
+        body: mockBody,
+        createElement: vi.fn((tag: string) => ({
+          tagName: tag,
+          textContent: '',
+          setAttribute: vi.fn(),
+        })),
+        querySelector: vi.fn(() => mockEmbedElement),
       },
       addEventListener: vi.fn(),
+      focus: vi.fn(),
+      print: vi.fn(),
       close: vi.fn(),
       closed: false,
     };

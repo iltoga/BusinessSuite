@@ -161,7 +161,9 @@ export class CalendarIntegrationComponent implements OnInit {
 
   readonly restOfWeekCalendarDays = computed<WeekCalendarDay[]>(() => {
     const today = new Date();
-    const tomorrowStart = this.startOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
+    const tomorrowStart = this.startOfDay(
+      new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1),
+    );
     const weekEnd = this.endOfCurrentWeek(today);
 
     if (tomorrowStart >= weekEnd) {
@@ -169,7 +171,11 @@ export class CalendarIntegrationComponent implements OnInit {
     }
 
     const days: WeekCalendarDay[] = [];
-    for (let cursor = new Date(tomorrowStart); cursor < weekEnd; cursor.setDate(cursor.getDate() + 1)) {
+    for (
+      let cursor = new Date(tomorrowStart);
+      cursor < weekEnd;
+      cursor.setDate(cursor.getDate() + 1)
+    ) {
       const dayDate = new Date(cursor);
       const dayEvents = this.normalizedEvents()
         .filter((event) => this.isSameDay(event.startDate, dayDate))
@@ -760,13 +766,13 @@ export class CalendarIntegrationComponent implements OnInit {
   private extractStartDate(event: CalendarEventWithColor): Date {
     const start = event.start;
     const source = start?.dateTime || start?.date || event.startTime;
-    return source ? new Date(source) : new Date();
+    return source ? this.parseCalendarDateValue(source) : new Date();
   }
 
   private extractEndDate(event: CalendarEventWithColor): Date | null {
     const end = event.end;
     const source = end?.dateTime || end?.date || event.endTime;
-    return source ? new Date(source) : null;
+    return source ? this.parseCalendarDateValue(source) : null;
   }
 
   private isDoneEvent(event: CalendarEventWithColor): boolean {
@@ -866,5 +872,19 @@ export class CalendarIntegrationComponent implements OnInit {
       return null;
     }
     return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  }
+
+  private parseCalendarDateValue(value: string): Date {
+    const raw = value.trim();
+    const dateOnly = this.parseHolidayDate(raw);
+    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(raw) && dateOnly) {
+      return dateOnly;
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return new Date();
+    }
+    return parsed;
   }
 }

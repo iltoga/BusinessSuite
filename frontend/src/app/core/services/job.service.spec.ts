@@ -1,6 +1,7 @@
 import { NEVER, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { AsyncJob } from '@/core/api';
 import { JobService } from './job.service';
 
 describe('JobService.watchJob', () => {
@@ -29,7 +30,7 @@ describe('JobService.watchJob', () => {
     const resultPromise = firstValueFrom(service.watchJob('job-1'));
     await vi.advanceTimersByTimeAsync(1600);
 
-    const job = await resultPromise;
+    const job = (await resultPromise) as AsyncJob;
 
     expect(service.realtimeService.watchJob).toHaveBeenCalledWith('job-1');
     expect(service.sseService.connect).toHaveBeenCalledWith('/api/async-jobs/status/job-1/');
@@ -54,7 +55,7 @@ describe('JobService.watchJob', () => {
       ),
     };
 
-    const job = await firstValueFrom(service.watchJob('job-2'));
+    const job = (await firstValueFrom(service.watchJob('job-2'))) as AsyncJob;
 
     expect(service.sseService.connect).toHaveBeenCalledWith('/api/async-jobs/status/job-2/');
     expect(job.id).toBe('job-2');

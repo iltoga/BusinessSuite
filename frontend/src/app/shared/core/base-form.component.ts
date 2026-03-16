@@ -10,9 +10,20 @@ import {
   type OnInit,
   type WritableSignal,
 } from '@angular/core';
-import { FormBuilder, FormGroup, type AbstractControl } from '@angular/forms';
+import { FormBuilder, FormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Observable, catchError, finalize, map, of, switchMap, tap, throwError } from 'rxjs';
+import {
+  catchError,
+  finalize,
+  map,
+  Observable,
+  of,
+  switchMap,
+  tap,
+  throwError,
+  timeout,
+  TimeoutError,
+} from 'rxjs';
 
 import { GlobalToastService } from '@/core/services/toast.service';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
@@ -40,14 +51,14 @@ export interface BaseFormConfig<T, CreateDto, UpdateDto> {
 
 /**
  * Base form component providing common patterns for create/edit forms
- * 
+ *
  * Features:
  * - Keyboard shortcuts (Ctrl/Cmd+S to save, Escape to cancel)
  * - Edit mode detection from route
  * - Server error handling
  * - Navigation state management
  * - Loading states
- * 
+ *
  * @example
  * ```typescript
  * @Component({
@@ -65,29 +76,29 @@ export interface BaseFormConfig<T, CreateDto, UpdateDto> {
  *       entityLabel: 'Customer',
  *     });
  *   }
- * 
+ *
  *   protected override buildForm(): FormGroup {
  *     return this.fb.group({
  *       // form controls
  *     });
  *   }
- * 
+ *
  *   protected override loadItem(id: number): Observable<CustomerDetail> {
  *     return this.service.getCustomer(id);
  *   }
- * 
+ *
  *   protected override createDto(): CustomerCreateDto {
  *     return this.form.value;
  *   }
- * 
+ *
  *   protected override updateDto(): CustomerUpdateDto {
  *     return this.form.value;
  *   }
- * 
+ *
  *   protected override saveCreate(dto: CustomerCreateDto): Observable<any> {
  *     return this.service.createCustomer(dto);
  *   }
- * 
+ *
  *   protected override saveUpdate(dto: CustomerUpdateDto): Observable<any> {
  *     return this.service.updateCustomer(this.itemId!, dto);
  *   }
@@ -102,6 +113,8 @@ export interface BaseFormConfig<T, CreateDto, UpdateDto> {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnInit {
+  private static readonly SAVE_TIMEOUT_MS = 30_000;
+
   protected readonly fb = inject(FormBuilder);
   protected readonly route = inject(ActivatedRoute);
   protected readonly router = inject(Router);
@@ -182,6 +195,14 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
    */
   protected getDetailRoute(id: number): string {
     return `/${this.config.entityType}/${id}`;
+  }
+
+  /**
+   * Timeout used for create/update operations so buttons do not remain disabled forever
+   * when the network path stalls upstream.
+   */
+  protected getSaveTimeoutMs(): number {
+    return BaseFormComponent.SAVE_TIMEOUT_MS;
   }
 
   /**
@@ -293,16 +314,18 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
 
     save$
       .pipe(
+        timeout({ first: this.getSaveTimeoutMs() }),
         tap(() => {
           const message = this.isEditMode()
-            ? this.config.messages?.updateSuccess ?? `${this.config.entityLabel} updated successfully`
-            : this.config.messages?.createSuccess ??
-              `${this.config.entityLabel} created successfully`;
+            ? (this.config.messages?.updateSuccess ??
+              `${this.config.entityLabel} updated successfully`)
+            : (this.config.messages?.createSuccess ??
+              `${this.config.entityLabel} created successfully`);
           if (this.config.enableToasts !== false) {
             this.toast.success(message);
           }
         }),
-        map(() => this.isEditMode() ? this.itemId : null),
+        map(() => (this.isEditMode() ? this.itemId : null)),
         switchMap((id) => {
           // Navigate after successful save
           if (id) {
@@ -313,21 +336,25 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
           return of(null);
         }),
         catchError((error) => {
-          const message = extractServerErrorMessage(error);
+          const message =
+            error instanceof TimeoutError
+              ? `${this.config.entityLabel} save timed out. Please try again.`
+              : extractServerErrorMessage(error);
           const errorMessage =
-            this.config.messages?.saveError ?? `Failed to ${this.isEditMode() ? 'update' : 'create'} ${this.config.entityLabel.toLowerCase()}`;
-          
+            this.config.messages?.saveError ??
+            `Failed to ${this.isEditMode() ? 'update' : 'create'} ${this.config.entityLabel.toLowerCase()}`;
+
           if (this.config.enableToasts !== false) {
             this.toast.error(message ?? errorMessage);
           }
-          
+
           // Apply server errors to form
           applyServerErrorsToForm(this.form, error);
           return throwError(() => error);
         }),
         finalize(() => this.isSaving.set(false)),
       )
-      .subscribe();
+      .subscribe({ error: () => undefined });
   }
 
   /**
@@ -361,7 +388,7 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
 
     // Check if we're in edit mode
     const idParam = this.route.snapshot.paramMap.get('id');
-    
+
     if (idParam) {
       const id = Number(idParam);
       if (Number.isFinite(id)) {
@@ -388,13 +415,14 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
         }),
         catchError((error) => {
           const message = extractServerErrorMessage(error);
-          const errorMessage = this.config.messages?.loadError ??
+          const errorMessage =
+            this.config.messages?.loadError ??
             `Failed to load ${this.config.entityLabel.toLowerCase()}`;
-          
+
           if (this.config.enableToasts !== false) {
             this.toast.error(message ?? errorMessage);
           }
-          
+
           // Navigate back on load error
           this.goBack();
           return throwError(() => error);
