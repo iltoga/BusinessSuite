@@ -3,6 +3,8 @@ import { Observable } from 'rxjs';
 
 import { SseService } from '@/core/services/sse.service';
 
+const STREAM_ROTATION_MS = 55_000;
+
 export interface RemindersStreamEvent {
   event: 'calendar_reminders_snapshot' | 'calendar_reminders_changed' | 'calendar_reminders_error';
   cursor: number;
@@ -23,7 +25,9 @@ export class RemindersStreamService {
   private readonly sseService = inject(SseService);
 
   connect(): Observable<RemindersStreamEvent> {
-    return this.sseService.connect<RemindersStreamEvent>('/api/calendar-reminders/stream/');
+    return this.sseService.connect<RemindersStreamEvent>('/api/calendar-reminders/stream/', {
+      maxConnectionDurationMs: STREAM_ROTATION_MS,
+    });
   }
 
   classifyInboxSignal(

@@ -37,6 +37,10 @@ describe('SseService', () => {
     sse = new SseService(ngZoneMock as NgZone, mockAuth as AuthService);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('rejects connection if token is expired and triggers logout', () => {
     mockAuth.isTokenExpired.mockReturnValue(true);
 
@@ -91,7 +95,9 @@ describe('SseService', () => {
 
   it('parses SSE event/id frames via connectMessages', async () => {
     (globalThis.fetch as any).mockResolvedValue(
-      createSseResponse(['id: 1710000000000-0\nevent: job_update\ndata: {"status":"processing"}\n\n']),
+      createSseResponse([
+        'id: 1710000000000-0\nevent: job_update\ndata: {"status":"processing"}\n\n',
+      ]),
     );
 
     const message = await firstValueFrom(sse.connectMessages<{ status: string }>('/sse'));
@@ -120,13 +126,48 @@ describe('SseService', () => {
       .mockResolvedValueOnce(createSseResponse(['id: 99-0\ndata: {"step":"one"}\n\n']))
       .mockResolvedValueOnce(createSseResponse(['data: {"step":"two"}\n\n']));
 
-    await firstValueFrom(sse.connectMessages<{ step: string }>('/sse-no-replay', { useReplayCursor: false }));
-    await firstValueFrom(sse.connectMessages<{ step: string }>('/sse-no-replay', { useReplayCursor: false }));
+    await firstValueFrom(
+      sse.connectMessages<{ step: string }>('/sse-no-replay', { useReplayCursor: false }),
+    );
+    await firstValueFrom(
+      sse.connectMessages<{ step: string }>('/sse-no-replay', { useReplayCursor: false }),
+    );
 
     const [, firstOptions] = (globalThis.fetch as any).mock.calls[0];
     const [, secondOptions] = (globalThis.fetch as any).mock.calls[1];
 
     expect(firstOptions.headers.get('Last-Event-ID')).toBeNull();
     expect(secondOptions.headers.get('Last-Event-ID')).toBeNull();
+  });
+
+  it('gracefully completes rotated connections before edge timeouts', async () => {
+    vi.useFakeTimers();
+
+    (globalThis.fetch as any).mockImplementation(async (_url: string, options: RequestInit) => ({
+      ok: true,
+      status: 200,
+      body: {
+        getReader: () => ({
+          read: vi.fn(
+            () =>
+              new Promise((_, reject) => {
+                options.signal?.addEventListener('abort', () => reject(new Error('aborted')), {
+                  once: true,
+                });
+              }),
+          ),
+        }),
+      },
+    }));
+
+    await new Promise<void>((resolve, reject) => {
+      sse.connect('/sse', { maxConnectionDurationMs: 1_000 }).subscribe({
+        next: () => reject(new Error('should not emit next')),
+        error: reject,
+        complete: resolve,
+      });
+
+      void vi.advanceTimersByTimeAsync(1_000);
+    });
   });
 });

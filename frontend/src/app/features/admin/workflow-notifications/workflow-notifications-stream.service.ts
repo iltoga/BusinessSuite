@@ -3,8 +3,13 @@ import { Observable } from 'rxjs';
 
 import { SseService } from '@/core/services/sse.service';
 
+const STREAM_ROTATION_MS = 55_000;
+
 export interface WorkflowNotificationsStreamEvent {
-  event: 'workflow_notifications_snapshot' | 'workflow_notifications_changed' | 'workflow_notifications_error';
+  event:
+    | 'workflow_notifications_snapshot'
+    | 'workflow_notifications_changed'
+    | 'workflow_notifications_error';
   cursor: number;
   windowHours: number;
   lastNotificationId: number | null;
@@ -22,6 +27,11 @@ export class WorkflowNotificationsStreamService {
   private readonly sseService = inject(SseService);
 
   connect(): Observable<WorkflowNotificationsStreamEvent> {
-    return this.sseService.connect<WorkflowNotificationsStreamEvent>('/api/workflow-notifications/stream/');
+    return this.sseService.connect<WorkflowNotificationsStreamEvent>(
+      '/api/workflow-notifications/stream/',
+      {
+        maxConnectionDurationMs: STREAM_ROTATION_MS,
+      },
+    );
   }
 }

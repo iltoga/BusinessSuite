@@ -10,14 +10,47 @@ from api.async_controls import (
     increment_guard_counter,
     release_enqueue_guard,
 )
+from api.cache_resilience import is_transient_cache_backend_error
 from api.permissions import is_staff_or_admin_group
 from django.conf import settings
 from rest_framework import pagination, serializers, status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle, UserRateThrottle
 
 logger = logging.getLogger(__name__)
+
+
+class ResilientThrottleMixin:
+    """Fail open when the throttle cache backend is temporarily unavailable."""
+
+    def allow_request(self, request, view):
+        try:
+            return super().allow_request(request, view)
+        except Exception as exc:
+            if not is_transient_cache_backend_error(exc):
+                raise
+
+            logger.warning(
+                "Throttle bypassed for %s %s because the cache backend is temporarily unavailable: %s",
+                getattr(request, "method", "?"),
+                getattr(getattr(request, "_request", request), "path", "<unknown>"),
+                exc,
+            )
+            self.history = []
+            return True
+
+
+class ResilientAnonRateThrottle(ResilientThrottleMixin, AnonRateThrottle):
+    pass
+
+
+class ResilientUserRateThrottle(ResilientThrottleMixin, UserRateThrottle):
+    pass
+
+
+class ResilientScopedRateThrottle(ResilientThrottleMixin, ScopedRateThrottle):
+    pass
 
 
 class OCRPlaceholderSerializer(serializers.Serializer):
@@ -95,6 +128,21 @@ class ApiErrorHandlingMixin:
             payload["details"] = details
         return Response(payload, status=status_code)
 
+    def check_throttles(self, request):
+        try:
+            return super().check_throttles(request)
+        except Exception as exc:
+            if not is_transient_cache_backend_error(exc):
+                raise
+
+            logger.warning(
+                "Skipping throttles for %s %s because the cache backend is temporarily unavailable: %s",
+                getattr(request, "method", "?"),
+                getattr(getattr(request, "_request", request), "path", "<unknown>"),
+                exc,
+            )
+            return None
+
     def handle_exception(self, exc):
         from django.db.models.deletion import ProtectedError
 
@@ -102,10 +150,22 @@ class ApiErrorHandlingMixin:
             message = exc.args[0] if getattr(exc, "args", None) else "Cannot delete because related objects exist."
             return self.error_response(str(message), status.HTTP_409_CONFLICT)
 
+        if is_transient_cache_backend_error(exc):
+            return self.error_response(
+                "Service temporarily unavailable while cache services are warming up. Please retry shortly.",
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         try:
             response = super().handle_exception(exc)
         except Exception as e:
             import traceback
+
+            if is_transient_cache_backend_error(e):
+                return self.error_response(
+                    "Service temporarily unavailable while cache services are warming up. Please retry shortly.",
+                    status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
 
             logging.exception("Unhandled exception in API view")
             if settings.DEBUG:
@@ -138,11 +198,11 @@ class StandardResultsSetPagination(pagination.PageNumberPagination):
     max_page_size = 200
 
 
-class CronScopedRateThrottle(ScopedRateThrottle):
+class CronScopedRateThrottle(ResilientScopedRateThrottle):
     scope = "cron"
 
 
-class QuickCreateScopedRateThrottle(ScopedRateThrottle):
+class QuickCreateScopedRateThrottle(ResilientScopedRateThrottle):
     scope = "quick_create"
 
 
@@ -203,9 +263,7 @@ def prepare_async_enqueue(
             warning=True,
             detail=scope,
         )
-        return AsyncEnqueueGuardResult(
-            response=error_response_builder(busy_message, status.HTTP_429_TOO_MANY_REQUESTS)
-        )
+        return AsyncEnqueueGuardResult(response=error_response_builder(busy_message, status.HTTP_429_TOO_MANY_REQUESTS))
 
     existing_job = _latest_inflight_job(inflight_queryset, inflight_statuses)
     if existing_job:
