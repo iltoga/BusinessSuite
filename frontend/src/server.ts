@@ -30,6 +30,7 @@ import { request as httpRequest, type OutgoingHttpHeaders, type RequestOptions }
 import { request as httpsRequest } from 'node:https';
 import { dirname, join, resolve } from 'node:path';
 import { generateNonce } from './csp';
+import { resolveOtlpTracesConfig } from './server/otlp-config';
 import { buildSsrAllowedHosts } from './server/ssr-allowed-hosts';
 
 function parseDotenvValue(rawValue: string): string {
@@ -150,18 +151,17 @@ type ParsedTraceparent = {
   traceFlags: string;
 };
 
-const OTLP_TRACES_ENDPOINT =
-  process.env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'] ||
-  (process.env['OTEL_EXPORTER_OTLP_ENDPOINT']
-    ? `${String(process.env['OTEL_EXPORTER_OTLP_ENDPOINT']).replace(/\/+$/, '')}/v1/traces`
-    : '');
-const OTLP_TRACES_ENABLED =
-  Boolean(OTLP_TRACES_ENDPOINT) &&
-  String(process.env['OTEL_TRACES_EXPORTER'] || 'otlp').toLowerCase() !== 'none';
+const otlpTracesConfig = resolveOtlpTracesConfig(process.env);
+const OTLP_TRACES_ENDPOINT = otlpTracesConfig.endpoint;
+const OTLP_TRACES_ENABLED = otlpTracesConfig.enabled;
 const OTLP_SERVICE_NAME = process.env['OTEL_SERVICE_NAME'] || 'frontend';
 const OTLP_SCOPE_NAME =
   process.env['OTEL_INSTRUMENTATION_SCOPE_NAME'] || 'revisbali.manual.frontend';
-const OTLP_EXPORT_TIMEOUT_MS = Number(process.env['OTEL_EXPORTER_OTLP_TIMEOUT_MS'] || '1000');
+const OTLP_EXPORT_TIMEOUT_MS = otlpTracesConfig.timeoutMs;
+const OTLP_REQUEST_HEADERS: Record<string, string> = {
+  'Content-Type': 'application/json',
+  ...otlpTracesConfig.headers,
+};
 const OTLP_RESOURCE_ATTRIBUTES = parseKvCsv(process.env['OTEL_RESOURCE_ATTRIBUTES'] || '');
 OTLP_RESOURCE_ATTRIBUTES['service.name'] =
   OTLP_RESOURCE_ATTRIBUTES['service.name'] || OTLP_SERVICE_NAME;
@@ -284,7 +284,7 @@ async function exportSpan(
   try {
     const response = await fetch(OTLP_TRACES_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: OTLP_REQUEST_HEADERS,
       body: JSON.stringify(payload),
       signal: abortController.signal,
     });
@@ -293,7 +293,10 @@ async function exportSpan(
       logOtlpExportWarning(`[OTLP] export failed (${response.status}): ${body}`);
     }
   } catch (error) {
-    logOtlpExportWarning(`[OTLP] export error: ${String(error)}`);
+    const errorLabel = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    logOtlpExportWarning(
+      `[OTLP] export error (${otlpTracesConfig.source}, timeout=${OTLP_EXPORT_TIMEOUT_MS}ms, endpoint=${OTLP_TRACES_ENDPOINT}): ${errorLabel}`,
+    );
   } finally {
     clearTimeout(timeout);
   }
@@ -326,7 +329,11 @@ const shouldDropServerLog = (level: string, serialized: string) => {
 };
 
 if (OTLP_TRACES_ENABLED) {
-  console.info(`[OTLP] frontend tracing enabled, exporting to ${OTLP_TRACES_ENDPOINT}`);
+  const headerSummary =
+    otlpTracesConfig.headerNames.length > 0 ? otlpTracesConfig.headerNames.join(', ') : 'none';
+  console.info(
+    `[OTLP] frontend tracing enabled (${otlpTracesConfig.source}), exporting to ${OTLP_TRACES_ENDPOINT}, timeout=${OTLP_EXPORT_TIMEOUT_MS}ms, headers=${headerSummary}`,
+  );
 }
 
 if (ssrAllowedHosts.length > 0) {

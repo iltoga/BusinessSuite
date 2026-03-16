@@ -321,6 +321,7 @@ services:
     container_name: bs-frontend
     depends_on:
       - bs-core
+      - bs-alloy
     image: bs-frontend:web
     build:
       context: ./
@@ -342,7 +343,12 @@ services:
       OTEL_SERVICE_NAME: bs-frontend
       OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER_FRONTEND:-none}
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
-      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bs-alloy:4318/v1/traces
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+      OTEL_EXPORTER_OTLP_TRACES_HEADERS: ${OTEL_EXPORTER_OTLP_TRACES_HEADERS:-}
+      OTEL_EXPORTER_OTLP_TIMEOUT: ${OTEL_EXPORTER_OTLP_TIMEOUT:-10000}
+      OTEL_EXPORTER_OTLP_TRACES_TIMEOUT: ${OTEL_EXPORTER_OTLP_TRACES_TIMEOUT:-}
       OTEL_PROPAGATORS: tracecontext,baggage
       OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=production,service.namespace=revisbali"
     volumes:
