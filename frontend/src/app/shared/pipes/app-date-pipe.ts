@@ -13,7 +13,7 @@ export class AppDatePipe implements PipeTransform {
   private locale = inject(LOCALE_ID);
   private configService = inject(ConfigService);
 
-  transform(value: unknown, format: AppDateFormat = 'date'): unknown {
+  transform(value: unknown, format: AppDateFormat = 'date'): string | null {
     if (!value || value === '') return null;
 
     try {
@@ -37,7 +37,7 @@ export class AppDatePipe implements PipeTransform {
       return result;
     } catch (e) {
       console.error('[AppDatePipe] Error formatting date:', e);
-      return value;
+      return null;
     }
   }
 

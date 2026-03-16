@@ -19,7 +19,7 @@
     <app-card-skeleton [lines]="6" />
 
     <!-- Documents Card Skeleton -->
-    <z-card class="p-4 sm:p-6">
+    <z-card zVariant="compact">
       <div class="mb-4">
         <z-skeleton class="h-6 w-1/4" />
       </div>
@@ -87,7 +87,7 @@
       </div>
     </div>
 
-    <z-card class="p-4 sm:p-6">
+    <z-card zVariant="compact">
       <div class="grid gap-6">
         <div class="flex flex-wrap items-end gap-6">
           <div
@@ -223,34 +223,31 @@
         (updateWorkflowStatus)="updateWorkflowStatus($event.workflowId, $event.status)"
       />
 
-      <z-card class="mt-4 p-4 sm:mt-6 sm:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-          <h3 class="text-lg font-semibold">Uploaded Documents</h3>
-          <div class="flex flex-wrap gap-2">
-            @if (selectedDocumentIds().size > 0) {
-              <button
-                z-button
-                zType="success"
-                (click)="mergeAndDownloadSelected()"
-                [disabled]="isMerging()"
-              >
-                @if (isMerging()) {
-                  <z-icon zType="loader-circle" class="mr-2 h-4 w-4 app-circle-spinner" />
-                  Merging...
-                } @else {
-                  Merge & Download PDF ({{ selectedDocumentIds().size }})
-                }
-              </button>
-            }
+      <app-card-section title="Uploaded Documents" class="mt-4 sm:mt-6">
+        <div card-section-actions class="flex flex-wrap gap-2">
+          @if (selectedDocumentIds().size > 0) {
             <button
               z-button
-              zType="outline"
-              (click)="openAddDocumentDialog()"
-              [disabled]="filteredDocTypeOptions().length === 0"
+              zType="success"
+              (click)="mergeAndDownloadSelected()"
+              [disabled]="isMerging()"
             >
-              Add Document type to the List
+              @if (isMerging()) {
+                <z-icon zType="loader-circle" class="mr-2 h-4 w-4 app-circle-spinner" />
+                Merging...
+              } @else {
+                Merge & Download PDF ({{ selectedDocumentIds().size }})
+              }
             </button>
-          </div>
+          }
+          <button
+            z-button
+            zType="outline"
+            (click)="openAddDocumentDialog()"
+            [disabled]="filteredDocTypeOptions().length === 0"
+          >
+            Add Document type to the List
+          </button>
         </div>
 
         <!-- AI Document Categorization area -->
@@ -399,30 +396,26 @@
             </table>
           </div>
         }
-      </z-card>
+      </app-card-section>
 
-      <z-card class="p-4 sm:p-6">
-        <div class="mb-4 flex items-center justify-between">
-          <h3 class="text-lg font-semibold flex items-center gap-2">
-            Required Documents
-            @if (canAutoGenerateAnyDocuments()) {
-              <button
-                type="button"
-                class="text-muted-foreground hover:text-primary transition-colors disabled:opacity-40 flex items-center"
-                [zTooltip]="'Auto-generate all possible documents'"
-                [disabled]="isAutoGeneratingAll() || actionLoading() !== null"
-                (click)="autoGenerateAllDocuments()"
-                aria-label="Auto-generate all documents"
-              >
-                @if (isAutoGeneratingAll()) {
-                  <z-icon zType="loader-circle" class="h-3.5 w-3.5 app-circle-spinner" />
-                } @else {
-                  <z-icon zType="sparkles" class="h-4 w-4" />
-                }
-              </button>
+      <app-card-section title="Required Documents">
+        @if (canAutoGenerateAnyDocuments()) {
+          <button
+            card-section-actions
+            type="button"
+            class="text-muted-foreground hover:text-primary transition-colors disabled:opacity-40 flex items-center"
+            [zTooltip]="'Auto-generate all possible documents'"
+            [disabled]="isAutoGeneratingAll() || actionLoading() !== null"
+            (click)="autoGenerateAllDocuments()"
+            aria-label="Auto-generate all documents"
+          >
+            @if (isAutoGeneratingAll()) {
+              <z-icon zType="loader-circle" class="h-3.5 w-3.5 app-circle-spinner" />
+            } @else {
+              <z-icon zType="sparkles" class="h-4 w-4" />
             }
-          </h3>
-        </div>
+          </button>
+        }
         @if (requiredDocuments().length === 0) {
           <div class="text-sm text-muted-foreground">No required documents pending.</div>
         } @else {
@@ -482,13 +475,10 @@
             </table>
           </div>
         }
-      </z-card>
+      </app-card-section>
 
       @if (optionalDocuments().length > 0) {
-        <z-card class="p-4 sm:p-6">
-          <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-lg font-semibold">Optional Documents</h3>
-          </div>
+        <app-card-section title="Optional Documents">
           <div class="overflow-x-auto app-detail-table-wrap">
             <table class="app-detail-table app-optional-docs-table w-full border-collapse">
               <thead>
@@ -536,7 +526,7 @@
               </tbody>
             </table>
           </div>
-        </z-card>
+        </app-card-section>
       }
     }
   </div>

@@ -16,7 +16,9 @@
 } @else if (invoice()) {
   <div class="invoice-detail-container -m-3 sm:-m-6 space-y-4">
     <!-- Sticky Header -->
-    <div class="invoice-header sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b py-2 isolate">
+    <div
+      class="invoice-header sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 border-b py-2 isolate"
+    >
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
@@ -26,7 +28,9 @@
             {{ invoice()!.customer.fullNameWithCompany || invoice()!.customer.fullName }}
           </p>
         </div>
-        <div class="invoice-detail-header-actions flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <div
+          class="invoice-detail-header-actions flex w-full flex-wrap items-center gap-2 sm:w-auto"
+        >
           <app-invoice-download-dropdown
             [invoiceId]="invoice()!.id"
             [invoiceNumber]="(invoice()!.invoiceNoDisplay || invoice()!.invoiceNo).toString()"
@@ -40,32 +44,17 @@
       </div>
     </div>
 
-    <z-card class="p-4 sm:p-6">
+    <z-card zVariant="compact">
       <div class="grid gap-4 md:grid-cols-3">
         <div>
           <div class="text-sm text-muted-foreground">Status</div>
           <z-badge [zType]="statusVariant(invoice()!.status)">{{ invoice()!.status }}</z-badge>
         </div>
-        <div>
-          <div class="text-sm text-muted-foreground">Invoice Date</div>
-          <div class="font-medium">{{ invoice()!.invoiceDate | appDate }}</div>
-        </div>
-        <div>
-          <div class="text-sm text-muted-foreground">Due Date (Payment)</div>
-          <div class="font-medium">{{ invoice()!.dueDate | appDate }}</div>
-        </div>
-        <div>
-          <div class="text-sm text-muted-foreground">Total</div>
-          <div class="font-medium">{{ formatCurrency(invoice()!.totalAmount) }}</div>
-        </div>
-        <div>
-          <div class="text-sm text-muted-foreground">Paid</div>
-          <div class="font-medium">{{ formatCurrency(invoice()!.totalPaidAmount) }}</div>
-        </div>
-        <div>
-          <div class="text-sm text-muted-foreground">Due</div>
-          <div class="font-medium">{{ formatCurrency(invoice()!.totalDueAmount) }}</div>
-        </div>
+        <app-detail-field label="Invoice Date" [value]="invoice()!.invoiceDate | appDate" />
+        <app-detail-field label="Due Date (Payment)" [value]="invoice()!.dueDate | appDate" />
+        <app-detail-field label="Total" [value]="formatCurrency(invoice()!.totalAmount)" />
+        <app-detail-field label="Paid" [value]="formatCurrency(invoice()!.totalPaidAmount)" />
+        <app-detail-field label="Due" [value]="formatCurrency(invoice()!.totalDueAmount)" />
       </div>
       @if (invoice()!.notes) {
         <div class="mt-4 text-sm text-muted-foreground">{{ invoice()!.notes }}</div>
@@ -86,16 +75,13 @@
       </div>
     </z-card>
 
-    <z-card class="p-4 sm:p-6">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold">Invoice Lines</h2>
-        @if (hasMultipleDueApplications()) {
-          <z-button zType="warning" zSize="sm" (click)="openFullPaymentModal()">
-            Add Full Payment
-          </z-button>
-        }
-      </div>
-      <div class="mt-4 space-y-4">
+    <app-card-section title="Invoice Lines">
+      @if (hasMultipleDueApplications()) {
+        <z-button card-section-actions zType="warning" zSize="sm" (click)="openFullPaymentModal()">
+          Add Full Payment
+        </z-button>
+      }
+      <div class="space-y-4">
         @for (app of invoice()!.invoiceApplications; track app.id) {
           <div class="invoice-application-card rounded-lg border p-4">
             <div class="invoice-application-summary">
@@ -130,7 +116,10 @@
                   <div class="text-xs text-muted-foreground">Due</div>
                   <div class="font-medium">{{ formatCurrency(app.dueAmount) }}</div>
                 </div>
-                <z-badge class="invoice-application-status" [zType]="paymentStatusVariant(app.status)">
+                <z-badge
+                  class="invoice-application-status"
+                  [zType]="paymentStatusVariant(app.status)"
+                >
                   {{ app.status }}
                 </z-badge>
               </div>
@@ -160,7 +149,9 @@
                     <tbody>
                       @for (payment of app.payments; track payment.id) {
                         <tr class="border-t">
-                          <td class="py-2" data-label="Date">{{ payment.paymentDate | appDate }}</td>
+                          <td class="py-2" data-label="Date">
+                            {{ payment.paymentDate | appDate }}
+                          </td>
                           <td class="py-2" data-label="Amount">
                             {{ formatCurrency(payment.amount) }}
                           </td>
@@ -199,7 +190,7 @@
           </div>
         }
       </div>
-    </z-card>
+    </app-card-section>
   </div>
 
   <app-payment-modal

@@ -95,6 +95,7 @@ export class ZardCardComponent {
   readonly zAction = input('');
   readonly zDescription = input<string | TemplateRef<void>>();
   readonly zTitle = input<string | TemplateRef<void>>();
+  readonly zVariant = input<'default' | 'compact' | 'flat'>('default');
 
   readonly zActionClick = output<void>();
 
@@ -108,14 +109,24 @@ export class ZardCardComponent {
     return this.zDescription() && baseId ? `${baseId}-description` : null;
   });
 
-  protected readonly classes = computed(() => mergeClasses(cardVariants(), this.class()));
-  protected readonly bodyClasses = computed(() => mergeClasses(cardBodyVariants()));
+  protected readonly classes = computed(() =>
+    mergeClasses(cardVariants({ variant: this.zVariant() }), this.class()),
+  );
+  protected readonly bodyClasses = computed(() =>
+    mergeClasses(cardBodyVariants({ variant: this.zVariant() })),
+  );
   protected readonly footerClasses = computed(() =>
-    mergeClasses(cardFooterVariants(), this.zFooterBorder() ? 'border-t' : ''),
+    mergeClasses(
+      cardFooterVariants({ variant: this.zVariant() }),
+      this.zFooterBorder() ? 'border-t' : '',
+    ),
   );
 
   protected readonly headerClasses = computed(() =>
-    mergeClasses(cardHeaderVariants(), this.zHeaderBorder() ? 'border-b' : ''),
+    mergeClasses(
+      cardHeaderVariants({ variant: this.zVariant() }),
+      this.zHeaderBorder() ? 'border-b' : '',
+    ),
   );
 
   protected onClick(): void {

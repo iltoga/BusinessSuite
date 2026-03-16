@@ -20,33 +20,37 @@ Base path: `frontend/src/app/shared/components/`
 
 ## Feature-level shared components
 
-| Component               | Selector                        | Path                                         | Notes                                                                |
-| ----------------------- | ------------------------------- | -------------------------------------------- | -------------------------------------------------------------------- |
-| DataTable               | `app-data-table`                | `data-table/`                                | Generic tabular list rendering with column config and sorting hooks. |
-| SearchToolbar           | `app-search-toolbar`            | `search-toolbar/`                            | Shared query/submit/search interaction.                              |
-| PaginationControls      | `app-pagination-controls`       | `pagination-controls/`                       | Reusable page navigation controls.                                   |
-| ConfirmDialog           | `app-confirm-dialog`            | `confirm-dialog/`                            | Generic confirmation dialog.                                         |
-| BulkDeleteDialog        | `app-bulk-delete-dialog`        | `bulk-delete-dialog/`                        | Bulk-delete confirmation with payload/result contract.               |
-| InvoiceDeleteDialog     | `app-invoice-delete-dialog`     | `invoice-delete-dialog/`                     | Invoice-specific delete confirmation flow.                           |
-| ProductDeleteDialog     | `app-product-delete-dialog`     | `product-delete-dialog/`                     | Product delete preview + optional force-delete confirmation dialog.  |
-| ApplicationDeleteDialog | `app-application-delete-dialog` | `application-delete-dialog/`                 | Application delete confirmation.                                     |
-| CustomerSelect          | `app-customer-select`           | `customer-select/`                           | Async customer search/select control.                                |
-| ProductSelect           | `app-product-select`            | `product-select/`                            | Product selection control.                                           |
-| SortableMultiSelect     | `app-sortable-multi-select`     | `sortable-multi-select/`                     | Ordered multi-select (drag/drop) for task/document flows.            |
-| FileUpload              | `app-file-upload`               | `file-upload/`                               | Generic upload with progress/reset events.                           |
-| MultiFileUpload         | `app-multi-file-upload`         | `multi-file-upload/`                         | Multi-file drag-and-drop upload with file list management.           |
-| ImageMagnifier          | `app-image-magnifier`           | `image-magnifier/`                           | Reusable image viewer with optional hover lens magnification toggle. |
-| DocumentPreview         | `app-document-preview`          | `document-preview/`                          | Inline preview launcher for uploaded docs.                           |
-| PdfViewerHost           | `app-pdf-viewer-host`           | `pdf-viewer-host/`                           | Lazy PDF viewer wrapper.                                             |
-| InvoiceDownloadDropdown | `app-invoice-download-dropdown` | `invoice-download-dropdown/`                 | Invoice download action menu.                                        |
-| JobProgressDialog       | `app-job-progress-dialog`       | `job-progress-dialog/`                       | Async job progress modal.                                            |
-| ExpiryBadge             | `app-expiry-badge`              | `expiry-badge/`                              | Date-based status badge (expiring/expired).                          |
-| DashboardWidget         | `app-dashboard-widget`          | `dashboard-widget/`                          | Reusable widget container for dashboard stats/charts.                |
-| FormErrorSummary        | `app-form-error-summary`        | `form-error-summary/`                        | Consolidates form validation errors into a summary block.            |
-| JsonFieldMappingEditor  | `app-json-field-mapping-editor` | `json-field-mapping-editor/`                 | Reusable JSON `{field_name, description}` table editor (CVA).        |
-| HelpDrawer              | `z-help-drawer`                 | `help-drawer/`                               | Global contextual help + hotkeys drawer.                             |
-| CalendarIntegration     | `app-calendar-integration`      | `calendar/calendar-integration.component.ts` | Calendar integration panel and sync UX.                              |
-| Calendar                | `z-calendar`                    | `calendar/calendar.component.ts`             | Reusable calendar view primitives (grid/navigation/types).           |
+| Component               | Selector                        | Path                                         | Notes                                                                                             |
+| ----------------------- | ------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| DataTable               | `app-data-table`                | `data-table/`                                | Generic tabular list rendering with column config and sorting hooks.                              |
+| SearchToolbar           | `app-search-toolbar`            | `search-toolbar/`                            | Shared query/submit/search interaction.                                                           |
+| PaginationControls      | `app-pagination-controls`       | `pagination-controls/`                       | Reusable page navigation controls.                                                                |
+| ConfirmDialog           | `app-confirm-dialog`            | `confirm-dialog/`                            | Generic confirmation dialog.                                                                      |
+| BulkDeleteDialog        | `app-bulk-delete-dialog`        | `bulk-delete-dialog/`                        | Bulk-delete confirmation with payload/result contract.                                            |
+| InvoiceDeleteDialog     | `app-invoice-delete-dialog`     | `invoice-delete-dialog/`                     | Invoice-specific delete confirmation flow.                                                        |
+| ProductDeleteDialog     | `app-product-delete-dialog`     | `product-delete-dialog/`                     | Product delete preview + optional force-delete confirmation dialog.                               |
+| ApplicationDeleteDialog | `app-application-delete-dialog` | `application-delete-dialog/`                 | Application delete confirmation.                                                                  |
+| CustomerSelect          | `app-customer-select`           | `customer-select/`                           | Async customer search/select control.                                                             |
+| ProductSelect           | `app-product-select`            | `product-select/`                            | Product selection control.                                                                        |
+| SortableMultiSelect     | `app-sortable-multi-select`     | `sortable-multi-select/`                     | Ordered multi-select (drag/drop) for task/document flows.                                         |
+| FileUpload              | `app-file-upload`               | `file-upload/`                               | Generic upload with progress/reset events.                                                        |
+| MultiFileUpload         | `app-multi-file-upload`         | `multi-file-upload/`                         | Multi-file drag-and-drop upload with file list management.                                        |
+| ImageMagnifier          | `app-image-magnifier`           | `image-magnifier/`                           | Reusable image viewer with optional hover lens magnification toggle.                              |
+| DocumentPreview         | `app-document-preview`          | `document-preview/`                          | Inline preview launcher for uploaded docs.                                                        |
+| PdfViewerHost           | `app-pdf-viewer-host`           | `pdf-viewer-host/`                           | Lazy PDF viewer wrapper.                                                                          |
+| InvoiceDownloadDropdown | `app-invoice-download-dropdown` | `invoice-download-dropdown/`                 | Invoice download action menu.                                                                     |
+| JobProgressDialog       | `app-job-progress-dialog`       | `job-progress-dialog/`                       | Async job progress modal.                                                                         |
+| ExpiryBadge             | `app-expiry-badge`              | `expiry-badge/`                              | Date-based status badge (expiring/expired).                                                       |
+| DashboardWidget         | `app-dashboard-widget`          | `dashboard-widget/`                          | Reusable widget container for dashboard stats/charts.                                             |
+| FormErrorSummary        | `app-form-error-summary`        | `form-error-summary/`                        | Consolidates form validation errors into a summary block.                                         |
+| JsonFieldMappingEditor  | `app-json-field-mapping-editor` | `json-field-mapping-editor/`                 | Reusable JSON `{field_name, description}` table editor (CVA).                                     |
+| HelpDrawer              | `z-help-drawer`                 | `help-drawer/`                               | Global contextual help + hotkeys drawer.                                                          |
+| CalendarIntegration     | `app-calendar-integration`      | `calendar/calendar-integration.component.ts` | Calendar integration panel and sync UX.                                                           |
+| Calendar                | `z-calendar`                    | `calendar/calendar.component.ts`             | Reusable calendar view primitives (grid/navigation/types).                                        |
+| SectionHeader           | `app-section-header`            | `section-header/`                            | Small uppercase section heading (`<h3>`) for detail-page cards.                                   |
+| DetailField             | `app-detail-field`              | `detail-field/`                              | Label + value row; supports `col` (default) and `row` layouts and `<ng-content>` for rich values. |
+| DetailGrid              | `app-detail-grid`               | `detail-grid/`                               | Responsive CSS grid wrapper for `app-detail-field` rows; accepts `cols` input (2/3/4).            |
+| CardSection             | `app-card-section`              | `card-section/`                              | `z-card` with a built-in header row: `title` input + `[card-section-actions]` projection slot.    |
 
 ## Reusable UI primitives (Zard-style)
 
@@ -55,7 +59,7 @@ These are low-level building blocks used across features:
 - `avatar/`
 - `badge/`
 - `button/`
-- `card/`
+- `card/` — accepts `zVariant` input: `default`, `compact` (no shadow, reduced padding/gap), `flat` (no border, no shadow)
 - `checkbox/`
 - `combobox/`
 - `command/`
