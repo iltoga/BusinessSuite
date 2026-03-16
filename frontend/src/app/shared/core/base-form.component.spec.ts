@@ -2,8 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Router, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NEVER, of } from 'rxjs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GlobalToastService } from '@/core/services/toast.service';
 import { Component } from '@angular/core';
@@ -34,6 +34,9 @@ interface TestUpdateDto {
   template: '',
 })
 class TestFormComponent extends BaseFormComponent<TestItem, TestCreateDto, TestUpdateDto> {
+  saveTimeoutMs = 30_000;
+  saveUpdateImpl = vi.fn((dto: TestUpdateDto) => of({ id: 1, ...dto }));
+
   constructor() {
     super();
     this.config = {
@@ -67,7 +70,11 @@ class TestFormComponent extends BaseFormComponent<TestItem, TestCreateDto, TestU
   }
 
   protected saveUpdate(dto: TestUpdateDto) {
-    return of({ id: 1, ...dto });
+    return this.saveUpdateImpl(dto);
+  }
+
+  protected override getSaveTimeoutMs(): number {
+    return this.saveTimeoutMs;
   }
 
   // Expose protected methods for testing
@@ -91,6 +98,10 @@ class TestFormComponent extends BaseFormComponent<TestItem, TestCreateDto, TestU
 describe('BaseFormComponent', () => {
   let component: TestFormComponent;
   let fixture: ComponentFixture<TestFormComponent>;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -257,6 +268,25 @@ describe('BaseFormComponent', () => {
       // This would require mocking the save observable
       // For now, we test that the method exists and doesn't throw
       expect(() => component.onSubmit()).not.toThrow();
+    });
+
+    it('should clear saving state and show a helpful error when save stalls', async () => {
+      vi.useFakeTimers();
+      component.saveTimeoutMs = 25;
+      component.isEditMode.set(true);
+      (component as any).itemId = 1;
+      component.form.patchValue({ name: 'Updated name' });
+      component.saveUpdateImpl.mockReturnValue(NEVER);
+
+      const toastSpy = vi.spyOn((component as any).toast, 'error');
+
+      component.onSubmit();
+      expect(component.isSaving()).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(30);
+
+      expect(component.isSaving()).toBe(false);
+      expect(toastSpy).toHaveBeenCalledWith('Test Item save timed out. Please try again.');
     });
   });
 

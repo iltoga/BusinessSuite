@@ -217,6 +217,45 @@ businesssuite/
 - **Frontend:** Minimum 80% test coverage required
 - **E2E tests:** Use Playwright with the mock server (Prism). See `docs/playwright-mock-e2e.md` for setup, recommended `playwright.config.ts`, examples, CI tips, and troubleshooting.
 
+#### Writing and Running Tests
+
+**Backend (Django / pytest)**
+
+- Prefer proper pytest or Django test modules under app-level `tests/` packages such as `backend/core/tests/` and `backend/api/tests/`
+- Keep standalone/manual scripts out of pytest collection behavior: do not execute database queries, `django.setup()`, network calls, or parser initialization at import time in files named `test_*.py`; wrap manual script execution in `if __name__ == "__main__":`
+- For DB-backed tests, use the appropriate Django test base classes or mark pytest tests with database access when needed
+- When changing async jobs, services, permissions, serializers, or model logic, add a focused regression test near the affected app
+- Prefer small, deterministic tests with mocks around external AI/OCR providers rather than live network calls
+
+Run backend tests with:
+
+```bash
+cd backend && python manage.py test
+cd backend && uv run pytest
+cd backend && python manage.py test core.tests.test_async_job_realtime
+```
+
+**Frontend (Angular / Vitest)**
+
+- Add unit specs alongside the service/component they cover using `*.spec.ts`
+- For services that expose observables, keep the emitted value types explicit in specs so Angular/Vitest compilation does not fall back to `unknown`
+- Mock SSE, generated API clients, dialogs, and other I/O boundaries; keep tests deterministic and fast
+- Add regression specs for payload-shape adapters, signal state transitions, and error/fallback flows when fixing bugs
+
+Run frontend tests with:
+
+```bash
+cd frontend && bun run test
+cd frontend && bun run test -- --runInBand
+cd frontend && bun run vitest run src/app/core/services/job.service.spec.ts
+```
+
+**Before considering a task complete**
+
+- Run the narrowest affected tests first, then rerun the relevant full backend/frontend suites
+- Fix failing tests instead of skipping them unless the user explicitly requests otherwise
+- Clean up temporary debugging code, test-only logging, and stale fixtures before finishing
+
 ---
 
 ## Development Workflow

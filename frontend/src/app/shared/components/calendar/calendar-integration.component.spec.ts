@@ -3,21 +3,32 @@ import { DEFAULT_APP_CONFIG } from '@/core/config/app.config';
 import { ConfigService } from '@/core/services/config.service';
 import { CalendarIntegrationComponent } from '@/shared/components/calendar/calendar-integration.component';
 import { ZardDialogService } from '@/shared/components/dialog';
-import { Router } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { of } from 'rxjs';
 
 describe('CalendarIntegrationComponent', () => {
   const routerMock = { navigate: vi.fn().mockResolvedValue(true) };
+  const formatLocalIsoDate = (value: Date) => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
   const today = new Date();
-  const todayIsoDate = today.toISOString().slice(0, 10);
+  const todayIsoDate = formatLocalIsoDate(today);
   const isoAtOffset = (daysOffset: number) => {
     const value = new Date(today);
     value.setDate(value.getDate() + daysOffset);
-    return value.toISOString().slice(0, 10);
+    return formatLocalIsoDate(value);
   };
 
-  const makeEvent = (id: string, summary: string, colorId?: string, isoDate: string = todayIsoDate) => ({
+  const makeEvent = (
+    id: string,
+    summary: string,
+    colorId?: string,
+    isoDate: string = todayIsoDate,
+  ) => ({
     id,
     summary,
     description: '',
@@ -32,7 +43,11 @@ describe('CalendarIntegrationComponent', () => {
   it('splits today events into todo and done buckets', () => {
     const dialogServiceMock = { create: vi.fn() };
     const calendarServiceMock = {
-      calendarList: vi.fn().mockReturnValue(of([makeEvent('1', 'Todo Event', '5'), makeEvent('2', 'Done Event', '10')])),
+      calendarList: vi
+        .fn()
+        .mockReturnValue(
+          of([makeEvent('1', 'Todo Event', '5'), makeEvent('2', 'Done Event', '10')]),
+        ),
       calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('1', 'Todo Event', '10'))),
     };
 
@@ -131,16 +146,20 @@ describe('CalendarIntegrationComponent', () => {
   it('lists overdue application events from newest due date to oldest within last 14 days', () => {
     const dialogServiceMock = { create: vi.fn() };
     const calendarServiceMock = {
-      calendarList: vi.fn().mockReturnValue(
-        of([
-          makeEvent('too-old', '[Application #100] Too Old Overdue', '5', isoAtOffset(-15)),
-          makeEvent('old', '[Application #101] Old Overdue', '5', isoAtOffset(-5)),
-          makeEvent('new', '[Application #102] New Overdue', '5', isoAtOffset(-1)),
-          makeEvent('done', '[Application #103] Done Overdue', '10', isoAtOffset(-2)),
-          makeEvent('other', 'General Calendar Event', '5', isoAtOffset(-3)),
-        ]),
-      ),
-      calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('new', '[Application #102] New Overdue', '10'))),
+      calendarList: vi
+        .fn()
+        .mockReturnValue(
+          of([
+            makeEvent('too-old', '[Application #100] Too Old Overdue', '5', isoAtOffset(-15)),
+            makeEvent('old', '[Application #101] Old Overdue', '5', isoAtOffset(-5)),
+            makeEvent('new', '[Application #102] New Overdue', '5', isoAtOffset(-1)),
+            makeEvent('done', '[Application #103] Done Overdue', '10', isoAtOffset(-2)),
+            makeEvent('other', 'General Calendar Event', '5', isoAtOffset(-3)),
+          ]),
+        ),
+      calendarPartialUpdate: vi
+        .fn()
+        .mockReturnValue(of(makeEvent('new', '[Application #102] New Overdue', '10'))),
     };
 
     const configServiceMock = {
@@ -167,8 +186,12 @@ describe('CalendarIntegrationComponent', () => {
   it('opens a confirmation dialog before completing an overdue application', () => {
     const dialogServiceMock = { create: vi.fn() };
     const calendarServiceMock = {
-      calendarList: vi.fn().mockReturnValue(of([makeEvent('1', '[Application #101] Overdue', '5', isoAtOffset(-1))])),
-      calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('1', '[Application #101] Overdue', '10'))),
+      calendarList: vi
+        .fn()
+        .mockReturnValue(of([makeEvent('1', '[Application #101] Overdue', '5', isoAtOffset(-1))])),
+      calendarPartialUpdate: vi
+        .fn()
+        .mockReturnValue(of(makeEvent('1', '[Application #101] Overdue', '10'))),
     };
 
     const configServiceMock = {
@@ -204,8 +227,14 @@ describe('CalendarIntegrationComponent', () => {
   it('shows day details on hover and closes on mouse leave when dialog is not pinned', () => {
     const dialogServiceMock = { create: vi.fn() };
     const calendarServiceMock = {
-      calendarList: vi.fn().mockReturnValue(of([makeEvent('1', '[Application #101] Todo Event', '5', isoAtOffset(0))])),
-      calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('1', '[Application #101] Todo Event', '10', isoAtOffset(0)))),
+      calendarList: vi
+        .fn()
+        .mockReturnValue(
+          of([makeEvent('1', '[Application #101] Todo Event', '5', isoAtOffset(0))]),
+        ),
+      calendarPartialUpdate: vi
+        .fn()
+        .mockReturnValue(of(makeEvent('1', '[Application #101] Todo Event', '10', isoAtOffset(0)))),
     };
 
     const configServiceMock = {
@@ -240,13 +269,17 @@ describe('CalendarIntegrationComponent', () => {
     const dayA = isoAtOffset(0);
     const dayB = isoAtOffset(1);
     const calendarServiceMock = {
-      calendarList: vi.fn().mockReturnValue(
-        of([
-          makeEvent('1', '[Application #101] Event A', '5', dayA),
-          makeEvent('2', '[Application #102] Event B', '5', dayB),
-        ]),
-      ),
-      calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('1', '[Application #101] Event A', '10', dayA))),
+      calendarList: vi
+        .fn()
+        .mockReturnValue(
+          of([
+            makeEvent('1', '[Application #101] Event A', '5', dayA),
+            makeEvent('2', '[Application #102] Event B', '5', dayB),
+          ]),
+        ),
+      calendarPartialUpdate: vi
+        .fn()
+        .mockReturnValue(of(makeEvent('1', '[Application #101] Event A', '10', dayA))),
     };
 
     const configServiceMock = {
@@ -292,8 +325,12 @@ describe('CalendarIntegrationComponent', () => {
   it('extracts application id from summary and routes to detail page', () => {
     const dialogServiceMock = { create: vi.fn() };
     const calendarServiceMock = {
-      calendarList: vi.fn().mockReturnValue(of([makeEvent('1', '[Application #316] Test Event', '5')])),
-      calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('1', '[Application #316] Test Event', '10'))),
+      calendarList: vi
+        .fn()
+        .mockReturnValue(of([makeEvent('1', '[Application #316] Test Event', '5')])),
+      calendarPartialUpdate: vi
+        .fn()
+        .mockReturnValue(of(makeEvent('1', '[Application #316] Test Event', '10'))),
     };
 
     const configServiceMock = {

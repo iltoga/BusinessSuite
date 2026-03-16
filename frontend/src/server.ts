@@ -30,6 +30,7 @@ import { request as httpRequest, type OutgoingHttpHeaders, type RequestOptions }
 import { request as httpsRequest } from 'node:https';
 import { dirname, join, resolve } from 'node:path';
 import { generateNonce } from './csp';
+import { buildSsrAllowedHosts } from './server/ssr-allowed-hosts';
 
 function parseDotenvValue(rawValue: string): string {
   const trimmed = rawValue.trim();
@@ -91,7 +92,11 @@ function readEnvValue(primaryKey: string, fallbackKeys: string[] = []): string {
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
-const angularApp = new AngularNodeAppEngine();
+const ssrAllowedHosts = buildSsrAllowedHosts(process.env);
+if (!process.env['NG_ALLOWED_HOSTS'] && ssrAllowedHosts.length > 0) {
+  process.env['NG_ALLOWED_HOSTS'] = ssrAllowedHosts.join(',');
+}
+const angularApp = new AngularNodeAppEngine({ allowedHosts: ssrAllowedHosts });
 const traceContextSymbol = Symbol('traceContext');
 const clientLogPath = '/_observability/client-logs';
 const clientLogWindowMs = Number(process.env['CLIENT_LOG_RATE_LIMIT_WINDOW_MS'] || '60000');
@@ -322,6 +327,10 @@ const shouldDropServerLog = (level: string, serialized: string) => {
 
 if (OTLP_TRACES_ENABLED) {
   console.info(`[OTLP] frontend tracing enabled, exporting to ${OTLP_TRACES_ENDPOINT}`);
+}
+
+if (ssrAllowedHosts.length > 0) {
+  console.info('[SSR] Allowed hosts:', ssrAllowedHosts.join(', '));
 }
 
 const appendServerLog = (level: string, args: unknown[]) => {
@@ -695,7 +704,9 @@ app.use(async (req, res, next) => {
         // Inject server config from .env into the page so the app picks it up immediately
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
         const appTitleEnv = process.env['APP_TITLE'] || 'BusinessSuite';
-        const baseCurrencyEnv = ((process.env['BASE_CURRENCY'] || 'IDR').trim() || 'IDR').toUpperCase();
+        const baseCurrencyEnv = (
+          (process.env['BASE_CURRENCY'] || 'IDR').trim() || 'IDR'
+        ).toUpperCase();
         const fcmSenderIdEnv = readEnvValue('FCM_SENDER_ID', ['FCM_MESSAGING_SENDER_ID']);
         const fcmProjectNumberEnv = readEnvValue('FCM_PROJECT_NUMBER', [
           'FCM_MESSAGING_SENDER_ID',
@@ -706,7 +717,9 @@ app.use(async (req, res, next) => {
         const fcmWebApiKeyEnv = readEnvValue('FCM_WEB_API_KEY', ['FCM_API_KEY']);
         const fcmWebAppIdEnv = readEnvValue('FCM_WEB_APP_ID', ['FCM_APP_ID']);
         const fcmWebAuthDomainEnv = readEnvValue('FCM_WEB_AUTH_DOMAIN', ['FCM_AUTH_DOMAIN']);
-        const fcmWebStorageBucketEnv = readEnvValue('FCM_WEB_STORAGE_BUCKET', ['FCM_STORAGE_BUCKET']);
+        const fcmWebStorageBucketEnv = readEnvValue('FCM_WEB_STORAGE_BUCKET', [
+          'FCM_STORAGE_BUCKET',
+        ]);
         const fcmWebMeasurementIdEnv = readEnvValue('FCM_WEB_MEASUREMENT_ID', [
           'FCM_MEASUREMENT_ID',
         ]);
@@ -759,7 +772,9 @@ app.use(async (req, res, next) => {
         // Inject server config from .env into the page
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
         const appTitleEnv = process.env['APP_TITLE'] || 'BusinessSuite';
-        const baseCurrencyEnv = ((process.env['BASE_CURRENCY'] || 'IDR').trim() || 'IDR').toUpperCase();
+        const baseCurrencyEnv = (
+          (process.env['BASE_CURRENCY'] || 'IDR').trim() || 'IDR'
+        ).toUpperCase();
         const fcmSenderIdEnv = readEnvValue('FCM_SENDER_ID', ['FCM_MESSAGING_SENDER_ID']);
         const fcmProjectNumberEnv = readEnvValue('FCM_PROJECT_NUMBER', [
           'FCM_MESSAGING_SENDER_ID',
@@ -770,7 +785,9 @@ app.use(async (req, res, next) => {
         const fcmWebApiKeyEnv = readEnvValue('FCM_WEB_API_KEY', ['FCM_API_KEY']);
         const fcmWebAppIdEnv = readEnvValue('FCM_WEB_APP_ID', ['FCM_APP_ID']);
         const fcmWebAuthDomainEnv = readEnvValue('FCM_WEB_AUTH_DOMAIN', ['FCM_AUTH_DOMAIN']);
-        const fcmWebStorageBucketEnv = readEnvValue('FCM_WEB_STORAGE_BUCKET', ['FCM_STORAGE_BUCKET']);
+        const fcmWebStorageBucketEnv = readEnvValue('FCM_WEB_STORAGE_BUCKET', [
+          'FCM_STORAGE_BUCKET',
+        ]);
         const fcmWebMeasurementIdEnv = readEnvValue('FCM_WEB_MEASUREMENT_ID', [
           'FCM_MEASUREMENT_ID',
         ]);
