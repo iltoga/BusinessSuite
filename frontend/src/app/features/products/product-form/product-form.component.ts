@@ -108,6 +108,7 @@ export class ProductFormComponent
     requiredDocumentIds: 'Required Documents',
     optionalDocumentIds: 'Optional Documents',
     tasks: 'Tasks',
+    deprecated: 'Deprecated',
   };
 
   // Field tooltips
@@ -138,6 +139,7 @@ export class ProductFormComponent
     taskNotifyDaysBefore: 'How many days before due date customer reminders are sent.',
     taskDurationIsBusinessDays: 'Use business days instead of calendar days for task duration.',
     taskLastStep: 'Marks the final workflow step. Only one task can be the last step.',
+    deprecated: 'When enabled, this product is marked as deprecated and hidden from selection in new records.',
   };
 
   constructor() {
@@ -173,6 +175,7 @@ export class ProductFormComponent
         documentsMinValidity: [null as number | null],
         applicationWindowDays: [null as number | null, [Validators.min(0)]],
         validationPrompt: [''],
+        deprecated: [false],
         requiredDocumentIds: [[] as number[]],
         optionalDocumentIds: [[] as number[]],
         tasks: this.fb.array<FormGroup>([]),
@@ -269,6 +272,7 @@ export class ProductFormComponent
         documentsMinValidity: item.documentsMinValidity ?? null,
         applicationWindowDays: item.applicationWindowDays ?? null,
         validationPrompt: item.validationPrompt ?? '',
+        deprecated: item.deprecated ?? false,
         requiredDocumentIds: (item.requiredDocumentTypes ?? []).map((doc) => doc.id),
         optionalDocumentIds: (item.optionalDocumentTypes ?? []).map((doc) => doc.id),
       },
@@ -429,6 +433,7 @@ export class ProductFormComponent
       documentsMinValidity: rawValue.documentsMinValidity,
       applicationWindowDays: rawValue.applicationWindowDays,
       validationPrompt: rawValue.validationPrompt ?? '',
+      deprecated: rawValue.deprecated ?? false,
       requiredDocumentIds: rawValue.requiredDocumentIds,
       optionalDocumentIds: rawValue.optionalDocumentIds,
       tasks: (rawValue.tasks || []).map((t: any) => {

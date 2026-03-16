@@ -19,7 +19,7 @@
     <app-card-skeleton [lines]="4" />
 
     <!-- Applications List Skeleton -->
-    <z-card class="p-4 sm:p-6">
+    <z-card zVariant="compact">
       <div class="mb-4">
         <z-skeleton class="h-6 w-1/4" />
       </div>
@@ -66,95 +66,70 @@
       <!-- Left Column - Identity & Contact -->
       <div class="lg:col-span-2 space-y-4">
         <!-- Identity & Contact Combined Card -->
-        <z-card class="p-4 sm:p-5">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <app-card-section>
+          <app-detail-grid [cols]="2">
             <!-- Identity Section -->
             <div>
-              <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Identity
-              </h3>
-              <dl class="space-y-2.5">
-                <div class="grid grid-cols-2 gap-2">
-                  <dt class="text-sm text-muted-foreground">Type</dt>
-                  <dd class="text-sm font-medium">{{ customer()!.customerType | titlecase }}</dd>
-                </div>
+              <app-section-header text="Identity" />
+              <app-detail-grid>
+                <app-detail-field
+                  layout="row"
+                  label="Type"
+                  [value]="customer()!.customerType | titlecase"
+                />
                 @if (customer()!.nationality) {
-                  <div class="grid grid-cols-2 gap-2">
-                    <dt class="text-sm text-muted-foreground">Nationality</dt>
-                    <dd class="text-sm">{{ customer()!.nationality }}</dd>
-                  </div>
+                  <app-detail-field
+                    layout="row"
+                    label="Nationality"
+                    [value]="customer()!.nationality"
+                  />
                 }
                 @if (customer()!.birthPlace) {
-                  <div class="grid grid-cols-2 gap-2">
-                    <dt class="text-sm text-muted-foreground">Birth Place</dt>
-                    <dd class="text-sm">{{ customer()!.birthPlace }}</dd>
-                  </div>
+                  <app-detail-field
+                    layout="row"
+                    label="Birth Place"
+                    [value]="customer()!.birthPlace"
+                  />
                 }
                 @if (customer()!.birthdate) {
-                  <div class="grid grid-cols-2 gap-2">
-                    <dt class="text-sm text-muted-foreground">Birthdate</dt>
-                    <dd class="text-sm">{{ customer()!.birthdate | appDate }}</dd>
-                  </div>
+                  <app-detail-field
+                    layout="row"
+                    label="Birthdate"
+                    [value]="customer()!.birthdate | appDate"
+                  />
                 }
-              </dl>
+              </app-detail-grid>
             </div>
 
             <!-- Contact Section -->
             <div>
-              <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Contact
-              </h3>
-              <dl class="space-y-2.5">
-                <div class="grid grid-cols-2 gap-2">
-                  <dt class="text-sm text-muted-foreground">Email</dt>
-                  <dd class="text-sm">{{ customer()!.email || '—' }}</dd>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <dt class="text-sm text-muted-foreground">Telephone</dt>
-                  <dd class="text-sm">{{ customer()!.telephone || '—' }}</dd>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <dt class="text-sm text-muted-foreground">Whatsapp</dt>
-                  <dd class="text-sm">{{ customer()!.whatsapp || '—' }}</dd>
-                </div>
+              <app-section-header text="Contact" />
+              <app-detail-grid>
+                <app-detail-field layout="row" label="Email" [value]="customer()!.email" />
+                <app-detail-field layout="row" label="Telephone" [value]="customer()!.telephone" />
+                <app-detail-field layout="row" label="Whatsapp" [value]="customer()!.whatsapp" />
                 @if (customer()!.telegram) {
-                  <div class="grid grid-cols-2 gap-2">
-                    <dt class="text-sm text-muted-foreground">Telegram</dt>
-                    <dd class="text-sm">{{ customer()!.telegram }}</dd>
-                  </div>
+                  <app-detail-field layout="row" label="Telegram" [value]="customer()!.telegram" />
                 }
                 @if (customer()!.npwp) {
-                  <div class="grid grid-cols-2 gap-2">
-                    <dt class="text-sm text-muted-foreground">NPWP</dt>
-                    <dd class="text-sm">{{ customer()!.npwp }}</dd>
-                  </div>
+                  <app-detail-field layout="row" label="NPWP" [value]="customer()!.npwp" />
                 }
-              </dl>
+              </app-detail-grid>
             </div>
-          </div>
+          </app-detail-grid>
 
           <!-- Address Section -->
           <div class="mt-4 pt-4 border-t">
-            <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-              Address
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div class="text-xs text-muted-foreground mb-1">Address in Bali</div>
-                <div class="text-sm">{{ customer()!.addressBali || '—' }}</div>
-              </div>
-              <div>
-                <div class="text-xs text-muted-foreground mb-1">Address Abroad</div>
-                <div class="text-sm">{{ customer()!.addressAbroad || '—' }}</div>
-              </div>
-            </div>
+            <app-section-header text="Address" />
+            <app-detail-grid [cols]="2">
+              <app-detail-field label="Address in Bali" [value]="customer()!.addressBali" />
+              <app-detail-field label="Address Abroad" [value]="customer()!.addressAbroad" />
+            </app-detail-grid>
           </div>
 
           <!-- Notifications Section -->
           <div class="mt-4 pt-4 border-t">
-            <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-              Notifications
-            </h3>
+            <app-section-header text="Notifications" />
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="flex items-center gap-2">
                 <div class="text-sm text-muted-foreground">Notify Expiration:</div>
@@ -168,22 +143,20 @@
               </div>
             </div>
           </div>
-        </z-card>
+        </app-card-section>
 
         <!-- Applications Section -->
-        <z-card class="p-4 sm:p-5">
-          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h3 class="text-lg font-semibold">Applications</h3>
-            <button
-              type="button"
-              z-button
-              zType="outline"
-              zSize="sm"
-              (click)="onCreateApplication()"
-            >
-              New application
-            </button>
-          </div>
+        <app-card-section title="Applications">
+          <button
+            type="button"
+            z-button
+            zType="outline"
+            zSize="sm"
+            card-section-actions
+            (click)="onCreateApplication()"
+          >
+            New application
+          </button>
 
           <div class="flex flex-wrap gap-2 mb-4">
             @for (option of applicationFilterOptions; track option.value) {
@@ -367,18 +340,14 @@
           } @else {
             <div class="text-muted-foreground text-sm">No applications found for this filter.</div>
           }
-        </z-card>
+        </app-card-section>
       </div>
 
       <!-- Right Column - Passport & Quick Info -->
       <div class="space-y-4">
         <!-- Passport Card -->
-        <z-card class="p-4 sm:p-5">
-          <div class="mb-4">
-            <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-              Passport Details
-            </h3>
-          </div>
+        <app-card-section>
+          <app-section-header text="Passport Details" />
           <div class="space-y-4">
             <!-- Passport Image -->
             @if (customer()!.passportFile) {
@@ -407,28 +376,39 @@
             }
 
             <!-- Passport Information -->
-            <div class="pt-3 border-t space-y-2.5">
-              @if (customer()!.passportNumber) {
-                <div class="grid grid-cols-[1fr_1.2fr] gap-2">
-                  <dt class="text-xs text-muted-foreground">Passport Number</dt>
-                  <dd class="text-sm font-medium">{{ customer()!.passportNumber }}</dd>
-                </div>
-              }
-              @if (customer()!.passportIssueDate) {
-                <div class="grid grid-cols-[1fr_1.2fr] gap-2">
-                  <dt class="text-xs text-muted-foreground">Issue Date</dt>
-                  <dd class="text-sm">{{ customer()!.passportIssueDate | appDate }}</dd>
-                </div>
-              }
-              @if (customer()!.passportExpirationDate) {
-                <div class="grid grid-cols-[1fr_1.2fr] gap-2">
-                  <dt class="text-xs text-muted-foreground">Expiration Date</dt>
-                  <dd class="text-sm">{{ customer()!.passportExpirationDate | appDate }}</dd>
-                </div>
-              }
-            </div>
+            @if (
+              customer()!.passportNumber ||
+              customer()!.passportIssueDate ||
+              customer()!.passportExpirationDate
+            ) {
+              <div class="pt-3 border-t">
+                <app-detail-grid>
+                  @if (customer()!.passportNumber) {
+                    <app-detail-field
+                      layout="row"
+                      label="Passport Number"
+                      [value]="customer()!.passportNumber"
+                    />
+                  }
+                  @if (customer()!.passportIssueDate) {
+                    <app-detail-field
+                      layout="row"
+                      label="Issue Date"
+                      [value]="customer()!.passportIssueDate | appDate"
+                    />
+                  }
+                  @if (customer()!.passportExpirationDate) {
+                    <app-detail-field
+                      layout="row"
+                      label="Expiration Date"
+                      [value]="customer()!.passportExpirationDate | appDate"
+                    />
+                  }
+                </app-detail-grid>
+              </div>
+            }
           </div>
-        </z-card>
+        </app-card-section>
       </div>
     </div>
   </div>

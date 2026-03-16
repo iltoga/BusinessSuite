@@ -1,14 +1,13 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
-  computed,
   Component,
+  computed,
   effect,
   inject,
-  PLATFORM_ID,
   signal,
 } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 
 import {
@@ -17,25 +16,25 @@ import {
   type CustomerApplicationPaymentStatus,
   type CustomerDetail,
 } from '@/core/services/customers.service';
-import {
-  BaseDetailComponent,
-  BaseDetailConfig,
-} from '@/shared/core/base-detail.component';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { CardSectionComponent } from '@/shared/components/card-section';
+import { DetailFieldComponent } from '@/shared/components/detail-field';
+import { DetailGridComponent } from '@/shared/components/detail-grid';
 import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
+import { SectionHeaderComponent } from '@/shared/components/section-header';
 import {
   CardSkeletonComponent,
   TableSkeletonComponent,
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
+import { BaseDetailComponent, BaseDetailConfig } from '@/shared/core/base-detail.component';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 /**
  * Customer detail component
- * 
+ *
  * Extends BaseDetailComponent to inherit common detail view patterns:
  * - Keyboard shortcuts (E for edit, D for delete, B/Left for back)
  * - Navigation state management (returnUrl, searchQuery, page)
@@ -50,6 +49,10 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     RouterLink,
     ZardButtonComponent,
     ZardCardComponent,
+    CardSectionComponent,
+    SectionHeaderComponent,
+    DetailFieldComponent,
+    DetailGridComponent,
     ImageMagnifierComponent,
     ZardBadgeComponent,
     CardSkeletonComponent,
@@ -162,7 +165,7 @@ export class CustomerDetailComponent extends BaseDetailComponent<CustomerDetail>
 
     // Get item ID from route
     const idParam = this.route.snapshot.paramMap.get('id');
-    
+
     if (idParam) {
       const id = Number(idParam);
       if (Number.isFinite(id)) {

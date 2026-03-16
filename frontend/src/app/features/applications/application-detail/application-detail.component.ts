@@ -19,8 +19,8 @@ import {
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { AsyncJob } from '@/core/api';
+import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import {
   ApplicationsService,
   type ApplicationDetail,
@@ -47,6 +47,7 @@ import {
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { CardSectionComponent } from '@/shared/components/card-section';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { DocumentPreviewComponent } from '@/shared/components/document-preview';
@@ -113,6 +114,7 @@ interface PreUploadValidationOutcome {
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
+    CardSectionComponent,
     ZardComboboxComponent,
     ZardDateInputComponent,
     DocumentPreviewComponent,
@@ -508,9 +510,9 @@ export class ApplicationDetailComponent implements OnInit {
   );
   readonly documentCollectionStatus = computed<{
     label:
-    | 'Document Collection Pending'
-    | 'Document Collection Incomplete'
-    | 'Document Collection Complete';
+      | 'Document Collection Pending'
+      | 'Document Collection Incomplete'
+      | 'Document Collection Complete';
     type: 'default' | 'secondary' | 'warning' | 'success' | 'destructive';
   }>(() => {
     const documents = this.application()?.documents ?? [];
@@ -885,18 +887,18 @@ export class ApplicationDetailComponent implements OnInit {
       existingResult && typeof existingResult === 'object'
         ? this.normalizeValidationResultShape(existingResult as Record<string, unknown>)
         : {
-          valid: status === 'valid',
-          confidence: Number(response.confidence ?? 0),
-          positive_analysis: status === 'valid' ? String(response.reasoning ?? '') : '',
-          negative_issues:
-            status === 'invalid'
-              ? [String(response.reasoning ?? 'Validation failed')].filter(Boolean)
-              : [],
-          reasoning: String(response.reasoning ?? ''),
-          extracted_expiration_date: null,
-          extracted_doc_number: null,
-          extracted_details_markdown: null,
-        };
+            valid: status === 'valid',
+            confidence: Number(response.confidence ?? 0),
+            positive_analysis: status === 'valid' ? String(response.reasoning ?? '') : '',
+            negative_issues:
+              status === 'invalid'
+                ? [String(response.reasoning ?? 'Validation failed')].filter(Boolean)
+                : [],
+            reasoning: String(response.reasoning ?? ''),
+            extracted_expiration_date: null,
+            extracted_doc_number: null,
+            extracted_details_markdown: null,
+          };
 
     const runtimeFromResponse = this.extractValidationRuntimeMetadata(responseRecord);
     const runtimeFromResult = this.extractValidationRuntimeMetadata(result);
@@ -993,16 +995,16 @@ export class ApplicationDetailComponent implements OnInit {
         validationResult['extracted_expiration_date'] ?? validationResult['extractedExpirationDate']
       ) === 'string'
         ? ((validationResult['extracted_expiration_date'] ??
-          validationResult['extractedExpirationDate']) as string)
+            validationResult['extractedExpirationDate']) as string)
         : null;
     const extractedDocNumber =
       typeof (
         validationResult['extracted_doc_number'] ?? validationResult['extractedDocNumber']
       ) === 'string'
         ? (
-          (validationResult['extracted_doc_number'] ??
-            validationResult['extractedDocNumber']) as string
-        ).trim() || null
+            (validationResult['extracted_doc_number'] ??
+              validationResult['extractedDocNumber']) as string
+          ).trim() || null
         : null;
     const extractedDetails =
       typeof (
@@ -1010,9 +1012,9 @@ export class ApplicationDetailComponent implements OnInit {
         validationResult['extractedDetailsMarkdown']
       ) === 'string'
         ? (
-          (validationResult['extracted_details_markdown'] ??
-            validationResult['extractedDetailsMarkdown']) as string
-        ).trim() || null
+            (validationResult['extracted_details_markdown'] ??
+              validationResult['extractedDetailsMarkdown']) as string
+          ).trim() || null
         : null;
 
     return {
@@ -1080,21 +1082,21 @@ export class ApplicationDetailComponent implements OnInit {
 
     const provider = this.readOptionalString(
       source['validationProvider'] ??
-      source['validation_provider'] ??
-      source['aiProvider'] ??
-      source['ai_provider'],
+        source['validation_provider'] ??
+        source['aiProvider'] ??
+        source['ai_provider'],
     );
     const providerName = this.readOptionalString(
       source['validationProviderName'] ??
-      source['validation_provider_name'] ??
-      source['aiProviderName'] ??
-      source['ai_provider_name'],
+        source['validation_provider_name'] ??
+        source['aiProviderName'] ??
+        source['ai_provider_name'],
     );
     const model = this.readOptionalString(
       source['validationModel'] ??
-      source['validation_model'] ??
-      source['aiModel'] ??
-      source['ai_model'],
+        source['validation_model'] ??
+        source['aiModel'] ??
+        source['ai_model'],
     );
 
     return {
@@ -1194,8 +1196,7 @@ export class ApplicationDetailComponent implements OnInit {
         next: (response) => {
           // If the backend returned a job_id, subscribe to the SSE stream
           const jobId =
-            ('jobId' in response && response.jobId) ||
-            (response as { job_id?: string }).job_id;
+            ('jobId' in response && response.jobId) || (response as { job_id?: string }).job_id;
           if (jobId && typeof jobId === 'string') {
             this.trackOcrJob(jobId);
           } else {
@@ -1403,9 +1404,9 @@ export class ApplicationDetailComponent implements OnInit {
     const requests = docs.map((doc) => {
       const action = this.getAutomaticShortcutAction(doc);
       if (!action) return of(null);
-      return this.applicationsService.executeDocumentAction(doc.id, action.name).pipe(
-        catchError((error) => of({ success: false, error, document: undefined })),
-      );
+      return this.applicationsService
+        .executeDocumentAction(doc.id, action.name)
+        .pipe(catchError((error) => of({ success: false, error, document: undefined })));
     });
 
     forkJoin(requests).subscribe({
@@ -1425,9 +1426,13 @@ export class ApplicationDetailComponent implements OnInit {
         });
 
         if (successCount > 0 && errorCount === 0) {
-          this.toast.success(`Successfully started auto-generation for ${successCount} document(s)`);
+          this.toast.success(
+            `Successfully started auto-generation for ${successCount} document(s)`,
+          );
         } else if (successCount > 0) {
-          this.toast.error(`Started auto-generation for ${successCount} document(s), but ${errorCount} failed`);
+          this.toast.error(
+            `Started auto-generation for ${successCount} document(s), but ${errorCount} failed`,
+          );
         } else if (errorCount > 0) {
           this.toast.error('Failed to auto-generate documents');
         }

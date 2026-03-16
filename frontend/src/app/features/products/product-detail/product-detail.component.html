@@ -40,6 +40,9 @@
         <div class="flex flex-col gap-4">
           <div class="flex flex-wrap items-center gap-3">
             <z-badge zType="secondary">{{ productTypeLabel(product()?.productType) }}</z-badge>
+            @if (product()?.deprecated) {
+              <z-badge zType="destructive">Deprecated</z-badge>
+            }
             <span class="base-price-chip">Currency: {{ currencyCode() }}</span>
             <span class="base-price-chip"
               >Base price: {{ formatCurrency(product()?.basePrice) }}</span

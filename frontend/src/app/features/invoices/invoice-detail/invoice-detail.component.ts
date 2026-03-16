@@ -1,17 +1,13 @@
-import { CommonModule, formatDate, isPlatformBrowser } from '@angular/common';
+import { CommonModule, formatDate } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  HostListener,
   LOCALE_ID,
-  PLATFORM_ID,
   computed,
   inject,
   signal,
   viewChild,
-  type TemplateRef,
 } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
 import { Observable } from 'rxjs';
 
 import {
@@ -22,14 +18,12 @@ import {
   type Payment,
 } from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
-import {
-  BaseDetailComponent,
-  BaseDetailConfig,
-} from '@/shared/core/base-detail.component';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { CardSectionComponent } from '@/shared/components/card-section';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
+import { DetailFieldComponent } from '@/shared/components/detail-field';
 import { InvoiceDownloadDropdownComponent } from '@/shared/components/invoice-download-dropdown/invoice-download-dropdown.component';
 import {
   CardSkeletonComponent,
@@ -37,13 +31,14 @@ import {
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
+import { BaseDetailComponent, BaseDetailConfig } from '@/shared/core/base-detail.component';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { PaymentModalComponent } from '../payment-modal/payment-modal.component';
 
 /**
  * Invoice detail component
- * 
+ *
  * Extends BaseDetailComponent to inherit common detail view patterns:
  * - Keyboard shortcuts (E for edit, D for delete, B/Left for back)
  * - Navigation state management (returnUrl, searchQuery, page)
@@ -58,6 +53,8 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
+    CardSectionComponent,
+    DetailFieldComponent,
     ConfirmDialogComponent,
     PaymentModalComponent,
     CardSkeletonComponent,
@@ -224,9 +221,9 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
    */
   getApplicationProductCode(app: InvoiceApplicationDetail): string {
     const lineProduct = app.product as { code?: string | null } | null;
-    const customerApplication = app.customerApplication as
-      | { product?: { code?: string | null } | null }
-      | null;
+    const customerApplication = app.customerApplication as {
+      product?: { code?: string | null } | null;
+    } | null;
     return lineProduct?.code ?? customerApplication?.product?.code ?? '—';
   }
 
@@ -235,9 +232,9 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
    */
   getApplicationProductName(app: InvoiceApplicationDetail): string {
     const lineProduct = app.product as { name?: string | null } | null;
-    const customerApplication = app.customerApplication as
-      | { product?: { name?: string | null } | null }
-      | null;
+    const customerApplication = app.customerApplication as {
+      product?: { name?: string | null } | null;
+    } | null;
     return lineProduct?.name ?? customerApplication?.product?.name ?? '—';
   }
 
@@ -245,9 +242,9 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
    * Get application customer name
    */
   getApplicationCustomerName(app: InvoiceApplicationDetail): string {
-    const customerApplication = app.customerApplication as
-      | { customer?: { fullName?: string | null } | null }
-      | null;
+    const customerApplication = app.customerApplication as {
+      customer?: { fullName?: string | null } | null;
+    } | null;
     return customerApplication?.customer?.fullName ?? 'Unlinked line item';
   }
 

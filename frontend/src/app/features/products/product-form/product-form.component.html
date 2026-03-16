@@ -263,6 +263,21 @@
                 applications using this product.
               </p>
             </div>
+
+            <div class="md:col-span-12 space-y-2">
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >Deprecated Status
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['deprecated']"
+              /></label>
+              <div>
+                <z-checkbox formControlName="deprecated">
+                  <span class="text-sm text-muted-foreground">Mark as deprecated (hide from new applications)</span>
+                </z-checkbox>
+              </div>
+            </div>
           </div>
         </div>
       </z-card>

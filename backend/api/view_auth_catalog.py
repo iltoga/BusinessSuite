@@ -351,7 +351,8 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         deprecated_param = self.request.query_params.get("deprecated")
-        hide_deprecated = parse_bool(self.request.query_params.get("hide_deprecated"), True)
+        default_hide = self.action not in ["retrieve", "update", "partial_update", "destroy", "can_delete", "deprecation_impact"]
+        hide_deprecated = parse_bool(self.request.query_params.get("hide_deprecated"), default_hide)
 
         if deprecated_param is not None:
             queryset = queryset.filter(deprecated=parse_bool(deprecated_param, False))
@@ -776,7 +777,9 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     queryset = queryset.filter(product_category__name__in=categories)
 
         deprecated_param = self.request.query_params.get("deprecated")
-        hide_deprecated = parse_bool(self.request.query_params.get("hide_deprecated"), True)
+        default_hide = self.action not in ["retrieve", "update", "partial_update", "destroy"]
+        hide_deprecated = parse_bool(self.request.query_params.get("hide_deprecated"), default_hide)
+        
         if deprecated_param is not None:
             queryset = queryset.filter(deprecated=parse_bool(deprecated_param, False))
         elif hide_deprecated:
