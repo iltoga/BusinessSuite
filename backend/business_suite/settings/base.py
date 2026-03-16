@@ -561,9 +561,9 @@ REST_FRAMEWORK = {
     # Ensure FileField/ImageField serializers expose URL values (not plain storage keys).
     "UPLOADED_FILES_USE_URL": True,
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
-        "rest_framework.throttling.ScopedRateThrottle",
+        "api.views_shared.ResilientAnonRateThrottle",
+        "api.views_shared.ResilientUserRateThrottle",
+        "api.views_shared.ResilientScopedRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/day",

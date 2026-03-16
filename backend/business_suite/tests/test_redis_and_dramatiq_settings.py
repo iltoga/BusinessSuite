@@ -32,6 +32,18 @@ class RedisCacheSettingsTests(SimpleTestCase):
         with override_settings(CACHES=caches):
             self.assertEqual(settings.CACHES["default"]["BACKEND"], "django_redis.cache.RedisCache")
 
+    def test_default_rest_framework_throttles_use_resilient_classes(self):
+        throttle_classes = settings.REST_FRAMEWORK.get("DEFAULT_THROTTLE_CLASSES", [])
+
+        self.assertEqual(
+            throttle_classes,
+            [
+                "api.views_shared.ResilientAnonRateThrottle",
+                "api.views_shared.ResilientUserRateThrottle",
+                "api.views_shared.ResilientScopedRateThrottle",
+            ],
+        )
+
 
 class DramatiqSettingsTests(SimpleTestCase):
     def _load_base_settings_snapshot(

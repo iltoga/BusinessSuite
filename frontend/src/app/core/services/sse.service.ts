@@ -6,6 +6,7 @@ import { AuthService } from '@/core/services/auth.service';
 export interface SseOptions {
   withCredentials?: boolean;
   useReplayCursor?: boolean;
+  maxConnectionDurationMs?: number;
 }
 
 export interface SseMessage<T> {
@@ -32,20 +33,66 @@ export class SseService {
   connectMessages<T>(url: string, options: SseOptions = {}): Observable<SseMessage<T>> {
     const withCredentials = options.withCredentials ?? true;
     const useReplayCursor = options.useReplayCursor ?? true;
+    const maxConnectionDurationMs =
+      typeof options.maxConnectionDurationMs === 'number' && options.maxConnectionDurationMs > 0
+        ? options.maxConnectionDurationMs
+        : null;
 
     // If token is expired, force logout and return an observable error immediately
     if (this.authService.isTokenExpired()) {
       this.authService.logout();
-      return new Observable<SseMessage<T>>((subscriber) => subscriber.error(new Error('Token expired')));
+      return new Observable<SseMessage<T>>((subscriber) =>
+        subscriber.error(new Error('Token expired')),
+      );
     }
 
     return new Observable<SseMessage<T>>((subscriber) => {
       const controller = new AbortController();
+      let shouldCompleteAfterAbort = false;
+      let rotationTimeoutId: ReturnType<typeof setTimeout> | null = null;
+      let isSettled = false;
+
+      const clearRotationTimeout = () => {
+        if (rotationTimeoutId === null) {
+          return;
+        }
+
+        clearTimeout(rotationTimeoutId);
+        rotationTimeoutId = null;
+      };
+
+      const completeSubscriber = () => {
+        if (isSettled) {
+          return;
+        }
+
+        isSettled = true;
+        clearRotationTimeout();
+        this.zone.run(() => subscriber.complete());
+      };
+
+      const errorSubscriber = (error: unknown) => {
+        if (isSettled) {
+          return;
+        }
+
+        isSettled = true;
+        clearRotationTimeout();
+        this.zone.run(() => subscriber.error(error));
+      };
 
       const streamSse = async () => {
         try {
+          if (maxConnectionDurationMs !== null) {
+            rotationTimeoutId = setTimeout(() => {
+              shouldCompleteAfterAbort = true;
+              controller.abort();
+            }, maxConnectionDurationMs);
+          }
+
           const headers = new Headers({ Accept: 'text/event-stream' });
-          const token = this.authService.getToken() ?? (this.authService.isMockEnabled() ? 'mock-token' : null);
+          const token =
+            this.authService.getToken() ?? (this.authService.isMockEnabled() ? 'mock-token' : null);
           if (token) {
             headers.set('Authorization', `Bearer ${token}`);
           }
@@ -95,15 +142,25 @@ export class SseService {
             this.handleFrame<T>(url, buffer, subscriber);
           }
 
-          this.zone.run(() => subscriber.complete());
+          completeSubscriber();
         } catch (error) {
-          if (controller.signal.aborted) return;
-          this.zone.run(() => subscriber.error(error));
+          if (controller.signal.aborted) {
+            if (shouldCompleteAfterAbort) {
+              shouldCompleteAfterAbort = false;
+              completeSubscriber();
+            }
+            return;
+          }
+
+          errorSubscriber(error);
         }
       };
 
       void streamSse();
-      return () => controller.abort();
+      return () => {
+        clearRotationTimeout();
+        controller.abort();
+      };
     });
   }
 

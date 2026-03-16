@@ -146,7 +146,6 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .views_shared import (
@@ -158,6 +157,11 @@ from .views_shared import (
     DocumentOCRPlaceholderSerializer,
     OCRPlaceholderSerializer,
     QuickCreateScopedRateThrottle,
+)
+from .views_shared import ResilientAnonRateThrottle as AnonRateThrottle
+from .views_shared import ResilientScopedRateThrottle as ScopedRateThrottle
+from .views_shared import ResilientUserRateThrottle as UserRateThrottle
+from .views_shared import (
     StandardResultsSetPagination,
     _get_enqueue_guard_token,
     _latest_inflight_job,

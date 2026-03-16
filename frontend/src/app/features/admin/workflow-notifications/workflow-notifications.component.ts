@@ -1,32 +1,32 @@
+import {
+  PushNotificationsService as PushNotificationsApiService,
+  WorkflowNotificationsService,
+} from '@/core/api';
+import { GlobalToastService } from '@/core/services/toast.service';
+import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
+import { ZardDialogService } from '@/shared/components/dialog';
+import { ZardInputDirective } from '@/shared/components/input';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  PLATFORM_ID,
-  DestroyRef,
   computed,
+  DestroyRef,
   inject,
+  PLATFORM_ID,
   signal,
   TemplateRef,
   ViewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import {
-  PushNotificationsService as PushNotificationsApiService,
-  WorkflowNotificationsService,
-} from '@/core/api';
-import { ZardButtonComponent } from '@/shared/components/button';
-import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
-import { ZardDialogService } from '@/shared/components/dialog';
-import { ZardInputDirective } from '@/shared/components/input';
-import { GlobalToastService } from '@/core/services/toast.service';
-import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import { catchError, finalize, map, of, Subject, Subscription, switchMap } from 'rxjs';
 import {
   WorkflowNotificationsStreamEvent,
   WorkflowNotificationsStreamService,
 } from './workflow-notifications-stream.service';
-import { Subscription, catchError, finalize, map, of, Subject, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-workflow-notifications',
@@ -153,11 +153,8 @@ export class WorkflowNotificationsComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (event) => this.handleLiveEvent(event),
-        error: () => {
-          this.liveConnecting.set(false);
-          this.liveConnected.set(false);
-          this.scheduleReconnect();
-        },
+        error: () => this.handleLiveDisconnect(),
+        complete: () => this.handleLiveDisconnect(),
       });
   }
 
@@ -190,6 +187,12 @@ export class WorkflowNotificationsComponent {
     );
     this.reconnectAttempt += 1;
     this.reconnectTimeoutId = window.setTimeout(() => this.connectLiveStream(), delay);
+  }
+
+  private handleLiveDisconnect(): void {
+    this.liveConnecting.set(false);
+    this.liveConnected.set(false);
+    this.scheduleReconnect();
   }
 
   private clearReconnectTimeout(): void {
