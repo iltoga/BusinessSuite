@@ -1,27 +1,80 @@
+"""
+core.services.calendar_reminder_service
+=======================================
+Service layer for creating, updating, and dispatching ``CalendarReminder``
+records.  Reminders are created with ``STATUS_PENDING`` and dispatched to
+users via FCM push notifications through ``PushNotificationService``.
+
+Scheduling contract
+-------------------
+- ``dispatch_due_reminders()`` is intended to be called by the Dramatiq
+  scheduler (``run_dramatiq_scheduler``) on a periodic cadence.
+- It selects up to *limit* reminders where ``scheduled_for <= now`` and
+  status is ``PENDING``, processes them in order, and updates each to
+  ``SENT`` or ``FAILED`` atomically per record.
+- There is no distributed lock; callers must ensure only one scheduler
+  process runs at a time, or accept that concurrent dispatches may
+  attempt the same reminder (idempotency guard via status check is
+  handled at the model level).
+
+Failure handling
+----------------
+- ``FcmConfigurationError``: raised when FCM credentials are missing or
+  invalid.  The reminder is marked ``FAILED`` immediately; subsequent
+  reminders in the same batch are still attempted.
+- Any other exception is caught, the reminder is marked ``FAILED`` with
+  the exception type and message, and processing continues.
+- Failed reminders are **not** automatically retried; they must be
+  re-queued or manually reset by an operator.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, time
 from typing import Iterable
 
+from core.models import CalendarReminder
+from core.services.push_notifications import FcmConfigurationError, PushNotificationService
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
-
-from core.models import CalendarReminder
-from core.services.push_notifications import FcmConfigurationError, PushNotificationService
 
 User = get_user_model()
 
 
 @dataclass
 class CalendarReminderDispatchStats:
+    """Aggregated result of a single ``dispatch_due_reminders()`` run."""
+
     sent: int = 0
+    """Number of reminders successfully dispatched via push notification."""
     failed: int = 0
+    """Number of reminders that could not be sent (FCM error or exception)."""
 
 
 class CalendarReminderService:
+    """Manage the lifecycle of ``CalendarReminder`` records.
+
+    Inject a ``PushNotificationService`` instance for testability; when
+    omitted a default instance is created lazily on first use.
+
+    Typical usage::
+
+        service = CalendarReminderService()
+        reminders = service.create_for_users(
+            created_by=request.user,
+            user_ids=[1, 2],
+            reminder_date=date(2026, 6, 1),
+            reminder_time=time(9, 0),
+            timezone_name="Asia/Makassar",
+            content="Visa renewal deadline approaching",
+        )
+        # Later, triggered by the scheduler:
+        stats = service.dispatch_due_reminders()
+    """
+
     def __init__(self, push_service: PushNotificationService | None = None):
         self.push_service = push_service
 
@@ -115,6 +168,22 @@ class CalendarReminderService:
         return reminder
 
     def dispatch_due_reminders(self, *, limit: int = 200) -> CalendarReminderDispatchStats:
+        """Dispatch all reminders that are due at or before ``now``.
+
+        Selects up to *limit* ``CalendarReminder`` rows with
+        ``status=PENDING`` and ``scheduled_for <= now``, ordered by
+        ``scheduled_for`` then ``id`` (FIFO).  Each reminder is sent via
+        ``PushNotificationService.send_to_user()`` and its status updated
+        to ``SENT`` or ``FAILED`` in-place.
+
+        Args:
+            limit: Maximum number of reminders to process per call
+                (default 200).  Keeps individual scheduler runs bounded.
+
+        Returns:
+            A ``CalendarReminderDispatchStats`` dataclass with ``sent`` and
+            ``failed`` counts for the current run.
+        """
         now = timezone.now()
         reminders = (
             CalendarReminder.objects.select_related("user")

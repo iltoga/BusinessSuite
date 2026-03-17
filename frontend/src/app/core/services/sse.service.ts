@@ -1,3 +1,45 @@
+/**
+ * SseService — Angular service for consuming Server-Sent Events (SSE) streams.
+ *
+ * ## Overview
+ * Wraps the browser's `fetch` API (not `EventSource`) so that the
+ * `Authorization: Bearer <token>` header can be sent on first connect.  The
+ * stream is read as a `ReadableStream<Uint8Array>` and parsed line-by-line
+ * using the SSE wire format (`event:`, `data:`, `id:` fields).
+ *
+ * ## `connect<T>(url, options)` vs `connectMessages<T>(url, options)`
+ * - `connect()` is a thin wrapper returning only `message.data`.
+ * - `connectMessages()` returns the full `SseMessage<T>` envelope
+ *   (`event`, `data`, `id`) and is needed when you must react to named
+ *   event types.
+ *
+ * ## Reconnection strategy (cursor replay)
+ * When `useReplayCursor: true` (default) the service stores the last
+ * `id:` field value per URL in `lastEventIds: Map<string, string>`.  On
+ * reconnect the stored id is sent as the `Last-Event-ID` request header so
+ * the server can replay missed events.
+ *
+ * ## Circuit-breaker (`maxConnectionDurationMs`)
+ * When `maxConnectionDurationMs` is set, a `setTimeout` fires after that
+ * duration, calls `AbortController.abort()`, and sets
+ * `shouldCompleteAfterAbort = true` so the `AbortError` is treated as a
+ * clean `complete()` rather than an `error()`.  Callers can restart the
+ * stream externally (e.g. via a `retry()` or `switchMap` in the component)
+ * to implement long-lived rotation.
+ *
+ * ## `AbortController` cleanup contract
+ * Each `Observable` subscription owns one `AbortController`.  The controller
+ * is aborted (and the fetch connection closed) when:
+ * - The `maxConnectionDurationMs` timer fires.
+ * - The subscriber calls `unsubscribe()` (teardown logic).
+ * - The server closes the stream (fetch body resolves to `done`).
+ * - An error occurs before the stream opens.
+ *
+ * ## Token expiry guard
+ * Before opening a connection, `authService.isTokenExpired()` is checked.
+ * If the token is expired, `authService.logout()` is called and the
+ * Observable immediately errors with `new Error('Token expired')`.
+ */
 import { Injectable, NgZone } from '@angular/core';
 import { map, Observable } from 'rxjs';
 

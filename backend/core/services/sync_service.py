@@ -1,3 +1,47 @@
+"""
+core.services.sync_service
+==========================
+Local-resilience data-synchronisation utilities for the offline / multi-node
+deployment of BusinessSuite (e.g. a local Bali server that periodically syncs
+with a remote hub).
+
+Sync lifecycle overview
+-----------------------
+1. **Capture** — After every model ``save()`` / ``delete()``, signal handlers
+   call ``capture_model_upsert()`` / ``capture_model_delete()`` to write a
+   ``SyncChangeLog`` row containing the serialised field payload, a SHA-256
+   ``checksum``, and the ``source_node`` identifier.
+2. **Identify the node** — ``get_local_node_id()`` returns
+   ``settings.LOCAL_SYNC_NODE_ID`` when set, falling back to
+   ``socket.gethostname()``.
+3. **Guard re-entrant applies** — ``sync_apply_context()`` (a context manager)
+   sets a ``ContextVar`` so that signal handlers can detect that a sync apply
+   is in progress and skip re-logging the incoming change, preventing
+   infinite replication loops.
+4. **Serialise** — ``_serialize_instance()`` converts all concrete model fields
+   to JSON-safe primitives via ``_json_safe()``, which handles ``datetime``,
+   ``Decimal``, ``UUID``, ``bytes`` (base-64 encoded), and nested
+   collections.
+5. **Diff/apply** — ``capture_model_upsert()`` computes a checksum and writes
+   a ``SyncChangeLog``; the corresponding apply function (in the sync apply
+   module) uses ``_coerce_field_value()`` to deserialise raw JSON back to the
+   correct Python types before calling
+   ``Model.objects.update_or_create()``.
+6. **Conflict resolution** — Last-write-wins by ``source_timestamp``; ties
+   broken by ``source_node`` string comparison.  Conflicts are recorded in
+   ``SyncConflict`` for manual review.
+7. **Media manifest** — ``MediaManifestEntry`` tracks which media files need to
+   be transferred alongside a sync payload.
+
+Public API
+----------
+- ``get_local_node_id()`` — returns the node identifier string.
+- ``is_sync_apply_in_progress()`` — check if currently inside a sync apply.
+- ``sync_apply_context()`` — context manager; set during remote change apply.
+- ``capture_model_upsert(instance)`` — record an upsert event.
+- ``capture_model_delete(model_label, object_pk)`` — record a delete event.
+"""
+
 from __future__ import annotations
 
 import base64
@@ -24,6 +68,12 @@ _SYNC_APPLY_IN_PROGRESS = contextvars.ContextVar("sync_apply_in_progress", defau
 
 
 def get_local_node_id() -> str:
+    """Return the unique identifier for this deployment node.
+
+    Reads ``settings.LOCAL_SYNC_NODE_ID`` first; falls back to
+    ``socket.gethostname()`` and finally to the literal string
+    ``'unknown-node'`` if the hostname cannot be determined.
+    """
     value = (getattr(settings, "LOCAL_SYNC_NODE_ID", "") or "").strip()
     if value:
         return value
@@ -31,11 +81,27 @@ def get_local_node_id() -> str:
 
 
 def is_sync_apply_in_progress() -> bool:
+    """Return ``True`` while a remote sync change is being applied to the DB.
+
+    Signal handlers use this to skip re-capturing incoming changes and prevent
+    replication loops.
+    """
     return bool(_SYNC_APPLY_IN_PROGRESS.get())
 
 
 @contextlib.contextmanager
 def sync_apply_context():
+    """Context manager that marks the current execution as a sync apply.
+
+    Sets ``_SYNC_APPLY_IN_PROGRESS`` to ``True`` for the duration of the block
+    and resets it via the ``ContextVar`` token when done, making this safe
+    across concurrent async/threaded contexts.
+
+    Usage::
+
+        with sync_apply_context():
+            instance.save()  # post_save signal will skip re-logging
+    """
     token = _SYNC_APPLY_IN_PROGRESS.set(True)
     try:
         yield

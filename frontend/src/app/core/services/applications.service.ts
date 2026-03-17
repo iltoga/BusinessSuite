@@ -1,3 +1,39 @@
+/**
+ * ApplicationsService — HTTP client and interface definitions for customer
+ * application detail, documents, and the OCR upload pipeline.
+ *
+ * ## Manual interface definitions
+ * The interfaces in this file (`ApplicationDocument`, `DocumentTypeInfo`,
+ * `ApplicationProduct`, etc.) are **intentionally** hand-written rather than
+ * imported from `core/api/` for one of two reasons:
+ * 1. The generated type is a flat union or lacks discriminant fields needed
+ *    by the UI (e.g. `ApplicationDocument.extraActions`).
+ * 2. The interface aggregates fields from multiple generated types into a
+ *    single view-model shape consumed by the application detail component.
+ *
+ * When the generated API client adds an equivalent type that covers all
+ * fields, these definitions should be replaced.
+ *
+ * ## OCR upload pipeline (`uploadDocumentFile`)
+ * ```
+ * uploadDocumentFile(docId, file)
+ *   └─ POST /api/documents/{id}/upload/   (multipart/form-data)
+ *      ├─ progress events via HttpClient reportProgress: true
+ *      ├─ UploadProgress events → percentage computed from loaded/total
+ *      └─ Response event → triggers enqueueDocumentOcr(docId)
+ *            └─ POST /api/documents/{id}/enqueue-ocr/
+ *               └─ returns { jobId }  →  caller subscribes to SSE stream
+ * ```
+ *
+ * ## Key interfaces
+ * | Interface | Purpose |
+ * |---|---|
+ * | `ApplicationDocument` | Document slot with `docType`, file/OCR state, and extra UI actions |
+ * | `DocumentTypeInfo` | Document type metadata driving UI validation rules |
+ * | `ApplicationWorkflow` | Single workflow step with deadline and status |
+ * | `ApplicationProduct` | Slim product shape for the application detail header |
+ * | `ApplicationCustomer` | Slim customer shape for the application detail header |
+ */
 import { HttpClient, HttpEvent, HttpEventType } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';

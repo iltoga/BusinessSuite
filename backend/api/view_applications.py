@@ -1,3 +1,49 @@
+"""
+api.view_applications
+=====================
+DRF ViewSet controllers for customer applications, documents, and OCR jobs.
+
+``DocApplicationViewSet`` (ModelViewSet)
+-----------------------------------------
+Standard CRUD for ``DocApplication`` with additional custom actions:
+
+- **list** — supports ``search`` / ``q`` query params and ``customer_id``
+  filter; annotated with ``document_collection_completed`` flag.
+- **retrieve** — includes nested documents and workflow steps.
+- Permission: ``IsAuthenticated`` + ``DjangoModelPermissions``.
+
+OCR job enqueueing
+------------------
+- **enqueue_ocr** (POST on a ``Document``) — validates the document file,
+  creates an ``OCRJob`` record, and enqueues the actor on the
+  ``doc_conversion`` queue.  Returns ``{job_id, status}``.
+- **enqueue_document_ocr** (POST on a ``Document``) — same for
+  ``DocumentOCRJob`` (text extraction / AI validation flow).
+
+OCR status polling helpers
+--------------------------
+- ``_build_ocr_status_payload(job, request)`` — builds the JSON response for
+  ``GET /ocr-jobs/{id}/status/``; injects a temporary ``preview_url`` from
+  ``default_storage`` when the job is complete.
+- ``_build_document_ocr_status_payload(job)`` — parallel helper for
+  ``DocumentOCRJob``; parses ``result_text`` as JSON when possible.
+
+Document completion auto-calculation
+-------------------------------------
+``Document.completed`` is computed inside ``Document.save()`` based on
+``DocumentType.requires_verification`` and uploaded file / field presence.
+Views must not set ``completed`` directly; they should update the underlying
+fields (``doc_number``, ``expiration_date``, ``file``) and let the model
+recalculate.
+
+SSE stream payloads
+-------------------
+OCR progress is delivered via ``/api/async-jobs/status/{job_id}/``.  The
+payload shape is normalised by ``normalize_ocr_job_payload()`` /
+``normalize_document_ocr_job_payload()`` before being published to Redis
+Streams.
+"""
+
 from api.utils.stream_payloads import normalize_document_ocr_job_payload, normalize_ocr_job_payload
 
 from .views_imports import *
@@ -84,9 +130,8 @@ def _build_document_ocr_stream_payload(stream_payload: dict[str, Any]) -> dict[s
 
 from api.serializers.doc_application_serializer import DocApplicationListSerializer
 
-@extend_schema_view(
-    list=extend_schema(responses={200: DocApplicationListSerializer(many=True)})
-)
+
+@extend_schema_view(list=extend_schema(responses={200: DocApplicationListSerializer(many=True)}))
 class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
@@ -148,6 +193,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return DocApplicationCreateUpdateSerializer
         if self.action == "list":
             from api.serializers.doc_application_serializer import DocApplicationListSerializer
+
             return DocApplicationListSerializer
         if self.action == "retrieve":
             return DocApplicationDetailSerializer
@@ -953,7 +999,9 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
                 return
 
-            async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=last_event_id):
+            async for stream_event in iter_replay_and_live_events_async(
+                stream_key=stream_key, last_event_id=last_event_id
+            ):
                 try:
                     if stream_event is None:
                         yield ": keepalive\n\n"
@@ -983,7 +1031,6 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     return
 
         return _async_stream()
-
 
 
 class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
@@ -1185,14 +1232,19 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
                 return
 
-            async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=last_event_id):
+            async for stream_event in iter_replay_and_live_events_async(
+                stream_key=stream_key, last_event_id=last_event_id
+            ):
                 try:
                     if stream_event is None:
                         yield ": keepalive\n\n"
                         continue
 
                     data = normalize_document_ocr_job_payload(stream_event.payload)
-                    if data is None or data["status"] in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
+                    if data is None or data["status"] in {
+                        DocumentOCRJob.STATUS_COMPLETED,
+                        DocumentOCRJob.STATUS_FAILED,
+                    }:
                         refreshed_job = await sync_to_async(job_queryset.get)()
                         data = _build_document_ocr_status_payload(refreshed_job)
                     else:
@@ -1215,7 +1267,6 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     return
 
         return _async_stream()
-
 
 
 # the urlpattern for this view is:
@@ -1373,7 +1424,9 @@ def customer_quick_create(request):
         # Handle validation errors
         if hasattr(e, "message_dict"):
             # Django ValidationError
-            return Response({"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         logger.exception("Error in customer_quick_create")
         return Response(
@@ -1438,7 +1491,9 @@ def customer_application_quick_create(request):
 
         if hasattr(e, "message_dict"):
             # Django ValidationError
-            return Response({"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response(
             {"success": False, "error": "Server error while creating customer application."},
@@ -1465,14 +1520,14 @@ def product_quick_create(request):
         return Response(
             {
                 "success": True,
-                    "product": {
-                        "id": product.id,
-                        "name": product.name,
-                        "code": product.code,
-                        "product_type": product.product_category.product_type if product.product_category else None,
-                        "base_price": product.base_price,
-                        "retail_price": product.retail_price,
-                        "created_at": product.created_at,
+                "product": {
+                    "id": product.id,
+                    "name": product.name,
+                    "code": product.code,
+                    "product_type": product.product_category.product_type if product.product_category else None,
+                    "base_price": product.base_price,
+                    "retail_price": product.retail_price,
+                    "created_at": product.created_at,
                     "updated_at": product.updated_at,
                     "created_by": product.created_by_id,
                     "updated_by": product.updated_by_id,
@@ -1485,7 +1540,9 @@ def product_quick_create(request):
         # Handle validation errors
         if hasattr(e, "message_dict"):
             # Django ValidationError
-            return Response({"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         logger.exception("Error in product_quick_create")
         return Response(

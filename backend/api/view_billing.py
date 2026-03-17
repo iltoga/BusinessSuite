@@ -1,3 +1,43 @@
+"""
+api.view_billing
+================
+DRF ViewSet controllers for invoice management.
+
+``InvoiceViewSet`` (ModelViewSet)
+----------------------------------
+- **list / retrieve / create / update / partial_update / destroy** — standard
+  CRUD; ``create`` / ``update`` use ``InvoiceCreateUpdateSerializer``,
+  ``retrieve`` uses ``InvoiceDetailSerializer``, ``list`` uses
+  ``InvoiceListSerializer``.
+- **search** — ``search`` and ``q`` query params forwarded to
+  ``Invoice.objects.search_invoices()``.
+- **hide_paid** — boolean query param to exclude ``PAID`` invoices.
+- Permission: ``IsAuthenticated`` (row-level via customer ownership implied).
+
+Async job actions
+-----------------
+- **download_pdf** (POST) — enqueues an ``InvoiceDownloadJob`` actor on the
+  ``default`` queue; returns ``{job_id, status}``.
+- **import_rows** (POST) — enqueues an ``InvoiceImportJob`` actor; returns
+  ``{job_id, status}``.
+
+SSE payload shapes
+------------------
+All async jobs stream updates via ``/api/async-jobs/status/{job_id}/``.  The
+download job payload is serialised by
+``serialize_invoice_download_job_payload()``; the import job payload by
+``serialize_invoice_import_job_payload()`` / ``serialize_invoice_import_item_payload()``.
+
+Helper functions
+-----------------
+- ``_download_stream_payload_from_job(job)`` — build SSE payload dict from a
+  loaded ``InvoiceDownloadJob`` ORM instance.
+- ``_load_download_stream_payload(job_id)`` — load by id and build payload, or
+  return ``None`` if the job does not exist.
+- ``_import_job_stream_payload_from_job(job)`` — same for import jobs.
+- ``_import_item_stream_payload_from_item(item)`` — per-item progress payload.
+"""
+
 from api.utils.stream_payloads import (
     first_present,
     normalize_invoice_download_job_payload,
@@ -515,7 +555,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if _is_terminal_payload(initial_payload):
                 return
 
-            async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=last_event_id):
+            async for stream_event in iter_replay_and_live_events_async(
+                stream_key=stream_key, last_event_id=last_event_id
+            ):
                 if stream_event is None:
                     yield ": keep-alive\n\n"
                     continue
@@ -539,7 +581,6 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     return
 
         return _async_stream()
-
 
     @staticmethod
     def _send_download_event(event_type, data, *, event_id: str | None = None):
@@ -1320,7 +1361,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if done:
                 return
 
-            async for stream_event in iter_replay_and_live_events_async(stream_key=stream_key, last_event_id=last_event_id):
+            async for stream_event in iter_replay_and_live_events_async(
+                stream_key=stream_key, last_event_id=last_event_id
+            ):
                 if stream_event is None:
                     yield ": keep-alive\n\n"
                     continue
@@ -1356,7 +1399,6 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     return
 
         return _async_stream()
-
 
     @staticmethod
     def _send_import_event(event_type, data, *, event_id: str | None = None):

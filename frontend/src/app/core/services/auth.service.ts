@@ -1,3 +1,41 @@
+/**
+ * AuthService — dual-mode JWT / mock authentication.
+ *
+ * ## Normal mode (JWT)
+ * Tokens are stored in `localStorage` under `auth_token` (access) and
+ * `auth_refresh_token` (refresh).  On login, both tokens are persisted;
+ * on logout they are cleared and the user is redirected to `/login`.
+ *
+ * ### Auto-refresh flow
+ * The `AuthInterceptor` watches for `401` responses and calls
+ * `AuthService.refreshToken()`.  `refreshRequest$` ensures that concurrent
+ * requests share a single in-flight `Observable<string>` so only one refresh
+ * HTTP call is made even when multiple requests fail simultaneously.
+ *
+ * ### Token expiry check (`isTokenExpired`)
+ * Decodes the JWT payload (base-64 split on `.`), reads the `exp` claim, and
+ * compares it to `Date.now() / 1000`.  Returns `true` when no token is
+ * present or the token is expired.
+ *
+ * ## Mock mode (`MOCK_AUTH_ENABLED`)
+ * When `ConfigService.config().MOCK_AUTH_ENABLED` is truthy:
+ * - `isAuthenticated` is always `true` (prevents redirect loops on init).
+ * - Claims are loaded from `GET /api/mock-auth-config/` which returns a
+ *   `MockAuthConfigResponse`.  Both snake_case (`is_superuser`) and
+ *   camelCase (`isSuperuser`) forms are accepted and normalised.
+ * - No tokens are stored; `getToken()` returns `null`.
+ *
+ * ## Reactive state (signals)
+ * | Signal | Type | Description |
+ * |---|---|---|
+ * | `isAuthenticated` | `computed<boolean>` | True when a valid non-expired token exists (or mock is on) |
+ * | `claims` | `readonly Signal<AuthClaims \| null>` | Decoded JWT claims or mock claims |
+ * | `isSuperuser` | `computed<boolean>` | Derived from `claims.isSuperuser` |
+ * | `isStaff` | `computed<boolean>` | Derived from `claims.isStaff` |
+ * | `isAdminOrManager` | `computed<boolean>` | Superuser, `admin` group, or `manager` group |
+ * | `isLoading` | `readonly Signal<boolean>` | True during login / refresh HTTP calls |
+ * | `error` | `readonly Signal<string \| null>` | Last authentication error message |
+ */
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { computed, Inject, Injectable, PLATFORM_ID, signal } from '@angular/core';

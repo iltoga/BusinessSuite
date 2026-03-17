@@ -1,3 +1,31 @@
+/**
+ * CustomersService — HTTP client wrapper for the customers API.
+ *
+ * ## Legacy manual interfaces
+ * `CustomerListItem`, `CustomerDetail`, `UninvoicedApplication`,
+ * `CustomerApplicationHistory`, `CountryCode`, `PaginatedResponse`, and
+ * `CustomerListQuery` were written before the OpenAPI code-generator was
+ * introduced and pre-date the generated types in `core/api/`.
+ *
+ * **Migration note:** Prefer importing equivalent types from `core/api/`
+ * wherever possible.  The manual interfaces here are retained only for
+ * endpoints whose generated shapes differ from the UI-adapted form, or for
+ * utilities (`CountryCode`, `PaginatedResponse`) not covered by the
+ * generator.  When a manual interface is kept intentionally, a comment
+ * should explain the deviation.
+ *
+ * ## Methods
+ * | Method | Description |
+ * |---|---|
+ * | `getCustomers(query)` | Paginated customer list with search/filter params |
+ * | `getCustomer(id)` | Full customer detail |
+ * | `createCustomer(data)` | Create a new customer |
+ * | `updateCustomer(id, data)` | Full or partial update |
+ * | `deleteCustomer(id)` | Hard delete |
+ * | `getUninvoicedApplications(customerId)` | Applications not yet linked to an invoice |
+ * | `getApplicationHistory(customerId)` | Full payment-status history |
+ * | `getCountryCodes()` | ISO country / nationality lookup list |
+ */
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
@@ -206,12 +234,14 @@ export class CustomersService {
 
   getApplicationsHistory(customerId: number): Observable<CustomerApplicationHistory[]> {
     const headers = this.buildHeaders();
-    return this.http.get<any>(`/api/customers/${customerId}/applications-history/`, { headers }).pipe(
-      map((response) => {
-        const rows = Array.isArray(response) ? response : (response?.results ?? []);
-        return rows.map((item: any) => this.mapCustomerApplicationHistory(item));
-      }),
-    );
+    return this.http
+      .get<any>(`/api/customers/${customerId}/applications-history/`, { headers })
+      .pipe(
+        map((response) => {
+          const rows = Array.isArray(response) ? response : (response?.results ?? []);
+          return rows.map((item: any) => this.mapCustomerApplicationHistory(item));
+        }),
+      );
   }
 
   getCountries(): Observable<CountryCode[]> {
@@ -327,8 +357,9 @@ export class CustomersService {
 
   private mapCustomerApplicationHistory(item: any): CustomerApplicationHistory {
     const base = this.mapUninvoicedApplication(item);
-    const paymentStatus =
-      (item?.paymentStatus ?? item?.payment_status ?? 'uninvoiced') as CustomerApplicationPaymentStatus;
+    const paymentStatus = (item?.paymentStatus ??
+      item?.payment_status ??
+      'uninvoiced') as CustomerApplicationPaymentStatus;
 
     return {
       ...base,
