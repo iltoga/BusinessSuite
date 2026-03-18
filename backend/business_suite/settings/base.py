@@ -255,7 +255,7 @@ JWT_SIGNING_KEY = _resolve_jwt_signing_key(SECRET_KEY)
 APP_DOMAIN = os.getenv("APP_DOMAIN")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
+DEBUG = _parse_bool(os.getenv("DJANGO_DEBUG", "False"))
 ENABLE_DEBUG_TOOLBAR = DEBUG and _parse_bool(os.getenv("ENABLE_DEBUG_TOOLBAR", "True"))
 
 ALLOWED_HOSTS = [

@@ -28,7 +28,6 @@ import {
   type ColumnFilterOption,
   type DataTableAction,
 } from '@/shared/components/data-table/data-table.component';
-import { ZardIconComponent } from '@/shared/components/icon';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import {
   ProductDeleteDialogComponent,
@@ -74,7 +73,6 @@ import {
     ContextHelpDirective,
     ZardButtonComponent,
     ZardCardComponent,
-    ZardIconComponent,
     ProductDeleteDialogComponent,
     ZardBadgeComponent,
     BulkDeleteDialogComponent,
@@ -102,7 +100,6 @@ export class ProductListComponent extends BaseListComponent<Product> {
   readonly importInProgress = signal(false);
   readonly importProgress = signal<number | null>(null);
   readonly printInProgress = signal(false);
-  readonly basePricesVisible = signal(false);
 
   // Product delete dialog state
   readonly productDeleteOpen = signal(false);
@@ -130,19 +127,9 @@ export class ProductListComponent extends BaseListComponent<Product> {
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
       'deprecatedTemplate',
     );
-  private readonly basePriceHeaderTemplate =
-    viewChild.required<TemplateRef<{ column: ColumnConfig<Product> }>>('basePriceHeaderTemplate');
-  private readonly priceTemplate =
-    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
-      'priceTemplate',
-    );
   private readonly retailPriceTemplate =
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
       'retailPriceTemplate',
-    );
-  private readonly profitTemplate =
-    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
-      'profitTemplate',
     );
   private readonly createdAtTemplate =
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
@@ -185,7 +172,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Type',
       sortable: true,
       sortKey: 'product_type',
-      width: '8%',
+      width: '6%',
       template: this.typeTemplate(),
     },
     {
@@ -203,31 +190,17 @@ export class ProductListComponent extends BaseListComponent<Product> {
       },
     },
     {
-      key: 'basePrice',
-      header: 'Base Price',
-      sortable: true,
-      sortKey: 'base_price',
-      width: '9%',
-      headerActionTemplate: this.basePriceHeaderTemplate(),
-      template: this.priceTemplate(),
-    },
-    {
       key: 'retailPrice',
       header: 'Retail Price',
       sortable: true,
       sortKey: 'retail_price',
-      width: '9%',
+      width: '12%',
       template: this.retailPriceTemplate(),
-    },
-    {
-      key: 'unitProfit',
-      header: 'Unit Profit',
-      width: '8%',
-      template: this.profitTemplate(),
     },
     {
       key: 'deprecated',
       header: 'Deprecated',
+      subtitle: 'Active',
       width: '7%',
       template: this.deprecatedTemplate(),
       filter: {
@@ -242,7 +215,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
-      width: '9%',
+      width: '12%',
       template: this.createdAtTemplate(),
     },
     { key: 'actions', header: 'Actions', width: '4%' },
@@ -280,7 +253,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
     this.config = {
       entityType: 'products',
       entityLabel: 'Products',
-      defaultPageSize: 10,
+      defaultPageSize: 8,
       defaultOrdering: 'name',
       enableBulkDelete: true,
       enableDelete: true,
@@ -610,18 +583,6 @@ export class ProductListComponent extends BaseListComponent<Product> {
     return value ? String(value) : '';
   }
 
-  deprecatedLabel(row?: Product | null): string {
-    return row?.deprecated ? 'Deprecated' : 'Active';
-  }
-
-  /**
-   * Toggle base price visibility
-   */
-  toggleBasePriceVisibility(event?: Event): void {
-    event?.stopPropagation();
-    this.basePricesVisible.update((visible) => !visible);
-  }
-
   /**
    * Resolve currency for a product
    */
@@ -658,34 +619,10 @@ export class ProductListComponent extends BaseListComponent<Product> {
   }
 
   /**
-   * Format base price with visibility toggle
-   */
-  formatBasePrice(value?: string | number | null, row?: Product): string {
-    if (!this.basePricesVisible()) {
-      return '****';
-    }
-    return this.formatCurrency(value, this.resolveCurrency(row));
-  }
-
-  /**
    * Get retail price value
    */
   retailPriceValue(row: Product): string | number | null {
-    const retail = (row as any).retailPrice ?? (row as any).retail_price;
-    const base = (row as any).basePrice ?? (row as any).base_price;
-    return retail ?? base ?? null;
-  }
-
-  /**
-   * Calculate unit profit
-   */
-  unitProfitValue(row: Product): number {
-    const retail = Number(this.retailPriceValue(row) ?? 0);
-    const base = Number((row as any).basePrice ?? (row as any).base_price ?? 0);
-    if (Number.isNaN(retail) || Number.isNaN(base)) {
-      return 0;
-    }
-    return retail - base;
+    return (row as any).retailPrice ?? (row as any).retail_price ?? null;
   }
 
   private resolveDeprecatedFilter(): { deprecated: boolean | undefined; hideDeprecated: boolean } {

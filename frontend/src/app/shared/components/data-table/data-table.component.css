@@ -64,11 +64,25 @@ tr.row-danger-soft:not(.selected) {
   white-space: normal;
 }
 
+/* Render the deprecated column header with stacked labels and bold first letters. */
+.data-table-scroll th.col-deprecated span:first-letter {
+  font-weight: 700;
+}
+
+/* Add a small gap between Deprecated and Added/Updated columns without changing overall table layout. */
+.data-table-scroll th.col-deprecated {
+  padding-right: 1rem;
+}
+.data-table-scroll th.col-created_at,
+.data-table-scroll th.col-createdAt {
+  padding-left: 1rem;
+}
+
 /* Ensure the two timestamps stack nicely */
 .col-created_at span,
 .col-createdAt span {
   display: block;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 @media (max-width: 1024px) {
@@ -99,9 +113,14 @@ tr.row-danger-soft:not(.selected) {
 }
 
 @media (max-width: 767px) and (orientation: portrait) {
-  /* don't unset overflow here, virtual scrolling needs it */
+  /* Switch from table layout to block so grid children stretch to full width */
   .data-table-scroll table[z-table] {
+    display: block;
     min-width: 0;
+  }
+
+  .data-table-scroll table[z-table] colgroup {
+    display: none;
   }
 
   .data-table-scroll thead[z-table-header] {

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from customer_applications.models import DocApplication
 from customer_applications.models.doc_workflow import DocWorkflow
 from django.db import transaction
 from django.utils import timezone
@@ -23,7 +24,7 @@ class WorkflowStatusTransitionService:
 
     @staticmethod
     def valid_statuses() -> set[str]:
-        return {choice[0] for choice in DocWorkflow.STATUS_CHOICES}
+        return {choice[0] for choice in DocApplication.STATUS_CHOICES}
 
     @staticmethod
     def get_previous_workflow(workflow: DocWorkflow):
@@ -54,8 +55,8 @@ class WorkflowStatusTransitionService:
         if current_workflow and current_workflow.id != workflow.id and workflow.status != status_value:
             raise WorkflowStatusTransitionError("Only the current task can be updated")
 
-        moving_from_pending = workflow.status == DocWorkflow.STATUS_PENDING
-        promoting_status = status_value in {DocWorkflow.STATUS_PROCESSING, DocWorkflow.STATUS_COMPLETED}
+        moving_from_pending = workflow.status == DocApplication.STATUS_PENDING
+        promoting_status = status_value in {DocApplication.STATUS_PROCESSING, DocApplication.STATUS_COMPLETED}
         if moving_from_pending and promoting_status and workflow.task.step > 1:
             previous_workflow = self.get_previous_workflow(workflow)
             if previous_workflow and previous_workflow.due_date and timezone.localdate() < previous_workflow.due_date:
@@ -72,7 +73,7 @@ class WorkflowStatusTransitionService:
             workflow.save()
 
             # Completing a non-final task automatically creates the next one as pending.
-            if status_value == DocWorkflow.STATUS_COMPLETED:
+            if status_value == DocApplication.STATUS_COMPLETED:
                 next_task = workflow.next_task_in_sequence
                 if next_task and not application.workflows.filter(task_id=next_task.id).exists():
                     next_workflow = DocWorkflow(
@@ -80,7 +81,7 @@ class WorkflowStatusTransitionService:
                         task=next_task,
                         doc_application=application,
                         created_by=user,
-                        status=DocWorkflow.STATUS_PENDING,
+                        status=DocApplication.STATUS_PENDING,
                     )
                     next_workflow.due_date = next_workflow.calculate_workflow_due_date()
                     next_workflow.save()

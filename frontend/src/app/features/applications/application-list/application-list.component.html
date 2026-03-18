@@ -10,7 +10,7 @@
     </a>
   </div>
 
-  <z-card class="bg-card rounded-lg border shadow-sm py-0 gap-0 [&_[data-slot=card-content]]:px-0">
+  <z-card class="bg-card rounded-lg border shadow-sm py-0 gap-0 **:data-[slot=card-content]:px-0">
     <div class="border-b p-3 sm:p-4">
       <app-search-toolbar
         [query]="query()"
@@ -66,7 +66,9 @@
           <div class="flex flex-col leading-tight">
             <span class="whitespace-nowrap">{{ row.docDate | appDate }}</span>
             @if (row.submissionWindowLastDate) {
-              <span class="text-xs whitespace-nowrap">{{ row.submissionWindowLastDate | appDate }}</span>
+              <span class="text-xs whitespace-nowrap">{{
+                row.submissionWindowLastDate | appDate
+              }}</span>
             } @else {
               <span class="text-xs">&nbsp;</span>
             }

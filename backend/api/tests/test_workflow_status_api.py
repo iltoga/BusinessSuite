@@ -58,7 +58,7 @@ class WorkflowStatusApiTests(TestCase):
             task=first_task,
             doc_application=app,
             created_by=self.user,
-            status=DocWorkflow.STATUS_PENDING,
+            status=DocApplication.STATUS_PENDING,
         )
         workflow.due_date = workflow.calculate_workflow_due_date()
         workflow.save()
@@ -69,18 +69,18 @@ class WorkflowStatusApiTests(TestCase):
 
         response = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{workflow.id}/status/",
-            {"status": DocWorkflow.STATUS_COMPLETED},
+            {"status": DocApplication.STATUS_COMPLETED},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
         workflow.refresh_from_db()
         app.refresh_from_db()
-        self.assertEqual(workflow.status, DocWorkflow.STATUS_COMPLETED)
+        self.assertEqual(workflow.status, DocApplication.STATUS_COMPLETED)
 
         next_workflow = app.workflows.filter(task__step=2).first()
         self.assertIsNotNone(next_workflow)
-        self.assertEqual(next_workflow.status, DocWorkflow.STATUS_PENDING)
+        self.assertEqual(next_workflow.status, DocApplication.STATUS_PENDING)
         self.assertEqual(app.status, DocApplication.STATUS_PENDING)
 
     def test_update_workflow_status_sets_application_rejected(self):
@@ -88,14 +88,14 @@ class WorkflowStatusApiTests(TestCase):
 
         response = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{workflow.id}/status/",
-            {"status": DocWorkflow.STATUS_REJECTED},
+            {"status": DocApplication.STATUS_REJECTED},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
         workflow.refresh_from_db()
         app.refresh_from_db()
-        self.assertEqual(workflow.status, DocWorkflow.STATUS_REJECTED)
+        self.assertEqual(workflow.status, DocApplication.STATUS_REJECTED)
         self.assertEqual(app.status, DocApplication.STATUS_REJECTED)
 
     def test_update_workflow_status_sets_application_completed_on_last_step_even_if_documents_incomplete(self):
@@ -103,14 +103,14 @@ class WorkflowStatusApiTests(TestCase):
 
         response = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{workflow.id}/status/",
-            {"status": DocWorkflow.STATUS_COMPLETED},
+            {"status": DocApplication.STATUS_COMPLETED},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
         workflow.refresh_from_db()
         app.refresh_from_db()
-        self.assertEqual(workflow.status, DocWorkflow.STATUS_COMPLETED)
+        self.assertEqual(workflow.status, DocApplication.STATUS_COMPLETED)
         self.assertEqual(app.status, DocApplication.STATUS_COMPLETED)
         self.assertFalse(app.is_document_collection_completed)
 
@@ -119,14 +119,14 @@ class WorkflowStatusApiTests(TestCase):
 
         response = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{workflow.id}/status/",
-            {"status": DocWorkflow.STATUS_REJECTED},
+            {"status": DocApplication.STATUS_REJECTED},
             format="json",
         )
         self.assertEqual(response.status_code, 200)
 
         response = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{workflow.id}/status/",
-            {"status": DocWorkflow.STATUS_PROCESSING},
+            {"status": DocApplication.STATUS_PROCESSING},
             format="json",
         )
 
@@ -134,14 +134,14 @@ class WorkflowStatusApiTests(TestCase):
         self.assertIn("Finalized tasks cannot be changed", str(response.data))
 
         workflow.refresh_from_db()
-        self.assertEqual(workflow.status, DocWorkflow.STATUS_REJECTED)
+        self.assertEqual(workflow.status, DocApplication.STATUS_REJECTED)
 
     def test_rejected_application_stays_rejected_after_document_updates(self):
         app, workflow = self._create_application_and_workflow(document_completed=False, task_count=1)
 
         response = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{workflow.id}/status/",
-            {"status": DocWorkflow.STATUS_REJECTED},
+            {"status": DocApplication.STATUS_REJECTED},
             format="json",
         )
         self.assertEqual(response.status_code, 200)
@@ -158,7 +158,7 @@ class WorkflowStatusApiTests(TestCase):
 
         response = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{step1.id}/status/",
-            {"status": DocWorkflow.STATUS_COMPLETED},
+            {"status": DocApplication.STATUS_COMPLETED},
             format="json",
         )
         self.assertEqual(response.status_code, 200)
@@ -168,7 +168,7 @@ class WorkflowStatusApiTests(TestCase):
 
         blocked = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{step2.id}/status/",
-            {"status": DocWorkflow.STATUS_PROCESSING},
+            {"status": DocApplication.STATUS_PROCESSING},
             format="json",
         )
         self.assertEqual(blocked.status_code, 400)
@@ -176,7 +176,7 @@ class WorkflowStatusApiTests(TestCase):
 
         allowed_rejected = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{step2.id}/status/",
-            {"status": DocWorkflow.STATUS_REJECTED},
+            {"status": DocApplication.STATUS_REJECTED},
             format="json",
         )
         self.assertEqual(allowed_rejected.status_code, 200)
@@ -186,7 +186,7 @@ class WorkflowStatusApiTests(TestCase):
 
         complete_step1 = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{step1.id}/status/",
-            {"status": DocWorkflow.STATUS_COMPLETED},
+            {"status": DocApplication.STATUS_COMPLETED},
             format="json",
         )
         self.assertEqual(complete_step1.status_code, 200)
@@ -211,7 +211,7 @@ class WorkflowStatusApiTests(TestCase):
 
         complete_step1 = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{step1.id}/status/",
-            {"status": DocWorkflow.STATUS_COMPLETED},
+            {"status": DocApplication.STATUS_COMPLETED},
             format="json",
         )
         self.assertEqual(complete_step1.status_code, 200)
@@ -229,6 +229,28 @@ class WorkflowStatusApiTests(TestCase):
         app.refresh_from_db()
         step1.refresh_from_db()
         self.assertFalse(app.workflows.filter(id=step2.id).exists())
-        self.assertEqual(step1.status, DocWorkflow.STATUS_PENDING)
+        self.assertEqual(step1.status, DocApplication.STATUS_PENDING)
         self.assertEqual(app.current_workflow.id, step1.id)
         self.assertEqual(app.due_date, step1.due_date)
+
+    def test_doc_workflow_status_choices_and_terminal_statuses_track_application_constants(self):
+        self.assertEqual(DocWorkflow.STATUS_CHOICES, DocApplication.STATUS_CHOICES)
+        self.assertEqual(
+            DocWorkflow.TERMINAL_STATUSES,
+            {DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED},
+        )
+
+    def test_doc_workflow_completion_date_follows_terminal_statuses(self):
+        _, workflow = self._create_application_and_workflow(document_completed=False, task_count=1)
+
+        self.assertIsNone(workflow.completion_date)
+
+        workflow.status = DocApplication.STATUS_COMPLETED
+        workflow.save()
+        workflow.refresh_from_db()
+        self.assertIsNotNone(workflow.completion_date)
+
+        workflow.status = DocApplication.STATUS_PROCESSING
+        workflow.save()
+        workflow.refresh_from_db()
+        self.assertIsNone(workflow.completion_date)

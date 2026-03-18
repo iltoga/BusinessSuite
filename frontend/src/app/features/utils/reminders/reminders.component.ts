@@ -130,7 +130,7 @@ export class RemindersComponent implements OnInit, OnDestroy {
 
   readonly query = signal('');
   readonly page = signal(1);
-  readonly pageSize = signal(10);
+  readonly pageSize = signal(8);
   readonly totalItems = signal(0);
   readonly ordering = signal<string | undefined>(undefined);
   readonly statusFilter = signal<ReminderStatus[]>(['pending']);
@@ -566,7 +566,9 @@ export class RemindersComponent implements OnInit, OnDestroy {
     return row.readAt ? 'Read' : 'Unread';
   }
 
-  readStatusVariant(row: ReminderItem): 'default' | 'secondary' | 'success' | 'warning' | 'destructive' {
+  readStatusVariant(
+    row: ReminderItem,
+  ): 'default' | 'secondary' | 'success' | 'warning' | 'destructive' {
     return row.readAt ? 'success' : 'secondary';
   }
 

@@ -517,7 +517,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         with transaction.atomic():
             workflow.delete()
 
-            previous_workflow.status = DocWorkflow.STATUS_PENDING
+            previous_workflow.status = DocApplication.STATUS_PENDING
             previous_workflow.updated_by = request.user
             previous_workflow.save()
 

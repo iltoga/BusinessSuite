@@ -172,7 +172,7 @@ def _create_initial_workflow(*, doc_app, product, created_by) -> None:
         task=first_task,
         start_date=start_date,
         due_date=due_date,
-        status=DocWorkflow.STATUS_PENDING,
+        status=DocApplication.STATUS_PENDING,
         created_by=created_by,
     )
 

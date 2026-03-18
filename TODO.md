@@ -14,23 +14,23 @@ _No known bugs as of 2026-03-17._
 
 ### Backend
 
-- **`customer_applications/models/doc_workflow.py` line 26** — Remove duplicate
-  status constants (`STATUS_COMPLETED`, `STATUS_REJECTED`, `STATUS_PENDING`,
-  `STATUS_PROCESSING`) from `DocWorkflow`. Identical constants already exist on
-  `DocApplication`; `DocWorkflow` should reference `DocApplication.STATUS_*` or
-  a shared `AppStatus` enum to avoid drift.
-
 ### Frontend
-
-- **`frontend/src/app/core/services/customers.service.ts`** — Migrate legacy
-  hand-written interfaces (`CustomerListItem`, `CustomerDetail`,
-  `UninvoicedApplication`, `CustomerApplicationHistory`, `CountryCode`,
-  `PaginatedResponse`) to the generated types from `core/api/` wherever the
-  shapes are compatible. See module docstring for migration guidance.
 
 ---
 
 ## DONE
+
+- **2026-03-17** — Removed duplicate workflow status constants from
+  `backend/customer_applications/models/doc_workflow.py` and migrated backend
+  workflow status consumers/tests to use `DocApplication.STATUS_*` as the shared
+  source of truth. Added regression coverage for shared status choices and
+  terminal completion-date behavior.
+
+- **2026-03-17** — Migrated
+  `frontend/src/app/core/services/customers.service.ts` from hand-written
+  customer-facing interfaces to generated `core/api/` models where compatible,
+  updated customer consumers to use generated types directly, and added service
+  regression tests for payload normalization/history mapping.
 
 - **2026-03-17** — Added module- and function-level docstrings to all
   undocumented core service and API view files (11 files total):

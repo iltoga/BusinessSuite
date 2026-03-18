@@ -3,6 +3,7 @@ import { ThemeName } from '../theme.config';
 export interface AppConfig {
   // Accept either a boolean or a case-insensitive string ('True'|'False'|'true'|'false')
   MOCK_AUTH_ENABLED: string | boolean;
+  DEBUG?: boolean;
   theme: ThemeName;
   dateFormat: string;
   baseCurrency: string;
@@ -27,6 +28,7 @@ export interface AppConfig {
 export const DEFAULT_APP_CONFIG: AppConfig = {
   // Keep string for compatibility, but boolean is supported
   MOCK_AUTH_ENABLED: 'False',
+  DEBUG: false,
   theme: 'neutral',
   dateFormat: 'dd-MM-yyyy',
   baseCurrency: 'IDR',

@@ -11,7 +11,7 @@
       @if (columns().some(c => c.width)) {
         <colgroup>
           @for (column of columns(); track column.key) {
-            <col [style.width]="column.width || ''">
+            <col [style.width]="column.width || ''" />
           }
         </colgroup>
       }
@@ -33,17 +33,24 @@
                     [class.items-end]="column.key === 'actions'"
                     [class.items-start]="column.key !== 'actions'"
                   >
-                    <span [class.text-right]="column.key === 'actions'">{{ column.header }}</span>
+                    @if (column.key === 'actions') {
+                      <z-icon zType="circle-ellipsis" class="text-right h-4 w-4 text-foreground/70" />
+                    } @else {
+                      <span>{{ column.header }}</span>
+                    }
                     @if (column.subtitle) {
                       <span class="text-xs font-normal text-foreground/70 normal-case">{{
                         column.subtitle
                       }}</span>
                     }
                   </div>
-                  @if (currentSort()?.column === (column.sortKey ?? column.key)) {
-                    <span class="text-xs text-muted-foreground">
-                      {{ currentSort()?.direction === 'asc' ? '▲' : '▼' }}
-                    </span>
+                  @if (column.sortable) {
+                    <z-icon 
+                      [zType]="currentSort()?.column === (column.sortKey ?? column.key) ? (currentSort()?.direction === 'asc' ? 'arrow-up' : 'arrow-down') : 'arrow-up-down'" 
+                      class="h-3.5 w-3.5"
+                      [class.text-foreground]="currentSort()?.column === (column.sortKey ?? column.key)"
+                      [class.text-muted-foreground]="currentSort()?.column !== (column.sortKey ?? column.key)"
+                    />
                   }
                 </button>
 
@@ -153,76 +160,75 @@
 
         <tr
           *cdkVirtualFor="let row of virtualData(); trackBy: trackByFn"
-              #rowRef
-              z-table-row
-              [attr.tabindex]="selectedRow() === row ? 0 : -1"
-                [attr.aria-selected]="selectedRow() === row ? 'true' : 'false'"
-                [class.selected]="selectedRow() === row"
-                [ngClass]="rowClass()?.(row) || ''"
-                (focus)="selectRow(row, $event)"
-                (click)="selectRow(row, $event)"
-                (keydown)="handleRowKeydown($event, row); handleRowNavigationKeydown($event)"
-              >
-                @for (column of columns(); track column.key) {
-                  <td
-                    z-table-cell
-                    [attr.data-column-label]="column.header"
-                    [class]="'col-' + (column.sortKey ?? column.key)"
+          #rowRef
+          z-table-row
+          [attr.tabindex]="selectedRow() === row ? 0 : -1"
+          [attr.aria-selected]="selectedRow() === row ? 'true' : 'false'"
+          [class.selected]="selectedRow() === row"
+          [ngClass]="rowClass()?.(row) || ''"
+          (focus)="selectRow(row, $event)"
+          (click)="selectRow(row, $event)"
+          (keydown)="handleRowKeydown($event, row); handleRowNavigationKeydown($event)"
+        >
+          @for (column of columns(); track column.key) {
+            <td
+              z-table-cell
+              [attr.data-column-label]="column.header"
+              [class]="'col-' + (column.sortKey ?? column.key)"
+            >
+              @if (column.template) {
+                <ng-container
+                  *ngTemplateOutlet="
+                    column.template;
+                    context: { $implicit: row, value: getRawValue(row, column.key), row: row }
+                  "
+                />
+              } @else if (column.key === 'actions' && actions()?.length) {
+                <div class="flex items-center justify-end">
+                  <button
+                    #actionTrigger
+                    z-dropdown
+                    [zDropdownMenu]="rowActionsMenu"
+                    z-button
+                    zType="ghost"
+                    zSize="sm"
+                    type="button"
+                    class="h-8 w-8 p-0"
+                    tabindex="-1"
+                    (click)="$event.stopPropagation()"
+                    aria-label="Row actions"
+                    aria-haspopup="menu"
                   >
-                    @if (column.template) {
-                      <ng-container
-                        *ngTemplateOutlet="
-                          column.template;
-                          context: { $implicit: row, value: getRawValue(row, column.key), row: row }
-                        "
-                      />
-                    } @else if (column.key === 'actions' && actions()?.length) {
-                      <div class="flex items-center justify-end">
-                        <button
-                          #actionTrigger
-                          z-dropdown
-                          [zDropdownMenu]="rowActionsMenu"
-                          z-button
-                          zType="ghost"
-                          zSize="sm"
-                          type="button"
-                          class="h-8 w-8 p-0"
-                          tabindex="-1"
-                          (click)="$event.stopPropagation()"
-                          aria-label="Row actions"
-                          aria-haspopup="menu"
-                        >
-                          <z-icon zType="ellipsis-vertical" />
-                        </button>
-                        <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
-                          @defer (on interaction(actionTrigger)) {
-                            @for (action of actions() ?? []; track action.label) {
-                              @if (!action.isVisible || action.isVisible(row)) {
-                                <button
-                                  z-dropdown-menu-item
-                                  type="button"
-                                  [variant]="
-                                    action.variant ??
-                                    (action.isDestructive ? 'destructive' : 'default')
-                                  "
-                                  (click)="onActionSelect(action, row, $event)"
-                                >
-                                  <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
-                                  <span
-                                    [innerHTML]="action.label | shortcutHighlight: action.shortcut"
-                                  ></span>
-                                </button>
-                              }
-                            }
-                          }
-                        </z-dropdown-menu-content>
-                      </div>
-                    } @else {
-                      {{ getCellValue(row, column.key) }}
+                    <z-icon zType="ellipsis-vertical" />
+                  </button>
+                  <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
+                    @defer (on interaction(actionTrigger)) {
+                      @for (action of actions() ?? []; track action.label) {
+                        @if (!action.isVisible || action.isVisible(row)) {
+                          <button
+                            z-dropdown-menu-item
+                            type="button"
+                            [variant]="
+                              action.variant ?? (action.isDestructive ? 'destructive' : 'default')
+                            "
+                            (click)="onActionSelect(action, row, $event)"
+                          >
+                            <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
+                            <span
+                              [innerHTML]="action.label | shortcutHighlight: action.shortcut"
+                            ></span>
+                          </button>
+                        }
+                      }
                     }
-                  </td>
-                }
-          </tr>
+                  </z-dropdown-menu-content>
+                </div>
+              } @else {
+                {{ getCellValue(row, column.key) }}
+              }
+            </td>
+          }
+        </tr>
       </tbody>
     </table>
   </cdk-virtual-scroll-viewport>

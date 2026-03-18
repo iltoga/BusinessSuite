@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,42 +7,38 @@ import {
   signal,
   viewChild,
   type TemplateRef,
-  type WritableSignal,
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { map, type Observable } from 'rxjs';
+import { RouterLink } from '@angular/router';
+import { type Observable } from 'rxjs';
 
-import { CustomersService, type CustomerListItem } from '@/core/services/customers.service';
-import {
-  BaseListComponent,
-  BaseListConfig,
-  type ListRequestParams,
-  type PaginatedResponse,
-} from '@/shared/core/base-list.component';
+import type { Customer } from '@/core/api';
+import { CustomersService } from '@/core/services/customers.service';
 import { ZardBadgeComponent } from '@/shared/components/badge/badge.component';
-import {
-  BulkDeleteDialogComponent,
-  type BulkDeleteDialogData,
-} from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
+import { BulkDeleteDialogComponent } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import {
   DataTableComponent,
   type ColumnConfig,
   type DataTableAction,
-  type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { ExpiryBadgeComponent } from '@/shared/components/expiry-badge';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardSelectImports } from '@/shared/components/select';
+import {
+  BaseListComponent,
+  BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
+} from '@/shared/core/base-list.component';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 /**
  * Customer list component
- * 
+ *
  * Extends BaseListComponent to inherit common list patterns:
  * - Keyboard shortcuts (N for new, B/Left for back)
  * - Navigation state restoration
@@ -72,9 +68,9 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   styleUrls: ['./customer-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
+export class CustomerListComponent extends BaseListComponent<Customer> {
   private readonly customersService = inject(CustomersService);
-  
+
   // Expose items as customers for template compatibility
   get customers() {
     return this.items;
@@ -89,32 +85,32 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
 
   // Template references for columns
   private readonly customerTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
-    >('customerTemplate');
+    viewChild.required<TemplateRef<{ $implicit: Customer; value: any; row: Customer }>>(
+      'customerTemplate',
+    );
   private readonly passportTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
-    >('passportTemplate');
+    viewChild.required<TemplateRef<{ $implicit: Customer; value: any; row: Customer }>>(
+      'passportTemplate',
+    );
   private readonly emailTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
-    >('emailTemplate');
+    viewChild.required<TemplateRef<{ $implicit: Customer; value: any; row: Customer }>>(
+      'emailTemplate',
+    );
   private readonly whatsappTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
-    >('whatsappTemplate');
+    viewChild.required<TemplateRef<{ $implicit: Customer; value: any; row: Customer }>>(
+      'whatsappTemplate',
+    );
   private readonly nationalityTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
-    >('nationalityTemplate');
+    viewChild.required<TemplateRef<{ $implicit: Customer; value: any; row: Customer }>>(
+      'nationalityTemplate',
+    );
   private readonly createdAtTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
-    >('createdAtTemplate');
+    viewChild.required<TemplateRef<{ $implicit: Customer; value: any; row: Customer }>>(
+      'createdAtTemplate',
+    );
 
   // Columns configuration
-  readonly columns = computed<ColumnConfig<CustomerListItem>[]>(() => [
+  readonly columns = computed<ColumnConfig<Customer>[]>(() => [
     {
       key: 'fullNameWithCompany',
       header: 'Customer',
@@ -168,8 +164,8 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
   ]);
 
   // Actions configuration
-  override readonly actions = computed<DataTableAction<CustomerListItem>[]>(() => {
-    const actions: DataTableAction<CustomerListItem>[] = [
+  override readonly actions = computed<DataTableAction<Customer>[]>(() => {
+    const actions: DataTableAction<Customer>[] = [
       {
         label: 'View Detail',
         icon: 'eye',
@@ -222,7 +218,7 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
       defaultOrdering: '-created_at',
       enableBulkDelete: true,
       enableDelete: true,
-    } as BaseListConfig<CustomerListItem>;
+    } as BaseListConfig<Customer>;
   }
 
   /**
@@ -230,15 +226,14 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
    */
   protected override createListLoader(
     params: ListRequestParams,
-  ): Observable<PaginatedResponse<CustomerListItem>> {
-    return this.customersService
-      .list({
-        page: params.page,
-        pageSize: params.pageSize,
-        query: params.query || undefined,
-        ordering: params.ordering || undefined,
-        status: this.statusFilter(),
-      });
+  ): Observable<PaginatedResponse<Customer>> {
+    return this.customersService.list({
+      page: params.page,
+      pageSize: params.pageSize,
+      query: params.query || undefined,
+      ordering: params.ordering || undefined,
+      status: this.statusFilter(),
+    });
   }
 
   /**
@@ -265,7 +260,7 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
   /**
    * Toggle customer active status
    */
-  onToggleActive(customer: CustomerListItem): void {
+  onToggleActive(customer: Customer): void {
     this.customersService.toggleActive(customer.id).subscribe({
       next: () => {
         this.toast.success(`Customer ${customer.active ? 'disabled' : 'enabled'}`);
@@ -280,7 +275,7 @@ export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
   /**
    * Delete single customer
    */
-  onDelete(customer: CustomerListItem): void {
+  onDelete(customer: Customer): void {
     if (!confirm(`Delete customer ${customer.fullNameWithCompany}? This cannot be undone.`)) {
       return;
     }

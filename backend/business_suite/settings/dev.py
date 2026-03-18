@@ -55,21 +55,12 @@ INTERNAL_IPS = [
     "127.0.0.1",
 ]
 
-MIDDLEWARE = [
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # to serve static files
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "business_suite.middlewares.disable_csrf_check.DisableCsrfCheckMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",  # CSRF middleware - REQUIRED
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "business_suite.middlewares.AuthLoginRequiredMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "core.middleware.performance_logger.PerformanceLoggingMiddleware",
-]
+_DEV_DISABLE_CSRF_MIDDLEWARE = "business_suite.middlewares.disable_csrf_check.DisableCsrfCheckMiddleware"
+_CSRF_MIDDLEWARE = "django.middleware.csrf.CsrfViewMiddleware"
+
+if _DEV_DISABLE_CSRF_MIDDLEWARE not in MIDDLEWARE:
+    csrf_middleware_index = MIDDLEWARE.index(_CSRF_MIDDLEWARE)
+    MIDDLEWARE.insert(csrf_middleware_index, _DEV_DISABLE_CSRF_MIDDLEWARE)
 
 # Keep default/dbbackup storage from base.py (including USE_CLOUD_STORAGE toggle).
 # Only relax staticfiles in dev to avoid ManifestStaticFilesStorage requirements.

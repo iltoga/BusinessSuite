@@ -1,10 +1,9 @@
+from customer_applications.models import DocApplication, DocWorkflow
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from django.views.generic import TemplateView
-
-from customer_applications.models import DocApplication, DocWorkflow
 from products.models import Product
 
 
@@ -84,7 +83,7 @@ class ApplicationPipelineView(LoginRequiredMixin, TemplateView):
         now = timezone.now().date()
         for workflow in all_workflows:
             task_name = workflow.task.name
-            is_completed = workflow.status == DocWorkflow.STATUS_COMPLETED
+            is_completed = workflow.status == DocApplication.STATUS_COMPLETED
             task_stats[task_name]["completed" if is_completed else "pending"] += 1
 
             if not is_completed and workflow.due_date and workflow.due_date < now:

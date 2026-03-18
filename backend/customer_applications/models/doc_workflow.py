@@ -1,9 +1,8 @@
+from core.utils.dateutils import calculate_due_date
 from django.conf import settings
 from django.db import models
 from django.db.models import Max
 from django.utils import timezone
-
-from core.utils.dateutils import calculate_due_date
 from products.models import Task
 
 from .doc_application import DocApplication
@@ -23,26 +22,20 @@ class DocWorkflowManager(models.Manager):
 
 
 class DocWorkflow(models.Model):
-    # TODO: remove this as it is a duplicate of the DocApplication model
-    STATUS_COMPLETED = "completed"
-    STATUS_REJECTED = "rejected"
-    STATUS_PENDING = "pending"
-    STATUS_PROCESSING = "processing"
-
-    STATUS_CHOICES = [
-        (STATUS_PENDING, "Pending"),
-        (STATUS_PROCESSING, "Processing"),
-        (STATUS_COMPLETED, "Completed"),
-        (STATUS_REJECTED, "Rejected"),
-    ]
-    TERMINAL_STATUSES = {STATUS_COMPLETED, STATUS_REJECTED}
+    STATUS_CHOICES = DocApplication.STATUS_CHOICES
+    TERMINAL_STATUSES = {DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED}
 
     doc_application = models.ForeignKey(DocApplication, related_name="workflows", on_delete=models.CASCADE)
     task = models.ForeignKey(Task, related_name="doc_workflows", on_delete=models.CASCADE)
     start_date = models.DateField(db_index=True)
     completion_date = models.DateField(blank=True, null=True, db_index=True)
     due_date = models.DateField(db_index=True)
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="pending", db_index=True)
+    status = models.CharField(
+        max_length=50,
+        choices=STATUS_CHOICES,
+        default=DocApplication.STATUS_PENDING,
+        db_index=True,
+    )
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
@@ -62,7 +55,7 @@ class DocWorkflow(models.Model):
 
     @property
     def is_completed(self):
-        return self.status == "completed"
+        return self.status == DocApplication.STATUS_COMPLETED
 
     @property
     def is_current_step(self):
@@ -99,11 +92,7 @@ class DocWorkflow(models.Model):
     def next_task_in_sequence(self):
         if not self.doc_application_id or not self.doc_application.product_id:
             return None
-        return (
-            self.doc_application.product.tasks.filter(step__gt=self.task.step)
-            .order_by("step")
-            .first()
-        )
+        return self.doc_application.product.tasks.filter(step__gt=self.task.step).order_by("step").first()
 
     @property
     def is_workflow_completed(self):

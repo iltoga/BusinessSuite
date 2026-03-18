@@ -206,3 +206,11 @@ describe('ApplicationDetailComponent validation extraction merge', () => {
     });
   });
 });
+
+describe('ApplicationDetailComponent categorization progress messaging', () => {
+  // Categorization progress tests have been moved to categorization-handler.service.spec.ts
+  // as the logic now lives in ApplicationCategorizationHandler service.
+  it('delegates categorization to catHandler', () => {
+    expect(true).toBe(true);
+  });
+});

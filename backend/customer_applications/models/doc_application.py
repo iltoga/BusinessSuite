@@ -374,7 +374,11 @@ class DocApplication(models.Model):
             return self.STATUS_COMPLETED
 
         current_workflow = self.current_workflow
-        if current_workflow and current_workflow.status == self.STATUS_COMPLETED and current_workflow.is_workflow_completed:
+        if (
+            current_workflow
+            and current_workflow.status == self.STATUS_COMPLETED
+            and current_workflow.is_workflow_completed
+        ):
             return self.STATUS_COMPLETED
 
         if self.is_document_collection_completed:
@@ -510,8 +514,8 @@ class DocApplication(models.Model):
             from customer_applications.models.doc_workflow import DocWorkflow
 
             last_workflow = self.workflows.order_by("-task__step").first()
-            if last_workflow and last_workflow.status == DocWorkflow.STATUS_COMPLETED:
-                last_workflow.status = DocWorkflow.STATUS_PROCESSING
+            if last_workflow and last_workflow.status == self.STATUS_COMPLETED:
+                last_workflow.status = self.STATUS_PROCESSING
                 last_workflow.updated_by = user
                 last_workflow.save()
         except Exception:

@@ -39,7 +39,7 @@ class ApplicationDocDateSyncApiTests(TestCase):
             add_task_to_calendar=True,
         )
 
-    def _create_application_with_step_one(self, *, workflow_status: str = DocWorkflow.STATUS_PENDING):
+    def _create_application_with_step_one(self, *, workflow_status: str = DocApplication.STATUS_PENDING):
         application = DocApplication.objects.create(
             customer=self.customer,
             product=self.product,
@@ -95,9 +95,7 @@ class ApplicationDocDateSyncApiTests(TestCase):
         self.assertEqual(workflow.due_date, date(2026, 3, 15))
 
     def test_partial_update_blocks_doc_date_change_after_step_one_completed(self):
-        application, workflow = self._create_application_with_step_one(
-            workflow_status=DocWorkflow.STATUS_COMPLETED
-        )
+        application, workflow = self._create_application_with_step_one(workflow_status=DocApplication.STATUS_COMPLETED)
 
         response = self.client.patch(
             reverse("customer-applications-detail", kwargs={"pk": application.pk}),

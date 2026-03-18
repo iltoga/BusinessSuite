@@ -167,6 +167,12 @@ class ApiErrorHandlingMixin:
                     status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
+            if e.__class__.__name__ == "OperationalError" and "too many clients" in str(e).lower():
+                return self.error_response(
+                    "Service temporarily unavailable due to high database load. Please retry shortly.",
+                    status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
             logging.exception("Unhandled exception in API view")
             if settings.DEBUG:
                 return self.error_response(

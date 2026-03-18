@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 
+import { ConfigService } from '@/core/services/config.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { mergeClasses } from '@/shared/utils/merge-classes';
@@ -83,6 +84,9 @@ export class FileUploadComponent {
       this.showImageLoadingSkeleton() ? 'opacity-0' : 'opacity-100',
     ),
   );
+
+  private readonly configService = inject(ConfigService);
+  readonly showDebugControls = computed(() => Boolean(this.configService.settings.DEBUG));
 
   readonly sanitizedPreview = computed<SafeResourceUrl | null>(() => {
     if (this.disablePreview()) {

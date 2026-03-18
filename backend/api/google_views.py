@@ -319,7 +319,7 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
                 (
                     wf
                     for wf in workflows
-                    if wf.status in [DocWorkflow.STATUS_COMPLETED, DocWorkflow.STATUS_REJECTED]
+                    if wf.status in [DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED]
                     and wf.task
                     and wf.task.add_task_to_calendar
                     and wf.due_date
@@ -423,7 +423,7 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
                     try:
                         transition_result = WorkflowStatusTransitionService().transition(
                             workflow=current_workflow,
-                            status_value=current_workflow.STATUS_COMPLETED,
+                            status_value=DocApplication.STATUS_COMPLETED,
                             user=request.user,
                         )
                     except WorkflowStatusTransitionError as exc:

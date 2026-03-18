@@ -27,7 +27,7 @@ class ApplicationLifecycleService:
 
         start_date = current_workflow.due_date
 
-        current_workflow.status = current_workflow.STATUS_COMPLETED
+        current_workflow.status = DocApplication.STATUS_COMPLETED
         current_workflow.updated_by = user
         current_workflow.save()
 
@@ -38,7 +38,7 @@ class ApplicationLifecycleService:
                 task=next_task,
                 doc_application=application,
                 created_by=user,
-                status=DocWorkflow.STATUS_PENDING,
+                status=DocApplication.STATUS_PENDING,
             )
             step.due_date = step.calculate_workflow_due_date()
             step.save()
