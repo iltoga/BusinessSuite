@@ -64,11 +64,25 @@ tr.row-danger-soft:not(.selected) {
   white-space: normal;
 }
 
+/* Render the deprecated column header with stacked labels and bold first letters. */
+.data-table-scroll th.col-deprecated span:first-letter {
+  font-weight: 700;
+}
+
+/* Add a small gap between Deprecated and Added/Updated columns without changing overall table layout. */
+.data-table-scroll th.col-deprecated {
+  padding-right: 1rem;
+}
+.data-table-scroll th.col-created_at,
+.data-table-scroll th.col-createdAt {
+  padding-left: 1rem;
+}
+
 /* Ensure the two timestamps stack nicely */
 .col-created_at span,
 .col-createdAt span {
   display: block;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 @media (max-width: 1024px) {

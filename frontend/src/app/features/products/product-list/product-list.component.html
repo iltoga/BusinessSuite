@@ -139,44 +139,22 @@
   <span>{{ categoryLabel(row) }}</span>
 </ng-template>
 
-<ng-template #basePriceHeaderTemplate>
-  <button
-    type="button"
-    tabindex="-1"
-    class="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
-    [attr.aria-label]="basePricesVisible() ? 'Hide base prices' : 'Show base prices'"
-    [zTooltip]="basePricesVisible() ? 'Hide base prices' : 'Show base prices'"
-    zPosition="top"
-    (click)="toggleBasePriceVisibility($event)"
-  >
-    <z-icon [zType]="basePricesVisible() ? 'eye-off' : 'eye'" class="h-3.5 w-3.5" />
-  </button>
-</ng-template>
-
-<ng-template #priceTemplate let-row>
-  <span>{{ formatBasePrice(row.basePrice, row) }}</span>
-</ng-template>
-
 <ng-template #retailPriceTemplate let-row>
   <span>{{ formatCurrency(retailPriceValue(row), resolveCurrency(row)) }}</span>
 </ng-template>
 
-<ng-template #profitTemplate let-row>
-  <span>{{ formatCurrency(unitProfitValue(row), resolveCurrency(row)) }}</span>
-</ng-template>
-
 <ng-template #deprecatedTemplate let-row>
-  <span>{{ deprecatedLabel(row) }}</span>
+  <z-badge [zType]="row.deprecated ? 'secondary' : 'success'" [class.opacity-60]="row.deprecated">
+    {{ row.deprecated ? 'D' : 'A' }}
+  </z-badge>
 </ng-template>
 
 <ng-template #createdAtTemplate let-row>
   <div class="flex flex-col">
-    <span class="text-sm">{{
-      $any(row).createdAt ? ($any(row).createdAt | appDate: 'datetime') : ''
-    }}</span>
-    @if ($any(row).updatedAt && $any(row).updatedAt !== $any(row).createdAt) {
+    <span class="text-sm">{{ row.createdAt ? (row.createdAt | appDate: 'datetime') : '' }}</span>
+    @if (row.updatedAt && row.updatedAt !== row.createdAt) {
       <span class="text-xs text-muted-foreground">{{
-        $any(row).updatedAt ? ($any(row).updatedAt | appDate: 'datetime') : ''
+        row.updatedAt ? (row.updatedAt | appDate: 'datetime') : ''
       }}</span>
     }
   </div>

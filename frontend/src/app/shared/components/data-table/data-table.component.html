@@ -33,17 +33,24 @@
                     [class.items-end]="column.key === 'actions'"
                     [class.items-start]="column.key !== 'actions'"
                   >
-                    <span [class.text-right]="column.key === 'actions'">{{ column.header }}</span>
+                    @if (column.key === 'actions') {
+                      <z-icon zType="circle-ellipsis" class="text-right h-4 w-4 text-foreground/70" />
+                    } @else {
+                      <span>{{ column.header }}</span>
+                    }
                     @if (column.subtitle) {
                       <span class="text-xs font-normal text-foreground/70 normal-case">{{
                         column.subtitle
                       }}</span>
                     }
                   </div>
-                  @if (currentSort()?.column === (column.sortKey ?? column.key)) {
-                    <span class="text-xs text-muted-foreground">
-                      {{ currentSort()?.direction === 'asc' ? '▲' : '▼' }}
-                    </span>
+                  @if (column.sortable) {
+                    <z-icon 
+                      [zType]="currentSort()?.column === (column.sortKey ?? column.key) ? (currentSort()?.direction === 'asc' ? 'arrow-up' : 'arrow-down') : 'arrow-up-down'" 
+                      class="h-3.5 w-3.5"
+                      [class.text-foreground]="currentSort()?.column === (column.sortKey ?? column.key)"
+                      [class.text-muted-foreground]="currentSort()?.column !== (column.sortKey ?? column.key)"
+                    />
                   }
                 </button>
 
