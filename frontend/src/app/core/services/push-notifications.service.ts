@@ -51,6 +51,8 @@ export class PushNotificationsService {
     if (this.initialized) return;
     if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
 
+    this.initialized = true;
+
     const firebaseConfig = this.buildFirebaseConfig();
     const vapidKey = this.configService.settings.fcmVapidPublicKey?.trim();
     if (!firebaseConfig || !vapidKey) {
@@ -139,8 +141,6 @@ export class PushNotificationsService {
       if (token) {
         await this.registerToken(token);
       }
-
-      this.initialized = true;
     } catch (error) {
       console.error('[PushNotificationsService] Initialization failed', error);
     }

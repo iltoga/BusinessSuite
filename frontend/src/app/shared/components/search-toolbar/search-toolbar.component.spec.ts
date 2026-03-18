@@ -1,98 +1,89 @@
+import { ElementRef, PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+
 import { SearchToolbarComponent } from './search-toolbar.component';
 
 describe('SearchToolbarComponent keyboard shortcut', () => {
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [SearchToolbarComponent] }).compileComponents();
+  let component: SearchToolbarComponent;
+  let input: HTMLInputElement;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+
+    TestBed.configureTestingModule({
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
+    });
+
+    component = TestBed.runInInjectionContext(() => new SearchToolbarComponent());
+
+    input = document.createElement('input');
+    input.scrollIntoView = vi.fn();
+    document.body.appendChild(input);
+    (component as any).searchInput = new ElementRef(input);
   });
 
-  it('should focus the input when pressing "s" and not typing in an input', async () => {
-    const fixture = TestBed.createComponent(SearchToolbarComponent);
-    fixture.detectChanges();
+  afterEach(() => {
+    component.ngOnDestroy();
+    input.remove();
+    vi.useRealTimers();
+  });
 
-    const input = fixture.nativeElement.querySelector('input');
-    expect(input).toBeTruthy();
+  it('should focus the input when pressing "s" and not typing in an input', () => {
+    (component as any)._globalKeyHandler(new KeyboardEvent('keydown', { key: 's' }));
 
-    // ensure focus is nowhere
-    (document.activeElement as HTMLElement | null)?.blur?.();
+    vi.runAllTimers();
 
-    // dispatch 's' key
-    const e = new KeyboardEvent('keydown', { key: 's' });
-    document.dispatchEvent(e);
-
-    // give the component a moment to perform deferred focus
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // input should now be focused
     expect(document.activeElement).toBe(input);
   });
 
   it('should emit tabOut when pressing Shift+T outside editable fields', () => {
-    const fixture = TestBed.createComponent(SearchToolbarComponent);
-    fixture.detectChanges();
-
-    const comp = fixture.componentInstance;
     let emitted = 0;
-    comp.tabOut.subscribe(() => {
+    component.tabOut.subscribe(() => {
       emitted += 1;
     });
 
-    (document.activeElement as HTMLElement | null)?.blur?.();
-
-    const e = new KeyboardEvent('keydown', { key: 'T', shiftKey: true, bubbles: true });
-    document.dispatchEvent(e);
+    (component as any)._globalKeyHandler(
+      new KeyboardEvent('keydown', { key: 'T', shiftKey: true, bubbles: true }),
+    );
 
     expect(emitted).toBe(1);
   });
 
-  it('should clear and emit empty query on Escape in the search input', async () => {
-    const fixture = TestBed.createComponent(SearchToolbarComponent);
-    fixture.componentRef.setInput('query', 'bank');
-    fixture.componentRef.setInput('debounceMs', 50);
-    fixture.detectChanges();
-
-    const comp = fixture.componentInstance;
+  it('should clear and emit empty query on Escape in the search input', () => {
     const emitted: string[] = [];
-    comp.queryChange.subscribe((value) => emitted.push(value));
+    component.queryChange.subscribe((value) => emitted.push(value));
 
-    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
-    input.focus();
-
-    input.value = 'bank fee';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    fixture.detectChanges();
+    (component as any).searchValue.set('bank fee');
 
     const escapeEvent = new KeyboardEvent('keydown', {
       key: 'Escape',
       bubbles: true,
       cancelable: true,
     });
-    const notCancelled = input.dispatchEvent(escapeEvent);
-    fixture.detectChanges();
+    const preventDefaultSpy = vi.spyOn(escapeEvent, 'preventDefault');
+    const stopPropagationSpy = vi.spyOn(escapeEvent, 'stopPropagation');
 
-    expect(notCancelled).toBe(false);
-    expect(input.value).toBe('');
+    component.handleInputKeydown(escapeEvent);
+
+    expect(preventDefaultSpy).toHaveBeenCalled();
+    expect(stopPropagationSpy).toHaveBeenCalled();
+    expect((component as any).searchValue()).toBe('');
     expect(emitted).toEqual(['']);
 
-    // Ensure stale debounced terms are not emitted after clearing.
-    await new Promise((resolve) => setTimeout(resolve, 60));
+    vi.advanceTimersByTime(60);
     expect(emitted).toEqual(['']);
   });
 
   it('should not emit queryChange when Escape comes from a different input', () => {
-    const fixture = TestBed.createComponent(SearchToolbarComponent);
-    fixture.detectChanges();
-
-    const comp = fixture.componentInstance;
     const emitted: string[] = [];
-    comp.queryChange.subscribe((value) => emitted.push(value));
+    component.queryChange.subscribe((value) => emitted.push(value));
 
     const externalInput = document.createElement('input');
     document.body.appendChild(externalInput);
+
     try {
       externalInput.focus();
-      const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
-      externalInput.dispatchEvent(escapeEvent);
+      component.onDocumentKeydown(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       expect(emitted).toEqual([]);
     } finally {
       externalInput.remove();
@@ -100,20 +91,15 @@ describe('SearchToolbarComponent keyboard shortcut', () => {
   });
 
   it('should not emit tabOut when Shift+T is pressed inside an input', () => {
-    const fixture = TestBed.createComponent(SearchToolbarComponent);
-    fixture.detectChanges();
-
-    const comp = fixture.componentInstance;
     let emitted = 0;
-    comp.tabOut.subscribe(() => {
+    component.tabOut.subscribe(() => {
       emitted += 1;
     });
 
-    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
     input.focus();
-
-    const e = new KeyboardEvent('keydown', { key: 'T', shiftKey: true, bubbles: true });
-    document.dispatchEvent(e);
+    component.onDocumentKeydown(
+      new KeyboardEvent('keydown', { key: 'T', shiftKey: true, bubbles: true }),
+    );
 
     expect(emitted).toBe(0);
   });

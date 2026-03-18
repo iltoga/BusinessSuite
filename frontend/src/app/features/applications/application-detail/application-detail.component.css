@@ -27,7 +27,7 @@
 
 .app-upload-dialog {
   width: min(52rem, calc(100% - 0.5rem));
-  max-height: calc(100% - 0.5rem);
+  max-height: calc(100dvh - 2rem);
   display: flex;
   flex-direction: column;
 }

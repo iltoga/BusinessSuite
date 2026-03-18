@@ -44,7 +44,6 @@ class CustomerApplicationSyncApiTests(TestCase):
             add_task_to_calendar=True,
         )
 
-
     @patch("customer_applications.tasks.send_due_tomorrow_customer_notifications")
     @patch("customer_applications.tasks.sync_application_calendar_task")
     def test_create_is_synchronous_and_queues_calendar_sync(self, sync_task_mock, send_due_mock):
@@ -125,7 +124,7 @@ class CustomerApplicationSyncApiTests(TestCase):
             task=self.task_step_1,
             start_date=timezone.localdate(),
             due_date=date(2026, 1, 15),
-            status=DocWorkflow.STATUS_PENDING,
+            status=DocApplication.STATUS_PENDING,
             created_by=self.user,
         )
 
@@ -138,7 +137,7 @@ class CustomerApplicationSyncApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         current_workflow.refresh_from_db()
-        self.assertEqual(current_workflow.status, DocWorkflow.STATUS_COMPLETED)
+        self.assertEqual(current_workflow.status, DocApplication.STATUS_COMPLETED)
 
         sync_task_mock.assert_called_once()
         kwargs = sync_task_mock.call_args.kwargs

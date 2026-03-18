@@ -64,14 +64,17 @@ class DocApplicationSerializer(serializers.ModelSerializer):
 class ProductMinimalSerializer(serializers.ModelSerializer):
     class Meta:
         from products.models import Product
+
         model = Product
         fields = ["id", "name", "deprecated"]
 
 
 class CustomerMinimalSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
+
     class Meta:
         from customers.models import Customer
+
         model = Customer
         fields = ["id", "first_name", "last_name", "full_name"]
 
@@ -439,7 +442,9 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         if application is None:
             if window_service.product_requires_submission_window(product):
                 return None
-            next_calendar_task = product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
+            next_calendar_task = (
+                product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
+            )
             if next_calendar_task:
                 from core.utils.dateutils import calculate_due_date
 
@@ -511,7 +516,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
         if doc_date_changed:
             step_one_workflow = self._get_step_one_workflow(self.instance)
-            if step_one_workflow and step_one_workflow.status == step_one_workflow.STATUS_COMPLETED:
+            if step_one_workflow and step_one_workflow.status == DocApplication.STATUS_COMPLETED:
                 raise serializers.ValidationError(
                     {"doc_date": "Application submission date cannot be changed after step 1 is completed."}
                 )
@@ -647,7 +652,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                     task=task,
                     doc_application=application,
                     created_by=user,
-                    status=DocWorkflow.STATUS_PENDING,
+                    status=DocApplication.STATUS_PENDING,
                 )
                 step1.due_date = application.calculate_next_calendar_due_date(start_date=start_date) or start_date
                 step1.save()
@@ -679,8 +684,8 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         from products.models.document_type import DocumentType
 
         document_types = validated_data.pop("document_types", None)
-        doc_date_changed = (
-            "doc_date" in validated_data and validated_data.get("doc_date") != getattr(instance, "doc_date", None)
+        doc_date_changed = "doc_date" in validated_data and validated_data.get("doc_date") != getattr(
+            instance, "doc_date", None
         )
         if doc_date_changed and "due_date" not in validated_data:
             validated_data["due_date"] = self._calculate_due_date_for_doc_date(
@@ -733,7 +738,9 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                     try:
                         doc_type = DocumentType.objects.get(pk=doc_type_id)
                     except DocumentType.DoesNotExist:
-                        raise serializers.ValidationError({"document_types": f"Invalid document type id: {doc_type_id}"})
+                        raise serializers.ValidationError(
+                            {"document_types": f"Invalid document type id: {doc_type_id}"}
+                        )
                     Document.objects.create(
                         doc_application=application,
                         doc_type=doc_type,

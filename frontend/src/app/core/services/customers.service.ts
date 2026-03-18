@@ -1,18 +1,13 @@
 /**
  * CustomersService — HTTP client wrapper for the customers API.
  *
- * ## Legacy manual interfaces
- * `CustomerListItem`, `CustomerDetail`, `UninvoicedApplication`,
- * `CustomerApplicationHistory`, `CountryCode`, `PaginatedResponse`, and
- * `CustomerListQuery` were written before the OpenAPI code-generator was
- * introduced and pre-date the generated types in `core/api/`.
+ * ## Generated model migration
+ * Customer-facing API models now come from `core/api/`, which is the
+ * repository source of truth for OpenAPI-derived types.
  *
- * **Migration note:** Prefer importing equivalent types from `core/api/`
- * wherever possible.  The manual interfaces here are retained only for
- * endpoints whose generated shapes differ from the UI-adapted form, or for
- * utilities (`CountryCode`, `PaginatedResponse`) not covered by the
- * generator.  When a manual interface is kept intentionally, a comment
- * should explain the deviation.
+ * **Implementation note:** This service still performs light normalization so
+ * UI callers remain resilient to snake_case payloads and relative file URLs,
+ * but its public types should stay aligned with the generated models.
  *
  * ## Methods
  * | Method | Description |
@@ -30,95 +25,19 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
+import type {
+  CountryCode,
+  Customer,
+  CustomerApplicationHistory,
+  CustomerUninvoicedApplication,
+  PaginatedCustomerApplicationHistoryList,
+  PaginatedCustomerList,
+  PaginatedCustomerUninvoicedApplicationList,
+  Product,
+} from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
 
-export interface CustomerListItem {
-  id: number;
-  fullNameWithCompany: string;
-  fullName?: string;
-  email: string | null;
-  telephone: string | null;
-  whatsapp: string | null;
-  passportNumber: string | null;
-  passportExpirationDate: string | null;
-  passportExpired: boolean;
-  passportExpiringSoon: boolean;
-  active: boolean;
-  nationalityName: string;
-  nationalityCode: string;
-  createdAt: string;
-  updatedAt: string | null;
-}
-
-export interface CustomerDetail extends CustomerListItem {
-  customerType?: string | null;
-  title?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  companyName?: string | null;
-  telegram?: string | null;
-  facebook?: string | null;
-  instagram?: string | null;
-  twitter?: string | null;
-  birthdate?: string | null;
-  birthPlace?: string | null;
-  addressBali?: string | null;
-  addressAbroad?: string | null;
-  nationality?: string | null;
-  gender?: string | null;
-  npwp?: string | null;
-  passportIssueDate?: string | null;
-  passportFile?: string | null;
-  passportMetadata?: Record<string, unknown> | null;
-  notifyDocumentsExpiration?: boolean | null;
-  notifyBy?: string | null;
-}
-
-export interface UninvoicedApplication {
-  id: number;
-  product: {
-    id: number;
-    name: string;
-    code: string;
-    productType: string;
-    productTypeDisplay: string;
-    basePrice: string;
-    retailPrice: string;
-  };
-  docDate: string;
-  dueDate: string | null;
-  status: string;
-  statusDisplay: string;
-  hasInvoice: boolean;
-  invoiceId: number | null;
-  isDocumentCollectionCompleted: boolean;
-  readyForInvoice: boolean;
-}
-
 export type CustomerApplicationPaymentStatus = 'uninvoiced' | 'pending_payment' | 'paid';
-
-export interface CustomerApplicationHistory extends UninvoicedApplication {
-  paymentStatus: CustomerApplicationPaymentStatus;
-  paymentStatusDisplay: string;
-  invoiceStatus: string | null;
-  invoiceStatusDisplay: string;
-  submissionWindowLastDate?: string | null;
-}
-
-export interface CountryCode {
-  country: string;
-  countryIdn: string;
-  alpha2Code: string;
-  alpha3Code: string;
-  numericCode: string;
-}
-
-export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
-}
 
 export interface CustomerListQuery {
   page: number;
@@ -140,7 +59,7 @@ export class CustomersService {
   private authService = inject(AuthService);
   private apiUrl = '/api/customers/';
 
-  list(query: CustomerListQuery): Observable<PaginatedResponse<CustomerListItem>> {
+  list(query: CustomerListQuery): Observable<PaginatedCustomerList> {
     let params = new HttpParams()
       .set('page', query.page)
       .set('page_size', query.pageSize)
@@ -157,12 +76,25 @@ export class CustomersService {
     const token = this.authService.getToken();
     const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
 
-    return this.http.get<PaginatedResponse<any>>(this.apiUrl, { params, headers }).pipe(
-      map((response) => ({
-        ...response,
-        results: (response.results ?? []).map(this.mapCustomer),
-      })),
-    );
+    return this.http
+      .get<PaginatedCustomerList | Record<string, unknown>>(this.apiUrl, { params, headers })
+      .pipe(
+        map((response) => ({
+          count:
+            response && typeof response === 'object' && 'count' in response
+              ? Number((response as { count?: number }).count ?? 0)
+              : 0,
+          next:
+            response && typeof response === 'object' && 'next' in response
+              ? ((response as { next?: string | null }).next ?? null)
+              : null,
+          previous:
+            response && typeof response === 'object' && 'previous' in response
+              ? ((response as { previous?: string | null }).previous ?? null)
+              : null,
+          results: this.extractResults(response).map((item) => this.mapCustomer(item)),
+        })),
+      );
   }
 
   toggleActive(customerId: number): Observable<{ id: number; active: boolean }> {
@@ -175,14 +107,14 @@ export class CustomersService {
     );
   }
 
-  getCustomer(customerId: number): Observable<CustomerDetail> {
+  getCustomer(customerId: number): Observable<Customer> {
     const headers = this.buildHeaders();
     return this.http
       .get<any>(`${this.apiUrl}${customerId}/`, { headers })
       .pipe(map(this.mapCustomer));
   }
 
-  createCustomer(payload: Record<string, unknown> | FormData): Observable<CustomerDetail> {
+  createCustomer(payload: Record<string, unknown> | FormData): Observable<Customer> {
     const headers = this.buildHeaders();
     return this.http.post<any>(this.apiUrl, payload, { headers }).pipe(map(this.mapCustomer));
   }
@@ -190,7 +122,7 @@ export class CustomersService {
   updateCustomer(
     customerId: number,
     payload: Record<string, unknown> | FormData,
-  ): Observable<CustomerDetail> {
+  ): Observable<Customer> {
     const headers = this.buildHeaders();
     return this.http
       .patch<any>(`${this.apiUrl}${customerId}/`, payload, { headers })
@@ -220,27 +152,33 @@ export class CustomersService {
       );
   }
 
-  getUninvoicedApplications(customerId: number): Observable<UninvoicedApplication[]> {
+  getUninvoicedApplications(customerId: number): Observable<CustomerUninvoicedApplication[]> {
     const headers = this.buildHeaders();
     return this.http
-      .get<any>(`/api/customers/${customerId}/uninvoiced-applications/`, { headers })
+      .get<
+        | PaginatedCustomerUninvoicedApplicationList
+        | CustomerUninvoicedApplication[]
+        | Record<string, unknown>
+      >(`/api/customers/${customerId}/uninvoiced-applications/`, { headers })
       .pipe(
-        map((response) => {
-          const rows = Array.isArray(response) ? response : (response?.results ?? []);
-          return rows.map((item: any) => this.mapUninvoicedApplication(item));
-        }),
+        map((response) =>
+          this.extractResults(response).map((item) => this.mapUninvoicedApplication(item)),
+        ),
       );
   }
 
   getApplicationsHistory(customerId: number): Observable<CustomerApplicationHistory[]> {
     const headers = this.buildHeaders();
     return this.http
-      .get<any>(`/api/customers/${customerId}/applications-history/`, { headers })
+      .get<
+        | PaginatedCustomerApplicationHistoryList
+        | CustomerApplicationHistory[]
+        | Record<string, unknown>
+      >(`/api/customers/${customerId}/applications-history/`, { headers })
       .pipe(
-        map((response) => {
-          const rows = Array.isArray(response) ? response : (response?.results ?? []);
-          return rows.map((item: any) => this.mapCustomerApplicationHistory(item));
-        }),
+        map((response) =>
+          this.extractResults(response).map((item) => this.mapCustomerApplicationHistory(item)),
+        ),
       );
   }
 
@@ -254,45 +192,90 @@ export class CustomersService {
     return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
   }
 
-  private readonly mapCustomer = (item: any): CustomerDetail => ({
+  private extractResults<T>(
+    response: T[] | { results?: T[] } | Record<string, unknown> | null | undefined,
+  ): T[] {
+    if (Array.isArray(response)) {
+      return response;
+    }
+    if (
+      response &&
+      typeof response === 'object' &&
+      Array.isArray((response as { results?: T[] }).results)
+    ) {
+      return (response as { results: T[] }).results;
+    }
+    return [];
+  }
+
+  private readonly mapCustomer = (item: any): Customer => ({
     id: item.id,
-    fullNameWithCompany:
-      item.full_name_with_company ?? item.fullNameWithCompany ?? item.full_name ?? '',
-    fullName: item.full_name ?? item.fullName ?? item.full_name_with_company ?? '',
-    email: item.email ?? null,
-    telephone: item.telephone ?? null,
-    whatsapp: item.whatsapp ?? null,
-    passportNumber: item.passport_number ?? item.passportNumber ?? null,
-    passportIssueDate: item.passport_issue_date ?? item.passportIssueDate ?? null,
-    passportExpirationDate: item.passport_expiration_date ?? item.passportExpirationDate ?? null,
-    passportExpired: item.passport_expired ?? item.passportExpired ?? false,
-    passportExpiringSoon: item.passport_expiring_soon ?? item.passportExpiringSoon ?? false,
-    active: item.active ?? true,
-    nationalityName: item.nationality_name ?? item.nationalityName ?? '',
-    nationalityCode: item.nationality_code ?? item.nationalityCode ?? '',
     createdAt: item.created_at ?? item.createdAt ?? '',
-    updatedAt: item.updated_at ?? item.updatedAt ?? null,
-    customerType: item.customer_type ?? item.customerType ?? null,
+    updatedAt: item.updated_at ?? item.updatedAt ?? '',
     title: item.title ?? null,
+    customerType: item.customer_type ?? item.customerType ?? 'person',
     firstName: item.first_name ?? item.firstName ?? null,
     lastName: item.last_name ?? item.lastName ?? null,
     companyName: item.company_name ?? item.companyName ?? null,
+    email: item.email ?? null,
+    telephone: item.telephone ?? null,
+    whatsapp: item.whatsapp ?? null,
     telegram: item.telegram ?? null,
     facebook: item.facebook ?? null,
     instagram: item.instagram ?? null,
     twitter: item.twitter ?? null,
+    npwp: item.npwp ?? null,
+    nationality: item.nationality ?? null,
     birthdate: item.birthdate ?? null,
     birthPlace: item.birth_place ?? item.birthPlace ?? null,
-    addressBali: item.address_bali ?? item.addressBali ?? null,
-    addressAbroad: item.address_abroad ?? item.addressAbroad ?? null,
-    nationality: item.nationality ?? null,
-    gender: item.gender ?? null,
-    npwp: item.npwp ?? null,
+    passportNumber: item.passport_number ?? item.passportNumber ?? null,
+    passportIssueDate: item.passport_issue_date ?? item.passportIssueDate ?? null,
+    passportExpirationDate: item.passport_expiration_date ?? item.passportExpirationDate ?? null,
     passportFile: this.normalizeFileUrl(item.passport_file ?? item.passportFile ?? null),
     passportMetadata: item.passport_metadata ?? item.passportMetadata ?? null,
+    passportExpired: item.passport_expired ?? item.passportExpired ?? false,
+    passportExpiringSoon: item.passport_expiring_soon ?? item.passportExpiringSoon ?? false,
+    gender: item.gender ?? null,
+    genderDisplay: item.gender_display ?? item.genderDisplay ?? '',
+    nationalityName: item.nationality_name ?? item.nationalityName ?? '',
+    nationalityCode: item.nationality_code ?? item.nationalityCode ?? '',
+    addressBali: item.address_bali ?? item.addressBali ?? null,
+    addressAbroad: item.address_abroad ?? item.addressAbroad ?? null,
     notifyDocumentsExpiration:
-      item.notify_documents_expiration ?? item.notifyDocumentsExpiration ?? null,
+      item.notify_documents_expiration ?? item.notifyDocumentsExpiration ?? false,
     notifyBy: item.notify_by ?? item.notifyBy ?? null,
+    active: item.active ?? true,
+    fullName: item.full_name ?? item.fullName ?? item.full_name_with_company ?? '',
+    fullNameWithCompany:
+      item.full_name_with_company ?? item.fullNameWithCompany ?? item.full_name ?? '',
+  });
+
+  private readonly mapProduct = (item: any): Product => ({
+    id: Number(item?.id ?? 0),
+    name: item?.name ?? '',
+    code: item?.code ?? '',
+    description: item?.description ?? '',
+    immigrationId: item?.immigration_id ?? item?.immigrationId ?? null,
+    basePrice: item?.base_price ?? item?.basePrice ?? null,
+    retailPrice:
+      item?.retail_price ?? item?.retailPrice ?? item?.base_price ?? item?.basePrice ?? '0',
+    currency: item?.currency ?? 'IDR',
+    productCategory: Number(item?.product_category ?? item?.productCategory ?? 0),
+    productCategoryName: item?.product_category_name ?? item?.productCategoryName ?? '',
+    productType: item?.product_type ?? item?.productType ?? '',
+    validity: item?.validity ?? null,
+    requiredDocuments: item?.required_documents ?? item?.requiredDocuments ?? '',
+    optionalDocuments: item?.optional_documents ?? item?.optionalDocuments ?? '',
+    documentsMinValidity: item?.documents_min_validity ?? item?.documentsMinValidity ?? null,
+    applicationWindowDays: item?.application_window_days ?? item?.applicationWindowDays ?? null,
+    validationPrompt: item?.validation_prompt ?? item?.validationPrompt ?? '',
+    deprecated: item?.deprecated ?? false,
+    usesCustomerAppWorkflow:
+      item?.uses_customer_app_workflow ?? item?.usesCustomerAppWorkflow ?? false,
+    createdAt: item?.created_at ?? item?.createdAt ?? '',
+    updatedAt: item?.updated_at ?? item?.updatedAt ?? '',
+    createdBy: item?.created_by ?? item?.createdBy ?? '',
+    updatedBy: item?.updated_by ?? item?.updatedBy ?? '',
   });
 
   private normalizeFileUrl(value: unknown): string | null {
@@ -319,33 +302,24 @@ export class CustomersService {
     return trimmed;
   }
 
-  private mapUninvoicedApplication(item: any): UninvoicedApplication {
-    const product = item?.product ?? {};
-    const productType = product.productType ?? product.product_type ?? '';
-    const productTypeDisplay =
-      product.productTypeDisplay ?? product.product_type_display ?? item?.productTypeDisplay ?? '';
-
+  private mapUninvoicedApplication(item: any): CustomerUninvoicedApplication {
     return {
       id: Number(item?.id ?? 0),
-      product: {
-        id: Number(product.id ?? 0),
-        name: product.name ?? '',
-        code: product.code ?? '',
-        productType,
-        productTypeDisplay: productTypeDisplay || productType,
-        basePrice: String(product.basePrice ?? product.base_price ?? '0'),
-        retailPrice: String(
-          product.retailPrice ??
-            product.retail_price ??
-            product.basePrice ??
-            product.base_price ??
-            '0',
-        ),
-      },
+      customer: this.mapCustomer(item?.customer ?? {}),
+      product: this.mapProduct(item?.product ?? {}),
       docDate: item?.docDate ?? item?.doc_date ?? '',
       dueDate: item?.dueDate ?? item?.due_date ?? null,
       status: item?.status ?? '',
+      addDeadlinesToCalendar:
+        item?.addDeadlinesToCalendar ?? item?.add_deadlines_to_calendar ?? false,
+      notes: item?.notes ?? null,
+      strField: item?.strField ?? item?.str_field ?? '',
       statusDisplay: item?.statusDisplay ?? item?.status_display ?? item?.status ?? '',
+      productTypeDisplay:
+        item?.productTypeDisplay ??
+        item?.product_type_display ??
+        item?.product?.productTypeDisplay ??
+        '',
       hasInvoice: Boolean(item?.hasInvoice ?? item?.has_invoice ?? false),
       invoiceId: item?.invoiceId ?? item?.invoice_id ?? null,
       isDocumentCollectionCompleted: Boolean(

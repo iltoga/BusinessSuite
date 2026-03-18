@@ -461,7 +461,7 @@ class CustomerApplicationDetailAPITestCase(TestCase):
             task=t1,
             doc_application=app,
             created_by=self.user,
-            status=DocWorkflow.STATUS_PENDING,
+            status=DocApplication.STATUS_PENDING,
         )
         wf.due_date = wf.calculate_workflow_due_date()
         wf.save()
@@ -471,7 +471,7 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, 200)
         app.refresh_from_db()
-        self.assertTrue(app.workflows.filter(status=DocWorkflow.STATUS_PENDING).exists())
+        self.assertTrue(app.workflows.filter(status=DocApplication.STATUS_PENDING).exists())
 
     def test_document_update_accepts_metadata(self):
         url = reverse("documents-detail", kwargs={"pk": self.document.pk})
@@ -633,7 +633,7 @@ class CustomerApplicationDetailAPITestCase(TestCase):
                 doc_application=app,
                 task=task,
                 start_date=timezone.now().date(),
-                status=DocWorkflow.STATUS_COMPLETED if task.step < 4 else DocWorkflow.STATUS_PROCESSING,
+                status=(DocApplication.STATUS_COMPLETED if task.step < 4 else DocApplication.STATUS_PROCESSING),
                 created_by=self.user,
             )
             workflow.due_date = workflow.calculate_workflow_due_date()

@@ -99,9 +99,14 @@ tr.row-danger-soft:not(.selected) {
 }
 
 @media (max-width: 767px) and (orientation: portrait) {
-  /* don't unset overflow here, virtual scrolling needs it */
+  /* Switch from table layout to block so grid children stretch to full width */
   .data-table-scroll table[z-table] {
+    display: block;
     min-width: 0;
+  }
+
+  .data-table-scroll table[z-table] colgroup {
+    display: none;
   }
 
   .data-table-scroll thead[z-table-header] {

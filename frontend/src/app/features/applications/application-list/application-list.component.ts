@@ -1,34 +1,24 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
   inject,
-  PLATFORM_ID,
   signal,
   viewChild,
   type TemplateRef,
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { type Observable } from 'rxjs';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { DocApplicationList } from '@/core/api/model/doc-application-list';
 import {
-  BaseListComponent,
-  BaseListConfig,
-  type ListRequestParams,
-  type PaginatedResponse,
-} from '@/shared/core/base-list.component';
-import {
   ApplicationDeleteDialogComponent,
   type ApplicationDeleteDialogData,
 } from '@/shared/components/application-delete-dialog';
 import { ZardBadgeImports } from '@/shared/components/badge';
-import {
-  BulkDeleteDialogComponent,
-  type BulkDeleteDialogData,
-} from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
+import { BulkDeleteDialogComponent } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
@@ -38,17 +28,22 @@ import {
   type ColumnFilterChangeEvent,
   type ColumnFilterOption,
   type DataTableAction,
-  type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import {
+  BaseListComponent,
+  BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
+} from '@/shared/core/base-list.component';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 /**
  * Application list component
- * 
+ *
  * Extends BaseListComponent to inherit common list patterns:
  * - Keyboard shortcuts (N for new, B/Left for back)
  * - Navigation state restoration
@@ -96,25 +91,25 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
 
   // Template references
   private readonly customerTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>
-    >('columnCustomer');
+    viewChild.required<TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>>(
+      'columnCustomer',
+    );
   private readonly productTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>
-    >('columnProduct');
+    viewChild.required<TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>>(
+      'columnProduct',
+    );
   private readonly dateTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>
-    >('columnDate');
+    viewChild.required<TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>>(
+      'columnDate',
+    );
   private readonly statusTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>
-    >('columnStatus');
+    viewChild.required<TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>>(
+      'columnStatus',
+    );
   private readonly createdAtTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>
-    >('columnCreatedAt');
+    viewChild.required<TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>>(
+      'columnCreatedAt',
+    );
 
   // Application-specific bulk delete query
   private readonly applicationBulkDeleteQuery = signal<string>('');
@@ -287,7 +282,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
     this.config = {
       entityType: 'applications',
       entityLabel: 'Applications',
-      defaultPageSize: 10,
+      defaultPageSize: 8,
       defaultOrdering: '-id',
       enableBulkDelete: true,
       enableDelete: true,

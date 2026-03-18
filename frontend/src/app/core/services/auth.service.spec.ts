@@ -1,14 +1,18 @@
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AuthService } from './auth.service';
+import { ConfigService } from './config.service';
+import { DesktopBridgeService } from './desktop-bridge.service';
 
 describe('AuthService logout', () => {
   let service: AuthService;
-  let httpMock: HttpTestingController;
-  const routerMock: any = { navigate: vi.fn() };
+  let httpClientMock: { post: ReturnType<typeof vi.fn> };
+  let routerMock: { navigate: ReturnType<typeof vi.fn> };
+  let configServiceMock: { config: () => { MOCK_AUTH_ENABLED: boolean } };
+  let desktopBridgeMock: { publishAuthToken: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     // Minimal localStorage mock for the test environment
@@ -18,23 +22,34 @@ describe('AuthService logout', () => {
       removeItem: vi.fn(),
     };
 
-    TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [{ provide: Router, useValue: routerMock }],
-    });
+    httpClientMock = {
+      post: vi.fn(() => of(null)),
+    };
+    routerMock = { navigate: vi.fn() };
+    configServiceMock = {
+      config: () => ({ MOCK_AUTH_ENABLED: false }),
+    };
+    desktopBridgeMock = { publishAuthToken: vi.fn() };
 
-    service = TestBed.inject(AuthService);
-    httpMock = TestBed.inject(HttpTestingController);
+    service = new AuthService(
+      httpClientMock as unknown as HttpClient,
+      routerMock as unknown as Router,
+      configServiceMock as unknown as ConfigService,
+      desktopBridgeMock as unknown as DesktopBridgeService,
+      'browser',
+    );
   });
 
   afterEach(() => {
-    httpMock.verify();
     vi.restoreAllMocks();
     routerMock.navigate.mockClear();
   });
 
   it('clears tokens and ignores 401 from backend logout', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    httpClientMock.post.mockReturnValueOnce(
+      throwError(() => ({ status: 401, detail: 'Unauthorized' })),
+    );
 
     // Set a token so we can verify it's cleared
     (service as any)._token.set('my-token');
@@ -43,11 +58,13 @@ describe('AuthService logout', () => {
     service.logout();
 
     expect(routerMock.navigate).toHaveBeenCalledWith(['/login']);
-
-    const req = httpMock.expectOne('/api/user-profile/logout/');
-    expect(req.request.method).toBe('POST');
-
-    req.flush({ detail: 'Unauthorized' }, { status: 401, statusText: 'Unauthorized' });
+    expect(httpClientMock.post).toHaveBeenCalledWith(
+      '/api/user-profile/logout/',
+      {},
+      expect.objectContaining({
+        headers: expect.anything(),
+      }),
+    );
 
     // 401 should be swallowed and not logged
     expect(consoleSpy).not.toHaveBeenCalled();
@@ -60,15 +77,11 @@ describe('AuthService logout', () => {
 
   it('logs non-401 errors when backend logout fails', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    httpClientMock.post.mockReturnValueOnce(throwError(() => ({ status: 500, detail: 'Boom' })));
 
     (service as any)._token.set('my-token');
 
     service.logout();
-
-    const req = httpMock.expectOne('/api/user-profile/logout/');
-    expect(req.request.method).toBe('POST');
-
-    req.flush({ detail: 'Boom' }, { status: 500, statusText: 'Server Error' });
 
     expect(consoleSpy).toHaveBeenCalled();
 
@@ -82,7 +95,7 @@ describe('AuthService logout', () => {
     service.logout();
 
     expect(routerMock.navigate).toHaveBeenCalledWith(['/login']);
-    httpMock.expectNone('/api/user-profile/logout/');
+    expect(httpClientMock.post).not.toHaveBeenCalled();
   });
 
   it('does not call backend logout when token is already expired', () => {
@@ -92,6 +105,6 @@ describe('AuthService logout', () => {
     service.logout();
 
     expect(routerMock.navigate).toHaveBeenCalledWith(['/login']);
-    httpMock.expectNone('/api/user-profile/logout/');
+    expect(httpClientMock.post).not.toHaveBeenCalled();
   });
 });

@@ -10,11 +10,10 @@ import {
 import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 
+import type { Customer, CustomerApplicationHistory } from '@/core/api';
 import {
   CustomersService,
-  type CustomerApplicationHistory,
   type CustomerApplicationPaymentStatus,
-  type CustomerDetail,
 } from '@/core/services/customers.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -64,13 +63,18 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
   styleUrls: ['./customer-detail.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CustomerDetailComponent extends BaseDetailComponent<CustomerDetail> {
+export class CustomerDetailComponent extends BaseDetailComponent<Customer> {
   private readonly customersService = inject(CustomersService);
 
   // Expose item as customer for template compatibility
   get customer() {
     return this.item;
   }
+
+  // Passport image skeleton state
+  readonly passportSkeletonVisible = signal(false);
+  private passportImageAlreadyLoaded = false;
+  private passportSkeletonTimer?: ReturnType<typeof setTimeout>;
 
   // Customer-specific state
   readonly applicationsHistory = signal<CustomerApplicationHistory[]>([]);
@@ -125,7 +129,7 @@ export class CustomerDetailComponent extends BaseDetailComponent<CustomerDetail>
       entityLabel: 'Customer',
       enableDelete: true,
       deleteRequiresSuperuser: true,
-    } as BaseDetailConfig<CustomerDetail>;
+    } as BaseDetailConfig<Customer>;
 
     // Setup effect for applications page validation
     effect(() => {
@@ -135,12 +139,31 @@ export class CustomerDetailComponent extends BaseDetailComponent<CustomerDetail>
         this.applicationsPage.set(totalPages);
       }
     });
+    // Setup effect for passport image skeleton (only show if load takes >150ms)
+    effect(() => {
+      const passportFile = this.item()?.passportFile;
+      clearTimeout(this.passportSkeletonTimer);
+      this.passportSkeletonVisible.set(false);
+      this.passportImageAlreadyLoaded = false;
+      if (passportFile) {
+        this.passportSkeletonTimer = setTimeout(() => {
+          if (!this.passportImageAlreadyLoaded) {
+            this.passportSkeletonVisible.set(true);
+          }
+        }, 150);
+      }
+    });
+  }
+
+  onPassportImageLoaded(): void {
+    this.passportImageAlreadyLoaded = true;
+    clearTimeout(this.passportSkeletonTimer);
+    this.passportSkeletonVisible.set(false);
   }
 
   /**
-   * Load customer from service
    */
-  protected override loadItem(id: number): Observable<CustomerDetail> {
+  protected override loadItem(id: number): Observable<Customer> {
     // Note: This returns the Observable directly
     // The subscription and error handling is managed by BaseDetailComponent
     return this.customersService.getCustomer(id);
@@ -283,7 +306,7 @@ export class CustomerDetailComponent extends BaseDetailComponent<CustomerDetail>
   /**
    * Get payment status badge type
    */
-  getPaymentStatusBadgeType(status: CustomerApplicationPaymentStatus): any {
+  getPaymentStatusBadgeType(status: string): any {
     switch (status) {
       case 'paid':
         return 'success';

@@ -66,7 +66,7 @@ export interface BaseFormConfig<T, CreateDto, UpdateDto> {
  *   templateUrl: './customer-form.component.html',
  * })
  * export class CustomerFormComponent extends BaseFormComponent<
- *   CustomerDetail,
+ *   Customer,
  *   CustomerCreateDto,
  *   CustomerUpdateDto
  * > {
@@ -83,7 +83,7 @@ export interface BaseFormConfig<T, CreateDto, UpdateDto> {
  *     });
  *   }
  *
- *   protected override loadItem(id: number): Observable<CustomerDetail> {
+ *   protected override loadItem(id: number): Observable<Customer> {
  *     return this.service.getCustomer(id);
  *   }
  *

@@ -1,8 +1,7 @@
-import { provideHttpClient } from '@angular/common/http';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { PLATFORM_ID } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { of } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProductsService } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
@@ -14,56 +13,22 @@ import { GlobalToastService } from '@/core/services/toast.service';
 import { ProductListComponent } from './product-list.component';
 
 describe('ProductListComponent', () => {
-  let fixture: ComponentFixture<ProductListComponent>;
   let component: ProductListComponent;
-  let mockEmbedElement: {
-    addEventListener: ReturnType<typeof vi.fn>;
-  };
-  let mockPreviewWindow: {
-    document: {
-      documentElement: {
-        insertBefore: ReturnType<typeof vi.fn>;
-        appendChild: ReturnType<typeof vi.fn>;
-      };
-      head: {
-        replaceChildren: ReturnType<typeof vi.fn>;
-        append: ReturnType<typeof vi.fn>;
-      };
-      body: {
-        replaceChildren: ReturnType<typeof vi.fn>;
-        innerHTML: string;
-      };
-      createElement: ReturnType<typeof vi.fn>;
-      querySelector: ReturnType<typeof vi.fn>;
-    };
-    addEventListener: ReturnType<typeof vi.fn>;
-    focus: ReturnType<typeof vi.fn>;
-    print: ReturnType<typeof vi.fn>;
-    close: ReturnType<typeof vi.fn>;
-    closed: boolean;
-  };
-  let mockToastService: {
-    success: ReturnType<typeof vi.fn>;
-    error: ReturnType<typeof vi.fn>;
-    info: ReturnType<typeof vi.fn>;
-    warning: ReturnType<typeof vi.fn>;
-  };
-  let mockProductsService: {
-    productsList: ReturnType<typeof vi.fn>;
-    productsCategoryOptionsList: ReturnType<typeof vi.fn>;
-    productsDeletePreviewRetrieve: ReturnType<typeof vi.fn>;
-    productsForceDeleteCreate: ReturnType<typeof vi.fn>;
-    productsDestroy: ReturnType<typeof vi.fn>;
-    productsPriceListPrintStartCreate: ReturnType<typeof vi.fn>;
-  };
+  let mockToastService: any;
+  let mockProductsService: any;
+  let productImportExportService: any;
+  const loadCurrentPage = () =>
+    (component as any)
+      .createListLoader({
+        query: component.query(),
+        page: component.page(),
+        pageSize: component.pageSize(),
+        ordering: component.ordering(),
+        reloadToken: 0,
+      })
+      .subscribe();
 
-  beforeEach(async () => {
-    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
-      configurable: true,
-      writable: true,
-      value: vi.fn(),
-    });
-
+  beforeEach(() => {
     mockToastService = {
       success: vi.fn(),
       error: vi.fn(),
@@ -95,28 +60,9 @@ describe('ProductListComponent', () => {
           { value: 'Zeta Category', label: 'Zeta Category' },
         ]),
       ),
-      productsDeletePreviewRetrieve: vi.fn().mockReturnValue(
-        of({
-          can_delete: true,
-          requires_force_delete: false,
-          related_counts: {
-            tasks: 0,
-            applications: 0,
-            workflows: 0,
-            documents: 0,
-            invoice_applications: 0,
-            invoices: 0,
-            payments: 0,
-          },
-          related_records: {
-            tasks: [],
-            applications: [],
-            invoice_applications: [],
-          },
-        }),
-      ),
-      productsForceDeleteCreate: vi.fn().mockReturnValue(of({ deleted: true })),
-      productsDestroy: vi.fn().mockReturnValue(of({ deleted: true })),
+      productsDeletePreviewRetrieve: vi.fn(),
+      productsForceDeleteCreate: vi.fn(),
+      productsDestroy: vi.fn(),
       productsPriceListPrintStartCreate: vi.fn().mockReturnValue(
         of({
           jobId: 'print-job-1',
@@ -128,66 +74,21 @@ describe('ProductListComponent', () => {
       ),
     };
 
-    mockEmbedElement = {
-      addEventListener: vi.fn(),
+    productImportExportService = {
+      startExport: vi.fn().mockReturnValue(of({ job_id: 'job-1' })),
+      startImport: vi.fn().mockReturnValue(of({ job_id: 'job-2' })),
+      downloadExport: vi.fn().mockReturnValue(of({ body: new Blob() })),
+      downloadPriceListPdf: vi
+        .fn()
+        .mockReturnValue(of(new Blob(['pdf'], { type: 'application/pdf' }))),
     };
 
-    const mockHead = {
-      replaceChildren: vi.fn(),
-      append: vi.fn(),
-    };
-
-    const mockBody = {
-      replaceChildren: vi.fn(),
-      innerHTML: '',
-    };
-
-    mockPreviewWindow = {
-      document: {
-        documentElement: {
-          insertBefore: vi.fn(),
-          appendChild: vi.fn(),
-        },
-        head: mockHead,
-        body: mockBody,
-        createElement: vi.fn((tag: string) => ({
-          tagName: tag,
-          textContent: '',
-          setAttribute: vi.fn(),
-        })),
-        querySelector: vi.fn(() => mockEmbedElement),
-      },
-      addEventListener: vi.fn(),
-      focus: vi.fn(),
-      print: vi.fn(),
-      close: vi.fn(),
-      closed: false,
-    };
-
-    vi.stubGlobal(
-      'open',
-      vi.fn(() => mockPreviewWindow),
-    );
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:print-preview');
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-
-    await TestBed.configureTestingModule({
-      imports: [ProductListComponent],
+    TestBed.configureTestingModule({
       providers: [
-        provideRouter([]),
-        provideHttpClient(),
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: ProductsService, useValue: mockProductsService },
-        {
-          provide: ProductImportExportService,
-          useValue: {
-            startExport: vi.fn().mockReturnValue(of({ job_id: 'job-1' })),
-            startImport: vi.fn().mockReturnValue(of({ job_id: 'job-2' })),
-            downloadExport: vi.fn().mockReturnValue(of({ body: new Blob() })),
-            downloadPriceListPdf: vi
-              .fn()
-              .mockReturnValue(of(new Blob(['pdf'], { type: 'application/pdf' }))),
-          },
-        },
+        { provide: ProductImportExportService, useValue: productImportExportService },
         {
           provide: JobService,
           useValue: {
@@ -198,92 +99,74 @@ describe('ProductListComponent', () => {
           },
         },
         { provide: ConfigService, useValue: { settings: { baseCurrency: 'IDR' } } },
-        {
-          provide: AuthService,
-          useValue: {
-            isSuperuser: vi.fn().mockReturnValue(true),
-          },
-        },
-        {
-          provide: GlobalToastService,
-          useValue: mockToastService,
-        },
+        { provide: AuthService, useValue: { isSuperuser: vi.fn().mockReturnValue(true) } },
+        { provide: GlobalToastService, useValue: mockToastService },
       ],
-    }).compileComponents();
+    });
 
-    fixture = TestBed.createComponent(ProductListComponent);
-    component = fixture.componentInstance;
+    component = TestBed.runInInjectionContext(() => new ProductListComponent());
+    (component as any).focusAfterLoad = vi.fn();
+    component.ngOnInit();
   });
 
-  it('hides deprecated products by default and restores that default when the filter is cleared', async () => {
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    // Default filter is ['active'] → deprecated=false, hideDeprecated=false
+  it('hides deprecated products by default and restores that default when the filter is cleared', () => {
+    loadCurrentPage();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
       false,
       false,
       'name',
       1,
-      10,
+      8,
       undefined,
       undefined,
       undefined,
     );
 
     component.onColumnFilterChange({ column: 'deprecated', values: ['deprecated'] });
-    await fixture.whenStable();
+    loadCurrentPage();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
       true,
       false,
       'name',
       1,
-      10,
+      8,
       undefined,
       undefined,
       undefined,
     );
 
-    // Clearing filter (empty) → deprecated=undefined, hideDeprecated=true
     component.onColumnFilterChange({ column: 'deprecated', values: [] });
-    await fixture.whenStable();
+    loadCurrentPage();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
       undefined,
       true,
       'name',
       1,
-      10,
+      8,
       undefined,
       undefined,
       undefined,
     );
   });
 
-  it('shows all products only when both deprecated states are explicitly selected', async () => {
-    fixture.detectChanges();
-    await fixture.whenStable();
-
+  it('shows all products only when both deprecated states are explicitly selected', () => {
     component.onColumnFilterChange({ column: 'deprecated', values: ['active', 'deprecated'] });
-    await fixture.whenStable();
+    loadCurrentPage();
 
-    // Both selected → deprecated=undefined, hideDeprecated=false
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
       undefined,
       false,
       'name',
       1,
-      10,
+      8,
       undefined,
       undefined,
       undefined,
     );
   });
 
-  it('loads category filter options from the server instead of deriving them from the current page', async () => {
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    // Default filter ['active'] → deprecated=false, hideDeprecated=false
+  it('loads category filter options from the server instead of deriving them from the current page', () => {
+    loadCurrentPage();
     expect(mockProductsService.productsCategoryOptionsList).toHaveBeenLastCalledWith(
       false,
       false,
@@ -296,15 +179,34 @@ describe('ProductListComponent', () => {
   });
 
   it('starts the printable price list flow and opens print preview on success', async () => {
-    fixture.detectChanges();
-    await fixture.whenStable();
+    vi.stubGlobal(
+      'open',
+      vi.fn(() => ({
+        document: {
+          head: { replaceChildren: vi.fn(), append: vi.fn() },
+          body: { replaceChildren: vi.fn(), innerHTML: '' },
+          documentElement: { insertBefore: vi.fn(), appendChild: vi.fn() },
+          createElement: vi.fn(() => ({
+            tagName: 'embed',
+            textContent: '',
+            setAttribute: vi.fn(),
+          })),
+          querySelector: vi.fn(() => ({ addEventListener: vi.fn() })),
+        },
+        addEventListener: vi.fn(),
+        focus: vi.fn(),
+        print: vi.fn(),
+        close: vi.fn(),
+        closed: false,
+      })),
+    );
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:print-preview');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
 
     await component.startPrint();
 
     expect(mockProductsService.productsPriceListPrintStartCreate).toHaveBeenCalledTimes(1);
-    expect(
-      (TestBed.inject(ProductImportExportService) as any).downloadPriceListPdf,
-    ).toHaveBeenCalledWith('print-job-1');
+    expect(productImportExportService.downloadPriceListPdf).toHaveBeenCalledWith('print-job-1');
     expect(mockToastService.success).toHaveBeenCalledWith('Printable price list opened');
   });
 });

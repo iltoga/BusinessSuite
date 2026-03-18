@@ -1,37 +1,26 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
   inject,
-  PLATFORM_ID,
   signal,
   viewChild,
   viewChildren,
   type TemplateRef,
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { type Observable } from 'rxjs';
 
-import { InvoicesService, type InvoiceList, type PaginatedInvoiceListList } from '@/core/api';
-import {
-  BaseListComponent,
-  BaseListConfig,
-  type ListRequestParams,
-  type PaginatedResponse,
-} from '@/shared/core/base-list.component';
+import { InvoicesService, type InvoiceList } from '@/core/api';
 import { ZardBadgeComponent } from '@/shared/components/badge';
-import {
-  BulkDeleteDialogComponent,
-  type BulkDeleteDialogData,
-} from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
+import { BulkDeleteDialogComponent } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import {
   DataTableComponent,
   type ColumnConfig,
   type DataTableAction,
-  type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { ShortcutHighlightPipe } from '@/shared/components/data-table/shortcut-highlight.pipe';
 import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
@@ -44,13 +33,19 @@ import {
 import { InvoiceDownloadDropdownComponent } from '@/shared/components/invoice-download-dropdown/invoice-download-dropdown.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import {
+  BaseListComponent,
+  BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
+} from '@/shared/core/base-list.component';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 /**
  * Invoice list component
- * 
+ *
  * Extends BaseListComponent to inherit common list patterns:
  * - Keyboard shortcuts (N for new, B/Left for back)
  * - Navigation state restoration
@@ -207,7 +202,7 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
     this.config = {
       entityType: 'invoices',
       entityLabel: 'Invoices',
-      defaultPageSize: 10,
+      defaultPageSize: 8,
       defaultOrdering: '-invoice_date',
       enableBulkDelete: true,
       enableDelete: true,

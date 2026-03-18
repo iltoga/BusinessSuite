@@ -1,37 +1,28 @@
-import { HttpResponse } from '@angular/common/http';
+import { HttpHeaders, HttpResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { RouterTestingModule } from '@angular/router/testing';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { CountryCodesService } from '@/core/api/api/country-codes.service';
-import { CustomersService } from '@/core/api/api/customers.service';
 import { LettersService } from '@/core/api/api/letters.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+
 import { SuratPermohonanComponent } from './surat-permohonan.component';
 
 describe('SuratPermohonanComponent', () => {
   let component: SuratPermohonanComponent;
-  let lettersService: any;
+  let lettersService: {
+    lettersCustomerDataRetrieve: ReturnType<typeof vi.fn>;
+    lettersSuratPermohonanCreate: ReturnType<typeof vi.fn>;
+  };
 
-  beforeEach(async () => {
-    const lettersSpy = {
+  beforeEach(() => {
+    lettersService = {
       lettersCustomerDataRetrieve: vi.fn(),
       lettersSuratPermohonanCreate: vi.fn(),
     };
-    const countriesSpy = {
-      countryCodesList: vi.fn(),
-    };
-    const customersSpy = {
-      customersList: vi.fn(),
-      customersRetrieve: vi.fn(),
-    };
-    const toastSpy = {
-      success: vi.fn(),
-      error: vi.fn(),
-    };
 
-    lettersSpy.lettersCustomerDataRetrieve.mockReturnValue(
+    lettersService.lettersCustomerDataRetrieve.mockReturnValue(
       of({
         name: 'Test User',
         gender: 'M',
@@ -43,36 +34,46 @@ describe('SuratPermohonanComponent', () => {
         addressBali: 'Ubud',
       }),
     );
-    lettersSpy.lettersSuratPermohonanCreate.mockReturnValue(
-      of(new HttpResponse({ body: new Blob(['ok']) })),
-    );
-    countriesSpy.countryCodesList.mockReturnValue(
-      of([
-        {
-          alpha3Code: 'IDN',
-          country: 'Indonesia',
-          countryIdn: 'Indonesia',
-        },
-      ]),
-    );
-    customersSpy.customersList.mockReturnValue(of({ results: [] }));
-    customersSpy.customersRetrieve.mockReturnValue(
-      of({ id: 1, fullName: 'Test User', fullNameWithCompany: 'Test User' }),
+    lettersService.lettersSuratPermohonanCreate.mockReturnValue(
+      of(
+        new HttpResponse({
+          body: new Blob(['ok']),
+          headers: new HttpHeaders({
+            'content-disposition': 'attachment; filename="surat_permohonan_test-user.docx"',
+          }),
+        }),
+      ),
     );
 
-    await TestBed.configureTestingModule({
-      imports: [SuratPermohonanComponent, RouterTestingModule],
+    TestBed.configureTestingModule({
       providers: [
-        { provide: LettersService, useValue: lettersSpy },
-        { provide: CountryCodesService, useValue: countriesSpy },
-        { provide: CustomersService, useValue: customersSpy },
-        { provide: GlobalToastService, useValue: toastSpy },
+        { provide: LettersService, useValue: lettersService },
+        {
+          provide: CountryCodesService,
+          useValue: {
+            countryCodesList: vi.fn(() =>
+              of([
+                {
+                  alpha3Code: 'IDN',
+                  country: 'Indonesia',
+                  countryIdn: 'Indonesia',
+                },
+              ]),
+            ),
+          },
+        },
+        {
+          provide: GlobalToastService,
+          useValue: {
+            success: vi.fn(),
+            error: vi.fn(),
+          },
+        },
       ],
-    }).compileComponents();
+    });
 
-    const fixture = TestBed.createComponent(SuratPermohonanComponent);
-    component = fixture.componentInstance;
-    lettersService = TestBed.inject(LettersService);
+    component = TestBed.runInInjectionContext(() => new SuratPermohonanComponent());
+    vi.spyOn(component as any, 'downloadBlob').mockImplementation(() => undefined);
   });
 
   it('submits a valid surat permohonan request', () => {
@@ -85,6 +86,14 @@ describe('SuratPermohonanComponent', () => {
 
     component.generateLetter();
 
-    expect(lettersService.lettersSuratPermohonanCreate).toHaveBeenCalled();
+    expect(lettersService.lettersSuratPermohonanCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerId: 1,
+        docDate: '2026-01-01',
+        visaType: 'voa',
+        name: 'Test User',
+      }),
+      'response',
+    );
   });
 });

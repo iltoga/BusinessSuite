@@ -1,10 +1,9 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { CalendarRemindersService } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { PushNotificationsService } from '@/core/services/push-notifications.service';
@@ -16,22 +15,36 @@ import {
 
 describe('ReminderInboxService', () => {
   let service: ReminderInboxService;
-  let httpMock: HttpTestingController;
   let stream$: Subject<RemindersStreamEvent>;
   let push$: Subject<any>;
+  let pendingInboxRequests: Subject<any>[];
+  let mockCalendarRemindersApi: {
+    calendarRemindersInboxRetrieve: ReturnType<typeof vi.fn>;
+  };
   let mockDesktopBridge: { publishUnreadCount: ReturnType<typeof vi.fn> };
   let mockRemindersStreamService: {
     connect: ReturnType<typeof vi.fn>;
     classifyInboxSignal: ReturnType<typeof vi.fn>;
   };
 
-  const expectInboxRequest = () =>
-    httpMock.expectOne((req) => req.url.endsWith('/api/calendar-reminders/inbox/'));
+  const takePendingInboxRequest = () => {
+    const request = pendingInboxRequests.shift();
+    expect(request).toBeDefined();
+    return request!;
+  };
 
   beforeEach(() => {
     vi.useFakeTimers();
     stream$ = new Subject<RemindersStreamEvent>();
     push$ = new Subject();
+    pendingInboxRequests = [];
+    mockCalendarRemindersApi = {
+      calendarRemindersInboxRetrieve: vi.fn(() => {
+        const request$ = new Subject<any>();
+        pendingInboxRequests.push(request$);
+        return request$.asObservable();
+      }),
+    };
     mockDesktopBridge = {
       publishUnreadCount: vi.fn(),
     };
@@ -55,10 +68,9 @@ describe('ReminderInboxService', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
         ReminderInboxService,
         { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: CalendarRemindersService, useValue: mockCalendarRemindersApi },
         {
           provide: AuthService,
           useValue: {
@@ -73,13 +85,11 @@ describe('ReminderInboxService', () => {
     });
 
     service = TestBed.inject(ReminderInboxService);
-    httpMock = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => {
     try {
       service.stop();
-      httpMock.verify();
     } finally {
       TestBed.resetTestingModule();
       vi.useRealTimers();
@@ -89,11 +99,12 @@ describe('ReminderInboxService', () => {
   it('refreshes immediately on SSE changes and updates unread count', () => {
     service.start();
 
-    const initialReq = expectInboxRequest();
-    initialReq.flush({
+    const initialRequest = takePendingInboxRequest();
+    initialRequest.next({
       unreadCount: 2,
       today: [{ id: 11, content: 'Morning', reminderDate: '2026-03-07', reminderTime: '09:00' }],
     });
+    initialRequest.complete();
 
     stream$.next({
       event: 'calendar_reminders_changed',
@@ -103,11 +114,12 @@ describe('ReminderInboxService', () => {
       reason: 'signal',
     });
 
-    const refreshReq = expectInboxRequest();
-    refreshReq.flush({
+    const refreshRequest = takePendingInboxRequest();
+    refreshRequest.next({
       unreadCount: 1,
       today: [{ id: 11, content: 'Morning', reminderDate: '2026-03-07', reminderTime: '09:00' }],
     });
+    refreshRequest.complete();
 
     expect(service.unreadCount()).toBe(1);
     expect(service.todayReminders()).toHaveLength(1);
@@ -117,7 +129,9 @@ describe('ReminderInboxService', () => {
   it('refreshes immediately on reminder push notifications', () => {
     service.start();
 
-    expectInboxRequest().flush({ unreadCount: 0, today: [] });
+    const initialRequest = takePendingInboxRequest();
+    initialRequest.next({ unreadCount: 0, today: [] });
+    initialRequest.complete();
 
     push$.next({
       data: {
@@ -126,13 +140,14 @@ describe('ReminderInboxService', () => {
       },
     });
 
-    const refreshReq = expectInboxRequest();
-    refreshReq.flush({
+    const refreshRequest = takePendingInboxRequest();
+    refreshRequest.next({
       unreadCount: 3,
       today: [
         { id: 42, content: 'Call customer', reminderDate: '2026-03-07', reminderTime: '10:30' },
       ],
     });
+    refreshRequest.complete();
 
     expect(service.unreadCount()).toBe(3);
     expect(mockDesktopBridge.publishUnreadCount).toHaveBeenLastCalledWith(3);
@@ -141,19 +156,23 @@ describe('ReminderInboxService', () => {
   it('uses a five-minute fallback poll instead of refreshing every minute', () => {
     service.start();
 
-    expectInboxRequest().flush({ unreadCount: 1, today: [] });
+    const initialRequest = takePendingInboxRequest();
+    initialRequest.next({ unreadCount: 1, today: [] });
+    initialRequest.complete();
 
     vi.advanceTimersByTime(60_000);
-    httpMock.expectNone('/api/calendar-reminders/inbox/');
+    expect(mockCalendarRemindersApi.calendarRemindersInboxRetrieve).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(4 * 60_000);
-    expectInboxRequest().flush({ unreadCount: 1, today: [] });
+    const pollRequest = takePendingInboxRequest();
+    pollRequest.next({ unreadCount: 1, today: [] });
+    pollRequest.complete();
   });
 
   it('coalesces simultaneous push and SSE invalidations into one follow-up refresh', async () => {
     service.start();
 
-    const initialReq = expectInboxRequest();
+    const initialRequest = takePendingInboxRequest();
 
     push$.next({ data: { type: 'calendar_reminder', reminderId: '7' } });
     stream$.next({
@@ -164,12 +183,14 @@ describe('ReminderInboxService', () => {
       reason: 'signal',
     });
 
-    initialReq.flush({ unreadCount: 2, today: [] });
+    initialRequest.next({ unreadCount: 2, today: [] });
+    initialRequest.complete();
     await Promise.resolve();
 
-    const followUps = httpMock.match((req) => req.url.endsWith('/api/calendar-reminders/inbox/'));
-    expect(followUps).toHaveLength(1);
-    followUps[0].flush({ unreadCount: 4, today: [] });
+    expect(pendingInboxRequests).toHaveLength(1);
+    const followUpRequest = takePendingInboxRequest();
+    followUpRequest.next({ unreadCount: 4, today: [] });
+    followUpRequest.complete();
 
     expect(service.unreadCount()).toBe(4);
   });
@@ -181,7 +202,9 @@ describe('ReminderInboxService', () => {
       .mockImplementationOnce(() => recoveryStream$.asObservable());
 
     service.start();
-    expectInboxRequest().flush({ unreadCount: 1, today: [] });
+    const initialRequest = takePendingInboxRequest();
+    initialRequest.next({ unreadCount: 1, today: [] });
+    initialRequest.complete();
 
     stream$.error(new Error('stream dropped'));
 
@@ -189,10 +212,12 @@ describe('ReminderInboxService', () => {
     expect(mockRemindersStreamService.connect).toHaveBeenCalledTimes(2);
 
     vi.advanceTimersByTime(60_000);
-    httpMock.expectNone('/api/calendar-reminders/inbox/');
+    expect(mockCalendarRemindersApi.calendarRemindersInboxRetrieve).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(4 * 60_000);
-    expectInboxRequest().flush({ unreadCount: 2, today: [] });
+    const recoveryPollRequest = takePendingInboxRequest();
+    recoveryPollRequest.next({ unreadCount: 2, today: [] });
+    recoveryPollRequest.complete();
 
     expect(service.unreadCount()).toBe(2);
   });

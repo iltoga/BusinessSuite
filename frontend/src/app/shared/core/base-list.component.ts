@@ -17,7 +17,7 @@ import {
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { catchError, type Observable, of } from 'rxjs';
+import { catchError, of, type Observable } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
@@ -85,7 +85,7 @@ export interface BaseListConfig<T> {
  * @example
  * ```typescript
  * @Component({ ... })
- * export class CustomerListComponent extends BaseListComponent<CustomerListItem> {
+ * export class CustomerListComponent extends BaseListComponent<Customer> {
  *   private readonly service = inject(CustomersService);
  *
  *   constructor() {
@@ -99,7 +99,7 @@ export interface BaseListConfig<T> {
  *
  *   protected override createListLoader(
  *     params: ListRequestParams,
- *   ): Observable<PaginatedResponse<CustomerListItem>> {
+ *   ): Observable<PaginatedResponse<Customer>> {
  *     return this.service.list({ ... });
  *   }
  * }
@@ -146,7 +146,9 @@ export abstract class BaseListComponent<T> implements OnInit {
    * Bulk delete label - can be overridden by child class
    */
   readonly bulkDeleteLabel = computed(() =>
-    this.query().trim() ? `Delete Selected ${this.getEntityTypeLabel()}` : `Delete All ${this.getEntityTypeLabel()}`,
+    this.query().trim()
+      ? `Delete Selected ${this.getEntityTypeLabel()}`
+      : `Delete All ${this.getEntityTypeLabel()}`,
   );
 
   // ── Focus management ───────────────────────────────────────────────
@@ -191,7 +193,7 @@ export abstract class BaseListComponent<T> implements OnInit {
   protected config!: BaseListConfig<T>;
 
   constructor() {
-    this.pageSize = signal(10);
+    this.pageSize = signal(8);
     this.ordering = signal(undefined);
 
     // Create the rxResource — the `request` function captures all signal
@@ -226,7 +228,7 @@ export abstract class BaseListComponent<T> implements OnInit {
     effect(() => {
       const response = this.listResource.value();
       if (response) {
-        // Prevent state drop to 0 during rxResource Reloading phases 
+        // Prevent state drop to 0 during rxResource Reloading phases
         // which momentarily emits the defaultValue, causing search box buttons to flicker.
         const isTransientLoadingState =
           this.listResource.isLoading() &&
@@ -247,9 +249,7 @@ export abstract class BaseListComponent<T> implements OnInit {
    * Create the Observable that fetches a page of data.
    * Child classes implement this to call their API service.
    */
-  protected abstract createListLoader(
-    params: ListRequestParams,
-  ): Observable<PaginatedResponse<T>>;
+  protected abstract createListLoader(params: ListRequestParams): Observable<PaginatedResponse<T>>;
 
   /**
    * Imperatively trigger a reload (e.g. after a delete or mutation).
@@ -464,9 +464,7 @@ export abstract class BaseListComponent<T> implements OnInit {
       },
       error: (error: any) => {
         const message = extractServerErrorMessage(error);
-        this.toast.error(
-          message ? `Failed to delete items: ${message}` : 'Failed to delete items',
-        );
+        this.toast.error(message ? `Failed to delete items: ${message}` : 'Failed to delete items');
         this.bulkDeleteOpen.set(false);
         this.bulkDeleteData.set(null);
       },

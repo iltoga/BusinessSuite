@@ -141,12 +141,13 @@ docker compose -f docker-compose-local.yml --profile app up -d db redis bs-core 
 ```
 
 Default local ports (from `docker-compose-local.yml`):
-| Service | URL |
-| --- | --- |
-| Backend API | http://localhost:8000 |
-| Frontend | http://localhost:4200 |
-| Grafana (optional) | http://localhost:3000 |
-| Loki (optional) | http://localhost:3100 |
+
+| Service            | URL                     |
+| ------------------ | ----------------------- |
+| Backend API        | <http://localhost:8000> |
+| Frontend           | <http://localhost:4200> |
+| Grafana (optional) | <http://localhost:3000> |
+| Loki (optional)    | <http://localhost:3100> |
 
 ### Local Dev (infra in Docker, app on host)
 
@@ -180,9 +181,11 @@ At minimum, set these env vars in `.env`:
 1. Install Docker + docker compose plugin.
 2. Clone repo and create `.env` (DB/Redis/auth secrets + integration keys).
 3. Run the stack:
+
    ```bash
    docker compose -f docker-compose-local.yml --profile app up -d
    ```
+
 4. Put a reverse proxy (Nginx/Caddy) in front of ports 8000/4200, enable TLS, and lock down admin endpoints.
 
 ### 2) Production compose (advanced)

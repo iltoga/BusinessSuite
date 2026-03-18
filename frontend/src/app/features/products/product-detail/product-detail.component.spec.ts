@@ -1,14 +1,14 @@
+import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { RouterTestingModule } from '@angular/router/testing';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 
 import { ProductsService } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
+
 import { ProductDetailComponent } from './product-detail.component';
 
 describe('ProductDetailComponent', () => {
-  let fixture: any;
   let component: ProductDetailComponent;
 
   const mockProductsService: Pick<ProductsService, 'productsRetrieve'> = {
@@ -19,10 +19,11 @@ describe('ProductDetailComponent', () => {
     error: () => undefined,
   };
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [ProductDetailComponent, RouterTestingModule],
+  beforeEach(() => {
+    TestBed.configureTestingModule({
       providers: [
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: Router, useValue: { navigate: () => Promise.resolve(true) } },
         { provide: ProductsService, useValue: mockProductsService },
         { provide: GlobalToastService, useValue: mockToastService },
         {
@@ -30,13 +31,12 @@ describe('ProductDetailComponent', () => {
           useValue: { snapshot: { paramMap: convertToParamMap({}) } },
         },
       ],
-    }).compileComponents();
+    });
 
-    fixture = TestBed.createComponent(ProductDetailComponent);
-    component = fixture.componentInstance;
+    component = TestBed.runInInjectionContext(() => new ProductDetailComponent());
   });
 
-  it('hides documents and tasks cards when product has no documents and no tasks', () => {
+  it('reports no documents or tasks when product has neither', () => {
     component.product.set({
       id: 36,
       code: 'BANK_FEE',
@@ -45,20 +45,14 @@ describe('ProductDetailComponent', () => {
       optionalDocumentTypes: [],
       tasks: [],
     } as any);
-    component.isLoading.set(false);
-
-    fixture.detectChanges();
-
-    const host: HTMLElement = fixture.nativeElement;
-    const text = String((host.innerText ?? host.textContent) || '');
-
-    expect(text).not.toContain('Required documents');
-    expect(text).not.toContain('Optional documents');
-    expect(text).not.toContain('Tasks');
-    expect(host.querySelectorAll('z-card').length).toBe(1);
+    expect(component.requiredDocuments()).toEqual([]);
+    expect(component.optionalDocuments()).toEqual([]);
+    expect(component.hasAnyDocuments()).toBe(false);
+    expect(component.tasks()).toEqual([]);
+    expect(component.hasTasks()).toBe(false);
   });
 
-  it('shows documents and tasks cards when data is present', () => {
+  it('reports documents and tasks when product data is present', () => {
     component.product.set({
       id: 36,
       code: 'BANK_FEE',
@@ -78,15 +72,11 @@ describe('ProductDetailComponent', () => {
         },
       ],
     } as any);
-    component.isLoading.set(false);
-
-    fixture.detectChanges();
-
-    const host: HTMLElement = fixture.nativeElement;
-    const text = String((host.innerText ?? host.textContent) || '');
-
-    expect(text).toContain('Required documents');
-    expect(text).toContain('Tasks');
-    expect(host.querySelectorAll('z-card').length).toBe(3);
+    expect(component.requiredDocuments()).toHaveLength(1);
+    expect(component.requiredDocuments()[0]?.name).toBe('Passport');
+    expect(component.hasAnyDocuments()).toBe(true);
+    expect(component.tasks()).toHaveLength(1);
+    expect(component.tasks()[0]?.name).toBe('Collect docs');
+    expect(component.hasTasks()).toBe(true);
   });
 });

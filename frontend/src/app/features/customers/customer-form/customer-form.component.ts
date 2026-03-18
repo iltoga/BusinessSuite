@@ -1,5 +1,4 @@
 import { CommonModule } from '@angular/common';
-import { HttpResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -8,20 +7,14 @@ import {
   signal,
   type OnInit,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators, type FormGroup } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ReactiveFormsModule, Validators, type FormGroup } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
 
-import {
-  CustomersService,
-  type CountryCode,
-  type CustomerDetail,
-} from '@/core/services/customers.service';
-import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service';
+import { AsyncJob, type CountryCode, type Customer } from '@/core/api';
+import { CustomersService } from '@/core/services/customers.service';
 import { JobService } from '@/core/services/job.service';
+import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service';
 import { SseService } from '@/core/services/sse.service';
-import { BaseFormComponent, BaseFormConfig } from '@/shared/core/base-form.component';
-import { AsyncJob } from '@/core/api';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardCheckboxComponent } from '@/shared/components/checkbox';
@@ -32,11 +25,11 @@ import { FormErrorSummaryComponent } from '@/shared/components/form-error-summar
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { ZardInputDirective } from '@/shared/components/input';
+import { BaseFormComponent, BaseFormConfig } from '@/shared/core/base-form.component';
 import {
   buildExistingDocumentPreview,
   buildLocalFilePreview,
 } from '@/shared/utils/document-preview-source';
-import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 // Type definitions for DTOs
 interface CustomerCreateDto {
@@ -75,13 +68,13 @@ interface CustomerUpdateDto extends CustomerCreateDto {
 
 /**
  * Customer form component
- * 
+ *
  * Extends BaseFormComponent to inherit common form patterns:
  * - Keyboard shortcuts (Ctrl/Cmd+S to save, Escape to cancel)
  * - Edit mode detection from route
  * - Server error handling
  * - Loading states
- * 
+ *
  * Note: This component has extensive OCR functionality that is component-specific
  */
 @Component({
@@ -105,11 +98,10 @@ interface CustomerUpdateDto extends CustomerCreateDto {
   styleUrls: ['./customer-form.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CustomerFormComponent extends BaseFormComponent<
-  CustomerDetail,
-  CustomerCreateDto,
-  CustomerUpdateDto
-> implements OnInit {
+export class CustomerFormComponent
+  extends BaseFormComponent<Customer, CustomerCreateDto, CustomerUpdateDto>
+  implements OnInit
+{
   private readonly customersService = inject(CustomersService);
   private readonly ocrService = inject(OcrService);
   private readonly sseService = inject(SseService);
@@ -147,7 +139,7 @@ export class CustomerFormComponent extends BaseFormComponent<
   readonly passportMetadata = signal<Record<string, unknown> | null>(null);
 
   // Customer reference for template compatibility
-  readonly customer = signal<CustomerDetail | null>(null);
+  readonly customer = signal<Customer | null>(null);
 
   // OCR tracking
   private pollSub: Subscription | null = null;
@@ -224,7 +216,7 @@ export class CustomerFormComponent extends BaseFormComponent<
     this.config = {
       entityType: 'customers',
       entityLabel: 'Customer',
-    } as BaseFormConfig<CustomerDetail, CustomerCreateDto, CustomerUpdateDto>;
+    } as BaseFormConfig<Customer, CustomerCreateDto, CustomerUpdateDto>;
   }
 
   /**
@@ -272,7 +264,7 @@ export class CustomerFormComponent extends BaseFormComponent<
   /**
    * Load customer for edit mode
    */
-  protected override loadItem(id: number): Observable<CustomerDetail> {
+  protected override loadItem(id: number): Observable<Customer> {
     return this.customersService.getCustomer(id);
   }
 
@@ -342,13 +334,13 @@ export class CustomerFormComponent extends BaseFormComponent<
   /**
    * Patch form with customer data - override to handle date conversion
    */
-  protected override patchForm(customer: CustomerDetail): void {
+  protected override patchForm(customer: Customer): void {
     // Set existing passport preview if available
     this.setExistingPassportPreview(customer.passportFile);
-    
+
     // Update isPerson based on loaded data
     this.isPerson.set(customer.customerType === 'person');
-    
+
     // Helper function to parse date strings to Date objects
     const parseDate = (dateString: string | null | undefined): Date | null => {
       if (!dateString) return null;
@@ -356,33 +348,36 @@ export class CustomerFormComponent extends BaseFormComponent<
       return isNaN(parsed.getTime()) ? null : parsed;
     };
 
-    this.form.patchValue({
-      customer_type: customer.customerType ?? 'person',
-      title: customer.title ?? '',
-      first_name: customer.firstName ?? '',
-      last_name: customer.lastName ?? '',
-      company_name: customer.companyName ?? '',
-      gender: customer.gender ?? '',
-      nationality: customer.nationality ?? '',
-      birthdate: parseDate(customer.birthdate),
-      birth_place: customer.birthPlace ?? '',
-      passport_number: customer.passportNumber ?? '',
-      passport_issue_date: parseDate(customer.passportIssueDate),
-      passport_expiration_date: parseDate(customer.passportExpirationDate),
-      npwp: customer.npwp ?? '',
-      email: customer.email ?? '',
-      telephone: customer.telephone ?? '',
-      whatsapp: customer.whatsapp ?? '',
-      telegram: customer.telegram ?? '',
-      facebook: customer.facebook ?? '',
-      instagram: customer.instagram ?? '',
-      twitter: customer.twitter ?? '',
-      address_bali: customer.addressBali ?? '',
-      address_abroad: customer.addressAbroad ?? '',
-      notify_documents_expiration: customer.notifyDocumentsExpiration ?? false,
-      notify_by: customer.notifyBy ?? '',
-      active: customer.active ?? true,
-    }, { emitEvent: false });
+    this.form.patchValue(
+      {
+        customer_type: customer.customerType ?? 'person',
+        title: customer.title ?? '',
+        first_name: customer.firstName ?? '',
+        last_name: customer.lastName ?? '',
+        company_name: customer.companyName ?? '',
+        gender: customer.gender ?? '',
+        nationality: customer.nationality ?? '',
+        birthdate: parseDate(customer.birthdate),
+        birth_place: customer.birthPlace ?? '',
+        passport_number: customer.passportNumber ?? '',
+        passport_issue_date: parseDate(customer.passportIssueDate),
+        passport_expiration_date: parseDate(customer.passportExpirationDate),
+        npwp: customer.npwp ?? '',
+        email: customer.email ?? '',
+        telephone: customer.telephone ?? '',
+        whatsapp: customer.whatsapp ?? '',
+        telegram: customer.telegram ?? '',
+        facebook: customer.facebook ?? '',
+        instagram: customer.instagram ?? '',
+        twitter: customer.twitter ?? '',
+        address_bali: customer.addressBali ?? '',
+        address_abroad: customer.addressAbroad ?? '',
+        notify_documents_expiration: customer.notifyDocumentsExpiration ?? false,
+        notify_by: customer.notifyBy ?? '',
+        active: customer.active ?? true,
+      },
+      { emitEvent: false },
+    );
   }
 
   /**
@@ -591,9 +586,8 @@ export class CustomerFormComponent extends BaseFormComponent<
       .subscribe({
         next: (response) => {
           const jobId =
-            ('jobId' in response && response.jobId) ||
-            (response as { job_id?: string }).job_id;
-          
+            ('jobId' in response && response.jobId) || (response as { job_id?: string }).job_id;
+
           if (jobId && typeof jobId === 'string') {
             this.subscribeToOcrStream(jobId);
             return;

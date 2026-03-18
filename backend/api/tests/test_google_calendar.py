@@ -288,7 +288,7 @@ class TestGoogleCalendarAPI:
             task=task1,
             doc_application=application,
             created_by=user,
-            status=DocWorkflow.STATUS_COMPLETED,
+            status=DocApplication.STATUS_COMPLETED,
         )
         pending = DocWorkflow.objects.create(
             start_date=today,
@@ -296,7 +296,7 @@ class TestGoogleCalendarAPI:
             task=task2,
             doc_application=application,
             created_by=user,
-            status=DocWorkflow.STATUS_PENDING,
+            status=DocApplication.STATUS_PENDING,
         )
 
         resp = self.client.get("/api/calendar/")
@@ -451,7 +451,7 @@ class TestGoogleCalendarAPI:
             task=task1,
             doc_application=application,
             created_by=user,
-            status=DocWorkflow.STATUS_PENDING,
+            status=DocApplication.STATUS_PENDING,
         )
         workflow.due_date = workflow.calculate_workflow_due_date()
         workflow.save()
@@ -466,11 +466,11 @@ class TestGoogleCalendarAPI:
         assert resp.status_code == status.HTTP_200_OK
         workflow.refresh_from_db()
         application.refresh_from_db()
-        assert workflow.status == DocWorkflow.STATUS_COMPLETED
+        assert workflow.status == DocApplication.STATUS_COMPLETED
 
         next_workflow = application.workflows.filter(task__step=2).first()
         assert next_workflow is not None
-        assert next_workflow.status == DocWorkflow.STATUS_PENDING
+        assert next_workflow.status == DocApplication.STATUS_PENDING
 
         sync_mock.assert_called_once()
         send_task_mock.assert_called_once_with(

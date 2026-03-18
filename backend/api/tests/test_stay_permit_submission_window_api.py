@@ -225,7 +225,7 @@ class StayPermitSubmissionWindowApiTests(TestCase):
             task=self.task,
             start_date=date(2026, 2, 20),
             due_date=date(2026, 2, 22),
-            status=DocWorkflow.STATUS_PENDING,
+            status=DocApplication.STATUS_PENDING,
             created_by=self.user,
         )
         application.due_date = workflow.due_date

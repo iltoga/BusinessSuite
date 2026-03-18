@@ -1,6 +1,5 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { CommonModule, formatDate, isPlatformBrowser } from '@angular/common';
-import { HttpEventType } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -33,15 +32,12 @@ import { AuthService } from '@/core/services/auth.service';
 import { ConfigService } from '@/core/services/config.service';
 import {
   DocumentCategorizationService,
-  type CategorizationSseEvent,
-  type CategorizationFileResult as ServiceFileResult,
   type ValidateCategoryResponse,
 } from '@/core/services/document-categorization.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import {
   getDocumentAiValidationBadge,
-  isCategorizationPipelineTerminal,
   type PipelineBadgeState,
 } from '@/core/utils/document-categorization-pipeline';
 import { ZardBadgeComponent } from '@/shared/components/badge';
@@ -73,12 +69,16 @@ import { catchError, forkJoin, of, Subscription } from 'rxjs';
 
 import { JobService } from '@/core/services/job.service';
 import { MultiFileUploadComponent } from '@/shared/components/multi-file-upload/multi-file-upload.component';
+import { AddDocumentDialogComponent } from './add-document-dialog.component';
 import { ApplicationWorkflowTimelineComponent } from './application-workflow-timeline.component';
+import { ApplicationCategorizationHandler } from './categorization-handler.service';
 import {
   CategorizationProgressComponent,
   type CategorizationApplyMapping,
   type CategorizationFileResult,
 } from './categorization-progress/categorization-progress.component';
+import { OcrDataDialogComponent } from './ocr-data-dialog.component';
+import { OcrReviewDialogComponent } from './ocr-review-dialog.component';
 
 interface TimelineWorkflowItem {
   workflow: ApplicationWorkflow;
@@ -132,7 +132,11 @@ interface PreUploadValidationOutcome {
     MultiFileUploadComponent,
     CategorizationProgressComponent,
     ApplicationWorkflowTimelineComponent,
+    AddDocumentDialogComponent,
+    OcrReviewDialogComponent,
+    OcrDataDialogComponent,
   ],
+  providers: [ApplicationCategorizationHandler],
   templateUrl: './application-detail.component.html',
   styleUrls: ['./application-detail.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -152,8 +156,11 @@ export class ApplicationDetailComponent implements OnInit {
   private configService = inject(ConfigService);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   readonly isDevelopmentMode = isDevMode();
-  private categorizationService = inject(DocumentCategorizationService);
   private jobService = inject(JobService);
+  private categorizationService = inject(DocumentCategorizationService);
+
+  // Categorization handler (extracted service — provides all categorization state & logic)
+  readonly catHandler = inject(ApplicationCategorizationHandler);
 
   readonly application = signal<ApplicationDetail | null>(null);
   readonly isLoading = signal(true);
@@ -441,18 +448,16 @@ export class ApplicationDetailComponent implements OnInit {
   });
   readonly isMerging = signal(false);
 
-  // AI Document Categorization
-  readonly isCategorizationActive = signal(false);
-  readonly categorizationJobId = signal<string | null>(null);
-  readonly categorizationTotalFiles = signal(0);
-  readonly categorizationProcessedFiles = signal(0);
-  readonly categorizationResults = signal<CategorizationFileResult[]>([]);
-  readonly categorizationComplete = signal(false);
-  readonly categorizationStatusMessage = signal('');
-  readonly categorizationProgressPercentOverride = signal<number | null>(null);
-  readonly isCategorizationApplying = signal(false);
-  readonly categorizationFiles = signal<File[]>([]);
-  private categorizationSub: Subscription | null = null;
+  // AI Document Categorization — delegated to catHandler
+  readonly isCategorizationActive = this.catHandler.isActive;
+  readonly categorizationTotalFiles = this.catHandler.totalFiles;
+  readonly categorizationProcessedFiles = this.catHandler.processedFiles;
+  readonly categorizationResults = this.catHandler.results;
+  readonly categorizationComplete = this.catHandler.isComplete;
+  readonly categorizationStatusMessage = this.catHandler.statusMessage;
+  readonly categorizationProgressPercentOverride = this.catHandler.progressPercentOverride;
+  readonly isCategorizationApplying = this.catHandler.isApplying;
+  readonly categorizationFiles = this.catHandler.files;
 
   private readonly workflowTimezone = 'Asia/Singapore';
 
@@ -618,6 +623,12 @@ export class ApplicationDetailComponent implements OnInit {
         }
       });
     });
+
+    // When categorization applies results, reload the application
+    this.catHandler.applicationReloadRequested.subscribe(() => {
+      const app = this.application();
+      if (app) this.loadApplication(app.id);
+    });
   }
 
   ngOnInit(): void {
@@ -643,7 +654,7 @@ export class ApplicationDetailComponent implements OnInit {
       this.clearPendingPassportRefresh();
       this.clearUploadPreview();
       this.clearExistingPreview();
-      this.categorizationSub?.unsubscribe();
+      this.catHandler.destroy();
       this.closeValidationStream();
     });
   }
@@ -750,7 +761,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.uploadProgress.set(null);
 
     this.categorizationService.validateCategory(document.id, file).subscribe({
-      next: (response) => {
+      next: (response: ValidateCategoryResponse) => {
         const outcome = this.normalizePreUploadValidationOutcome(response);
         this.preUploadValidationOutcome.set(outcome);
         this.applyValidationExtractionToUploadForm(outcome.result);
@@ -772,7 +783,7 @@ export class ApplicationDetailComponent implements OnInit {
           `AI validation failed${runtimeSuffix}: ${this.buildPreUploadValidationReason(outcome.result) || 'See details below.'}`,
         );
       },
-      error: (error) => {
+      error: (error: unknown) => {
         const message = extractServerErrorMessage(error) || 'AI validation failed';
         const rawErrorPayload =
           error && typeof error === 'object' && 'error' in error
@@ -1344,23 +1355,6 @@ export class ApplicationDetailComponent implements OnInit {
 
   dismissOcrReview(): void {
     this.ocrReviewOpen.set(false);
-  }
-
-  copyOcrExtractedData(): void {
-    const payload = this.ocrExtractedDataDialogText();
-    if (!payload.trim()) {
-      return;
-    }
-
-    if (this.isBrowser && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      navigator.clipboard
-        .writeText(payload)
-        .then(() => this.toast.success('Extracted data copied'))
-        .catch(() => this.toast.error('Failed to copy extracted data'));
-      return;
-    }
-
-    this.toast.error('Clipboard API is not available in this browser');
   }
 
   executeAction(action: DocumentAction): void {
@@ -2119,27 +2113,27 @@ export class ApplicationDetailComponent implements OnInit {
     this.updateApplicationPartial({ notes: next }, 'Notes updated');
   }
 
-  addApplicationDocument(): void {
-    const docTypeId = this.selectedNewDocType();
+  addApplicationDocument(docTypeId?: string): void {
+    const resolvedDocTypeId = docTypeId ?? this.selectedNewDocType();
     const app = this.application();
-    if (!docTypeId || !app) return;
+    if (!resolvedDocTypeId || !app) return;
     const selectedDocType = this.availableDocumentTypes().find(
-      (doc) => String(doc.id) === String(docTypeId),
+      (doc) => String(doc.id) === String(resolvedDocTypeId),
     );
     if (
       selectedDocType?.isStayPermit &&
       app.documents.some(
         (document) =>
           Boolean(document.docType?.isStayPermit) &&
-          String(document.docType?.id) !== String(docTypeId),
+          String(document.docType?.id) !== String(resolvedDocTypeId),
       )
     ) {
       this.toast.error('Only one stay permit document type can be added to an application.');
       return;
     }
     const payloadDocs = app.documents.map((d) => ({ id: d.docType.id, required: d.required }));
-    if (!payloadDocs.some((d) => String(d.id) === String(docTypeId))) {
-      payloadDocs.push({ id: Number(docTypeId), required: true });
+    if (!payloadDocs.some((d) => String(d.id) === String(resolvedDocTypeId))) {
+      payloadDocs.push({ id: Number(resolvedDocTypeId), required: true });
     }
     this.updateApplicationPartial({ documentTypes: payloadDocs }, 'Document added');
     this.closeAddDocumentDialog();
@@ -2956,531 +2950,31 @@ export class ApplicationDetailComponent implements OnInit {
     return 'dd-MM-yyyy';
   }
 
-  // ─── AI Document Categorization ───────────────────────────────
+  // ─── AI Document Categorization (delegated to catHandler) ────
 
   onCategorizationFilesSelected(files: File[]): void {
-    this.categorizationFiles.set(files);
+    this.catHandler.onFilesSelected(files);
   }
 
   onCategorizationFilesCleared(): void {
-    this.categorizationFiles.set([]);
+    this.catHandler.onFilesCleared();
   }
 
   startCategorization(): void {
     const app = this.application();
-    const files = this.categorizationFiles();
-    if (!app || files.length === 0) return;
-
-    this.isCategorizationActive.set(true);
-    this.categorizationComplete.set(false);
-    this.categorizationResults.set([]);
-    this.categorizationProcessedFiles.set(0);
-    this.categorizationProgressPercentOverride.set(0);
-    this.categorizationTotalFiles.set(files.length);
-    this.categorizationStatusMessage.set(`Preparing upload (${files.length} file(s))...`);
-
-    this.categorizationService.createCategorizationJob(app.id, files.length).subscribe({
-      next: (response) => {
-        this.categorizationJobId.set(response.jobId);
-        this.categorizationTotalFiles.set(response.totalFiles || files.length);
-        this.categorizationStatusMessage.set('Processing...');
-        this.watchCategorizationJob(response.jobId);
-
-        this.categorizationService.uploadFilesToJob(response.jobId, files).subscribe({
-          next: (event) => {
-            if (event.type === HttpEventType.UploadProgress) {
-              const total = Number(event.total || 0);
-              const loaded = Number(event.loaded || 0);
-              if (total > 0) {
-                const percent = Math.max(0, Math.min(100, Math.round((loaded / total) * 100)));
-                this.categorizationProgressPercentOverride.set(percent);
-                this.categorizationStatusMessage.set(`Uploading files... ${percent}%`);
-              } else {
-                this.categorizationStatusMessage.set('Uploading files...');
-              }
-            } else if (event.type === HttpEventType.Response) {
-              this.categorizationStatusMessage.set('Upload complete. Starting AI processing...');
-            }
-          },
-          error: (error) => {
-            this.toast.error(extractServerErrorMessage(error) || 'Failed while uploading files');
-            this.dismissCategorization();
-          },
-        });
-      },
-      error: (error) => {
-        this.toast.error(extractServerErrorMessage(error) || 'Failed to initialize categorization');
-        this.dismissCategorization();
-      },
-    });
-  }
-
-  private watchCategorizationJob(jobId: string): void {
-    this.categorizationSub?.unsubscribe();
-
-    this.categorizationSub = this.categorizationService.watchCategorizationJob(jobId).subscribe({
-      next: (event: CategorizationSseEvent) => this.handleCategorizationEvent(event),
-      error: () => {
-        this.categorizationStatusMessage.set(
-          'Connection lost. Waiting for the final pipeline state.',
-        );
-        this.maybeFinalizeCategorizationFromClientState();
-      },
-      complete: () => {
-        this.maybeFinalizeCategorizationFromClientState();
-      },
-    });
-  }
-
-  private handleCategorizationEvent(event: CategorizationSseEvent): void {
-    switch (event.type) {
-      case 'start':
-        this.categorizationProgressPercentOverride.set(0);
-        this.categorizationProcessedFiles.set(0);
-        this.categorizationStatusMessage.set(event.data['message'] ?? 'Starting...');
-        break;
-
-      case 'progress': {
-        const totalFiles = Number(event.data['totalFiles'] ?? this.categorizationTotalFiles() ?? 0);
-        const processedFiles = Number(
-          event.data['processedFiles'] ?? this.categorizationProcessedFiles() ?? 0,
-        );
-        const overallPercent = Number(
-          event.data['overallPercent'] ?? this.categorizationProgressPercentOverride() ?? 0,
-        );
-
-        if (totalFiles > 0) {
-          this.categorizationTotalFiles.set(totalFiles);
-        }
-        if (processedFiles >= 0) {
-          this.categorizationProcessedFiles.set(processedFiles);
-        }
-        if (Number.isFinite(overallPercent)) {
-          this.categorizationProgressPercentOverride.set(
-            Math.max(0, Math.min(100, Math.round(overallPercent))),
-          );
-        }
-        this.categorizationStatusMessage.set(event.data['message'] ?? 'Processing...');
-        break;
-      }
-
-      case 'file_upload_start': {
-        const filename = event.data['filename'] ?? '';
-        if (!filename) {
-          break;
-        }
-        const current = [...this.categorizationResults()];
-        const idx = current.findIndex((r) => r.filename === filename);
-        const next: CategorizationFileResult = {
-          itemId: '',
-          filename,
-          status: 'uploading',
-          pipelineStage: 'uploading',
-          aiValidationEnabled: null,
-          documentType: null,
-          documentTypeId: null,
-          documentId: null,
-          confidence: 0,
-          reasoning: '',
-          error: null,
-          categorizationPass: 1,
-          validationStatus: null,
-          validationReasoning: null,
-          validationNegativeIssues: null,
-          validationProvider: null,
-          validationProviderName: null,
-          validationModel: null,
-        };
-        if (idx >= 0) {
-          current[idx] = { ...current[idx], ...next };
-        } else {
-          current.push(next);
-        }
-        this.categorizationResults.set(current);
-        break;
-      }
-
-      case 'file_uploaded': {
-        const filename = event.data['filename'] ?? '';
-        if (!filename) {
-          break;
-        }
-        const current = [...this.categorizationResults()];
-        const idx = current.findIndex((r) => r.filename === filename);
-        if (idx >= 0) {
-          current[idx] = {
-            ...current[idx],
-            status: 'queued',
-            pipelineStage: 'uploaded',
-          };
-          this.categorizationResults.set(current);
-        }
-        break;
-      }
-
-      case 'upload_progress': {
-        const uploadedFiles = Number(event.data['uploadedFiles'] ?? 0);
-        const totalFiles = Number(event.data['totalFiles'] ?? this.categorizationTotalFiles() ?? 0);
-        const uploadedBytes = Number(event.data['uploadedBytes'] ?? 0);
-        const totalBytes = Number(event.data['totalBytes'] ?? 0);
-
-        if (totalFiles > 0) {
-          this.categorizationTotalFiles.set(totalFiles);
-          this.categorizationProcessedFiles.set(Math.min(uploadedFiles, totalFiles));
-        }
-
-        if (totalBytes > 0) {
-          const percent = Math.max(
-            0,
-            Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)),
-          );
-          this.categorizationProgressPercentOverride.set(percent);
-        }
-
-        this.categorizationStatusMessage.set(
-          event.data['message'] ?? `Uploading files... ${uploadedFiles}/${totalFiles}`,
-        );
-        break;
-      }
-
-      case 'upload_complete':
-        this.categorizationStatusMessage.set(
-          event.data['message'] ?? 'Upload complete. Processing...',
-        );
-        break;
-
-      case 'file_start':
-        this.categorizationStatusMessage.set(
-          event.data['message'] ?? `Processing file ${(event.data['index'] ?? 0) + 1}...`,
-        );
-        // Add file to results in processing state if not already there
-        if (event.data['filename']) {
-          const current = this.categorizationResults();
-          const exists = current.some((r) => r.filename === event.data['filename']);
-          if (!exists) {
-            this.categorizationResults.set([
-              ...current,
-              {
-                itemId: '',
-                filename: event.data['filename']!,
-                status: 'processing',
-                pipelineStage: 'categorizing',
-                aiValidationEnabled: null,
-                documentType: null,
-                documentTypeId: null,
-                documentId: null,
-                confidence: 0,
-                reasoning: '',
-                error: null,
-                categorizationPass: 1,
-                validationStatus: null,
-                validationReasoning: null,
-                validationNegativeIssues: null,
-                validationProvider: null,
-                validationProviderName: null,
-                validationModel: null,
-              },
-            ]);
-          } else {
-            const idx = current.findIndex((r) => r.filename === event.data['filename']);
-            if (idx >= 0) {
-              const updated = [...current];
-              updated[idx] = {
-                ...updated[idx],
-                status: 'processing',
-                pipelineStage: 'categorizing',
-              };
-              this.categorizationResults.set(updated);
-            }
-          }
-        }
-        break;
-
-      case 'file_categorized': {
-        this.categorizationProcessedFiles.update((v) => v + 1);
-        const results = [...this.categorizationResults()];
-        const idx = results.findIndex((r) => r.filename === event.data['filename']);
-        const result: CategorizationFileResult = {
-          itemId: event.data['itemId'] ?? '',
-          filename: event.data['filename'] ?? '',
-          status: 'categorized',
-          pipelineStage: 'categorized',
-          aiValidationEnabled:
-            typeof event.data['aiValidationEnabled'] === 'boolean'
-              ? event.data['aiValidationEnabled']
-              : null,
-          documentType: event.data['documentType'] ?? null,
-          documentTypeId: event.data['documentTypeId'] ?? null,
-          documentId: event.data['documentId'] ?? null,
-          confidence: event.data['confidence'] ?? 0,
-          reasoning: event.data['reasoning'] ?? '',
-          error: null,
-          categorizationPass: event.data['categorizationPass'] ?? 1,
-          validationStatus: null,
-          validationReasoning: null,
-          validationNegativeIssues: null,
-          validationProvider: null,
-          validationProviderName: null,
-          validationModel: null,
-        };
-        if (idx >= 0) {
-          results[idx] = result;
-        } else {
-          results.push(result);
-        }
-        this.categorizationResults.set(results);
-        this.categorizationStatusMessage.set(event.data['message'] ?? 'Processing...');
-        break;
-      }
-
-      case 'file_error': {
-        this.categorizationProcessedFiles.update((v) => v + 1);
-        const results = [...this.categorizationResults()];
-        const idx = results.findIndex((r) => r.filename === event.data['filename']);
-        const errorResult: CategorizationFileResult = {
-          itemId: '',
-          filename: event.data['filename'] ?? '',
-          status: 'error',
-          pipelineStage: 'error',
-          aiValidationEnabled: null,
-          documentType: null,
-          documentTypeId: null,
-          documentId: null,
-          confidence: 0,
-          reasoning: '',
-          error: event.data['error'] ?? 'Unknown error',
-          categorizationPass: null,
-          validationStatus: null,
-          validationReasoning: null,
-          validationNegativeIssues: null,
-          validationProvider: null,
-          validationProviderName: null,
-          validationModel: null,
-        };
-        if (idx >= 0) {
-          results[idx] = errorResult;
-        } else {
-          results.push(errorResult);
-        }
-        this.categorizationResults.set(results);
-        break;
-      }
-
-      case 'file_categorizing_pass2': {
-        const results = [...this.categorizationResults()];
-        const idx = results.findIndex((r) => r.filename === event.data['filename']);
-        if (idx >= 0) {
-          results[idx] = { ...results[idx], categorizationPass: 2 };
-          this.categorizationResults.set(results);
-        }
-        this.categorizationStatusMessage.set(
-          event.data['message'] ?? 'Retrying with high-tier model...',
-        );
-        break;
-      }
-
-      case 'file_validating': {
-        const results = [...this.categorizationResults()];
-        const idx = results.findIndex((r) => r.filename === event.data['filename']);
-        if (idx >= 0) {
-          results[idx] = {
-            ...results[idx],
-            validationStatus: 'pending',
-            pipelineStage: 'validating',
-            aiValidationEnabled:
-              typeof event.data['aiValidationEnabled'] === 'boolean'
-                ? event.data['aiValidationEnabled']
-                : results[idx].aiValidationEnabled,
-          };
-          this.categorizationResults.set(results);
-        }
-        this.categorizationStatusMessage.set(event.data['message'] ?? 'Validating document...');
-        break;
-      }
-
-      case 'file_validated': {
-        const results = [...this.categorizationResults()];
-        const idx = results.findIndex((r) => r.filename === event.data['filename']);
-        if (idx >= 0) {
-          results[idx] = {
-            ...results[idx],
-            validationStatus:
-              (event.data['validationStatus'] as CategorizationFileResult['validationStatus']) ??
-              null,
-            pipelineStage: 'validated',
-            aiValidationEnabled:
-              typeof event.data['aiValidationEnabled'] === 'boolean'
-                ? event.data['aiValidationEnabled']
-                : results[idx].aiValidationEnabled,
-            validationReasoning: event.data['validationReasoning'] ?? null,
-            validationNegativeIssues: event.data['validationNegativeIssues'] ?? null,
-            validationProvider: event.data['validationProvider'] ?? null,
-            validationProviderName: event.data['validationProviderName'] ?? null,
-            validationModel: event.data['validationModel'] ?? null,
-          };
-          this.categorizationResults.set(results);
-        }
-        break;
-      }
-
-      case 'complete': {
-        this.categorizationComplete.set(true);
-        this.categorizationProgressPercentOverride.set(100);
-        this.categorizationProcessedFiles.set(this.categorizationTotalFiles());
-        this.categorizationStatusMessage.set(event.data['message'] ?? 'Complete');
-        // Update results with final data including itemIds
-        if (event.data['results']) {
-          const finalResults: CategorizationFileResult[] = (
-            event.data['results'] as ServiceFileResult[]
-          ).map((r) => ({
-            itemId: r.itemId,
-            filename: r.filename,
-            status: r.status as CategorizationFileResult['status'],
-            pipelineStage: (r.pipelineStage ??
-              (r.status as CategorizationFileResult['pipelineStage'])) as
-              | 'uploading'
-              | 'uploaded'
-              | 'categorizing'
-              | 'categorized'
-              | 'validating'
-              | 'validated'
-              | 'error',
-            aiValidationEnabled:
-              typeof r.aiValidationEnabled === 'boolean' ? r.aiValidationEnabled : null,
-            documentType: r.documentType,
-            documentTypeId: r.documentTypeId,
-            documentId: r.documentId,
-            confidence: r.confidence,
-            reasoning: r.reasoning,
-            error: r.error ?? null,
-            categorizationPass: r.categorizationPass ?? null,
-            validationStatus: r.validationStatus ?? null,
-            validationReasoning: r.validationReasoning ?? null,
-            validationNegativeIssues: r.validationNegativeIssues ?? null,
-            validationProvider: r.validationProvider ?? null,
-            validationProviderName: r.validationProviderName ?? null,
-            validationModel: r.validationModel ?? null,
-          }));
-          this.categorizationResults.set(finalResults);
-        }
-        break;
-      }
-    }
-
-    this.maybeFinalizeCategorizationFromClientState();
-  }
-
-  private maybeFinalizeCategorizationFromClientState(): void {
-    if (this.categorizationComplete()) {
-      return;
-    }
-
-    const total = this.categorizationTotalFiles();
-    const results = this.categorizationResults();
-    if (total <= 0 || results.length < total) {
-      return;
-    }
-
-    if (!results.every((result) => isCategorizationPipelineTerminal(result))) {
-      return;
-    }
-
-    this.categorizationComplete.set(true);
-    this.categorizationProcessedFiles.set(total);
-    this.categorizationProgressPercentOverride.set(100);
-    const currentMessage = this.categorizationStatusMessage().trim();
-    if (
-      !currentMessage ||
-      /processing|categorizing|validating|uploading|connection lost/i.test(currentMessage)
-    ) {
-      this.categorizationStatusMessage.set('Processing complete');
-    }
+    if (!app) return;
+    this.catHandler.start(app.id);
   }
 
   onApplyCategorization(mappings: CategorizationApplyMapping[]): void {
-    const jobId = this.categorizationJobId();
-    if (!jobId) return;
-
-    const normalizedMappings = mappings.filter(
-      (mapping) => typeof mapping.itemId === 'string' && mapping.itemId.trim().length > 0,
-    );
-    if (normalizedMappings.length === 0) {
-      this.toast.error('No valid matched files to apply yet. Please wait a moment and retry.');
-      return;
-    }
-
-    this.isCategorizationApplying.set(true);
-
-    this.categorizationService
-      .applyResults(
-        jobId,
-        normalizedMappings.map((m) => ({
-          itemId: m.itemId,
-          documentId: m.documentId,
-        })),
-      )
-      .subscribe({
-        next: (response) => {
-          this.isCategorizationApplying.set(false);
-          if (response.totalApplied > 0) {
-            this.toast.success(`${response.totalApplied} document(s) applied successfully`);
-            // Reload application to reflect updated documents
-            const app = this.application();
-            if (app) {
-              this.loadApplication(app.id);
-            }
-          }
-          if (response.totalErrors > 0) {
-            this.toast.error(`${response.totalErrors} document(s) failed to apply`);
-          }
-          this.dismissCategorization();
-        },
-        error: (error) => {
-          this.isCategorizationApplying.set(false);
-          this.toast.error(extractServerErrorMessage(error) || 'Failed to apply categorization');
-        },
-      });
+    this.catHandler.apply(mappings);
   }
 
   dismissSelectedCategorization(selectedKeys: string[]): void {
-    if (!selectedKeys || selectedKeys.length === 0) {
-      return;
-    }
-
-    const current = this.categorizationResults();
-    const selectedKeySet = new Set(selectedKeys);
-    const remaining = current.filter(
-      (result, index) => !selectedKeySet.has(this.getCategorizationResultKey(result, index)),
-    );
-    const dismissedCount = current.length - remaining.length;
-
-    if (dismissedCount <= 0) {
-      return;
-    }
-
-    this.categorizationResults.set(remaining);
-    this.toast.success(`${dismissedCount} document(s) dismissed`);
-
-    if (remaining.length === 0) {
-      this.dismissCategorization();
-    }
-  }
-
-  private getCategorizationResultKey(result: CategorizationFileResult, index: number): string {
-    return result.itemId || `${result.filename}-${index}`;
+    this.catHandler.dismissSelected(selectedKeys);
   }
 
   dismissCategorization(): void {
-    this.categorizationSub?.unsubscribe();
-    this.categorizationSub = null;
-    this.isCategorizationActive.set(false);
-    this.categorizationJobId.set(null);
-    this.categorizationTotalFiles.set(0);
-    this.categorizationProcessedFiles.set(0);
-    this.categorizationResults.set([]);
-    this.categorizationComplete.set(false);
-    this.categorizationStatusMessage.set('');
-    this.categorizationProgressPercentOverride.set(null);
-    this.categorizationFiles.set([]);
+    this.catHandler.dismiss();
   }
 }

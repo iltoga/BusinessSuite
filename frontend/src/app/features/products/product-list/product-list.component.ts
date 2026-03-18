@@ -280,7 +280,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
     this.config = {
       entityType: 'products',
       entityLabel: 'Products',
-      defaultPageSize: 10,
+      defaultPageSize: 8,
       defaultOrdering: 'name',
       enableBulkDelete: true,
       enableDelete: true,
