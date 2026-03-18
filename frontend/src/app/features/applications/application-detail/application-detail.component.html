@@ -623,139 +623,162 @@
             <textarea z-input rows="3" formControlName="details"></textarea>
           </div>
         }
+      </form>
 
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="text-sm text-muted-foreground">
-            @if (aiValidationInProgress()) {
-              <span class="inline-flex items-center gap-1">
-                <z-icon
-                  zType="loader-circle"
-                  class="h-4 w-4 text-muted-foreground app-circle-spinner"
-                />
-                AI validation in progress…
-              </span>
-            } @else if (ocrPolling()) {
-              OCR: {{ ocrStatus() || 'Processing' }}
-            } @else if (selectedDocument()!.docType.aiValidation) {
-              OCR available for this document.
-            }
-          </div>
-          <div class="flex items-center gap-2">
-            @if (isAiValidationEnabledForSelectedDocument()) {
-              <label class="flex items-center gap-1.5 text-sm cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  class="h-4 w-4 rounded border-border"
-                  [checked]="validateWithAi()"
-                  (change)="onValidateWithAiChanged($any($event.target).checked)"
-                  [disabled]="isSaving() || aiValidationInProgress()"
-                />
-                Validate with AI
-              </label>
-            }
-            <app-document-preview
-              [documentId]="selectedDocument()!.id"
-              [fileLink]="selectedDocument()!.fileLink"
-              [thumbnailLink]="selectedDocument()!.thumbnailLink"
-              [centerInViewport]="true"
-              zType="outline"
-              zSize="sm"
-              label="Full Preview"
-              previewSize="md"
-              (viewFull)="viewDocument(selectedDocument()!)"
-            />
-            @if (selectedDocument()!.docType.aiValidation) {
-              <button
-                z-button
-                zType="outline"
-                zSize="sm"
-                type="button"
-                (click)="runOcr()"
-                [disabled]="ocrPolling()"
-              >
-                Run OCR
-              </button>
-            }
+      <div class="app-upload-dialog-footer mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="text-sm text-muted-foreground">
+          @if (aiValidationInProgress()) {
+            <span class="inline-flex items-center gap-1">
+              <z-icon
+                zType="loader-circle"
+                class="h-4 w-4 text-muted-foreground app-circle-spinner"
+              />
+              AI validation in progress…
+            </span>
+          } @else if (ocrPolling()) {
+            OCR: {{ ocrStatus() || 'Processing' }}
+          } @else if (selectedDocument()!.docType.aiValidation) {
+            OCR available for this document.
+          }
+        </div>
+        <div class="flex items-center gap-2">
+          @if (isAiValidationEnabledForSelectedDocument()) {
+            <label class="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                class="h-4 w-4 rounded border-border"
+                [checked]="validateWithAi()"
+                (change)="onValidateWithAiChanged($any($event.target).checked)"
+                [disabled]="isSaving() || aiValidationInProgress()"
+              />
+              Validate with AI
+            </label>
+          }
+          <app-document-preview
+            [documentId]="selectedDocument()!.id"
+            [fileLink]="selectedDocument()!.fileLink"
+            [thumbnailLink]="selectedDocument()!.thumbnailLink"
+            [centerInViewport]="true"
+            zType="outline"
+            zSize="sm"
+            label="Full Preview"
+            previewSize="md"
+            (viewFull)="viewDocument(selectedDocument()!)"
+          />
+          @if (selectedDocument()!.docType.aiValidation) {
             <button
               z-button
-              zType="default"
+              zType="outline"
+              zSize="sm"
               type="button"
-              (click)="onSaveDocument()"
-              [zLoading]="isSaving() || aiValidationInProgress()"
-              [disabled]="isSaving() || aiValidationInProgress()"
+              (click)="runOcr()"
+              [disabled]="ocrPolling()"
             >
-              @if (aiValidationInProgress()) {
-                Validating…
-              } @else if (shouldShowSaveAnyway()) {
-                Save Anyway
-              } @else {
-                Save
-              }
+              Run OCR
             </button>
+          }
+          <button
+            z-button
+            zType="default"
+            type="button"
+            (click)="onSaveDocument()"
+            [zLoading]="isSaving() || aiValidationInProgress()"
+            [disabled]="isSaving() || aiValidationInProgress()"
+          >
+            @if (aiValidationInProgress()) {
+              Validating…
+            } @else if (shouldShowSaveAnyway()) {
+              Save Anyway
+            } @else {
+              Save
+            }
+          </button>
+        </div>
+      </div>
+
+      @if (shouldShowSaveAnyway()) {
+        <div class="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+          <div class="font-medium text-destructive">
+            AI pre-validation did not pass for this file.
+          </div>
+          <div class="mt-1 text-muted-foreground">
+            {{
+              preUploadValidationReason() || 'This file does not satisfy the AI validation checks.'
+            }}
+          </div>
+          @if (isDevelopmentMode && preUploadValidationRuntimeLabel()) {
+            <div class="mt-1 font-mono text-[11px] text-muted-foreground">
+              AI runtime: {{ preUploadValidationRuntimeLabel() }}
+            </div>
+          }
+          @if (preUploadValidationIssues().length > 0) {
+            <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
+              @for (issue of preUploadValidationIssues(); track issue) {
+                <li>{{ issue }}</li>
+              }
+            </ul>
+          }
+          <div class="mt-2 text-xs text-muted-foreground">
+            You can still upload this document by pressing <strong>Save Anyway</strong>.
           </div>
         </div>
+      }
 
-        @if (shouldShowSaveAnyway()) {
-          <div class="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
-            <div class="font-medium text-destructive">
-              AI pre-validation did not pass for this file.
-            </div>
-            <div class="mt-1 text-muted-foreground">
-              {{
-                preUploadValidationReason() ||
-                  'This file does not satisfy the AI validation checks.'
-              }}
-            </div>
-            @if (isDevelopmentMode && preUploadValidationRuntimeLabel()) {
-              <div class="mt-1 font-mono text-[11px] text-muted-foreground">
-                AI runtime: {{ preUploadValidationRuntimeLabel() }}
-              </div>
-            }
-            @if (preUploadValidationIssues().length > 0) {
-              <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
-                @for (issue of preUploadValidationIssues(); track issue) {
-                  <li>{{ issue }}</li>
-                }
-              </ul>
-            }
-            <div class="mt-2 text-xs text-muted-foreground">
-              You can still upload this document by pressing <strong>Save Anyway</strong>.
-            </div>
-          </div>
-        }
-
-        @if (ocrPreviewImage() || ocrHasExtractedData()) {
-          <div class="rounded-md border bg-muted/5 p-3">
-            <div class="text-sm font-medium mb-2">OCR Preview</div>
-            <div class="grid gap-4 md:grid-cols-2 md:items-start">
-              <div
-                class="rounded-md border bg-background p-2 min-h-48 flex items-center justify-center"
+      @if (ocrPreviewImage() || ocrHasExtractedData()) {
+        <div class="rounded-md border bg-muted/5 mt-4">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between px-4 py-3 text-left"
+            (click)="ocrPreviewExpanded.update((v) => !v)"
+            [attr.aria-expanded]="ocrPreviewExpanded()"
+          >
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium">OCR Preview</span>
+              <span class="text-xs text-muted-foreground"
+                >({{ ocrPreviewImage() ? 'Image' : 'Data' }})</span
               >
-                @if (ocrPreviewImage()) {
-                  <app-image-magnifier
-                    [src]="ocrPreviewImage()"
-                    alt="OCR Preview"
-                    [imageClass]="'max-h-72 w-auto max-w-full rounded object-contain'"
-                    [wrapperClass]="'w-full max-w-64'"
-                  />
-                } @else {
-                  <div class="text-xs text-muted-foreground">Preview image not available.</div>
-                }
-              </div>
-              <div class="space-y-2">
-                <label class="text-xs font-medium text-muted-foreground">Extracted Data</label>
-                <textarea
-                  z-input
-                  rows="14"
-                  readonly
-                  class="w-full min-h-56 font-mono text-xs leading-5"
-                  [value]="ocrExtractedDataText()"
-                ></textarea>
+            </div>
+            <z-icon
+              [zType]="ocrPreviewExpanded() ? 'chevron-up' : 'chevron-down'"
+              class="h-4 w-4 text-muted-foreground"
+            />
+          </button>
+
+          @if (ocrPreviewExpanded()) {
+            <div class="border-t border-muted/40 px-4 pyx-4 py-3">
+              <div class="grid gap-4 md:grid-cols-2 md:items-start">
+                <div class="space-y-2">
+                  <label class="text-xs font-medium text-muted-foreground">Document</label>
+                  <div
+                    class="rounded-md border bg-background p-2 min-h-56 flex items-start justify-center"
+                  >
+                    @if (ocrPreviewImage()) {
+                      <app-image-magnifier
+                        [src]="ocrPreviewImage()"
+                        alt="OCR Preview"
+                        [imageClass]="'max-h-72 w-auto max-w-full rounded object-contain'"
+                        [wrapperClass]="'w-full max-w-64'"
+                      />
+                    } @else {
+                      <div class="text-xs text-muted-foreground">Preview image not available.</div>
+                    }
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <label class="text-xs font-medium text-muted-foreground">Extracted Data</label>
+                  <textarea
+                    z-input
+                    rows="14"
+                    readonly
+                    class="w-full min-h-56 font-mono text-xs leading-5"
+                    [value]="ocrExtractedDataText()"
+                  ></textarea>
+                </div>
               </div>
             </div>
-          </div>
-        }
-      </form>
+          }
+        </div>
+      }
     </div>
   </div>
 }

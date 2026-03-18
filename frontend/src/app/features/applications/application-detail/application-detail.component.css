@@ -37,6 +37,13 @@
   min-height: 0;
   overflow-y: auto;
   padding-right: 0.25rem;
+  padding-bottom: 1.5rem; /* Avoid content being hidden under fixed footer */
+}
+
+.app-upload-dialog-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
 }
 
 .timeline-list {

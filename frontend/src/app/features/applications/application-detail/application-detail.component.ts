@@ -204,6 +204,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly ocrMetadata = signal<Record<string, unknown> | null>(null);
   readonly ocrExtractedDataText = computed(() => this.buildOcrExtractedDataText());
   readonly ocrHasExtractedData = computed(() => this.ocrExtractedDataText() !== this.ocrNoDataText);
+  readonly ocrPreviewExpanded = signal(false);
   readonly isAddDocumentDialogOpen = signal(false);
   readonly actionLoading = signal<string | null>(null);
   readonly workflowAction = signal<string | null>(null);

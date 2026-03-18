@@ -26,9 +26,7 @@ def public_app_config(request):
 
     frontend_setting_overrides: dict[str, object] = {}
     try:
-        frontend_raw = AppSettingService.get_scoped_values(
-            scopes={AppSettingScope.FRONTEND, AppSettingScope.BOTH}
-        )
+        frontend_raw = AppSettingService.get_scoped_values(scopes={AppSettingScope.FRONTEND, AppSettingScope.BOTH})
         frontend_setting_overrides = {
             key: AppSettingService.parse_json_like(value) for key, value in frontend_raw.items()
         }
@@ -36,7 +34,10 @@ def public_app_config(request):
         frontend_setting_overrides = {}
 
     payload = {
-        "MOCK_AUTH_ENABLED": AppSettingService.parse_bool(AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False),
+        "MOCK_AUTH_ENABLED": AppSettingService.parse_bool(
+            AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False
+        ),
+        "DEBUG": bool(settings.DEBUG),
         "useOverlayMenu": use_overlay_menu,
         "title": global_settings.get("SITE_NAME", "BusinessSuite"),
         "dateFormat": str(AppSettingService.get_effective_raw("DATE_FORMAT_JS", "dd-MM-yyyy") or "dd-MM-yyyy"),

@@ -21,7 +21,7 @@
     }
   </div>
 
-  @if (fileName()) {
+  @if (fileName() && showDebugControls()) {
     <div class="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
       <span class="truncate">{{ fileName() }}</span>
       <button type="button" z-button zType="ghost" zSize="sm" (click)="clearSelection()">
