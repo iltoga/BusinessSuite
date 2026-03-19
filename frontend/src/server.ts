@@ -645,6 +645,14 @@ app.use((req, res, next) => {
 });
 
 /**
+ * Lightweight health-check endpoint for Docker / load-balancer probes.
+ * Returns 200 immediately without invoking Angular SSR.
+ */
+app.get('/healthz', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+/**
  * Serve static files from /browser
  */
 app.use(

@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
+import { describe, expect, it, vi } from 'vitest';
 
-import { initializeApplication } from './app.config';
 import type { ThemePreferencePayload } from '@/core/services/theme.service';
+import { initializeApplication } from './app.config';
 
 describe('initializeApplication', () => {
   it('applies server theme preferences before initialization completes', async () => {
@@ -13,9 +13,9 @@ describe('initializeApplication', () => {
     const initializeTheme = vi.fn();
     const applyUserPreferences = vi.fn();
     const setTitle = vi.fn();
-    const getMe = vi.fn().mockReturnValue(
-      of({ theme: 'blue', darkMode: true } satisfies ThemePreferencePayload),
-    );
+    const getMe = vi
+      .fn()
+      .mockReturnValue(of({ theme: 'blue', darkMode: true } satisfies ThemePreferencePayload));
 
     await initializeApplication({
       configService: {

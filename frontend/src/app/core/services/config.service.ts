@@ -1,8 +1,11 @@
 import { HttpBackend, HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { catchError, firstValueFrom, of, tap } from 'rxjs';
+import { catchError, firstValueFrom, of, tap, timeout } from 'rxjs';
 
 import { AppConfig, DEFAULT_APP_CONFIG } from '@/core/config/app.config';
+
+/** Max time (ms) to wait for /api/app-config/ before falling back to defaults. */
+const CONFIG_FETCH_TIMEOUT_MS = 8_000;
 
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
@@ -24,6 +27,7 @@ export class ConfigService {
 
     return firstValueFrom(
       this.http.get<AppConfig>('/api/app-config/').pipe(
+        timeout(CONFIG_FETCH_TIMEOUT_MS),
         tap((data) => {
           this._config.set({ ...DEFAULT_APP_CONFIG, ...(injectedConfig || {}), ...data });
         }),
