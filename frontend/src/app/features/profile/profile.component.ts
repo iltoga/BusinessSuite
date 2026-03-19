@@ -134,14 +134,7 @@ export class ProfileComponent implements OnInit {
     if (this.authService.isAuthenticated()) {
       this.userSettingsApi.getMe().subscribe({
         next: (s) => {
-          if (s?.theme) {
-            this.themeService.setTheme(s.theme as any);
-          }
-          // Accept either snake_case or camelCase keys from server
-          const serverDark = (s as any)?.dark_mode ?? (s as any)?.darkMode;
-          if (typeof serverDark === 'boolean') {
-            this.themeService.setDarkMode(!!serverDark);
-          }
+          this.themeService.applyUserPreferences(s);
         },
         error: () => {
           // non-blocking: ignore
