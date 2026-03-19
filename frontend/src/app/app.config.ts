@@ -20,7 +20,11 @@ import { ConfigService } from '@/core/services/config.service';
 import { LoggerService } from '@/core/services/logger.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { provideZard } from '@/shared/core/provider/providezard';
-import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
+import {
+  provideClientHydration,
+  withEventReplay,
+  withHttpTransferCacheOptions,
+} from '@angular/platform-browser';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { firstValueFrom } from 'rxjs';
 import { routes } from './app.routes';
@@ -48,7 +52,12 @@ export const appConfig: ApplicationConfig = {
     provideApi(''),
     provideZard(),
     provideCharts(withDefaultRegisterables()),
-    provideClientHydration(withEventReplay()),
+    provideClientHydration(
+      withEventReplay(),
+      withHttpTransferCacheOptions({
+        filter: (req) => !req.url.startsWith('/api/'),
+      }),
+    ),
 
     // Load runtime config then initialize theme and auth
     provideAppInitializer(() => {
@@ -73,7 +82,10 @@ export const appConfig: ApplicationConfig = {
         // Inject Configurable Skeleton Debounce duration as CSS Variable
         try {
           const debounceMs = configService.settings.skeletonDebounceDurationMs ?? 500;
-          document.documentElement.style.setProperty('--skeleton-debounce-duration', `${debounceMs}ms`);
+          document.documentElement.style.setProperty(
+            '--skeleton-debounce-duration',
+            `${debounceMs}ms`,
+          );
         } catch (e) {
           /* ignore on non-browser platforms */
         }
