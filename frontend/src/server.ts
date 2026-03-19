@@ -601,7 +601,7 @@ app.use((req, res, next) => {
     method: req.method,
     path: `${target.pathname}${target.search}`,
     headers,
-    timeout: 120_000, // 120s connect+response timeout (matches Gunicorn --timeout)
+    timeout: 90_000, // 90s timeout — must be under Cloudflare's 100s proxy limit
   };
   const backendRequest = requestImpl(
     isHttps ? { ...options, rejectUnauthorized: false } : options,
@@ -619,7 +619,7 @@ app.use((req, res, next) => {
   );
 
   backendRequest.on('timeout', () => {
-    console.error(`[PROXY] Request timeout after 120s for ${requestPath}`);
+    console.error(`[PROXY] Request timeout after 90s for ${requestPath}`);
     backendRequest.destroy();
     if (!res.headersSent) {
       res.status(504).json({ detail: 'Backend request timed out.' });

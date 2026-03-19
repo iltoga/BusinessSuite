@@ -1,3 +1,4 @@
 from .auth_login_required import AuthLoginRequiredMiddleware
+from .db_connection_recovery import DbConnectionRecoveryMiddleware
 from .disable_csrf_check import DisableCsrfCheckMiddleware
 from .ocr_parse_document import OcrParseDocumentMiddleware

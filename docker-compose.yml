@@ -1,6 +1,7 @@
 services:
   db:
     container_name: postgres-srv
+    hostname: db
     image: postgres:18
     restart: unless-stopped
     command:
@@ -18,7 +19,11 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: ${DB_NAME}
     networks:
-      - dockernet
+      dockernet:
+        ipv4_address: 192.168.2.50
+        aliases:
+          - db
+          - postgres-srv
     volumes:
       - type: bind
         source: ${DB_PATH}
@@ -49,6 +54,7 @@ services:
 
   redis:
     container_name: bs-redis
+    hostname: bs-redis
     image: redis:7-alpine
     restart: unless-stopped
     command:
@@ -78,6 +84,9 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.62
+        aliases:
+          - bs-redis
+          - redis
     # ports:
     #   - "6379:6379"
     mem_limit: 256m
@@ -162,7 +171,7 @@ services:
         source: ~/revisbali/crm/backups
         target: /backups
       - le-certs:/etc/letsencrypt
-    restart: on-failure:5
+    restart: unless-stopped
     mem_limit: 800m
     cpus: "1.0"
     healthcheck:
@@ -170,8 +179,16 @@ services:
         - "CMD"
         - "python"
         - "-c"
-        - "import urllib.request,sys; req=urllib.request.Request('http://127.0.0.1:8000/api/health/', headers={'Host':'bs-core'}); urllib.request.urlopen(req, timeout=5); sys.exit(0)"
-      interval: 15s
+        - |
+          import urllib.request,urllib.error,sys
+          try:
+            req=urllib.request.Request('http://127.0.0.1:8000/api/health/', headers={'Host':'bs-core'})
+            urllib.request.urlopen(req, timeout=5)
+          except urllib.error.HTTPError as e:
+            sys.exit(0 if e.code==503 else 1)
+          except Exception:
+            sys.exit(1)
+      interval: 30s
       timeout: 10s
       retries: 5
       start_period: 90s
@@ -248,7 +265,7 @@ services:
         source: ~/revisbali/crm/backups
         target: /backups
       - le-certs:/etc/letsencrypt
-    restart: on-failure:5
+    restart: unless-stopped
     init: true
     mem_limit: 1024m
     cpus: "1.5"
@@ -323,7 +340,7 @@ services:
         source: ~/revisbali/crm/backups
         target: /backups
       - le-certs:/etc/letsencrypt
-    restart: on-failure:5
+    restart: unless-stopped
     init: true
     mem_limit: 320m
     cpus: "0.5"
@@ -379,7 +396,7 @@ services:
       - type: bind
         source: ${DATA_PATH}/logs
         target: /logs
-    restart: on-failure:5
+    restart: unless-stopped
     mem_limit: 256m
     cpus: "0.5"
     healthcheck:
