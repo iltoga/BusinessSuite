@@ -173,6 +173,8 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 # Redirect plain HTTP requests to HTTPS (recommended in production)
 SECURE_SSL_REDIRECT = _parse_bool(os.getenv("SECURE_SSL_REDIRECT", "True"))
+# Exempt Docker health probe from SSL redirect (internal loopback only)
+SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
 
 # OpenRouter / OpenAI API Configuration
 # Timeout settings for LLM API calls (vision models can take 60-120 seconds)
