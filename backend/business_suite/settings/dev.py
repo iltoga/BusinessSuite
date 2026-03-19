@@ -50,11 +50,6 @@ MOCK_AUTH_IS_STAFF = True
 # Keep connections non-persistent in dev so they close at the end of each request.
 DATABASES["default"]["CONN_MAX_AGE"] = 0
 
-# This is to show django-debug-toolbar (https://django-debug-toolbar.readthedocs.io/en/latest/installation.html)
-INTERNAL_IPS = [
-    "127.0.0.1",
-]
-
 _DEV_DISABLE_CSRF_MIDDLEWARE = "business_suite.middlewares.disable_csrf_check.DisableCsrfCheckMiddleware"
 _CSRF_MIDDLEWARE = "django.middleware.csrf.CsrfViewMiddleware"
 

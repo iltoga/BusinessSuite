@@ -851,7 +851,7 @@ def backup_all(include_users=False):
     # Use PK-based dumpdata for compatibility:
     # some legacy model natural_key() implementations are not loaddata-safe.
     dump_args = ["dumpdata"]
-    excluded_prefixes = ("auth", "admin", "sessions", "contenttypes", "debug_toolbar")
+    excluded_prefixes = ("auth", "admin", "sessions", "contenttypes")
     if not include_users:
         for prefix in excluded_prefixes:
             dump_args.append(f"--exclude={prefix}")
@@ -1109,7 +1109,7 @@ def restore_from_file(path, include_users=False):
                 yield f"Warning: dropped unknown fields by model: {dropped_preview}"
 
         # --- Automatic detection of user/system tables in backup ---
-        user_system_prefixes = ("auth.", "admin.", "sessions.", "contenttypes.", "debug_toolbar.")
+        user_system_prefixes = ("auth.", "admin.", "sessions.", "contenttypes.")
         includes_users = False
         try:
             with open(fixture_path, "r") as f:
@@ -1146,7 +1146,7 @@ def restore_from_file(path, include_users=False):
         else:
             yield "Flushing database (only data tables, users/groups/permissions preserved)..."
 
-        excluded_prefixes = ("auth", "admin", "sessions", "contenttypes", "debug_toolbar")
+        excluded_prefixes = ("auth", "admin", "sessions", "contenttypes")
 
         # Ensure flush + loaddata are atomic so failed restores cannot leave DB half-empty.
         with transaction.atomic():

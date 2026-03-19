@@ -256,7 +256,6 @@ APP_DOMAIN = os.getenv("APP_DOMAIN")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = _parse_bool(os.getenv("DJANGO_DEBUG", "False"))
-ENABLE_DEBUG_TOOLBAR = DEBUG and _parse_bool(os.getenv("ENABLE_DEBUG_TOOLBAR", "True"))
 
 ALLOWED_HOSTS = [
     "localhost",
@@ -299,8 +298,6 @@ INSTALLED_APPS = [
     "admin_tools",
     "django_cleanup.apps.CleanupConfig",
 ]
-if ENABLE_DEBUG_TOOLBAR:
-    INSTALLED_APPS.append("debug_toolbar")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -323,8 +320,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
-if ENABLE_DEBUG_TOOLBAR:
-    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
 ROOT_URLCONF = "business_suite.urls"
 
@@ -683,14 +678,6 @@ LOGGING_MODELS = (
 )
 
 SESSION_SAVE_EVERY_REQUEST = _parse_bool(os.getenv("SESSION_SAVE_EVERY_REQUEST", "False"))
-
-# This is for the debug toolbar when using docker
-# https://docs.djangoproject.com/en/3.2/ref/settings/#internal-ips
-# if DEBUG:
-#     import socket  # only if you haven't already imported this
-#     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
-#     INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
-
 
 CACHES = build_prod_redis_caches(redis_url=_resolved_redis_url(default_db=1))
 if TESTING:

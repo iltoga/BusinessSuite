@@ -30,7 +30,7 @@
 - [ ] Update `docs/implementation_feedback.md` with refactor suggestions
 - [ ] Add component tests (minimum 80% coverage)
 - [ ] Verify `ChangeDetectionStrategy.OnPush` is used
-- [ ] Check for N+1 queries in backend (Django Debug Toolbar)
+- [ ] Check for N+1 queries in backend (query inspection/profiling)
 - [ ] Verify error handling follows standard patterns
 - [ ] Test optimistic updates (if applicable)
 
