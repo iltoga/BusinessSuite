@@ -1,6 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 import { getTheme, ThemeColors, ThemeName, THEMES } from '../theme.config';
 
+export interface ThemePreferencePayload {
+  theme?: ThemeName | string | null;
+  dark_mode?: boolean | null;
+  darkMode?: boolean | null;
+}
+
 /**
  * Theme Service
  *
@@ -39,64 +45,39 @@ export class ThemeService {
   readonly isDarkMode = this._isDarkMode.asReadonly();
 
   /**
+   * Apply theme + dark mode together from a server/local preference payload.
+   * This avoids transient double-applies during bootstrap.
+   */
+  applyUserPreferences(
+    settings: ThemePreferencePayload | null | undefined,
+    defaultTheme: ThemeName = 'neutral',
+    persistToLocalStorage = true,
+  ): void {
+    const resolvedTheme = this.normalizeThemeName(settings?.theme, defaultTheme);
+    const resolvedDarkMode = this.resolveDarkModePreference(settings);
+    this.applyThemeState(resolvedTheme, resolvedDarkMode, persistToLocalStorage);
+  }
+
+  /**
    * Apply a theme by name
    */
   setTheme(themeName: ThemeName, persistToLocalStorage = true): void {
-    if (!THEMES[themeName]) {
-      console.warn(`Theme "${themeName}" not found. Falling back to "neutral".`);
-      themeName = 'neutral';
-    }
-
-    this._currentTheme.set(themeName);
-
-    // Persist to localStorage (defensive)
-    const storage = this.getStorage();
-    if (persistToLocalStorage && storage) {
-      try {
-        storage.setItem('theme', themeName);
-      } catch (err) {
-        console.warn('[ThemeService] Failed to persist theme to localStorage.', err);
-      }
-    }
-
-    // Apply theme colors
-    this.applyThemeColors();
+    const resolvedTheme = this.normalizeThemeName(themeName, 'neutral');
+    this.applyThemeState(resolvedTheme, this._isDarkMode(), persistToLocalStorage);
   }
 
   /**
    * Toggle between light and dark mode
    */
   toggleDarkMode(): void {
-    this._isDarkMode.set(!this._isDarkMode());
-    this.applyThemeColors();
-
-    // Persist to localStorage (defensive)
-    const storage = this.getStorage();
-    if (storage) {
-      try {
-        storage.setItem('darkMode', String(this._isDarkMode()));
-      } catch (err) {
-        console.warn('[ThemeService] Failed to persist darkMode to localStorage.', err);
-      }
-    }
+    this.applyThemeState(this._currentTheme(), !this._isDarkMode(), true);
   }
 
   /**
    * Set dark mode state explicitly
    */
   setDarkMode(isDark: boolean): void {
-    this._isDarkMode.set(isDark);
-    this.applyThemeColors();
-
-    // Persist to localStorage (defensive)
-    const storage = this.getStorage();
-    if (storage) {
-      try {
-        storage.setItem('darkMode', String(isDark));
-      } catch (err) {
-        console.warn('[ThemeService] Failed to persist darkMode to localStorage.', err);
-      }
-    }
+    this.applyThemeState(this._currentTheme(), isDark, true);
   }
 
   /**
@@ -114,7 +95,7 @@ export class ThemeService {
 
     // Load theme from localStorage or use default
     const savedTheme = storage?.getItem('theme') as ThemeName | null;
-    const themeName = savedTheme && THEMES[savedTheme] ? savedTheme : defaultTheme;
+    const themeName = this.normalizeThemeName(savedTheme, defaultTheme);
 
     // Load dark mode preference from localStorage
     const savedDarkMode = storage?.getItem('darkMode');
@@ -129,7 +110,7 @@ export class ThemeService {
       this._isDarkMode.set(Boolean(prefersDark));
     }
 
-    this.setTheme(themeName, false);
+    this.applyThemeState(themeName, this._isDarkMode(), false);
 
     // Listen for system dark mode changes
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
@@ -214,6 +195,55 @@ export class ThemeService {
     } else {
       root.classList.remove('dark');
     }
+  }
+
+  private applyThemeState(
+    themeName: ThemeName,
+    isDarkMode: boolean,
+    persistToLocalStorage: boolean,
+  ): void {
+    this._currentTheme.set(themeName);
+    this._isDarkMode.set(isDarkMode);
+
+    if (persistToLocalStorage) {
+      this.persistPreferences(themeName, isDarkMode);
+    }
+
+    this.applyThemeColors();
+  }
+
+  private persistPreferences(themeName: ThemeName, isDarkMode: boolean): void {
+    const storage = this.getStorage();
+    if (!storage) {
+      return;
+    }
+
+    try {
+      storage.setItem('theme', themeName);
+      storage.setItem('darkMode', String(isDarkMode));
+    } catch (err) {
+      console.warn('[ThemeService] Failed to persist theme preferences to localStorage.', err);
+    }
+  }
+
+  private normalizeThemeName(
+    themeName: ThemeName | string | null | undefined,
+    fallback: ThemeName,
+  ): ThemeName {
+    if (themeName && THEMES[themeName as ThemeName]) {
+      return themeName as ThemeName;
+    }
+
+    if (themeName) {
+      console.warn(`Theme "${themeName}" not found. Falling back to "${fallback}".`);
+    }
+
+    return THEMES[fallback] ? fallback : 'neutral';
+  }
+
+  private resolveDarkModePreference(settings: ThemePreferencePayload | null | undefined): boolean {
+    const requestedDarkMode = settings?.dark_mode ?? settings?.darkMode;
+    return typeof requestedDarkMode === 'boolean' ? requestedDarkMode : this._isDarkMode();
   }
 
   /**
