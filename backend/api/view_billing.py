@@ -493,10 +493,10 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return response
 
     def _stream_download_job(self, request, job, *, last_event_id: str | None = None):
-        from asgiref.sync import sync_to_async
 
-        async def _async_stream():
+        def _sync_stream():
             stream_key = stream_job_key(job.id)
+            deadline = time.monotonic() + 55
             last_progress = None
             last_status = None
             initial_payload = _download_stream_payload_from_job(job)
@@ -505,7 +505,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 "start", {"message": "Starting invoice generation...", "progress": job.progress}
             )
 
-            async def _emit_updates(payload: dict[str, Any], *, event_id: str | None = None):
+            def _emit_updates(payload: dict[str, Any], *, event_id: str | None = None):
                 nonlocal last_progress, last_status
 
                 if last_progress != payload["progress"] or last_status != payload["status"]:
@@ -518,7 +518,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     last_status = payload["status"]
 
                 if payload["status"] == InvoiceDownloadJob.STATUS_COMPLETED:
-                    verified_payload = (await sync_to_async(_load_download_stream_payload)(job.id)) or payload
+                    verified_payload = _load_download_stream_payload(job.id) or payload
                     yield self._send_download_event(
                         "complete",
                         {
@@ -533,7 +533,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     return
 
                 if payload["status"] == InvoiceDownloadJob.STATUS_FAILED:
-                    verified_payload = (await sync_to_async(_load_download_stream_payload)(job.id)) or payload
+                    verified_payload = _load_download_stream_payload(job.id) or payload
                     yield self._send_download_event(
                         "error",
                         {
@@ -550,14 +550,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     InvoiceDownloadJob.STATUS_FAILED,
                 }
 
-            async for chunk in _emit_updates(initial_payload):
+            for chunk in _emit_updates(initial_payload):
                 yield chunk
             if _is_terminal_payload(initial_payload):
                 return
 
-            async for stream_event in iter_replay_and_live_events_async(
+            for stream_event in iter_replay_and_live_events(
                 stream_key=stream_key, last_event_id=last_event_id
             ):
+                if time.monotonic() >= deadline:
+                    return
                 if stream_event is None:
                     yield ": keep-alive\n\n"
                     continue
@@ -566,7 +568,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     InvoiceDownloadJob.STATUS_COMPLETED,
                     InvoiceDownloadJob.STATUS_FAILED,
                 }:
-                    payload = await sync_to_async(_load_download_stream_payload)(job.id)
+                    payload = _load_download_stream_payload(job.id)
                     if payload is None:
                         yield self._send_download_event(
                             "error",
@@ -575,12 +577,12 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                         )
                         return
                 done = False
-                async for chunk in _emit_updates(payload, event_id=stream_event.id):
+                for chunk in _emit_updates(payload, event_id=stream_event.id):
                     yield chunk
                 if _is_terminal_payload(payload):
                     return
 
-        return _async_stream()
+        return _sync_stream()
 
     @staticmethod
     def _send_download_event(event_type, data, *, event_id: str | None = None):
@@ -1184,15 +1186,15 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     def _stream_import_job(self, job_id, request=None, *, last_event_id: str | None = None):
         """Stream SSE updates for a running import job."""
-        from asgiref.sync import sync_to_async
         from invoices.models import InvoiceImportItem, InvoiceImportJob
 
-        async def _async_stream():
+        def _sync_stream():
             stream_key = stream_job_key(job_id)
+            deadline = time.monotonic() + 55
             sent_states: dict[str, dict[str, bool]] = {}
-            job = await sync_to_async(InvoiceImportJob.objects.prefetch_related("items").get)(id=job_id)
+            job = InvoiceImportJob.objects.prefetch_related("items").get(id=job_id)
             job_state = _import_job_stream_payload_from_job(job)
-            ordered_items = await sync_to_async(lambda: list(job.items.all().order_by("sort_index")))()
+            ordered_items = list(job.items.all().order_by("sort_index"))
             item_order = [str(item.id) for item in ordered_items]
             item_states = {str(item.id): _import_item_stream_payload_from_item(item) for item in ordered_items}
             total_files = job_state["totalFiles"]
@@ -1215,16 +1217,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 InvoiceImportItem.STATUS_ERROR,
             }
 
-            async def _refresh_job_state_from_db() -> None:
+            def _refresh_job_state_from_db() -> None:
                 nonlocal job_state
-                refreshed_job = await sync_to_async(InvoiceImportJob.objects.get)(id=job_id)
+                refreshed_job = InvoiceImportJob.objects.get(id=job_id)
                 job_state = _import_job_stream_payload_from_job(refreshed_job)
 
-            async def _refresh_item_state_from_db(raw_item_id: str | None) -> str | None:
+            def _refresh_item_state_from_db(raw_item_id: str | None) -> str | None:
                 if not raw_item_id:
                     return None
                 try:
-                    refreshed_item = await sync_to_async(InvoiceImportItem.objects.get)(id=raw_item_id)
+                    refreshed_item = InvoiceImportItem.objects.get(id=raw_item_id)
                 except InvoiceImportItem.DoesNotExist:
                     return None
                 normalized_item = _import_item_stream_payload_from_item(refreshed_item)
@@ -1361,9 +1363,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if done:
                 return
 
-            async for stream_event in iter_replay_and_live_events_async(
+            for stream_event in iter_replay_and_live_events(
                 stream_key=stream_key, last_event_id=last_event_id
             ):
+                if time.monotonic() >= deadline:
+                    return
                 if stream_event is None:
                     yield ": keep-alive\n\n"
                     continue
@@ -1372,7 +1376,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 if stream_event.event == "invoice_import_job_changed":
                     payload = normalize_invoice_import_job_payload(stream_event.payload)
                     if payload is None:
-                        await _refresh_job_state_from_db()
+                        _refresh_job_state_from_db()
                     else:
                         job_state = payload
                     changed_ids = None
@@ -1380,7 +1384,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     payload = normalize_invoice_import_item_payload(stream_event.payload)
                     if payload is None:
                         raw_item_id = first_present(stream_event.payload, "itemId", "item_id")
-                        refreshed_item_id = await _refresh_item_state_from_db(str(raw_item_id) if raw_item_id else None)
+                        refreshed_item_id = _refresh_item_state_from_db(str(raw_item_id) if raw_item_id else None)
                         changed_ids = {refreshed_item_id} if refreshed_item_id else None
                     else:
                         item_id = payload["itemId"]
@@ -1389,7 +1393,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                             item_order.append(item_id)
                         changed_ids = {item_id}
                 else:
-                    await _refresh_job_state_from_db()
+                    _refresh_job_state_from_db()
                     changed_ids = None
 
                 messages, done = _collect_updates(event_id=stream_event.id, changed_item_ids=changed_ids)
@@ -1398,7 +1402,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 if done:
                     return
 
-        return _async_stream()
+        return _sync_stream()
 
     @staticmethod
     def _send_import_event(event_type, data, *, event_id: str | None = None):
