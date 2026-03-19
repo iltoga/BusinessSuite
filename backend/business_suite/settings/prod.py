@@ -144,10 +144,17 @@ DATABASES = {
         "PASSWORD": os.getenv("DB_PASS"),
         "HOST": _resolved_db_host(),
         "PORT": os.getenv("DB_PORT"),
-        # Connection pooling - keep connections alive for 600 seconds
-        "CONN_MAX_AGE": None,
-        # Connection pool size per worker
+        # Connection pooling - keep connections alive for 600 seconds.
+        # Use 600s instead of None to rotate connections after PG restarts.
+        "CONN_MAX_AGE": 600,
+        # Validate each reused connection before use (catches stale connections)
         "CONN_HEALTH_CHECKS": True,
+        "OPTIONS": {
+            "keepalives": 1,
+            "keepalives_idle": 300,
+            "keepalives_interval": 60,
+            "keepalives_count": 5,
+        },
     }
 }
 

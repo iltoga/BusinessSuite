@@ -473,6 +473,38 @@ app.post(clientLogPath, express.json({ limit: '16kb' }), (req, res) => {
   res.sendStatus(204);
 });
 
+/**
+ * Docker healthcheck endpoint.
+ * Returns 200 if Express is running. Probes backend /api/health/ with a 3s
+ * timeout — if unreachable, still returns 200 with status "degraded" (SSR can
+ * still serve pages). A full failure (Express itself broken) is caught by
+ * Docker not getting a response at all.
+ */
+const HEALTHZ_BACKEND_TIMEOUT_MS = 3000;
+
+app.get('/healthz', (_req, res) => {
+  const backendProbeUrl = `${backendUrl}/api/health/`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HEALTHZ_BACKEND_TIMEOUT_MS);
+
+  fetch(backendProbeUrl, { signal: controller.signal })
+    .then((response) => {
+      clearTimeout(timeout);
+      if (response.ok) {
+        res.json({ status: 'ok', backend: 'reachable' });
+      } else {
+        console.warn(`[HEALTHZ] Backend returned ${response.status} at ${backendProbeUrl}`);
+        res.json({ status: 'degraded', backend: 'unhealthy', backendStatus: response.status });
+      }
+    })
+    .catch((error) => {
+      clearTimeout(timeout);
+      const errorLabel = error instanceof Error ? error.message : String(error);
+      console.warn(`[HEALTHZ] Backend probe failed: ${errorLabel}`);
+      res.json({ status: 'degraded', backend: 'unreachable' });
+    });
+});
+
 app.use((req, res, next) => {
   if (!OTLP_TRACES_ENABLED || !shouldTraceRequest(req)) {
     next();
@@ -569,6 +601,7 @@ app.use((req, res, next) => {
     method: req.method,
     path: `${target.pathname}${target.search}`,
     headers,
+    timeout: 120_000, // 120s connect+response timeout (matches Gunicorn --timeout)
   };
   const backendRequest = requestImpl(
     isHttps ? { ...options, rejectUnauthorized: false } : options,
@@ -585,8 +618,18 @@ app.use((req, res, next) => {
     },
   );
 
+  backendRequest.on('timeout', () => {
+    console.error(`[PROXY] Request timeout after 120s for ${requestPath}`);
+    backendRequest.destroy();
+    if (!res.headersSent) {
+      res.status(504).json({ detail: 'Backend request timed out.' });
+    }
+  });
+
   backendRequest.on('error', (error) => {
-    console.error(`[SSR Server] API proxy error for ${requestPath}:`, error);
+    console.error(
+      `[PROXY] Error for ${requestPath}: ${error instanceof Error ? error.message : error}`,
+    );
     if (!res.headersSent) {
       res.status(502).json({ detail: 'Failed to reach backend API.' });
     } else {

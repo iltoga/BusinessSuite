@@ -392,6 +392,12 @@ else:
             "CONN_MAX_AGE": 600,
             # Connection pool size per worker
             "CONN_HEALTH_CHECKS": True,
+            "OPTIONS": {
+                "keepalives": 1,
+                "keepalives_idle": 300,
+                "keepalives_interval": 60,
+                "keepalives_count": 5,
+            },
         }
     }
 

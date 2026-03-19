@@ -39,6 +39,9 @@ cleanup() {
 trap cleanup INT TERM
 
 while true; do
+  # Write heartbeat for Docker healthcheck
+  touch /tmp/dramatiq_heartbeat 2>/dev/null || true
+
   if ! kill -0 "${PID_HIGH}" 2>/dev/null; then
     wait "${PID_HIGH}" || STATUS=$?
     STATUS="${STATUS:-1}"
