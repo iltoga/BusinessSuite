@@ -170,7 +170,7 @@ services:
         - "CMD"
         - "python"
         - "-c"
-        - "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:8000/api/health/', timeout=5); sys.exit(0)"
+        - "import urllib.request,sys; req=urllib.request.Request('http://127.0.0.1:8000/api/health/', headers={'Host':'bs-core'}); urllib.request.urlopen(req, timeout=5); sys.exit(0)"
       interval: 15s
       timeout: 10s
       retries: 5
