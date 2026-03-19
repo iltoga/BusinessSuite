@@ -11,7 +11,7 @@ Docker healthcheck usage (no auth required):
 import logging
 import time
 
-from django.db import connection
+from django.db import close_old_connections, connection
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -34,6 +34,12 @@ class HealthCheckView(APIView):
         t0 = time.monotonic()
 
         # --- Database ---
+        # Close stale/broken connections first so the probe creates a fresh one.
+        try:
+            close_old_connections()
+        except Exception:
+            pass
+
         try:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
@@ -43,6 +49,11 @@ class HealthCheckView(APIView):
             checks["db"] = False
             details["db"] = str(exc)[:200]
             logger.warning("[HEALTH] Database check failed: %s", exc)
+            # Force-close the broken connection so the next request gets a fresh one
+            try:
+                connection.close()
+            except Exception:
+                pass
 
         # --- Redis cache ---
         try:

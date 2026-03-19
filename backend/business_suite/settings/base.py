@@ -301,6 +301,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Close stale/broken DB connections early so downstream middleware gets fresh ones.
+    "business_suite.middlewares.DbConnectionRecoveryMiddleware",
     # HTTP compression is handled at the reverse proxy (nginx) layer.
     # CORS middleware should be as high as possible so CORS headers are applied
     # to all responses (see django-cors-headers docs).
@@ -383,15 +385,16 @@ else:
             "PASSWORD": os.getenv("DB_PASS"),
             "HOST": _resolved_db_host(),
             "PORT": os.getenv("DB_PORT"),
-            # Connection pooling - keep connections alive for 600 seconds
-            "CONN_MAX_AGE": 600,
+            # Connection pooling - keep connections alive for 120 seconds
+            "CONN_MAX_AGE": 120,
             # Connection pool size per worker
             "CONN_HEALTH_CHECKS": True,
             "OPTIONS": {
                 "keepalives": 1,
-                "keepalives_idle": 300,
-                "keepalives_interval": 60,
-                "keepalives_count": 5,
+                "keepalives_idle": 60,
+                "keepalives_interval": 15,
+                "keepalives_count": 3,
+                "connect_timeout": 5,
             },
         }
     }
