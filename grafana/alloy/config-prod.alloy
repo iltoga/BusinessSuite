@@ -13,19 +13,32 @@ loki.process "filter_logs" {
   }
 }
 
-// 2. Scrape persisted host log files from the shared DATA_PATH logs volume
+// 2. Scrape ALL log files from the shared DATA_PATH logs volume.
+// The Logger service creates per-module log files (performance.log, core.log, etc.)
+// in addition to the main django.log / task_worker.log files.
+// Use a glob to catch them all and derive the service label from the filename.
 local.file_match "host_log_files" {
   path_targets = [
-    { "__path__" = "/host_logs/django.log", "job" = "host_logs", "service" = "backend" },
-    { "__path__" = "/host_logs/task_worker.log", "job" = "host_logs", "service" = "task_worker" },
-    { "__path__" = "/host_logs/scheduler.log", "job" = "host_logs", "service" = "scheduler" },
-    { "__path__" = "/host_logs/frontend.log", "job" = "host_logs", "service" = "frontend" },
+    { "__path__" = "/host_logs/*.log", "job" = "host_logs" },
   ]
+}
+
+loki.process "add_service_label" {
+  forward_to = [loki.process.filter_logs.receiver]
+
+  // Extract the filename (without extension) and use it as the "service" label
+  stage.regex {
+    expression = "/host_logs/(?P<logfile>[^/]+)\\.log$"
+    source     = "filename"
+  }
+  stage.labels {
+    values = { "service" = "logfile" }
+  }
 }
 
 loki.source.file "host_logs" {
   targets    = local.file_match.host_log_files.targets
-  forward_to = [loki.process.filter_logs.receiver]
+  forward_to = [loki.process.add_service_label.receiver]
 }
 
 // 3. Send logs to Grafana Cloud

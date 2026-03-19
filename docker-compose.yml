@@ -144,7 +144,7 @@ services:
       LOCAL_SYNC_PUSH_LIMIT: ${LOCAL_SYNC_PUSH_LIMIT:-200}
       LOCAL_SYNC_PULL_LIMIT: ${LOCAL_SYNC_PULL_LIMIT:-200}
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
-      GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-4}
       GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
       GUNICORN_MAX_REQUESTS: ${GUNICORN_MAX_REQUESTS:-1200}
       GUNICORN_MAX_REQUESTS_JITTER: ${GUNICORN_MAX_REQUESTS_JITTER:-50}
@@ -426,7 +426,7 @@ services:
       - alloy-data:/var/lib/alloy/data
     environment:
       # --- Low-Resource Tuning ---
-      GOMEMLIMIT: 250MiB # Soft limit: triggers GC before hitting 250MB
+      GOMEMLIMIT: 180MiB # Soft limit: triggers GC before hitting 192MB
       GOGC: 50 # More aggressive garbage collection
       GOMAXPROCS: 1 # Limit to 1 CPU core to prevent thrashing
     command:
@@ -439,13 +439,13 @@ services:
     #   - "4318:4318"
     networks:
       - dockernet
-    mem_limit: 128m
-    cpus: "0.3"
+    mem_limit: 192m
+    cpus: "0.5"
     deploy:
       resources:
         limits:
-          cpus: "0.30"
-          memory: 128M
+          cpus: "0.50"
+          memory: 192M
 
 networks:
   dockernet:

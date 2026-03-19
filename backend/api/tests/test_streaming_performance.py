@@ -2,8 +2,6 @@ import json
 from datetime import date
 from unittest.mock import MagicMock, patch
 
-from api.tests.async_iter_helper import SyncAsyncIter
-
 from core.models import AsyncJob, DocumentOCRJob, OCRJob
 from core.services.redis_streams import StreamEvent
 from customers.models import Customer
@@ -41,140 +39,109 @@ class StreamingPerformanceTests(TestCase):
         assert data_line is not None, f"No data line in SSE chunk: {chunk!r}"
         return json.loads(data_line.replace("data: ", "", 1))
 
-    def _next_chunk(self, stream):
-        """Consume one item from a sync or async iterable."""
-        if hasattr(stream, '__aiter__'):
-            key = id(stream)
-            if key not in getattr(self, '_sync_iters', {}):
-                if not hasattr(self, '_sync_iters'):
-                    self._sync_iters = {}
-                self._sync_iters[key] = SyncAsyncIter(stream)
-            return next(self._sync_iters[key])
-        return next(stream)
-
     @staticmethod
-    def _async_iter(*items):
-        """Return an async iterable from the given items, for mocking async stream functions."""
-        async def _gen():
+    def _sync_iter(*items):
+        """Return a sync iterable from the given items, for mocking stream functions."""
+        def _gen():
             for item in items:
                 yield item
         return _gen()
 
     def test_async_job_sse_progress_event_uses_stream_payload_without_db_query(self):
-        from asgiref.sync import async_to_sync
+        job = AsyncJob.objects.create(
+            task_name="export",
+            status=AsyncJob.STATUS_PROCESSING,
+            progress=5,
+            message="Queued",
+            created_by=self.user,
+        )
 
-        @async_to_sync
-        async def run_test():
-            import asyncio
-            from asgiref.sync import sync_to_async
-            from unittest.mock import patch as mock_patch, AsyncMock
-
-            job = await sync_to_async(AsyncJob.objects.create)(
-                task_name="export",
+        def _mock_progress_events(*args, **kwargs):
+            yield StreamEvent(
+                id="1-0",
+                event="async_job_status",
                 status=AsyncJob.STATUS_PROCESSING,
-                progress=5,
-                message="Queued",
-                created_by=self.user,
+                timestamp="2026-03-06T10:00:00+00:00",
+                payload={
+                    "id": str(job.id),
+                    "status": AsyncJob.STATUS_PROCESSING,
+                    "progress": 45,
+                    "message": "Halfway there",
+                    "result": None,
+                    "errorMessage": "",
+                },
+                raw={},
             )
 
-            async def _mock_progress_events(*args, **kwargs):
-                yield StreamEvent(
-                    id="1-0",
-                    event="async_job_status",
-                    status=AsyncJob.STATUS_PROCESSING,
-                    timestamp="2026-03-06T10:00:00+00:00",
-                    payload={
-                        "id": str(job.id),
-                        "status": AsyncJob.STATUS_PROCESSING,
-                        "progress": 45,
-                        "message": "Halfway there",
-                        "result": None,
-                        "errorMessage": "",
-                    },
-                    raw={},
-                )
+        with patch(
+            "api.utils.redis_sse.iter_replay_and_live_events",
+            side_effect=_mock_progress_events,
+        ):
+            response = self.client.get(
+                reverse("api-async-job-status-sse", kwargs={"job_id": str(job.id)})
+            )
+            self.assertEqual(response.status_code, 200)
 
-            with mock_patch(
-                "api.utils.redis_sse.iter_replay_and_live_events_async",
-                side_effect=_mock_progress_events,
-            ):
-                response = await sync_to_async(self.client.get)(
-                    reverse("api-async-job-status-sse", kwargs={"job_id": str(job.id)})
-                )
-                await sync_to_async(self.assertEqual)(response.status_code, 200)
+            stream = response.streaming_content
 
-                stream = response.streaming_content
+            initial_chunk = next(stream)
+            initial_payload = self._decode_sse_payload(initial_chunk)
+            self.assertEqual(initial_payload["progress"], 5)
 
-                initial_chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
-                initial_payload = self._decode_sse_payload(initial_chunk)
-                await sync_to_async(self.assertEqual)(initial_payload["progress"], 5)
-
-                # The second chunk is served from the stream payload (no DB hit needed)
-                progress_chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
-                progress_payload = self._decode_sse_payload(progress_chunk)
-                await sync_to_async(self.assertEqual)(progress_payload["progress"], 45)
-                await sync_to_async(self.assertEqual)(progress_payload["message"], "Halfway there")
-
-        run_test()
+            # The second chunk is served from the stream payload (no DB hit needed)
+            progress_chunk = next(stream)
+            progress_payload = self._decode_sse_payload(progress_chunk)
+            self.assertEqual(progress_payload["progress"], 45)
+            self.assertEqual(progress_payload["message"], "Halfway there")
 
 
     def test_async_job_sse_terminal_event_verifies_final_state_from_db(self):
-        from asgiref.sync import async_to_sync
+        job = AsyncJob.objects.create(
+            task_name="export",
+            status=AsyncJob.STATUS_PROCESSING,
+            progress=5,
+            message="Queued",
+            created_by=self.user,
+        )
 
-        @async_to_sync
-        async def run_test():
-            import asyncio
-            from asgiref.sync import sync_to_async
-            from unittest.mock import patch as mock_patch
-
-            job = await sync_to_async(AsyncJob.objects.create)(
-                task_name="export",
-                status=AsyncJob.STATUS_PROCESSING,
-                progress=5,
-                message="Queued",
-                created_by=self.user,
+        def _mock_terminal_events(*args, **kwargs):
+            yield StreamEvent(
+                id="2-0",
+                event="async_job_status",
+                status=AsyncJob.STATUS_COMPLETED,
+                timestamp="2026-03-06T10:01:00+00:00",
+                payload={
+                    "id": str(job.id),
+                    "status": AsyncJob.STATUS_COMPLETED,
+                    "progress": 100,
+                    "message": "Done",
+                    "result": None,
+                    "errorMessage": "",
+                },
+                raw={},
             )
 
-            async def _mock_terminal_events(*args, **kwargs):
-                yield StreamEvent(
-                    id="2-0",
-                    event="async_job_status",
-                    status=AsyncJob.STATUS_COMPLETED,
-                    timestamp="2026-03-06T10:01:00+00:00",
-                    payload={
-                        "id": str(job.id),
-                        "status": AsyncJob.STATUS_COMPLETED,
-                        "progress": 100,
-                        "message": "Done",
-                        "result": None,
-                        "errorMessage": "",
-                    },
-                    raw={},
-                )
+        with patch(
+            "api.utils.redis_sse.iter_replay_and_live_events",
+            side_effect=_mock_terminal_events,
+        ):
+            response = self.client.get(
+                reverse("api-async-job-status-sse", kwargs={"job_id": str(job.id)})
+            )
+            stream = response.streaming_content
+            _ = next(stream)  # consume initial snapshot
 
-            with mock_patch(
-                "api.utils.redis_sse.iter_replay_and_live_events_async",
-                side_effect=_mock_terminal_events,
-            ):
-                response = await sync_to_async(self.client.get)(
-                    reverse("api-async-job-status-sse", kwargs={"job_id": str(job.id)})
-                )
-                stream = response.streaming_content
-                _ = await asyncio.wait_for(stream.__anext__(), timeout=5)  # consume initial snapshot
+            job.complete(result={"downloadUrl": "/final.pdf"}, message="Completed")
 
-                await sync_to_async(job.complete)(result={"downloadUrl": "/final.pdf"}, message="Completed")
-
-                # The terminal chunk must reflect the DB-refreshed state
-                terminal_chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
-                terminal_payload = self._decode_sse_payload(terminal_chunk)
-                await sync_to_async(self.assertEqual)(terminal_payload["status"], AsyncJob.STATUS_COMPLETED)
-                await sync_to_async(self.assertEqual)(terminal_payload["result"], {"downloadUrl": "/final.pdf"})
-                await sync_to_async(self.assertEqual)(terminal_payload["message"], "Completed")
-
-        run_test()
+            # The terminal chunk must reflect the DB-refreshed state
+            terminal_chunk = next(stream)
+            terminal_payload = self._decode_sse_payload(terminal_chunk)
+            self.assertEqual(terminal_payload["status"], AsyncJob.STATUS_COMPLETED)
+            self.assertEqual(terminal_payload["result"], {"downloadUrl": "/final.pdf"})
+            self.assertEqual(terminal_payload["message"], "Completed")
 
 
-    @patch("api.view_applications.iter_replay_and_live_events_async")
+    @patch("api.view_applications.iter_replay_and_live_events")
     def test_ocr_stream_progress_event_uses_stream_payload_without_db_query(self, iter_events_mock):
         job = OCRJob.objects.create(
             status=OCRJob.STATUS_PROCESSING,
@@ -183,7 +150,7 @@ class StreamingPerformanceTests(TestCase):
             file_url="/uploads/tmpfiles/passport.png",
             created_by=self.user,
         )
-        iter_events_mock.return_value = self._async_iter(
+        iter_events_mock.return_value = self._sync_iter(
             StreamEvent(
                 id="2-1",
                 event="ocr_job_changed",
@@ -203,17 +170,17 @@ class StreamingPerformanceTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
         stream = response.streaming_content
-        initial_payload = self._decode_sse_payload(self._next_chunk(stream))
+        initial_payload = self._decode_sse_payload(next(stream))
         self.assertEqual(initial_payload["progress"], 5)
 
         with CaptureQueriesContext(connection) as captured:
-            progress_payload = self._decode_sse_payload(self._next_chunk(stream))
+            progress_payload = self._decode_sse_payload(next(stream))
 
         self.assertEqual(len(captured), 0)
         self.assertEqual(progress_payload["progress"], 63)
         self.assertEqual(progress_payload["status"], OCRJob.STATUS_PROCESSING)
 
-    @patch("api.view_applications.iter_replay_and_live_events_async")
+    @patch("api.view_applications.iter_replay_and_live_events")
     def test_document_ocr_stream_progress_event_uses_stream_payload_without_db_query(self, iter_events_mock):
         job = DocumentOCRJob.objects.create(
             status=DocumentOCRJob.STATUS_PROCESSING,
@@ -222,7 +189,7 @@ class StreamingPerformanceTests(TestCase):
             file_url="/uploads/tmpfiles/document.pdf",
             created_by=self.user,
         )
-        iter_events_mock.return_value = self._async_iter(
+        iter_events_mock.return_value = self._sync_iter(
             StreamEvent(
                 id="2-2",
                 event="document_ocr_job_changed",
@@ -242,17 +209,17 @@ class StreamingPerformanceTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
         stream = response.streaming_content
-        initial_payload = self._decode_sse_payload(self._next_chunk(stream))
+        initial_payload = self._decode_sse_payload(next(stream))
         self.assertEqual(initial_payload["progress"], 12)
 
         with CaptureQueriesContext(connection) as captured:
-            progress_payload = self._decode_sse_payload(self._next_chunk(stream))
+            progress_payload = self._decode_sse_payload(next(stream))
 
         self.assertEqual(len(captured), 0)
         self.assertEqual(progress_payload["progress"], 71)
         self.assertEqual(progress_payload["status"], DocumentOCRJob.STATUS_PROCESSING)
 
-    @patch("api.view_billing.iter_replay_and_live_events_async")
+    @patch("api.view_billing.iter_replay_and_live_events")
     def test_invoice_download_stream_progress_event_uses_stream_payload_without_db_query(self, iter_events_mock):
         customer = Customer.objects.create(first_name="Download", last_name="Owner")
         invoice = Invoice.objects.create(
@@ -268,7 +235,7 @@ class StreamingPerformanceTests(TestCase):
             progress=0,
             created_by=self.user,
         )
-        iter_events_mock.return_value = self._async_iter(
+        iter_events_mock.return_value = self._sync_iter(
             StreamEvent(
                 id="3-0",
                 event="invoice_download_job_changed",
@@ -288,17 +255,17 @@ class StreamingPerformanceTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
         stream = response.streaming_content
-        self.assertEqual(self._decode_sse_payload(self._next_chunk(stream))["message"], "Starting invoice generation...")
-        self.assertEqual(self._decode_sse_payload(self._next_chunk(stream))["progress"], 0)
+        self.assertEqual(self._decode_sse_payload(next(stream))["message"], "Starting invoice generation...")
+        self.assertEqual(self._decode_sse_payload(next(stream))["progress"], 0)
 
         with CaptureQueriesContext(connection) as captured:
-            progress_payload = self._decode_sse_payload(self._next_chunk(stream))
+            progress_payload = self._decode_sse_payload(next(stream))
 
         self.assertEqual(len(captured), 0)
         self.assertEqual(progress_payload["progress"], 60)
         self.assertEqual(progress_payload["status"], InvoiceDownloadJob.STATUS_PROCESSING)
 
-    @patch("api.view_billing.iter_replay_and_live_events_async")
+    @patch("api.view_billing.iter_replay_and_live_events")
     @patch("invoices.models.InvoiceImportJob.objects.prefetch_related")
     def test_invoice_import_stream_item_event_uses_stream_payload_without_db_query(
         self, prefetch_mock, iter_events_mock
@@ -337,7 +304,7 @@ class StreamingPerformanceTests(TestCase):
         mock_job.items.all.return_value = mock_qs
         prefetch_mock.return_value.get.return_value = mock_job
 
-        iter_events_mock.return_value = self._async_iter(
+        iter_events_mock.return_value = self._sync_iter(
             StreamEvent(
                 id="4-0",
                 event="invoice_import_item_changed",
@@ -360,11 +327,11 @@ class StreamingPerformanceTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
         stream = response.streaming_content
-        start_payload = self._decode_sse_payload(self._next_chunk(stream))
+        start_payload = self._decode_sse_payload(next(stream))
         self.assertEqual(start_payload["total"], 1)
 
         with CaptureQueriesContext(connection) as captured:
-            event_payload = self._decode_sse_payload(self._next_chunk(stream))
+            event_payload = self._decode_sse_payload(next(stream))
 
         self.assertEqual(len(captured), 0)
         self.assertEqual(event_payload["filename"], "invoice.pdf")

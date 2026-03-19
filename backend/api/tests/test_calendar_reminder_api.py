@@ -475,34 +475,25 @@ class CalendarReminderApiTests(TestCase):
         after_cursor = get_calendar_reminder_stream_cursor()
         self.assertGreater(after_cursor, before_cursor)
 
-    async def _mock_keepalive_events(*args, **kwargs):
+    def _mock_keepalive_events(*args, **kwargs):
         yield None
 
-    @patch("api.utils.redis_sse.iter_replay_and_live_events_async", side_effect=_mock_keepalive_events)
+    @patch("api.utils.redis_sse.iter_replay_and_live_events", side_effect=_mock_keepalive_events)
     def test_stream_emits_keepalive_when_idle(self, _iter_events):
-        from asgiref.sync import async_to_sync
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+        response = self.client.get("/api/calendar-reminders/stream/")
+        self.assertEqual(response.status_code, 200)
 
-        @async_to_sync
-        async def run_test():
-            import asyncio
-            from asgiref.sync import sync_to_async
+        stream = response.streaming_content
 
-            await sync_to_async(self.client.credentials)(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
-            response = await sync_to_async(self.client.get)("/api/calendar-reminders/stream/")
-            await sync_to_async(self.assertEqual)(response.status_code, 200)
+        # First item: initial snapshot
+        snapshot_chunk = next(stream)
+        if isinstance(snapshot_chunk, bytes):
+            snapshot_chunk = snapshot_chunk.decode("utf-8")
+        _ = self._decode_sse_payload(snapshot_chunk)
 
-            stream = response.streaming_content
-
-            # First item: initial snapshot
-            snapshot_chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
-            if isinstance(snapshot_chunk, bytes):
-                snapshot_chunk = snapshot_chunk.decode("utf-8")
-            _ = self._decode_sse_payload(snapshot_chunk)
-
-            # Second item: keepalive
-            keepalive_chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
-            if isinstance(keepalive_chunk, bytes):
-                keepalive_chunk = keepalive_chunk.decode("utf-8")
-            await sync_to_async(self.assertEqual)(keepalive_chunk, ": keepalive\n\n")
-
-        run_test()
+        # Second item: keepalive
+        keepalive_chunk = next(stream)
+        if isinstance(keepalive_chunk, bytes):
+            keepalive_chunk = keepalive_chunk.decode("utf-8")
+        self.assertEqual(keepalive_chunk, ": keepalive\n\n")
