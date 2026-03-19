@@ -77,9 +77,11 @@ class BackupSerializationTests(SimpleTestCase):
                 next(gen)
 
         dump_args = raised.exception.args[0]
+        obsolete_exclusion = "--exclude=" + "_".join(("debug", "toolbar"))
         self.assertEqual(dump_args[0], "dumpdata")
         self.assertNotIn("--natural-foreign", dump_args)
         self.assertNotIn("--natural-primary", dump_args)
+        self.assertNotIn(obsolete_exclusion, dump_args)
 
     def test_backup_disables_postgres_server_side_cursors_while_dumping(self):
         class _StopBackup(Exception):
