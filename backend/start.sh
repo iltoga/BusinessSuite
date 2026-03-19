@@ -65,6 +65,16 @@ if [ -n "$DB_HOST" ]; then
   echo "Database is up!"
 fi
 
+# 3b. Wait for Redis (if configured)
+if [ -n "$REDIS_HOST" ]; then
+  echo "Waiting for Redis at ${REDIS_HOST}:${REDIS_PORT:-6379}..."
+  until printf "" 2>>/dev/null >>/dev/tcp/${REDIS_HOST}/${REDIS_PORT:-6379}; do
+    echo "Redis unavailable - sleeping..."
+    sleep 1
+  done
+  echo "Redis is up!"
+fi
+
 # Inside Docker, use the virtualenv python if available
 PYTHON_BIN="python"
 if [ -x "/opt/venv/bin/python" ]; then

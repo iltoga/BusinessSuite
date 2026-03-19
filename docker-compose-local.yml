@@ -28,6 +28,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+      start_interval: 2s
     ports:
       - 5432:5432
 
@@ -52,7 +54,9 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
+      start_period: 10s
+      start_interval: 2s
     ports:
       - "6379:6379"
     volumes:
@@ -78,7 +82,7 @@ services:
       context: ./backend/
       dockerfile: Dockerfile
       target: web
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - 8000:8000
     healthcheck:
@@ -86,11 +90,12 @@ services:
         - "CMD"
         - "python"
         - "-c"
-        - "import socket,sys; s=socket.socket(); s.settimeout(3); rc=s.connect_ex(('127.0.0.1', 8000)); s.close(); sys.exit(0 if rc == 0 else 1)"
+        - "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:8000/api/health/', timeout=5); sys.exit(0)"
       interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 120s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+      start_interval: 5s
     networks:
       - dockernet
     environment:
@@ -147,7 +152,7 @@ services:
       bs-core:
         condition: service_healthy
     image: bs-app:web
-    restart: unless-stopped
+    restart: on-failure:5
     networks:
       - dockernet
     environment:
@@ -195,10 +200,17 @@ services:
       - type: bind
         source: ${DATA_PATH}/staticfiles
         target: /staticfiles
+    healthcheck:
+      test: ["CMD", "sh", "/usr/src/app/scripts/healthcheck_worker.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+      start_interval: 5s
     command:
       - /bin/sh
       - -lc
-      - exec /bin/sh /usr/src/app/scripts/run_dramatiq_workers.sh
+      - chmod +x /usr/src/app/scripts/*.sh && exec /bin/sh /usr/src/app/scripts/run_dramatiq_workers.sh
 
   bs-scheduler:
     container_name: bs-scheduler
@@ -214,7 +226,7 @@ services:
       bs-core:
         condition: service_healthy
     image: bs-app:web
-    restart: unless-stopped
+    restart: on-failure:5
     networks:
       - dockernet
     environment:
@@ -256,7 +268,17 @@ services:
       - type: bind
         source: ${DATA_PATH}/staticfiles
         target: /staticfiles
-    command: /opt/venv/bin/python manage.py run_dramatiq_scheduler
+    healthcheck:
+      test: ["CMD", "sh", "/usr/src/app/scripts/healthcheck_scheduler.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      start_interval: 5s
+    command:
+      - /bin/sh
+      - -lc
+      - chmod +x /usr/src/app/scripts/*.sh && /opt/venv/bin/python manage.py run_dramatiq_scheduler
 
   bs-frontend:
     container_name: bs-frontend
@@ -265,12 +287,13 @@ services:
     env_file:
       - ./.env
     depends_on:
-      - bs-core
+      bs-core:
+        condition: service_healthy
     image: bs-frontend:web
     build:
       context: ./
       dockerfile: Dockerfile.frontend
-    restart: unless-stopped
+    restart: on-failure:5
     environment:
       PORT: 4000
       BACKEND_URL: http://bs-core:8000
@@ -283,6 +306,17 @@ services:
         target: /logs
     networks:
       - dockernet
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider http://127.0.0.1:4000/healthz || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 3s
 
   bs-alloy:
     container_name: bs-alloy

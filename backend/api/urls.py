@@ -26,7 +26,7 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
-from . import views
+from . import view_realtime, views
 from .views_admin import (
     BackupsViewSet,
     ServerManagementViewSet,
@@ -44,8 +44,8 @@ from .views_categorization import (
     document_validation_stream_sse,
     validate_document_category,
 )
+from .views_health import HealthCheckView
 from .views_sync import SyncViewSet
-from . import view_realtime
 
 # DRF Router for RESTful API endpoints
 # These ViewSets provide CRUD operations for Angular frontend consumption
@@ -98,6 +98,8 @@ router.register(r"ai-models", views.AiModelViewSet, basename="ai-models")
 router.register(r"sync", SyncViewSet, basename="sync")
 
 urlpatterns = [
+    # Unauthenticated health probe for Docker / load-balancer healthchecks
+    path("health/", HealthCheckView.as_view(), name="health-check"),
     # OpenAPI schema endpoints for API documentation and client generation
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("schema/swagger-ui/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
