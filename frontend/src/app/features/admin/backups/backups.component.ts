@@ -21,6 +21,7 @@ import {
   type PaginatedResponse,
 } from '@/shared/core/base-list.component';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -140,7 +141,10 @@ export class BackupsComponent extends BaseListComponent<Backup> {
   ): Observable<PaginatedResponse<Backup>> {
     return this.backupsApi.backupsRetrieve().pipe(
       map((response: any) => {
-        const backups = response?.backups?.map((b: Backup) => ({ ...b, selected: false })) || [];
+        const payload = unwrapApiRecord(response) as { backups?: Backup[] } | null;
+        const backups = Array.isArray(payload?.backups)
+          ? payload.backups.map((b) => ({ ...b, selected: false }))
+          : [];
         return {
           results: backups,
           count: backups.length,

@@ -104,32 +104,32 @@ def build_product_delete_preview(product: Product, *, limit: int = PREVIEW_RECOR
         )
 
     return {
-        "product_id": product.id,
-        "product_code": product.code,
-        "product_name": product.name,
-        "can_delete": can_delete,
-        "requires_force_delete": requires_force_delete,
+        "productId": product.id,
+        "productCode": product.code,
+        "productName": product.name,
+        "canDelete": can_delete,
+        "requiresForceDelete": requires_force_delete,
         "message": message,
-        "related_counts": {
+        "relatedCounts": {
             "tasks": tasks_count,
             "applications": applications_count,
             "workflows": workflows_count,
             "documents": documents_count,
-            "invoice_applications": invoice_lines_count,
+            "invoiceApplications": invoice_lines_count,
             "invoices": invoices_count,
             "payments": payments_count,
         },
-        "related_records": {
+        "relatedRecords": {
             "tasks": task_records,
             "applications": application_records,
-            "invoice_applications": invoice_line_records,
+            "invoiceApplications": invoice_line_records,
         },
-        "related_records_truncated": {
+        "relatedRecordsTruncated": {
             "tasks": tasks_count > len(task_records),
             "applications": applications_count > len(application_records),
-            "invoice_applications": invoice_lines_count > len(invoice_line_records),
+            "invoiceApplications": invoice_lines_count > len(invoice_line_records),
         },
-        "record_limit": record_limit,
+        "recordLimit": record_limit,
     }
 
 
@@ -149,14 +149,14 @@ def force_delete_product(product: Product) -> dict[str, int]:
         _refresh_invoice_totals(affected_invoice_ids)
 
     return {
-        "deleted_products": 1,
-        "deleted_tasks": tasks_count,
-        "deleted_applications": applications_count,
-        "deleted_workflows": workflows_count,
-        "deleted_documents": documents_count,
-        "deleted_invoice_applications": invoice_lines_count,
-        "deleted_payments": payments_count,
-        "affected_invoices": len(affected_invoice_ids),
+        "deletedProducts": 1,
+        "deletedTasks": tasks_count,
+        "deletedApplications": applications_count,
+        "deletedWorkflows": workflows_count,
+        "deletedDocuments": documents_count,
+        "deletedInvoiceApplications": invoice_lines_count,
+        "deletedPayments": payments_count,
+        "affectedInvoices": len(affected_invoice_ids),
     }
 
 

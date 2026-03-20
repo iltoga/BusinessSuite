@@ -11,26 +11,70 @@ type ErrorItem = {
 const toCamelCase = (value: string) =>
   value.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
 
-const normalizeErrorPayload = (errorResponse: unknown): ErrorPayload => {
+const unwrapErrorPayload = (errorResponse: unknown): Record<string, unknown> | null => {
   if (!errorResponse || typeof errorResponse !== 'object') return null;
   const payload = (errorResponse as any).error ?? errorResponse;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  return payload as Record<string, unknown>;
+};
+
+const getCanonicalErrorObject = (payload: Record<string, unknown>): Record<string, unknown> | null => {
+  const canonical = payload['error'];
+  if (!canonical || typeof canonical !== 'object' || Array.isArray(canonical)) {
+    return null;
+  }
+  return canonical as Record<string, unknown>;
+};
+
+const normalizeErrorPayload = (errorResponse: unknown): ErrorPayload => {
+  const payload = unwrapErrorPayload(errorResponse);
   if (!payload || typeof payload !== 'object') return null;
 
-  const payloadErrors = (payload as any).errors;
+  const canonicalError = getCanonicalErrorObject(payload);
+  if (canonicalError) {
+    const canonicalDetails = canonicalError['details'] ?? canonicalError['errors'];
+    if (Array.isArray(canonicalDetails)) {
+      return { nonFieldErrors: canonicalDetails } as Record<string, unknown>;
+    }
+    if (canonicalDetails && typeof canonicalDetails === 'object') {
+      const canonicalDetailsRecord = canonicalDetails as Record<string, unknown>;
+      if (typeof canonicalDetailsRecord['errors'] === 'object') {
+        return canonicalDetailsRecord['errors'] as Record<string, unknown>;
+      }
+      if (Array.isArray(canonicalDetailsRecord['errors'])) {
+        return { nonFieldErrors: canonicalDetailsRecord['errors'] } as Record<string, unknown>;
+      }
+      return canonicalDetails as Record<string, unknown>;
+    }
+    const canonicalMessage = extractMessage(canonicalError['message'] ?? canonicalError['detail']);
+    if (canonicalMessage) {
+      return { nonFieldErrors: [canonicalMessage] } as Record<string, unknown>;
+    }
+  }
+
+  const payloadErrors = payload['errors'];
+  if (Array.isArray(payloadErrors)) {
+    return { nonFieldErrors: payloadErrors } as Record<string, unknown>;
+  }
   if (payloadErrors && typeof payloadErrors === 'object') {
-    if (typeof (payloadErrors as any).errors === 'object') {
-      return (payloadErrors as any).errors as Record<string, unknown>;
+    const payloadErrorsRecord = payloadErrors as Record<string, unknown>;
+    if (typeof payloadErrorsRecord['errors'] === 'object') {
+      return payloadErrorsRecord['errors'] as Record<string, unknown>;
     }
     return payloadErrors as Record<string, unknown>;
   }
 
-  const details = (payload as any).details;
+  const details = payload['details'];
+  if (Array.isArray(details)) {
+    return { nonFieldErrors: details } as Record<string, unknown>;
+  }
   if (details && typeof details === 'object') {
-    if (typeof (details as any).errors === 'object') {
-      return (details as any).errors as Record<string, unknown>;
+    const detailsRecord = details as Record<string, unknown>;
+    if (typeof detailsRecord['errors'] === 'object') {
+      return detailsRecord['errors'] as Record<string, unknown>;
     }
-    if (Array.isArray((details as any).errors)) {
-      return { nonFieldErrors: (details as any).errors } as Record<string, unknown>;
+    if (Array.isArray(detailsRecord['errors'])) {
+      return { nonFieldErrors: detailsRecord['errors'] } as Record<string, unknown>;
     }
     return details as Record<string, unknown>;
   }
@@ -50,6 +94,25 @@ const extractMessage = (value: unknown): string | null => {
     const list = value.filter((item) => typeof item === 'string') as string[];
     return list.length ? list.join(' ') : null;
   }
+  return null;
+};
+
+const extractFirstStringFromObject = (value: unknown): string | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  for (const entry of Object.values(value as Record<string, unknown>)) {
+    const message = extractMessage(entry);
+    if (message) {
+      return message;
+    }
+    const nested = extractFirstStringFromObject(entry);
+    if (nested) {
+      return nested;
+    }
+  }
+
   return null;
 };
 
@@ -181,29 +244,62 @@ export const collectServerErrors = (
 };
 
 export const extractServerErrorMessage = (errorResponse: unknown): string | null => {
-  if (!errorResponse || typeof errorResponse !== 'object') return null;
-  const payload = (errorResponse as any).error ?? errorResponse;
+  const payload = unwrapErrorPayload(errorResponse);
   if (!payload || typeof payload !== 'object') return null;
 
-  const direct = (payload as any).error;
-  const detail = (payload as any).detail;
-  const errorsRoot = (payload as any).errors;
-  const details = (payload as any).details;
+  const canonicalError = getCanonicalErrorObject(payload);
+  if (canonicalError) {
+    const canonicalMessage = extractMessage(canonicalError['message'] ?? canonicalError['detail']);
+    if (canonicalMessage) {
+      return canonicalMessage;
+    }
 
-  if (Array.isArray(details?.errors) && details.errors.length > 0) {
-    return String(details.errors.join(' '));
+    const canonicalDetails = canonicalError['details'] ?? canonicalError['errors'];
+    const canonicalDetailsMessage = extractMessage(canonicalDetails);
+    if (canonicalDetailsMessage) {
+      return canonicalDetailsMessage;
+    }
+
+    const canonicalDetailsObjectMessage = extractFirstStringFromObject(canonicalDetails);
+    if (canonicalDetailsObjectMessage) {
+      return canonicalDetailsObjectMessage;
+    }
+  }
+
+  const direct = payload['error'];
+  const detail = payload['detail'];
+  const errorsRoot = payload['errors'];
+  const details = payload['details'];
+
+  if (typeof payload['message'] === 'string') return String(payload['message']);
+
+  if (Array.isArray(details) && details.length > 0) {
+    return details.map((item) => String(item)).join(' ');
+  }
+
+  if (details && typeof details === 'object') {
+    const detailsRecord = details as Record<string, unknown>;
+    if (Array.isArray(detailsRecord['errors']) && detailsRecord['errors'].length > 0) {
+      return String(detailsRecord['errors'].join(' '));
+    }
   }
 
   if (errorsRoot && typeof errorsRoot === 'object') {
+    const errorsRootRecord = errorsRoot as Record<string, unknown>;
     const inner =
-      (errorsRoot as any).errors && typeof (errorsRoot as any).errors === 'object'
-        ? (errorsRoot as any).errors
+      errorsRootRecord['errors'] && typeof errorsRootRecord['errors'] === 'object'
+        ? errorsRootRecord['errors']
         : errorsRoot;
     for (const [key, value] of Object.entries(inner)) {
       if (key === 'code') continue;
       const message = extractMessage(value);
       if (message) return message;
     }
+  }
+
+  if (details && typeof details === 'object') {
+    const message = extractFirstStringFromObject(details);
+    if (message) return message;
   }
 
   if (typeof detail === 'string') return detail;

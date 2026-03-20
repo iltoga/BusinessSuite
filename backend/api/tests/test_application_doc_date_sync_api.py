@@ -113,3 +113,16 @@ class ApplicationDocDateSyncApiTests(TestCase):
         workflow.refresh_from_db()
         self.assertEqual(application.doc_date, date(2026, 3, 9))
         self.assertEqual(workflow.start_date, date(2026, 3, 9))
+
+    def test_compute_doc_workflow_due_date_returns_camelcase_payload(self):
+        response = self.client.get(
+            reverse(
+                "api-compute-docworkflow-due-date",
+                kwargs={"task_id": self.task.id, "start_date": "2026-03-09"},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["dueDate"], "2026-03-11")
+        self.assertNotIn("due_date", body)

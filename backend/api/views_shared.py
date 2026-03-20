@@ -142,12 +142,14 @@ def _observe_async_guard_event(
 
 
 class ApiErrorHandlingMixin:
-    def error_response(self, message, status_code=status.HTTP_400_BAD_REQUEST, details=None):
+    def error_response(self, message, status_code=status.HTTP_400_BAD_REQUEST, details=None, request=None):
+        request = request or getattr(self, "request", None)
         return Response(
             build_error_payload(
                 code=status_code and _status_code_to_code(status_code) or "error",
                 message=str(message),
                 details=details,
+                request=request,
             ),
             status=status_code,
         )

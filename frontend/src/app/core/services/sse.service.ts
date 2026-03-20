@@ -93,6 +93,13 @@ export class SseService {
       let shouldCompleteAfterAbort = false;
       let rotationTimeoutId: ReturnType<typeof setTimeout> | null = null;
       let isSettled = false;
+      const lastEventIdAtOpen = useReplayCursor ? this.lastEventIds.get(url) ?? null : null;
+
+      if (lastEventIdAtOpen) {
+        console.info('[SseService] Reconnecting SSE stream', { url, lastEventId: lastEventIdAtOpen });
+      } else {
+        console.info('[SseService] Opening SSE stream', { url });
+      }
 
       const clearRotationTimeout = () => {
         if (rotationTimeoutId === null) {
@@ -154,9 +161,11 @@ export class SseService {
           });
 
           if (!response.ok) {
+            console.warn('[SseService] SSE request failed', { url, status: response.status });
             throw new Error(`SSE request failed (${response.status})`);
           }
           if (!response.body) {
+            console.warn('[SseService] SSE stream body is unavailable', { url });
             throw new Error('SSE stream body is unavailable');
           }
 
@@ -184,16 +193,25 @@ export class SseService {
             this.handleFrame<T>(url, buffer, subscriber);
           }
 
+          console.info('[SseService] SSE stream completed', {
+            url,
+            lastEventId: this.lastEventIds.get(url) ?? null,
+          });
           completeSubscriber();
         } catch (error) {
           if (controller.signal.aborted) {
             if (shouldCompleteAfterAbort) {
               shouldCompleteAfterAbort = false;
+              console.info('[SseService] SSE stream rotated or aborted', {
+                url,
+                lastEventId: this.lastEventIds.get(url) ?? null,
+              });
               completeSubscriber();
             }
             return;
           }
 
+          console.error('[SseService] SSE stream error', { url, error });
           errorSubscriber(error);
         }
       };
@@ -249,6 +267,7 @@ export class SseService {
           id: eventId,
         });
       } catch (error) {
+        console.error('[SseService] Failed to parse SSE payload', { url, error });
         subscriber.error(error);
       }
     });

@@ -19,6 +19,7 @@ import {
   DesktopVaultStatus,
 } from '@/core/services/desktop-bridge.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -920,13 +921,11 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
     const source = this.toRecord(raw);
     return {
       enabled: Boolean(source?.['enabled']),
-      encryptionRequired: Boolean(
-        source?.['encryptionRequired'] ?? source?.['encryption_required'] ?? true,
-      ),
-      desktopMode: String(source?.['desktopMode'] ?? source?.['desktop_mode'] ?? 'localPrimary'),
-      vaultEpoch: Number(source?.['vaultEpoch'] ?? source?.['vault_epoch'] ?? 1),
-      updatedAt: this.toOptionalString(source?.['updatedAt'] ?? source?.['updated_at']),
-      updatedBy: this.toRecord(source?.['updatedBy'] ?? source?.['updated_by']) as
+      encryptionRequired: Boolean(source?.['encryptionRequired'] ?? true),
+      desktopMode: String(source?.['desktopMode'] ?? 'localPrimary'),
+      vaultEpoch: Number(source?.['vaultEpoch'] ?? 1),
+      updatedAt: this.toOptionalString(source?.['updatedAt']),
+      updatedBy: this.toRecord(source?.['updatedBy']) as
         | LocalResilienceSettingsResponse['updatedBy']
         | null,
     };
@@ -935,9 +934,9 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
   private normalizeUiSettings(raw: unknown): UiSettingsResponse {
     const source = this.toRecord(raw);
     return {
-      useOverlayMenu: Boolean(source?.['useOverlayMenu'] ?? source?.['use_overlay_menu'] ?? false),
-      updatedAt: this.toOptionalString(source?.['updatedAt'] ?? source?.['updated_at']),
-      updatedBy: this.toRecord(source?.['updatedBy'] ?? source?.['updated_by']) as
+      useOverlayMenu: Boolean(source?.['useOverlayMenu'] ?? false),
+      updatedAt: this.toOptionalString(source?.['updatedAt']),
+      updatedBy: this.toRecord(source?.['updatedBy']) as
         | UiSettingsResponse['updatedBy']
         | null,
     };
@@ -945,34 +944,26 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
 
   private normalizeCacheHealth(raw: unknown): CacheHealthResponse {
     const source = this.toRecord(raw);
-    const redisConnectedRaw = source?.['redisConnected'] ?? source?.['redis_connected'];
-    const writeReadDeleteRaw = source?.['writeReadDeleteOk'] ?? source?.['write_read_delete_ok'];
+    const redisConnectedRaw = source?.['redisConnected'];
+    const writeReadDeleteRaw = source?.['writeReadDeleteOk'];
     return {
       ok: Boolean(source?.['ok']),
       message: String(source?.['message'] ?? 'Cache health check complete'),
-      checkedAt: String(source?.['checkedAt'] ?? source?.['checked_at'] ?? ''),
-      cacheBackend: String(source?.['cacheBackend'] ?? source?.['cache_backend'] ?? ''),
-      cacheLocation: String(source?.['cacheLocation'] ?? source?.['cache_location'] ?? ''),
-      redisConfigured: Boolean(
-        source?.['redisConfigured'] ?? source?.['redis_configured'] ?? false,
-      ),
+      checkedAt: String(source?.['checkedAt'] ?? ''),
+      cacheBackend: String(source?.['cacheBackend'] ?? ''),
+      cacheLocation: String(source?.['cacheLocation'] ?? ''),
+      redisConfigured: Boolean(source?.['redisConfigured'] ?? false),
       redisConnected:
         redisConnectedRaw === null || redisConnectedRaw === undefined
           ? null
           : Boolean(redisConnectedRaw),
-      userCacheEnabled:
-        source?.['userCacheEnabled'] === undefined
-          ? (source?.['user_cache_enabled'] as boolean | undefined)
-          : (source?.['userCacheEnabled'] as boolean | undefined),
-      probeSkipped:
-        source?.['probeSkipped'] === undefined
-          ? (source?.['probe_skipped'] as boolean | undefined)
-          : (source?.['probeSkipped'] as boolean | undefined),
+      userCacheEnabled: source?.['userCacheEnabled'] as boolean | undefined,
+      probeSkipped: source?.['probeSkipped'] as boolean | undefined,
       writeReadDeleteOk:
         writeReadDeleteRaw === null || writeReadDeleteRaw === undefined
           ? null
           : Boolean(writeReadDeleteRaw),
-      probeLatencyMs: Number(source?.['probeLatencyMs'] ?? source?.['probe_latency_ms'] ?? 0),
+      probeLatencyMs: Number(source?.['probeLatencyMs'] ?? 0),
       errors: Array.isArray(source?.['errors'])
         ? (source?.['errors'] as unknown[]).map((e) => String(e))
         : [],
@@ -981,14 +972,14 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
 
   private normalizeCacheStatus(raw: unknown): CacheStatusResponse {
     const source = this.toRecord(raw);
-    const globalEnabledRaw = source?.['globalEnabled'] ?? source?.['global_enabled'];
-    const userEnabledRaw = source?.['userEnabled'] ?? source?.['user_enabled'];
+    const globalEnabledRaw = source?.['globalEnabled'];
+    const userEnabledRaw = source?.['userEnabled'];
     return {
       enabled: Boolean(source?.['enabled']),
       version: Number(source?.['version'] ?? 1),
       message: String(source?.['message'] ?? 'Cache status updated'),
-      cacheBackend: String(source?.['cacheBackend'] ?? source?.['cache_backend'] ?? ''),
-      cacheLocation: String(source?.['cacheLocation'] ?? source?.['cache_location'] ?? ''),
+      cacheBackend: String(source?.['cacheBackend'] ?? ''),
+      cacheLocation: String(source?.['cacheLocation'] ?? ''),
       globalEnabled: globalEnabledRaw === undefined ? undefined : Boolean(globalEnabledRaw),
       userEnabled: userEnabledRaw === undefined ? undefined : Boolean(userEnabledRaw),
     };
@@ -1055,15 +1046,15 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
     return {
       ok: Boolean(source['ok'] ?? true),
       message: String(source['message'] ?? ''),
-      dryRun: Boolean(source['dryRun'] ?? source['dry_run'] ?? true),
+      dryRun: Boolean(source['dryRun'] ?? true),
       prefixes: Array.isArray(source['prefixes'])
         ? (source['prefixes'] as unknown[]).map((entry) => String(entry))
         : [],
-      scannedFiles: Number(source['scannedFiles'] ?? source['scanned_files'] ?? 0),
-      referencedFiles: Number(source['referencedFiles'] ?? source['referenced_files'] ?? 0),
-      orphanedFiles: Number(source['orphanedFiles'] ?? source['orphaned_files'] ?? 0),
-      deletedFiles: Number(source['deletedFiles'] ?? source['deleted_files'] ?? 0),
-      totalOrphanBytes: Number(source['totalOrphanBytes'] ?? source['total_orphan_bytes'] ?? 0),
+      scannedFiles: Number(source['scannedFiles'] ?? 0),
+      referencedFiles: Number(source['referencedFiles'] ?? 0),
+      orphanedFiles: Number(source['orphanedFiles'] ?? 0),
+      deletedFiles: Number(source['deletedFiles'] ?? 0),
+      totalOrphanBytes: Number(source['totalOrphanBytes'] ?? 0),
       files: Array.isArray(source['files'])
         ? (source['files'] as unknown[])
             .map((entry) => this.normalizeMediaCleanupFile(entry))
@@ -1085,7 +1076,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
 
     return {
       path: String(source['path'] ?? ''),
-      sizeBytes: this.toOptionalNumber(source['sizeBytes'] ?? source['size_bytes']),
+      sizeBytes: this.toOptionalNumber(source['sizeBytes']),
     };
   }
 
@@ -1095,8 +1086,8 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
       return null;
     }
     return {
-      mediaRoot: String(source['mediaRoot'] ?? source['media_root'] ?? ''),
-      mediaUrl: String(source['mediaUrl'] ?? source['media_url'] ?? ''),
+      mediaRoot: String(source['mediaRoot'] ?? ''),
+      mediaUrl: String(source['mediaUrl'] ?? ''),
       debug: Boolean(source['debug']),
     };
   }
@@ -1111,19 +1102,16 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
       id: Number(source['id'] ?? 0),
       field: String(source['field'] ?? ''),
       path: String(source['path'] ?? ''),
-      absPath: String(source['absPath'] ?? source['abs_path'] ?? ''),
+      absPath: String(source['absPath'] ?? ''),
       exists: Boolean(source['exists']),
       url: String(source['url'] ?? ''),
-      fileLink: this.toOptionalString(source['fileLink'] ?? source['file_link']),
+      fileLink: this.toOptionalString(source['fileLink']),
       discrepancy: Boolean(source['discrepancy']),
     };
   }
 
   private toRecord(value: unknown): Record<string, unknown> | null {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return null;
-    }
-    return value as Record<string, unknown>;
+    return unwrapApiRecord(value);
   }
 
   private toOptionalString(value: unknown): string | undefined {

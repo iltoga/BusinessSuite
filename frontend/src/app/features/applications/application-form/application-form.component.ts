@@ -553,7 +553,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         this.computeService.computeDocWorkflowDueDateRetrieve(start, task.id).subscribe({
           next: (res) => {
             const payload = this.toRecord(res);
-            const computedDueDate = payload?.['dueDate'] ?? payload?.['due_date'];
+            const computedDueDate = payload?.['dueDate'];
             if (!computedDueDate) return;
             const parsedDueDate = this.toDateOnly(computedDueDate);
             if (!parsedDueDate) return;
@@ -818,14 +818,10 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
   private adaptApplicationSnapshot(raw: unknown): ApplicationFormSnapshot {
     const source = this.toRecord(raw);
-    const docDate = this.toDateOnly(source?.['docDate'] ?? source?.['doc_date']) ?? new Date();
-    const dueDate = this.toDateOnly(source?.['dueDate'] ?? source?.['due_date']) ?? docDate;
-    const notifyCustomerRaw =
-      source?.['notifyCustomer'] ??
-      source?.['notifyCustomerToo'] ??
-      source?.['notify_customer_too'];
-    const notifyChannelRaw =
-      source?.['notifyCustomerChannel'] ?? source?.['notify_customer_channel'];
+    const docDate = this.toDateOnly(source?.['docDate']) ?? new Date();
+    const dueDate = this.toDateOnly(source?.['dueDate']) ?? docDate;
+    const notifyCustomerRaw = source?.['notifyCustomer'] ?? source?.['notifyCustomerToo'];
+    const notifyChannelRaw = source?.['notifyCustomerChannel'];
     const notifyCustomerChannel: 'whatsapp' | 'email' =
       notifyChannelRaw === 'email' ? 'email' : 'whatsapp';
 
@@ -836,9 +832,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       productId: this.toNumber(source?.['product'] ?? this.toRecord(source?.['product'])?.['id']),
       docDate,
       dueDate,
-      addDeadlinesToCalendar: Boolean(
-        source?.['addDeadlinesToCalendar'] ?? source?.['add_deadlines_to_calendar'] ?? true,
-      ),
+      addDeadlinesToCalendar: Boolean(source?.['addDeadlinesToCalendar'] ?? true),
       notifyCustomer: Boolean(notifyCustomerRaw),
       notifyCustomerChannel,
       notes: typeof source?.['notes'] === 'string' ? source['notes'] : '',
@@ -863,9 +857,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private adaptProductDocuments(raw: unknown): ProductDocumentsAdapter {
     const source = this.toRecord(raw);
     const productContainer = this.toRecord(source?.['product']) ?? source;
-    const explicitTask =
-      this.adaptCalendarTask(source?.['calendarTask']) ??
-      this.adaptCalendarTask(source?.['calendar_task']);
+    const explicitTask = this.adaptCalendarTask(source?.['calendarTask']);
 
     const tasks = Array.isArray(productContainer?.['tasks'])
       ? (productContainer['tasks'] as unknown[])
@@ -877,10 +869,10 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     return {
       requiredDocuments: this.adaptDocumentTypes(
-        source?.['requiredDocuments'] ?? source?.['required_documents'],
+        source?.['requiredDocuments'],
       ),
       optionalDocuments: this.adaptDocumentTypes(
-        source?.['optionalDocuments'] ?? source?.['optional_documents'],
+        source?.['optionalDocuments'],
       ),
       tasks,
       calendarTask,
@@ -900,7 +892,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       id,
       step: this.toNumber(source['step']) ?? 0,
       name: typeof source['name'] === 'string' ? source['name'] : '',
-      addTaskToCalendar: Boolean(source['addTaskToCalendar'] ?? source['add_task_to_calendar']),
+      addTaskToCalendar: Boolean(source['addTaskToCalendar']),
     };
   }
 
@@ -975,8 +967,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     const documents = Array.isArray(raw['documents']) ? raw['documents'] : [];
     const configuredDocumentNames = new Set(
       [
-        ...this.parseDocumentNames(product?.['requiredDocuments'] ?? product?.['required_documents']),
-        ...this.parseDocumentNames(product?.['optionalDocuments'] ?? product?.['optional_documents']),
+        ...this.parseDocumentNames(product?.['requiredDocuments']),
+        ...this.parseDocumentNames(product?.['optionalDocuments']),
       ].map((name) => name.toLowerCase()),
     );
 

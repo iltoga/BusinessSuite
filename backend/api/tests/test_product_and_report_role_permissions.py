@@ -71,8 +71,10 @@ class ProductAndReportRolePermissionsTests(TestCase):
         response = self.regular_client.get(reverse("api-product-by-id", kwargs={"product_id": self.product.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["product"]["id"], self.product.id)
-        self.assertIn("required_documents", response.data)
-        self.assertIn("optional_documents", response.data)
+        self.assertIn("requiredDocuments", response.data)
+        self.assertIn("optionalDocuments", response.data)
+        self.assertNotIn("required_documents", response.data)
+        self.assertNotIn("optional_documents", response.data)
 
     def test_regular_user_cannot_retrieve_product_detail(self):
         response = self.regular_client.get(reverse("products-detail", kwargs={"pk": self.product.id}))

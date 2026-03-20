@@ -20,6 +20,8 @@ import { AuthService } from '@/core/services/auth.service';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
+import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { ZardAvatarComponent } from '@/shared/components/avatar';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -207,7 +209,7 @@ export class ProfileComponent implements OnInit {
           this.toast.success('Avatar updated successfully');
         },
         error: (err) => {
-          this.toast.error(err.error?.detail || 'Failed to upload avatar');
+          this.toast.error(extractServerErrorMessage(err) || 'Failed to upload avatar');
         },
       });
   }
@@ -244,19 +246,8 @@ export class ProfileComponent implements OnInit {
           this.toast.success('Profile updated successfully');
         },
         error: (err) => {
-          // Check for field-specific errors in the standardized format
-          const errors = err.error?.errors || err.error;
-          if (errors && typeof errors === 'object') {
-            const fieldErrors = Object.entries(errors);
-            if (fieldErrors.length > 0) {
-              const [field, messages] = fieldErrors[0];
-              if (Array.isArray(messages) && messages.length > 0) {
-                this.toast.error(`${field}: ${messages[0]}`);
-                return;
-              }
-            }
-          }
-          this.toast.error(err.error?.detail || 'Failed to update profile');
+          applyServerErrorsToForm(this.profileForm, err);
+          this.toast.error(extractServerErrorMessage(err) || 'Failed to update profile');
         },
       });
   }
@@ -275,11 +266,8 @@ export class ProfileComponent implements OnInit {
           this.closeChangePasswordModal();
         },
         error: (err) => {
-          // Map backend errors to form
-          if (err.error?.old_password) {
-            this.passwordForm.get('oldPassword')?.setErrors({ backend: err.error.old_password[0] });
-          }
-          this.toast.error(err.error?.detail || 'Failed to change password');
+          applyServerErrorsToForm(this.passwordForm, err);
+          this.toast.error(extractServerErrorMessage(err) || 'Failed to change password');
         },
       });
   }
@@ -438,9 +426,6 @@ export class ProfileComponent implements OnInit {
   }
 
   private toRecord(value: unknown): Record<string, unknown> | null {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    return value as Record<string, unknown>;
+    return unwrapApiRecord(value);
   }
 }

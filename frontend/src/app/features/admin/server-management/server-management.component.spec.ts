@@ -33,84 +33,99 @@ describe('ServerManagementComponent - Cache Controls', () => {
     mockServerManagementService = {
       serverManagementClearCacheCreate: vi
         .fn()
-        .mockReturnValue(of({ ok: true, message: 'Cache cleared' })),
+        .mockReturnValue(of({ data: { ok: true, message: 'Cache cleared' } })),
       serverManagementMediaDiagnosticRetrieve: vi
         .fn()
-        .mockReturnValue(of({ ok: true, results: [], settings: null })),
-      serverManagementMediaRepairCreate: vi.fn().mockReturnValue(of({ ok: true, repairs: [] })),
+        .mockReturnValue(of({ data: { ok: true, results: [], settings: null } })),
+      serverManagementMediaRepairCreate: vi
+        .fn()
+        .mockReturnValue(of({ data: { ok: true, repairs: [] } })),
       serverManagementMediaCleanupCreate: vi.fn(),
       serverManagementLocalResilienceRetrieve: vi.fn().mockReturnValue(
         of({
-          enabled: false,
-          encryptionRequired: true,
-          desktopMode: 'localPrimary',
-          vaultEpoch: 1,
+          data: {
+            enabled: false,
+            encryptionRequired: true,
+            desktopMode: 'localPrimary',
+            vaultEpoch: 1,
+          },
         }),
       ),
       serverManagementLocalResiliencePartialUpdate: vi.fn().mockReturnValue(
         of({
-          enabled: true,
-          encryptionRequired: true,
-          desktopMode: 'localPrimary',
-          vaultEpoch: 1,
+          data: {
+            enabled: true,
+            encryptionRequired: true,
+            desktopMode: 'localPrimary',
+            vaultEpoch: 1,
+          },
         }),
       ),
       serverManagementLocalResilienceResetVaultCreate: vi
         .fn()
         .mockReturnValue(
-          of({ ok: true, message: 'Local media vault reset requested', vaultEpoch: 2 }),
+          of({ data: { ok: true, message: 'Local media vault reset requested', vaultEpoch: 2 } }),
         ),
       serverManagementCacheHealthRetrieve: vi.fn().mockReturnValue(
         of({
-          ok: true,
-          message: 'Cache probe succeeded.',
-          checkedAt: '2026-02-24T10:00:00+00:00',
-          cacheBackend: 'django_redis.cache.RedisCache',
-          cacheLocation: 'redis://bs-redis:6379/1',
-          redisConfigured: true,
-          redisConnected: true,
-          userCacheEnabled: true,
-          probeSkipped: false,
-          writeReadDeleteOk: true,
-          probeLatencyMs: 1.2,
-          errors: [],
+          data: {
+            ok: true,
+            message: 'Cache probe succeeded.',
+            checkedAt: '2026-02-24T10:00:00+00:00',
+            cacheBackend: 'django_redis.cache.RedisCache',
+            cacheLocation: 'redis://bs-redis:6379/1',
+            redisConfigured: true,
+            redisConnected: true,
+            userCacheEnabled: true,
+            probeSkipped: false,
+            writeReadDeleteOk: true,
+            probeLatencyMs: 1.2,
+            errors: [],
+          },
         }),
       ),
-      serverManagementUiSettingsRetrieve: vi.fn().mockReturnValue(of({ useOverlayMenu: false })),
+      serverManagementUiSettingsRetrieve: vi.fn().mockReturnValue(
+        of({ data: { useOverlayMenu: false } }),
+      ),
       serverManagementUiSettingsPartialUpdate: vi
         .fn()
-        .mockReturnValue(of({ useOverlayMenu: true })),
+        .mockReturnValue(of({ data: { useOverlayMenu: true } })),
       serverManagementOpenrouterStatusRetrieve: vi.fn().mockReturnValue(
         of({
-          aiModels: {
-            provider: 'openrouter',
-            providerName: 'OpenRouter',
-            defaultModel: 'google/gemini-2.5-flash-lite',
-            failover: {
-              enabled: true,
-              configuredProviderOrder: ['openai'],
-              effectiveProviderOrder: ['openai'],
+          data: {
+            ok: true,
+            aiModels: {
+              provider: 'openrouter',
+              providerName: 'OpenRouter',
+              defaultModel: 'google/gemini-2.5-flash-lite',
+              failover: {
+                enabled: true,
+                configuredProviderOrder: ['openai'],
+                effectiveProviderOrder: ['openai'],
+              },
+              features: [],
             },
-            features: [],
           },
         }),
       ),
       serverManagementCacheStatusRetrieve: vi.fn().mockReturnValue(
         of({
-          enabled: true,
-          version: 1,
-          message: 'Cache is enabled',
-          cacheBackend: 'django_redis.cache.RedisCache',
+          data: {
+            enabled: true,
+            version: 1,
+            message: 'Cache is enabled',
+            cacheBackend: 'django_redis.cache.RedisCache',
+          },
         }),
       ),
       serverManagementCacheDisableCreate: vi
         .fn()
         .mockReturnValue(
-          of({ enabled: false, version: 1, message: 'Cache disabled successfully' }),
+          of({ data: { enabled: false, version: 1, message: 'Cache disabled successfully' } }),
         ),
       serverManagementCacheEnableCreate: vi
         .fn()
-        .mockReturnValue(of({ enabled: true, version: 1, message: 'Cache enabled successfully' })),
+        .mockReturnValue(of({ data: { enabled: true, version: 1, message: 'Cache enabled successfully' } })),
     };
 
     aiFacadeMock = {

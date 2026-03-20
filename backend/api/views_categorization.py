@@ -14,7 +14,8 @@ import traceback as tb_module
 from typing import Any, cast
 
 from api.serializers.categorization_serializer import CategorizationApplySerializer, DocumentCategorizationJobSerializer
-from api.utils.contracts import build_error_payload
+from api.utils.contracts import build_error_payload, build_success_payload
+from api.utils.idempotency import resolve_request_idempotent_job, store_request_idempotent_job
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from core.services.ai_document_categorizer import (
@@ -26,6 +27,7 @@ from core.services.ai_document_categorizer import (
 from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.logger_service import Logger
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_file_key, stream_job_key
+from api.utils.stream_payloads import build_async_job_start_payload, camelize_payload
 from core.tasks.document_categorization import (
     categorization_item_has_terminal_validation,
     categorization_item_is_terminal,
@@ -350,6 +352,22 @@ def categorize_documents_init(request, application_id):
     total_files_raw = request.data.get("totalFiles", request.data.get("total_files"))
     total_files = _normalize_total_files(total_files_raw)
 
+    idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+        request=request,
+        namespace="document_categorization_init",
+        user_id=request.user.id,
+        queryset=DocumentCategorizationJob.objects.filter(doc_application=doc_application, created_by=request.user),
+    )
+    if cached_job is not None:
+        return Response(
+            {
+                "jobId": str(cached_job.id),
+                "totalFiles": int(cached_job.total_files or total_files),
+                "status": cached_job.status,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
     job = _create_categorization_job(
         doc_application=doc_application,
         created_by=request.user,
@@ -357,6 +375,8 @@ def categorize_documents_init(request, application_id):
         provider_order=provider_order,
         total_files=total_files,
     )
+
+    store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
 
     return Response(
         {
@@ -382,6 +402,29 @@ def categorize_documents(request, application_id):
         return _error_response("Application not found.", status.HTTP_404_NOT_FOUND, code="not_found", request=request)
 
     files = request.FILES.getlist("files")
+    model = request.data.get("model")
+    provider_order_raw = request.data.get("providerOrder", request.data.get("provider_order"))
+    provider_order = _parse_provider_order(provider_order_raw)
+
+    idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+        request=request,
+        namespace="document_categorization_upload",
+        user_id=request.user.id,
+        queryset=DocumentCategorizationJob.objects.filter(doc_application=doc_application, created_by=request.user),
+    )
+    if cached_job is not None:
+        return Response(
+            build_success_payload(
+                {
+                    "jobId": str(cached_job.id),
+                    "totalFiles": int(cached_job.total_files or len(files)),
+                    "status": cached_job.status,
+                },
+                request=request,
+            ),
+            status=status.HTTP_201_CREATED,
+        )
+
     if not files:
         return _error_response(
             "No files provided.",
@@ -390,10 +433,6 @@ def categorize_documents(request, application_id):
             details={"files": ["No files provided."]},
             request=request,
         )
-
-    model = request.data.get("model")
-    provider_order_raw = request.data.get("providerOrder", request.data.get("provider_order"))
-    provider_order = _parse_provider_order(provider_order_raw)
 
     job = _create_categorization_job(
         doc_application=doc_application,
@@ -404,13 +443,17 @@ def categorize_documents(request, application_id):
     )
 
     _upload_files_to_job(job=job, files=files)
+    store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
 
     return Response(
-        {
-            "jobId": str(job.id),
-            "totalFiles": len(files),
-            "status": "queued",
-        },
+        build_success_payload(
+            {
+                "jobId": str(job.id),
+                "totalFiles": len(files),
+                "status": "queued",
+            },
+            request=request,
+        ),
         status=status.HTTP_201_CREATED,
     )
 
@@ -1124,18 +1167,18 @@ def validate_document_category(request, document_id):
         response_payload = {
             # Backward-compatible fields from the previous endpoint contract.
             "matches": validation_status == "valid",
-            "expected_type": doc_type.name,
-            "detected_type": doc_type.name,
+            "expectedType": doc_type.name,
+            "detectedType": doc_type.name,
             "confidence": validation_result.get("confidence", 0),
             "reasoning": validation_result.get("reasoning", ""),
-            "document_type_id": doc_type.id,
+            "documentTypeId": doc_type.id,
             # New pre-validation fields used by single Upload/Update flow.
-            "validation_status": validation_status,
-            "validation_result": validation_result,
-            "ai_validation_enabled": bool(doc_type.ai_validation),
-            "validation_provider": runtime["provider"],
-            "validation_provider_name": runtime["provider_name"],
-            "validation_model": runtime["model"],
+            "validationStatus": validation_status,
+            "validationResult": camelize_payload(validation_result),
+            "aiValidationEnabled": bool(doc_type.ai_validation),
+            "validationProvider": runtime["provider"],
+            "validationProviderName": runtime["provider_name"],
+            "validationModel": runtime["model"],
         }
         return Response(response_payload)
     except Exception as exc:
@@ -1151,13 +1194,13 @@ def validate_document_category(request, document_id):
         return Response(
             {
                 "matches": False,
-                "expected_type": doc_type.name,
-                "detected_type": doc_type.name,
+                "expectedType": doc_type.name,
+                "detectedType": doc_type.name,
                 "confidence": 0,
                 "reasoning": user_message,
-                "document_type_id": doc_type.id,
-                "validation_status": "error",
-                "validation_result": {
+                "documentTypeId": doc_type.id,
+                "validationStatus": "error",
+                "validationResult": camelize_payload({
                     "valid": False,
                     "confidence": 0,
                     "positive_analysis": "",
@@ -1170,11 +1213,11 @@ def validate_document_category(request, document_id):
                     "ai_provider": runtime["provider"],
                     "ai_provider_name": runtime["provider_name"],
                     "ai_model": runtime["model"],
-                },
-                "ai_validation_enabled": bool(doc_type.ai_validation),
-                "validation_provider": runtime["provider"],
-                "validation_provider_name": runtime["provider_name"],
-                "validation_model": runtime["model"],
+                }),
+                "aiValidationEnabled": bool(doc_type.ai_validation),
+                "validationProvider": runtime["provider"],
+                "validationProviderName": runtime["provider_name"],
+                "validationModel": runtime["model"],
             }
         )
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from django.urls import reverse
+
 from core.services.ocr_preview_storage import get_ocr_preview_url
 
 
@@ -73,6 +75,50 @@ def normalize_ocr_result_payload(payload: dict[str, Any] | None) -> dict[str, An
         normalized["previewUrl"] = str(preview_url)
     normalized.pop("previewStoragePath", None)
     return normalized
+
+
+def build_async_job_links(
+    request,
+    job_id: Any,
+    *,
+    status_route: str | None = None,
+    stream_route: str | None = None,
+    download_route: str | None = None,
+) -> dict[str, str]:
+    links: dict[str, str] = {}
+    job_id_text = str(job_id)
+
+    if status_route:
+        links["statusUrl"] = request.build_absolute_uri(reverse(status_route, kwargs={"job_id": job_id_text}))
+    if stream_route:
+        links["streamUrl"] = request.build_absolute_uri(reverse(stream_route, kwargs={"job_id": job_id_text}))
+    if download_route:
+        links["downloadUrl"] = request.build_absolute_uri(reverse(download_route, kwargs={"job_id": job_id_text}))
+    return links
+
+
+def build_async_job_start_payload(
+    *,
+    job_id: Any,
+    status: str,
+    progress: int,
+    queued: bool,
+    deduplicated: bool,
+    links: dict[str, str] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "jobId": str(job_id),
+        "status": status,
+        "progress": int(progress or 0),
+        "queued": bool(queued),
+        "deduplicated": bool(deduplicated),
+    }
+    if links:
+        payload.update(links)
+    if extra:
+        payload.update(extra)
+    return payload
 
 
 def serialize_async_job_payload(job) -> dict[str, Any]:

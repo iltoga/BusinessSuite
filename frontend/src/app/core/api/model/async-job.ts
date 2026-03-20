@@ -9,6 +9,7 @@
  */
 
 export interface AsyncJob {
+  readonly id: string;
   readonly jobId: string;
   readonly taskName: string;
   /**

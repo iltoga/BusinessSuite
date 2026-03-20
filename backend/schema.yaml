@@ -11668,6 +11668,10 @@ components:
     AsyncJob:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
         jobId:
           type: string
           format: uuid
@@ -11720,6 +11724,7 @@ components:
       - createdAt
       - createdBy
       - errorMessage
+      - id
       - jobId
       - message
       - progress

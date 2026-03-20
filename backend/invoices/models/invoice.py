@@ -497,7 +497,15 @@ class InvoiceApplication(models.Model):
         if hasattr(self, "annotated_due_amount"):
             return self.annotated_due_amount or 0
 
-        return self.amount - self.paid_amount
+        amount = self.amount
+        if not isinstance(amount, Decimal):
+            amount = Decimal(str(amount or 0))
+
+        paid_amount = self.paid_amount
+        if not isinstance(paid_amount, Decimal):
+            paid_amount = Decimal(str(paid_amount or 0))
+
+        return amount - paid_amount
 
     @property
     def is_payment_complete(self):
@@ -510,11 +518,14 @@ class InvoiceApplication(models.Model):
         return self.status in completed_statuses
 
     def calculate_payment_status(self):
-        if self.amount == self.paid_amount:
+        amount = self.amount if isinstance(self.amount, Decimal) else Decimal(str(self.amount or 0))
+        paid_amount = self.paid_amount if isinstance(self.paid_amount, Decimal) else Decimal(str(self.paid_amount or 0))
+
+        if amount == paid_amount:
             return InvoiceApplication.PAID
-        if self.paid_amount > 0:
+        if paid_amount > 0:
             return InvoiceApplication.PARTIAL_PAYMENT
-        if self.paid_amount == 0 and self.invoice.due_date < timezone.now().date():
+        if paid_amount == 0 and self.invoice.due_date < timezone.now().date():
             return InvoiceApplication.OVERDUE
         # set self.status to this status
         return InvoiceApplication.PENDING

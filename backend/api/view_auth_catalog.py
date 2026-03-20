@@ -1,6 +1,9 @@
-from .views_imports import *
-from rest_framework_simplejwt.views import TokenRefreshView as SimpleJWTTokenRefreshView
+from api.utils.idempotency import resolve_request_idempotent_job, store_request_idempotent_job
+from api.utils.stream_payloads import build_async_job_links, build_async_job_start_payload
 from rest_framework.renderers import JSONRenderer
+from rest_framework_simplejwt.views import TokenRefreshView as SimpleJWTTokenRefreshView
+
+from .views_imports import *
 
 
 def _refresh_cookie_name() -> str:
@@ -455,7 +458,14 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         deprecated_param = self.request.query_params.get("deprecated")
-        default_hide = self.action not in ["retrieve", "update", "partial_update", "destroy", "can_delete", "deprecation_impact"]
+        default_hide = self.action not in [
+            "retrieve",
+            "update",
+            "partial_update",
+            "destroy",
+            "can_delete",
+            "deprecation_impact",
+        ]
         hide_deprecated = parse_bool(self.request.query_params.get("hide_deprecated"), default_hide)
 
         if deprecated_param is not None:
@@ -510,32 +520,35 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if not product.deprecated:
                 return Response(
                     {
-                        "can_delete": False,
+                        "canDelete": False,
                         "message": f"Cannot delete '{document_type.name}' because it is used in one or more products.",
                         "warning": None,
                     }
                 )
 
-        return Response({"can_delete": True, "message": None, "warning": None})
+        return Response({"canDelete": True, "message": None, "warning": None})
 
     @action(detail=True, methods=["get"], url_path="deprecation-impact")
     def deprecation_impact(self, request, pk=None):
         document_type = self.get_object()
         related_products = [product for product in document_type.get_related_products() if not product.deprecated]
         return Response(
-            {
-                "documentTypeId": document_type.id,
-                "documentTypeName": document_type.name,
-                "relatedProducts": [
-                    {
-                        "id": product.id,
-                        "name": product.name,
-                        "code": product.code,
-                    }
-                    for product in related_products
-                ],
-                "count": len(related_products),
-            }
+            build_success_payload(
+                {
+                    "documentTypeId": document_type.id,
+                    "documentTypeName": document_type.name,
+                    "relatedProducts": [
+                        {
+                            "id": product.id,
+                            "name": product.name,
+                            "code": product.code,
+                        }
+                        for product in related_products
+                    ],
+                    "count": len(related_products),
+                },
+                request=request,
+            )
         )
 
     def _perform_update_with_deprecation_rules(self, request, partial: bool):
@@ -556,18 +569,21 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 )
                 if not confirm_related_deprecation:
                     return Response(
-                        {
-                            "code": "deprecated_products_confirmation_required",
-                            "message": "Deprecating this document type will also deprecate related products.",
-                            "relatedProducts": [
-                                {
-                                    "id": product.id,
-                                    "name": product.name,
-                                    "code": product.code,
-                                }
-                                for product in related_products
-                            ],
-                        },
+                        build_error_payload(
+                            code="deprecated_products_confirmation_required",
+                            message="Deprecating this document type will also deprecate related products.",
+                            details={
+                                "relatedProducts": [
+                                    {
+                                        "id": product.id,
+                                        "name": product.name,
+                                        "code": product.code,
+                                    }
+                                    for product in related_products
+                                ]
+                            },
+                            request=request,
+                        ),
                         status=status.HTTP_409_CONFLICT,
                     )
 
@@ -728,7 +744,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         hide_disabled = parse_bool(request.data.get("hide_disabled") or request.data.get("hideDisabled"), True)
 
         count = bulk_delete_customers(query=query or None, hide_disabled=hide_disabled)
-        return Response({"deleted_count": count})
+        return Response(build_success_payload({"deletedCount": count}, request=request))
 
     @extend_schema(
         request=PassportCheckSerializer,
@@ -748,6 +764,24 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         file_obj = serializer.validated_data.get("file")  # type: ignore[assignment]
         method = serializer.validated_data.get("method")  # type: ignore[assignment]
 
+        idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+            request=request,
+            namespace="check_passport_uploadability",
+            user_id=request.user.id,
+            queryset=AsyncJob.objects.filter(task_name="check_passport_uploadability", created_by=request.user),
+        )
+        if cached_job is not None:
+            return Response(
+                build_async_job_start_payload(
+                    job_id=cached_job.id,
+                    status=cached_job.status,
+                    progress=cached_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                ),
+                status=status.HTTP_202_ACCEPTED,
+            )
+
         # Save file temporarily
         ext = file_obj.name.split(".")[-1] if "." in file_obj.name else "jpg"
         temp_path = f"tmp/passport_checks/{uuid.uuid4().hex}.{ext}"
@@ -760,8 +794,18 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         # Enqueue task
         check_passport_uploadability_task.delay(str(job.id), saved_path, method)
+        store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
 
-        return Response({"jobId": str(job.id)}, status=status.HTTP_202_ACCEPTED)
+        return Response(
+            build_async_job_start_payload(
+                job_id=job.id,
+                status=AsyncJob.STATUS_PENDING,
+                progress=0,
+                queued=True,
+                deduplicated=False,
+            ),
+            status=status.HTTP_202_ACCEPTED,
+        )
 
 
 class ProductOrderingFilter(filters.OrderingFilter):
@@ -811,6 +855,15 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             "import_start",
         }
     )
+
+    def get_throttles(self):
+        action_scopes = {
+            "export_start": "products_export_start",
+            "price_list_print_start": "products_price_list_print_start",
+            "import_start": "products_import_start",
+        }
+        self.throttle_scope = action_scopes.get(getattr(self, "action", None))
+        return super().get_throttles()
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -883,7 +936,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         deprecated_param = self.request.query_params.get("deprecated")
         default_hide = self.action not in ["retrieve", "update", "partial_update", "destroy"]
         hide_deprecated = parse_bool(self.request.query_params.get("hide_deprecated"), default_hide)
-        
+
         if deprecated_param is not None:
             queryset = queryset.filter(deprecated=parse_bool(deprecated_param, False))
         elif hide_deprecated:
@@ -963,10 +1016,10 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         preview = build_product_delete_preview(product, limit=1)
         return Response(
             {
-                "can_delete": preview["can_delete"],
+                "canDelete": preview["canDelete"],
                 "message": preview["message"],
-                "requires_force_delete": preview["requires_force_delete"],
-                "related_counts": preview["related_counts"],
+                "requiresForceDelete": preview["requiresForceDelete"],
+                "relatedCounts": preview["relatedCounts"],
             }
         )
 
@@ -1000,7 +1053,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         product = self.get_object()
         result = force_delete_product(product)
-        return Response({"deleted": True, **result})
+        return Response(build_success_payload({"deleted": True, **result}, request=request))
 
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
@@ -1014,7 +1067,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         ).strip()
 
         count = bulk_delete_products(query=query or None)
-        return Response({"deleted_count": count})
+        return Response(build_success_payload({"deletedCount": count}, request=request))
 
     @action(detail=False, methods=["get"], url_path="get_product_by_id/(?P<product_id>[^/.]+)")
     def get_product_by_id(self, request, product_id=None):
@@ -1040,16 +1093,16 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 "name": calendar_task.name,
                 "step": calendar_task.step,
                 "duration": calendar_task.duration,
-                "duration_is_business_days": calendar_task.duration_is_business_days,
-                "add_task_to_calendar": calendar_task.add_task_to_calendar,
+                "durationIsBusinessDays": calendar_task.duration_is_business_days,
+                "addTaskToCalendar": calendar_task.add_task_to_calendar,
             }
 
         return Response(
             {
                 "product": serialized_product.data,
-                "required_documents": serialzed_document_types.data,
-                "optional_documents": serialzed_optional_document_types.data,
-                "calendar_task": serialized_calendar_task,
+                "requiredDocuments": serialzed_document_types.data,
+                "optionalDocuments": serialzed_optional_document_types.data,
+                "calendarTask": serialized_calendar_task,
             }
         )
 
@@ -1092,6 +1145,24 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             request.data.get("search_query") or request.data.get("searchQuery") or request.data.get("query") or ""
         ).strip()
 
+        idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+            request=request,
+            namespace=namespace,
+            user_id=request.user.id,
+            queryset=AsyncJob.objects.filter(task_name=namespace, created_by=request.user),
+        )
+        if cached_job is not None:
+            return Response(
+                build_async_job_start_payload(
+                    job_id=cached_job.id,
+                    status=cached_job.status,
+                    progress=cached_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                ),
+                status=status.HTTP_202_ACCEPTED,
+            )
+
         guard = prepare_async_enqueue(
             namespace=namespace,
             user=request.user,
@@ -1099,13 +1170,13 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             inflight_statuses=ASYNC_JOB_INFLIGHT_STATUSES,
             busy_message="Product export trigger is already being processed. Please retry in a moment.",
             deduplicated_response_builder=lambda existing_job: Response(
-                {
-                    "jobId": str(existing_job.id),
-                    "status": existing_job.status,
-                    "progress": existing_job.progress,
-                    "queued": False,
-                    "deduplicated": True,
-                },
+                build_async_job_start_payload(
+                    job_id=existing_job.id,
+                    status=existing_job.status,
+                    progress=existing_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                ),
                 status=status.HTTP_202_ACCEPTED,
             ),
             error_response_builder=self.error_response,
@@ -1125,18 +1196,19 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
 
             run_product_export_job(str(job.id), request.user.id if request.user else None, query)
+            store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
         finally:
             if lock_key and lock_token:
                 release_enqueue_guard(lock_key, lock_token)
 
         return Response(
-            {
-                "jobId": str(job.id),
-                "status": job.status,
-                "progress": job.progress,
-                "queued": True,
-                "deduplicated": False,
-            },
+            build_async_job_start_payload(
+                job_id=job.id,
+                status=AsyncJob.STATUS_PENDING,
+                progress=job.progress,
+                queued=True,
+                deduplicated=False,
+            ),
             status=status.HTTP_202_ACCEPTED,
         )
 
@@ -1155,6 +1227,25 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         from products.tasks import run_product_price_list_print_job
 
         namespace = "products_price_list_print"
+
+        idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+            request=request,
+            namespace=namespace,
+            user_id=request.user.id,
+            queryset=AsyncJob.objects.filter(task_name=namespace, created_by=request.user),
+        )
+        if cached_job is not None:
+            return Response(
+                build_async_job_start_payload(
+                    job_id=cached_job.id,
+                    status=cached_job.status,
+                    progress=cached_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                ),
+                status=status.HTTP_202_ACCEPTED,
+            )
+
         guard = prepare_async_enqueue(
             namespace=namespace,
             user=request.user,
@@ -1162,13 +1253,13 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             inflight_statuses=ASYNC_JOB_INFLIGHT_STATUSES,
             busy_message="Price list print preparation is already being processed. Please retry in a moment.",
             deduplicated_response_builder=lambda existing_job: Response(
-                {
-                    "jobId": str(existing_job.id),
-                    "status": existing_job.status,
-                    "progress": existing_job.progress,
-                    "queued": False,
-                    "deduplicated": True,
-                },
+                build_async_job_start_payload(
+                    job_id=existing_job.id,
+                    status=existing_job.status,
+                    progress=existing_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                ),
                 status=status.HTTP_202_ACCEPTED,
             ),
             error_response_builder=self.error_response,
@@ -1188,18 +1279,19 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
 
             run_product_price_list_print_job(str(job.id), request.user.id if request.user else None)
+            store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
         finally:
             if lock_key and lock_token:
                 release_enqueue_guard(lock_key, lock_token)
 
         return Response(
-            {
-                "jobId": str(job.id),
-                "status": job.status,
-                "progress": job.progress,
-                "queued": True,
-                "deduplicated": False,
-            },
+            build_async_job_start_payload(
+                job_id=job.id,
+                status=AsyncJob.STATUS_PENDING,
+                progress=job.progress,
+                queued=True,
+                deduplicated=False,
+            ),
             status=status.HTTP_202_ACCEPTED,
         )
 
@@ -1286,6 +1378,24 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if ext != ".xlsx":
             return self.error_response("Only .xlsx files are supported", status.HTTP_400_BAD_REQUEST)
 
+        idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+            request=request,
+            namespace=namespace,
+            user_id=request.user.id,
+            queryset=AsyncJob.objects.filter(task_name=namespace, created_by=request.user),
+        )
+        if cached_job is not None:
+            return Response(
+                build_async_job_start_payload(
+                    job_id=cached_job.id,
+                    status=cached_job.status,
+                    progress=cached_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                ),
+                status=status.HTTP_202_ACCEPTED,
+            )
+
         guard = prepare_async_enqueue(
             namespace=namespace,
             user=request.user,
@@ -1293,13 +1403,13 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             inflight_statuses=ASYNC_JOB_INFLIGHT_STATUSES,
             busy_message="Product import trigger is already being processed. Please retry in a moment.",
             deduplicated_response_builder=lambda existing_job: Response(
-                {
-                    "jobId": str(existing_job.id),
-                    "status": existing_job.status,
-                    "progress": existing_job.progress,
-                    "queued": False,
-                    "deduplicated": True,
-                },
+                build_async_job_start_payload(
+                    job_id=existing_job.id,
+                    status=existing_job.status,
+                    progress=existing_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                ),
                 status=status.HTTP_202_ACCEPTED,
             ),
             error_response_builder=self.error_response,
@@ -1323,17 +1433,18 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             saved_path = default_storage.save(input_path, uploaded)
 
             run_product_import_job(str(job.id), request.user.id if request.user else None, saved_path)
+            store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
         finally:
             if lock_key and lock_token:
                 release_enqueue_guard(lock_key, lock_token)
 
         return Response(
-            {
-                "jobId": str(job.id),
-                "status": job.status,
-                "progress": job.progress,
-                "queued": True,
-                "deduplicated": False,
-            },
+            build_async_job_start_payload(
+                job_id=job.id,
+                status=AsyncJob.STATUS_PENDING,
+                progress=job.progress,
+                queued=True,
+                deduplicated=False,
+            ),
             status=status.HTTP_202_ACCEPTED,
         )

@@ -530,8 +530,8 @@ export class InvoiceFormComponent implements OnInit {
     if (!product) {
       return 0;
     }
-    const retail = (product as any).retailPrice ?? (product as any).retail_price;
-    const base = (product as any).basePrice ?? (product as any).base_price;
+    const retail = (product as any).retailPrice;
+    const base = (product as any).basePrice;
     const price = Number(retail ?? base ?? 0);
     return Number.isNaN(price) ? 0 : price;
   }
@@ -547,12 +547,9 @@ export class InvoiceFormComponent implements OnInit {
       next: (response) => {
         const payload = (response ?? null) as Record<string, any> | null;
         const customerId = payload?.['customer']?.id ?? null;
-        const sourceLine =
-          payload?.['invoiceApplication'] ?? payload?.['invoice_application'] ?? null;
-        const sourceApplication =
-          payload?.['sourceApplication'] ?? payload?.['source_application'] ?? null;
-        const sourceApplicationId =
-          sourceLine?.['customerApplication'] ?? sourceLine?.['customer_application'] ?? null;
+        const sourceLine = payload?.['invoiceApplication'] ?? null;
+        const sourceApplication = payload?.['sourceApplication'] ?? null;
+        const sourceApplicationId = sourceLine?.['customerApplication'] ?? null;
         const sourceProductId = sourceLine?.['product'] ?? null;
 
         if (!customerId || !sourceProductId || !sourceApplicationId) {

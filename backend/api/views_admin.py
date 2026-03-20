@@ -19,7 +19,7 @@ from api.permissions import (
 )
 from api.serializers.local_resilience_serializer import LocalResilienceSettingsSerializer
 from api.serializers.ui_settings_serializer import UiSettingsSerializer
-from api.utils.contracts import build_error_payload
+from api.utils.contracts import build_error_payload, build_success_payload
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
@@ -40,7 +40,7 @@ from django.http import FileResponse, JsonResponse, StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import serializers, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -75,6 +75,29 @@ def _build_sse_response(event_stream) -> StreamingHttpResponse:
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
     return response
+
+
+def _success_response(data, *, request=None, status_code: int = 200) -> Response:
+    return Response(build_success_payload(data, request=request), status=status_code)
+
+
+def _error_response(
+    message: str,
+    *,
+    status_code: int,
+    code: str = "error",
+    details=None,
+    request=None,
+) -> Response:
+    return Response(
+        build_error_payload(
+            code=code,
+            message=message,
+            details=details,
+            request=request,
+        ),
+        status=status_code,
+    )
 
 
 def _query_param(request, key: str, default: str | None = None) -> str | None:
@@ -343,7 +366,7 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         sortable_backups.sort(key=lambda item: item[0], reverse=True)
         backups = [entry for _, entry in sortable_backups]
 
-        return Response({"backups": backups})
+        return _success_response({"backups": backups}, request=request)
 
     @extend_schema(summary="Download backup file", responses={200: OpenApiTypes.BINARY, 404: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="download/(?P<filename>.+)")
@@ -353,10 +376,10 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         # Sanitize filename to prevent directory traversal
         safe_filename = os.path.basename(filename) if filename else None
         if not safe_filename:
-            return Response({"error": "Invalid filename"}, status=400)
+            return _error_response("Invalid filename", status_code=400, code="validation_error", request=request)
         path = os.path.join(backups_dir, safe_filename)
         if not os.path.exists(path):
-            return Response({"error": "File not found"}, status=404)
+            return _error_response("File not found", status_code=404, code="not_found", request=request)
         return FileResponse(open(path, "rb"), as_attachment=True, filename=safe_filename)
 
     @extend_schema(summary="Delete a backup file", responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT})
@@ -366,18 +389,18 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         backups_dir = services.BACKUPS_DIR
         safe_filename = os.path.basename(filename) if filename else None
         if not safe_filename:
-            return Response({"ok": False, "error": "Invalid filename"}, status=400)
+            return _error_response("Invalid filename", status_code=400, code="validation_error", request=request)
         path = os.path.join(backups_dir, safe_filename)
         if not os.path.exists(path):
-            return Response({"ok": False, "error": "File not found"}, status=404)
+            return _error_response("File not found", status_code=404, code="not_found", request=request)
         try:
             if os.path.isfile(path):
                 os.unlink(path)
             elif os.path.isdir(path):
                 shutil.rmtree(path)
-            return Response({"ok": True, "deleted": safe_filename})
+            return _success_response({"deleted": safe_filename}, request=request)
         except Exception as e:
-            return Response({"ok": False, "error": str(e)}, status=500)
+            return _error_response(str(e), status_code=500, request=request)
 
     @extend_schema(
         summary="Delete multiple backup files",
@@ -392,7 +415,7 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         """Delete multiple backup files."""
         filenames = request.data.get("filenames", [])
         if not filenames:
-            return Response({"ok": False, "error": "No filenames provided"}, status=400)
+            return _error_response("No filenames provided", status_code=400, code="validation_error", request=request)
 
         backups_dir = services.BACKUPS_DIR
         deleted = []
@@ -416,7 +439,7 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             except Exception as e:
                 errors.append({"filename": filename, "error": str(e)})
 
-        return Response({"ok": True, "deleted": deleted, "errors": errors})
+        return _success_response({"deleted": deleted, "errors": errors}, request=request)
 
     @extend_schema(
         summary="Start backup process",
@@ -467,16 +490,16 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                             deleted += 1
                     except Exception:
                         pass
-            return Response({"ok": True, "deleted": deleted})
+            return _success_response({"deleted": deleted}, request=request)
         except Exception as e:
-            return Response({"ok": False, "error": str(e)}, status=500)
+            return _error_response(str(e), status_code=500, request=request)
 
     @extend_schema(summary="Upload backup file", responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["post"], url_path="upload")
     def upload(self, request):
         """Multi-part upload for existing archives."""
         if "backup_file" not in request.FILES:
-            return Response({"ok": False, "error": "No file provided"}, status=400)
+            return _error_response("No file provided", status_code=400, code="validation_error", request=request)
 
         uploaded_file = request.FILES["backup_file"]
 
@@ -490,8 +513,11 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             or uploaded_file.name.endswith(".tar.zst")
             or uploaded_file.name.endswith(".zst")
         ):
-            return Response(
-                {"ok": False, "error": "Invalid file type. Only .json, .gz, or .tar.zst files are allowed."}, status=400
+            return _error_response(
+                "Invalid file type. Only .json, .gz, or .tar.zst files are allowed.",
+                status_code=400,
+                code="validation_error",
+                request=request,
             )
 
         # Save to backups directory
@@ -510,9 +536,9 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             with open(file_path, "wb+") as destination:
                 for chunk in uploaded_file.chunks():
                     destination.write(chunk)
-            return Response({"ok": True, "filename": filename})
+            return _success_response({"filename": filename}, request=request)
         except Exception as e:
-            return Response({"ok": False, "error": str(e)}, status=500)
+            return _error_response(str(e), status_code=500, request=request)
 
     @extend_schema(
         summary="Restore from backup",
@@ -533,7 +559,7 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         """Trigger stream-backed SSE restore execution."""
         gz_path = _resolve_backup_path(_query_param(request, "file"))
         if not gz_path:
-            return Response({"error": "Missing file parameter"}, status=400)
+            return _error_response("Missing file parameter", status_code=400, code="validation_error", request=request)
 
         include_users = _as_bool(_query_param(request, "include_users", "0"))
         replay_mode = _as_bool(_query_param(request, "replay", "0"))
@@ -560,6 +586,21 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     serializer_class = ServerManagementPlaceholderSerializer
     permission_classes = [IsAuthenticated, IsSuperuserOrAdminGroup]
+    throttle_scope = None
+
+    def get_throttles(self):
+        action_scopes = {
+            "media_diagnostic": "server_management_media_diagnostic",
+            "media_repair": "server_management_media_repair",
+            "media_cleanup": "server_management_media_cleanup",
+            "openrouter_status": "server_management_openrouter_status",
+        }
+        action = getattr(self, "action", None)
+        if action == "openrouter_status":
+            self.throttle_scope = None
+        else:
+            self.throttle_scope = action_scopes.get(action)
+        return super().get_throttles()
 
     @extend_schema(
         summary="Clear application cache",
@@ -596,18 +637,21 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 from cache.namespace import namespace_manager
 
                 new_version = namespace_manager.increment_user_version(user_id)
-                return Response(
+                return _success_response(
                     {
                         "ok": True,
                         "message": f"Cache cleared for user {user_id}",
-                        "user_id": user_id,
-                        "new_version": new_version,
-                    }
+                        "userId": user_id,
+                        "newVersion": new_version,
+                    },
+                    request=request,
                 )
             except ValueError:
-                return Response({"ok": False, "message": "Invalid user_id parameter"}, status=400)
+                return self.error_response("Invalid user_id parameter", status.HTTP_400_BAD_REQUEST, request=request)
             except Exception as e:
-                return Response({"ok": False, "message": f"Failed to clear user cache: {str(e)}"}, status=500)
+                return self.error_response(
+                    f"Failed to clear user cache: {str(e)}", status.HTTP_500_INTERNAL_SERVER_ERROR, request=request
+                )
 
         # Global cache clear (backward compatible)
         try:
@@ -628,16 +672,17 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 except Exception:
                     # Non-fatal: cache clear should still succeed
                     pass
-            return Response(
+            return _success_response(
                 {
                     "ok": True,
                     "message": "Cache cleared",
-                    "cleared_stores": ["default", "cacheops"],
-                }
+                    "clearedStores": ["default", "cacheops"],
+                },
+                request=request,
             )
         except Exception as e:
             logger.error("Failed to clear global caches: %s", e, exc_info=True)
-            return Response({"ok": False, "message": str(e)}, status=500)
+            return self.error_response(str(e), status.HTTP_500_INTERNAL_SERVER_ERROR, request=request)
 
     @extend_schema(summary="Get application cache status", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="cache-status")
@@ -654,22 +699,23 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             user_enabled = namespace_manager.is_user_cache_enabled(request.user.id)
             enabled = global_enabled
 
-            return Response(
+            return _success_response(
                 {
+                    "ok": True,
                     "enabled": enabled,
-                    "global_enabled": global_enabled,
-                    "user_enabled": user_enabled,
+                    "globalEnabled": global_enabled,
+                    "userEnabled": user_enabled,
                     "version": namespace_manager.get_user_version(request.user.id),
                     "message": f"Application cache is {'enabled' if enabled else 'disabled'}",
-                    "cache_backend": backend_path,
-                    "cache_location": location,
-                }
+                    "cacheBackend": backend_path,
+                    "cacheLocation": location,
+                },
+                request=request,
             )
         except Exception as e:
             logger.error("Failed to load cache status: %s", e, exc_info=True)
-            return Response(
-                {"ok": False, "message": "Failed to load cache status", "errors": [str(e)]},
-                status=500,
+            return self.error_response(
+                "Failed to load cache status", status.HTTP_500_INTERNAL_SERVER_ERROR, details=[str(e)], request=request
             )
 
     @extend_schema(summary="Enable application cache", responses={200: OpenApiTypes.OBJECT})
@@ -683,7 +729,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             return self.cache_status(request)
         except Exception as e:
             logger.error("Failed to enable global cache: %s", e, exc_info=True)
-            return Response({"ok": False, "message": "Failed to enable cache"}, status=500)
+            return self.error_response("Failed to enable cache", status.HTTP_500_INTERNAL_SERVER_ERROR, request=request)
 
     @extend_schema(summary="Disable application cache", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["post"], url_path="cache-disable")
@@ -696,23 +742,23 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             return self.cache_status(request)
         except Exception as e:
             logger.error("Failed to disable global cache: %s", e, exc_info=True)
-            return Response({"ok": False, "message": "Failed to disable cache"}, status=500)
+            return self.error_response(
+                "Failed to disable cache", status.HTTP_500_INTERNAL_SERVER_ERROR, request=request
+            )
 
     @extend_schema(summary="Run live cache health check", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="cache-health")
     def cache_health(self, request):
         """Run a live cache round-trip and Redis connectivity probe."""
         try:
-            return Response(services.get_cache_health_status(user_id=request.user.id))
+            return _success_response(services.get_cache_health_status(user_id=request.user.id), request=request)
         except Exception as e:
             logger.error("Failed to run cache health check: %s", e, exc_info=True)
-            return Response(
-                {
-                    "ok": False,
-                    "message": "Failed to run cache health check",
-                    "errors": [str(e)],
-                },
-                status=500,
+            return self.error_response(
+                "Failed to run cache health check",
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                details=[str(e)],
+                request=request,
             )
 
     @extend_schema(
@@ -744,40 +790,30 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             try:
                 stuck_after_minutes = int(raw_stuck_after)
             except (TypeError, ValueError):
-                return Response(
-                    {
-                        "ok": False,
-                        "message": "Invalid stuck_after_minutes parameter",
-                    },
-                    status=400,
+                return self.error_response(
+                    "Invalid stuck_after_minutes parameter", status.HTTP_400_BAD_REQUEST, request=request
                 )
 
             try:
                 sample_limit = int(raw_sample_limit)
             except (TypeError, ValueError):
-                return Response(
-                    {
-                        "ok": False,
-                        "message": "Invalid sample_limit parameter",
-                    },
-                    status=400,
+                return self.error_response(
+                    "Invalid sample_limit parameter", status.HTTP_400_BAD_REQUEST, request=request
                 )
 
-            return Response(
+            return _success_response(
                 services.get_calendar_sync_health_status(
-                    stuck_after_minutes=stuck_after_minutes,
-                    sample_limit=sample_limit,
-                )
+                    stuck_after_minutes=stuck_after_minutes, sample_limit=sample_limit
+                ),
+                request=request,
             )
         except Exception as e:
             logger.error("Failed to run calendar sync health check: %s", e, exc_info=True)
-            return Response(
-                {
-                    "ok": False,
-                    "message": "Failed to run calendar sync health check",
-                    "errors": [str(e)],
-                },
-                status=500,
+            return self.error_response(
+                "Failed to run calendar sync health check",
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                details=[str(e)],
+                request=request,
             )
 
     @extend_schema(
@@ -790,7 +826,10 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         settings_obj = LocalResilienceService.get_settings()
 
         if request.method.lower() == "get":
-            return Response(LocalResilienceSettingsSerializer(settings_obj).data)
+            return _success_response(
+                {"ok": True, **LocalResilienceSettingsSerializer(settings_obj).data},
+                request=request,
+            )
 
         raw_enabled = request.data.get("enabled")
         raw_desktop_mode = request.data.get("desktop_mode", request.data.get("desktopMode"))
@@ -806,29 +845,35 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 elif normalized in {"0", "false", "no", "off"}:
                     parsed_enabled = False
                 else:
-                    return Response({"detail": "Invalid 'enabled' value"}, status=HTTP_400_BAD_REQUEST)
+                    return self.error_response("Invalid 'enabled' value", HTTP_400_BAD_REQUEST, request=request)
 
         updated = LocalResilienceService.update_settings(
             enabled=parsed_enabled,
             desktop_mode=raw_desktop_mode,
             updated_by=request.user,
         )
-        return Response(LocalResilienceSettingsSerializer(updated).data)
+        return _success_response({"ok": True, **LocalResilienceSettingsSerializer(updated).data}, request=request)
 
     @extend_schema(summary="Reset local media vault epoch", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["post"], url_path="local-resilience/reset-vault")
     def reset_local_resilience_vault(self, request):
         settings_obj = LocalResilienceService.reset_vault_epoch(updated_by=request.user)
-        return Response(
+        return _success_response(
             {
                 "ok": True,
                 "message": "Local media vault reset requested. Desktop clients must re-bootstrap.",
                 "vaultEpoch": settings_obj.vault_epoch,
-            }
+            },
+            request=request,
         )
 
     @extend_schema(summary="Run media files diagnostic", responses={200: OpenApiTypes.OBJECT})
-    @action(detail=False, methods=["get"], url_path="media-diagnostic")
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="media-diagnostic",
+        throttle_scope="server_management_media_diagnostic",
+    )
     def media_diagnostic(self, request):
         """Comprehensive check of disk vs DB."""
         try:
@@ -838,9 +883,9 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 "mediaUrl": settings.MEDIA_URL,
                 "debug": settings.DEBUG,
             }
-            return Response({"ok": True, "results": results, "settings": settings_info})
+            return _success_response({"ok": True, "results": results, "settings": settings_info}, request=request)
         except Exception as e:
-            return Response({"ok": False, "message": str(e)}, status=500)
+            return self.error_response(str(e), status.HTTP_500_INTERNAL_SERVER_ERROR, request=request)
 
     @extend_schema(
         summary="Get or update global UI settings",
@@ -850,7 +895,10 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     @action(detail=False, methods=["get", "patch"], url_path="ui-settings")
     def ui_settings(self, request):
         if request.method.lower() == "get":
-            return Response(UiSettingsSerializer(UiSettingsService.get_settings()).data)
+            return _success_response(
+                {"ok": True, **UiSettingsSerializer(UiSettingsService.get_settings()).data},
+                request=request,
+            )
 
         raw_use_overlay_menu = request.data.get("use_overlay_menu", request.data.get("useOverlayMenu"))
 
@@ -865,23 +913,28 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 elif normalized in {"0", "false", "no", "off"}:
                     parsed_use_overlay_menu = False
                 else:
-                    return Response({"detail": "Invalid 'useOverlayMenu' value"}, status=HTTP_400_BAD_REQUEST)
+                    return self.error_response("Invalid 'useOverlayMenu' value", HTTP_400_BAD_REQUEST, request=request)
 
         updated = UiSettingsService.update_settings(
             use_overlay_menu=parsed_use_overlay_menu,
             updated_by=request.user,
         )
-        return Response(UiSettingsSerializer(updated).data)
+        return _success_response({"ok": True, **UiSettingsSerializer(updated).data}, request=request)
 
     @extend_schema(summary="Repair media file paths", responses={200: OpenApiTypes.OBJECT})
-    @action(detail=False, methods=["post"], url_path="media-repair")
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="media-repair",
+        throttle_scope="server_management_media_repair",
+    )
     def media_repair(self, request):
         """Automated path fixing."""
         try:
             repairs = services.repair_media_paths()
-            return Response({"ok": True, "repairs": repairs})
+            return _success_response({"ok": True, "repairs": repairs}, request=request)
         except Exception as e:
-            return Response({"ok": False, "message": str(e)}, status=500)
+            return self.error_response(str(e), status.HTTP_500_INTERNAL_SERVER_ERROR, request=request)
 
     @extend_schema(
         summary="Clean unlinked media files",
@@ -891,7 +944,12 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         ),
         responses={200: OpenApiTypes.OBJECT},
     )
-    @action(detail=False, methods=["post"], url_path="media-cleanup")
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="media-cleanup",
+        throttle_scope="server_management_media_cleanup",
+    )
     def media_cleanup(self, request):
         """Delete unlinked media files from the active media store."""
         try:
@@ -902,9 +960,9 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 dry_run = str(raw_dry_run).strip().lower() in {"1", "true", "yes", "on"}
 
             cleanup = services.cleanup_unlinked_media_files(dry_run=dry_run)
-            return Response({"ok": cleanup.get("ok", True), "cleanup": cleanup})
+            return _success_response({"ok": True, "cleanup": cleanup}, request=request)
         except Exception as e:
-            return Response({"ok": False, "message": str(e)}, status=500)
+            return self.error_response(str(e), status.HTTP_500_INTERNAL_SERVER_ERROR, request=request)
 
     @extend_schema(
         summary="List and create application settings",
@@ -916,7 +974,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         if request.method.lower() == "post":
             name = str(request.data.get("name") or "").strip().upper()
             if not name:
-                return Response({"detail": "name is required."}, status=HTTP_400_BAD_REQUEST)
+                return self.error_response("name is required.", HTTP_400_BAD_REQUEST, request=request)
             value = request.data.get("value")
             scope = str(request.data.get("scope") or "").strip().lower()
             description = str(request.data.get("description") or "").strip()
@@ -924,16 +982,18 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             definition = AI_RUNTIME_SETTING_DEFINITIONS.get(name)
             effective_scope = scope or (definition.scope if definition else AppSettingScope.BACKEND)
             if effective_scope not in {AppSettingScope.BACKEND, AppSettingScope.FRONTEND, AppSettingScope.BOTH}:
-                return Response({"detail": "scope must be backend, frontend, or both."}, status=HTTP_400_BAD_REQUEST)
+                return self.error_response(
+                    "scope must be backend, frontend, or both.", HTTP_400_BAD_REQUEST, request=request
+                )
 
             if value is None:
-                return Response({"detail": "value is required."}, status=HTTP_400_BAD_REQUEST)
+                return self.error_response("value is required.", HTTP_400_BAD_REQUEST, request=request)
 
             if definition is not None:
                 try:
                     AIRuntimeSettingsService.update_runtime_settings({name: value}, updated_by=request.user)
                 except ValueError as exc:
-                    return Response({"detail": str(exc)}, status=HTTP_400_BAD_REQUEST)
+                    return self.error_response(str(exc), HTTP_400_BAD_REQUEST, request=request)
             else:
                 AppSettingService.set_raw(
                     name=name,
@@ -964,7 +1024,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     effective_value=raw_effective,
                 )
             )
-        return Response({"items": items})
+        return _success_response({"items": items}, request=request)
 
     @extend_schema(
         summary="Update or delete single application setting",
@@ -984,7 +1044,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     def app_setting_item(self, request, name: str | None = None):
         setting_name = str(name or "").strip().upper()
         if not setting_name:
-            return Response({"detail": "Invalid setting name."}, status=HTTP_400_BAD_REQUEST)
+            return self.error_response("Invalid setting name.", HTTP_400_BAD_REQUEST, request=request)
 
         if request.method.lower() == "delete":
             AppSettingService.delete_raw(setting_name)
@@ -1001,7 +1061,9 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 fallback_description=definition.description if definition else "",
                 effective_value=effective_value,
             )
-            return Response({"ok": True, "name": setting_name, "effectiveValue": effective_value, "setting": metadata})
+            return _success_response(
+                {"name": setting_name, "effectiveValue": effective_value, "setting": metadata}, request=request
+            )
 
         payload = dict(request.data or {})
         if "value" in payload and payload["value"] is None:
@@ -1019,7 +1081,9 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 fallback_description=definition.description if definition else "",
                 effective_value=effective_value,
             )
-            return Response({"ok": True, "name": setting_name, "effectiveValue": effective_value, "setting": metadata})
+            return _success_response(
+                {"name": setting_name, "effectiveValue": effective_value, "setting": metadata}, request=request
+            )
 
         current = AppSetting.objects.filter(name=setting_name).first()
         scope = str(payload.get("scope") or (current.scope if current else AppSettingScope.BACKEND)).strip().lower()
@@ -1029,17 +1093,19 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             else (current.description if current else "")
         ).strip()
         if scope not in {AppSettingScope.BACKEND, AppSettingScope.FRONTEND, AppSettingScope.BOTH}:
-            return Response({"detail": "scope must be backend, frontend, or both."}, status=HTTP_400_BAD_REQUEST)
+            return self.error_response(
+                "scope must be backend, frontend, or both.", HTTP_400_BAD_REQUEST, request=request
+            )
 
         if "value" not in payload:
-            return Response({"detail": "value is required."}, status=HTTP_400_BAD_REQUEST)
+            return self.error_response("value is required.", HTTP_400_BAD_REQUEST, request=request)
         value = payload.get("value")
         definition = AI_RUNTIME_SETTING_DEFINITIONS.get(setting_name)
         if definition:
             try:
                 AIRuntimeSettingsService.update_runtime_settings({setting_name: value}, updated_by=request.user)
             except ValueError as exc:
-                return Response({"detail": str(exc)}, status=HTTP_400_BAD_REQUEST)
+                return self.error_response(str(exc), HTTP_400_BAD_REQUEST, request=request)
         else:
             AppSettingService.set_raw(
                 name=setting_name,
@@ -1060,14 +1126,21 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             fallback_description=definition.description if definition else "",
             effective_value=effective_value,
         )
-        return Response({"ok": True, "name": setting_name, "effectiveValue": effective_value, "setting": metadata})
+        return _success_response(
+            {"name": setting_name, "effectiveValue": effective_value, "setting": metadata}, request=request
+        )
 
     @extend_schema(
         summary="Get or update OpenRouter status and AI model usage",
         request=OpenApiTypes.OBJECT,
         responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
     )
-    @action(detail=False, methods=["get", "patch"], url_path="openrouter-status")
+    @action(
+        detail=False,
+        methods=["get", "patch"],
+        url_path="openrouter-status",
+        throttle_scope="server_management_openrouter_status",
+    )
     def openrouter_status(self, request):
         """Return OpenRouter credit status and AI model usage by feature.
 
@@ -1101,7 +1174,9 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 updates = {name: value for name, value in payload.items() if name not in {"settings", "updates"}}
 
             if not isinstance(updates, dict):
-                return Response({"detail": "Invalid payload. Expected an object."}, status=HTTP_400_BAD_REQUEST)
+                return self.error_response(
+                    "Invalid payload. Expected an object.", HTTP_400_BAD_REQUEST, request=request
+                )
 
             def _normalize_setting_name(raw_name):
                 candidate = str(raw_name or "").strip()
@@ -1136,15 +1211,16 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     if normalized_name:
                         normalized_updates[normalized_name] = raw_value
             if not normalized_updates:
-                return Response(
-                    {"detail": "No supported runtime settings provided."},
-                    status=HTTP_400_BAD_REQUEST,
+                return self.error_response(
+                    "No supported runtime settings provided.",
+                    HTTP_400_BAD_REQUEST,
+                    request=request,
                 )
 
             try:
                 AIRuntimeSettingsService.update_runtime_settings(normalized_updates, updated_by=request.user)
             except ValueError as exc:
-                return Response({"detail": str(exc)}, status=HTTP_400_BAD_REQUEST)
+                return self.error_response(str(exc), HTTP_400_BAD_REQUEST, request=request)
 
         def _to_float(value):
             try:
@@ -1651,7 +1727,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             effective_credit_remaining = credits_status["remaining"]
             effective_credit_source = "credits.total_credits-total_usage"
 
-        return Response(
+        return _success_response(
             {
                 "ok": True,
                 "openrouter": {
@@ -1666,5 +1742,6 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     ),
                 },
                 "aiModels": ai_model_usage,
-            }
+            },
+            request=request,
         )

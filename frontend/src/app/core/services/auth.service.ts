@@ -18,6 +18,8 @@ import { Router } from '@angular/router';
 import { catchError, finalize, map, Observable, of, shareReplay, tap, throwError } from 'rxjs';
 
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { ConfigService } from './config.service';
 
 export interface AuthToken {
@@ -423,48 +425,7 @@ export class AuthService {
   }
 
   private extractErrorMessage(error: any): string | null {
-    const payload = error?.error ?? error?.response ?? error;
-    if (!payload) {
-      return null;
-    }
-
-    if (typeof payload === 'string') {
-      return payload;
-    }
-
-    const canonical = payload?.error;
-    if (canonical && typeof canonical === 'object') {
-      const message = canonical.message ?? canonical.detail;
-      if (typeof message === 'string' && message.trim()) {
-        return message;
-      }
-      const details = canonical.details;
-      if (typeof details === 'string' && details.trim()) {
-        return details;
-      }
-      if (details && typeof details === 'object') {
-        for (const value of Object.values(details as Record<string, unknown>)) {
-          if (typeof value === 'string' && value.trim()) {
-            return value;
-          }
-          if (Array.isArray(value)) {
-            const first = value.find((item) => typeof item === 'string' && item.trim());
-            if (typeof first === 'string') {
-              return first;
-            }
-          }
-        }
-      }
-    }
-
-    if (typeof payload.message === 'string' && payload.message.trim()) {
-      return payload.message;
-    }
-    if (typeof payload.detail === 'string' && payload.detail.trim()) {
-      return payload.detail;
-    }
-
-    return null;
+    return extractServerErrorMessage(error);
   }
 
   private buildClaimsFromToken(token: string | null, isMockEnabled?: boolean): AuthClaims | null {
@@ -510,14 +471,29 @@ export class AuthService {
     };
   }
 
-  private normalizeMockClaims(response: MockAuthConfigResponse): AuthClaims {
+  private normalizeMockClaims(response: unknown): AuthClaims {
+    const source = (unwrapApiRecord(response) ?? {}) as Record<string, unknown>;
+    const toStringArray = (value: unknown): string[] =>
+      Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+
+    const sub =
+      typeof source['sub'] === 'string'
+        ? source['sub']
+        : typeof source['username'] === 'string'
+          ? source['username']
+          : 'mock-user';
+    const email = typeof source['email'] === 'string' ? source['email'] : null;
+    const roles = toStringArray(source['roles']);
+    const groups = toStringArray(source['groups']);
+    const isSuperuser = Boolean(source['isSuperuser'] ?? source['is_superuser'] ?? false);
+    const isStaff = Boolean(source['isStaff'] ?? source['is_staff'] ?? false);
     return {
-      sub: response.sub ?? response.username ?? 'mock-user',
-      email: response.email ?? null,
-      roles: response.roles ?? response.groups ?? [],
-      groups: response.groups ?? response.roles ?? [],
-      isSuperuser: response.isSuperuser ?? response.is_superuser ?? false,
-      isStaff: response.isStaff ?? response.is_staff ?? false,
+      sub,
+      email,
+      roles: roles.length ? roles : groups,
+      groups: groups.length ? groups : roles,
+      isSuperuser,
+      isStaff,
     } satisfies AuthClaims;
   }
 
@@ -527,7 +503,7 @@ export class AuthService {
     }
 
     this.http
-      .get<MockAuthConfigResponse>(this.MOCK_CLAIMS_URL)
+      .get<unknown>(this.MOCK_CLAIMS_URL)
       .pipe(
         tap((response) => {
           const claims = this.normalizeMockClaims(response);

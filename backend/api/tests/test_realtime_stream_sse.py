@@ -41,6 +41,6 @@ class RealtimeStreamSseTests(TestCase):
             stream.close()
 
         self.assertIn('"event": "connected"', first_chunk)
-        self.assertIn(f'"user_id": {self.user.id}', first_chunk)
+        self.assertIn(f'"userId": {self.user.id}', first_chunk)
         self.assertEqual(second_chunk, ": keepalive\n\n")
         iter_events_mock.assert_called_once()

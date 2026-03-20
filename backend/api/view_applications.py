@@ -44,13 +44,21 @@ payload shape is normalised by ``normalize_ocr_job_payload()`` /
 Streams.
 """
 
+import logging
+
 from api.utils.stream_payloads import (
+    build_async_job_links,
+    build_async_job_start_payload,
     normalize_document_ocr_job_payload,
     normalize_ocr_job_payload,
     normalize_ocr_result_payload,
 )
+from api.utils.contracts import build_error_payload, build_success_payload
+from api.utils.idempotency import resolve_request_idempotent_job, store_request_idempotent_job
 
 from .views_imports import *
+
+logger = logging.getLogger(__name__)
 
 
 def _build_ocr_status_payload(job: OCRJob, request) -> dict[str, Any]:
@@ -326,7 +334,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             request.data.get("search_query") or request.data.get("searchQuery") or request.data.get("query") or ""
         ).strip()
         count = bulk_delete_applications(query=query or None)
-        return Response({"deleted_count": count})
+        return Response(build_success_payload({"deletedCount": count}, request=request))
 
     @action(detail=True, methods=["post"], url_path="advance-workflow")
     @extend_schema(responses={200: DocApplicationDetailSerializer})
@@ -542,7 +550,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return deprecated_response
         if not application.reopen(request.user):
             return self.error_response("Application is not completed", status.HTTP_400_BAD_REQUEST)
-        return Response({"success": True})
+        return Response(build_success_payload({"success": True}, request=request))
 
     @extend_schema(request=None, responses=DocApplicationDetailSerializer)
     @action(detail=True, methods=["post"], url_path="force-close")
@@ -885,19 +893,45 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         resize = str(request.data.get("resize", "false")).lower() == "true"
         width = request.data.get("width", None)
 
-        def build_existing_response(existing_job):
-            status_url = request.build_absolute_uri(reverse("api-ocr-status", kwargs={"job_id": str(existing_job.id)}))
-            stream_url = request.build_absolute_uri(reverse("api-ocr-stream", kwargs={"job_id": str(existing_job.id)}))
+        idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+            request=request,
+            namespace=namespace,
+            user_id=request.user.id,
+            queryset=OCRJob.objects.filter(created_by=request.user),
+        )
+        if cached_job is not None:
             return Response(
-                data={
-                    "jobId": str(existing_job.id),
-                    "status": existing_job.status,
-                    "progress": existing_job.progress,
-                    "statusUrl": status_url,
-                    "streamUrl": stream_url,
-                    "queued": False,
-                    "deduplicated": True,
-                },
+                build_async_job_start_payload(
+                    job_id=cached_job.id,
+                    status=cached_job.status,
+                    progress=cached_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                    links=build_async_job_links(
+                        request,
+                        cached_job.id,
+                        status_route="api-ocr-status",
+                        stream_route="api-ocr-stream",
+                    ),
+                ),
+                status=status.HTTP_202_ACCEPTED,
+            )
+
+        def build_existing_response(existing_job):
+            return Response(
+                build_async_job_start_payload(
+                    job_id=existing_job.id,
+                    status=existing_job.status,
+                    progress=existing_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                    links=build_async_job_links(
+                        request,
+                        existing_job.id,
+                        status_route="api-ocr-status",
+                        stream_route="api-ocr-stream",
+                    ),
+                ),
                 status=status.HTTP_202_ACCEPTED,
             )
 
@@ -936,19 +970,22 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 },
             )
             run_ocr_job(str(job.id))
+            store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
 
-            status_url = request.build_absolute_uri(reverse("api-ocr-status", kwargs={"job_id": str(job.id)}))
-            stream_url = request.build_absolute_uri(reverse("api-ocr-stream", kwargs={"job_id": str(job.id)}))
             return Response(
-                data={
-                    "jobId": str(job.id),
-                    "status": job.status,
-                    "progress": job.progress,
-                    "statusUrl": status_url,
-                    "streamUrl": stream_url,
-                    "queued": True,
-                    "deduplicated": False,
-                },
+                build_async_job_start_payload(
+                    job_id=job.id,
+                    status=OCRJob.STATUS_QUEUED,
+                    progress=job.progress,
+                    queued=True,
+                    deduplicated=False,
+                    links=build_async_job_links(
+                        request,
+                        job.id,
+                        status_route="api-ocr-status",
+                        stream_route="api-ocr-stream",
+                    ),
+                ),
                 status=status.HTTP_202_ACCEPTED,
             )
         except Exception as e:
@@ -990,6 +1027,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             last_progress = initial_payload["progress"]
             last_status = initial_payload["status"]
 
+            logger.info("ocr_stream_connect job_id=%s replay_cursor=%s", job.id, last_event_id)
             yield format_sse_event(data=initial_payload)
             if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
                 return
@@ -1021,9 +1059,11 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
                         return
                 except OCRJob.DoesNotExist:
+                    logger.warning("ocr_stream_job_not_found job_id=%s replay_cursor=%s", job.id, last_event_id)
                     yield format_sse_event(data={"errorMessage": "OCR job not found"})
                     return
                 except Exception as exc:
+                    logger.exception("ocr_stream_failure job_id=%s error=%s", job.id, exc)
                     yield format_sse_event(data={"errorMessage": str(exc)})
                     return
 
@@ -1115,23 +1155,45 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             except (TypeError, ValueError):
                 return self.error_response("Invalid doc_type_id", status.HTTP_400_BAD_REQUEST)
 
-        def build_existing_response(existing_job):
-            status_url = request.build_absolute_uri(
-                reverse("api-document-ocr-status", kwargs={"job_id": str(existing_job.id)})
-            )
-            stream_url = request.build_absolute_uri(
-                reverse("api-document-ocr-stream", kwargs={"job_id": str(existing_job.id)})
-            )
+        idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+            request=request,
+            namespace=namespace,
+            user_id=request.user.id,
+            queryset=DocumentOCRJob.objects.filter(created_by=request.user),
+        )
+        if cached_job is not None:
             return Response(
-                data={
-                    "jobId": str(existing_job.id),
-                    "status": existing_job.status,
-                    "progress": existing_job.progress,
-                    "statusUrl": status_url,
-                    "streamUrl": stream_url,
-                    "queued": False,
-                    "deduplicated": True,
-                },
+                build_async_job_start_payload(
+                    job_id=cached_job.id,
+                    status=cached_job.status,
+                    progress=cached_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                    links=build_async_job_links(
+                        request,
+                        cached_job.id,
+                        status_route="api-document-ocr-status",
+                        stream_route="api-document-ocr-stream",
+                    ),
+                ),
+                status=status.HTTP_202_ACCEPTED,
+            )
+
+        def build_existing_response(existing_job):
+            return Response(
+                build_async_job_start_payload(
+                    job_id=existing_job.id,
+                    status=existing_job.status,
+                    progress=existing_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                    links=build_async_job_links(
+                        request,
+                        existing_job.id,
+                        status_route="api-document-ocr-status",
+                        stream_route="api-document-ocr-stream",
+                    ),
+                ),
                 status=status.HTTP_202_ACCEPTED,
             )
 
@@ -1171,19 +1233,21 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 },
             )
             run_document_ocr_job(str(job.id))
-
-            status_url = request.build_absolute_uri(reverse("api-document-ocr-status", kwargs={"job_id": str(job.id)}))
-            stream_url = request.build_absolute_uri(reverse("api-document-ocr-stream", kwargs={"job_id": str(job.id)}))
+            store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
             return Response(
-                data={
-                    "jobId": str(job.id),
-                    "status": job.status,
-                    "progress": job.progress,
-                    "statusUrl": status_url,
-                    "streamUrl": stream_url,
-                    "queued": True,
-                    "deduplicated": False,
-                },
+                build_async_job_start_payload(
+                    job_id=job.id,
+                    status=DocumentOCRJob.STATUS_QUEUED,
+                    progress=job.progress,
+                    queued=True,
+                    deduplicated=False,
+                    links=build_async_job_links(
+                        request,
+                        job.id,
+                        status_route="api-document-ocr-status",
+                        stream_route="api-document-ocr-stream",
+                    ),
+                ),
                 status=status.HTTP_202_ACCEPTED,
             )
         except Exception as e:
@@ -1225,6 +1289,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             last_progress = initial_payload["progress"]
             last_status = initial_payload["status"]
 
+            logger.info("document_ocr_stream_connect job_id=%s replay_cursor=%s", job.id, last_event_id)
             yield format_sse_event(data=initial_payload)
             if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
                 return
@@ -1259,9 +1324,15 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
                         return
                 except DocumentOCRJob.DoesNotExist:
+                    logger.warning(
+                        "document_ocr_stream_job_not_found job_id=%s replay_cursor=%s",
+                        job.id,
+                        last_event_id,
+                    )
                     yield format_sse_event(data={"errorMessage": "Document OCR job not found"})
                     return
                 except Exception as exc:
+                    logger.exception("document_ocr_stream_failure job_id=%s error=%s", job.id, exc)
                     yield format_sse_event(data={"errorMessage": str(exc)})
                     return
 
@@ -1298,7 +1369,7 @@ class ComputeViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 task = Task.objects.get(id=task_id)
                 due_date = calculate_due_date(start_date, task.duration, task.duration_is_business_days)
                 due_date = due_date.strftime("%Y-%m-%d")
-                return Response({"due_date": due_date})
+                return Response({"dueDate": due_date})
             except Task.DoesNotExist:
                 return self.error_response("Task does not exist", status.HTTP_404_NOT_FOUND)
         else:
@@ -1359,10 +1430,12 @@ def mock_auth_config(request):
 
     if not AppSettingService.parse_bool(AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False):
         return Response(
-            {
-                "code": "mock_auth_disabled",
-                "errors": {"detail": ["Mock authentication is disabled."]},
-            },
+            build_error_payload(
+                code="mock_auth_disabled",
+                message="Mock authentication is disabled.",
+                details={"detail": ["Mock authentication is disabled."]},
+                request=request,
+            ),
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -1370,15 +1443,18 @@ def mock_auth_config(request):
     email = getattr(settings, "MOCK_AUTH_EMAIL", "mock@example.com")
 
     return Response(
-        {
-            "sub": username,
-            "username": username,
-            "email": email,
-            "is_superuser": getattr(settings, "MOCK_AUTH_IS_SUPERUSER", True),
-            "is_staff": getattr(settings, "MOCK_AUTH_IS_STAFF", True),
-            "groups": getattr(settings, "MOCK_AUTH_GROUPS", []),
-            "roles": getattr(settings, "MOCK_AUTH_ROLES", []),
-        }
+        build_success_payload(
+            {
+                "sub": username,
+                "username": username,
+                "email": email,
+                "is_superuser": getattr(settings, "MOCK_AUTH_IS_SUPERUSER", True),
+                "is_staff": getattr(settings, "MOCK_AUTH_IS_STAFF", True),
+                "groups": getattr(settings, "MOCK_AUTH_GROUPS", []),
+                "roles": getattr(settings, "MOCK_AUTH_ROLES", []),
+            },
+            request=request,
+        )
     )
 
 
@@ -1394,28 +1470,39 @@ def customer_quick_create(request):
     try:
         serializer = CustomerQuickCreateSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                build_error_payload(
+                    code="validation_error",
+                    message="Validation error",
+                    details=serializer.errors,
+                    request=request,
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         customer = create_quick_customer(validated_data=serializer.validated_data)
 
         return Response(
-            {
-                "success": True,
-                "customer": {
-                    "id": customer.id,
-                    "full_name": customer.full_name_with_company,
-                    "email": customer.email or "",
-                    "telephone": customer.telephone or "",
-                    "company_name": customer.company_name or "",
-                    "npwp": customer.npwp or "",
-                    "passport_number": customer.passport_number or "",
-                    "passport_expiration_date": (
-                        str(customer.passport_expiration_date) if customer.passport_expiration_date else ""
-                    ),
-                    "birth_place": customer.birth_place or "",
-                    "address_abroad": customer.address_abroad or "",
+            build_success_payload(
+                {
+                    "success": True,
+                    "customer": {
+                        "id": customer.id,
+                        "full_name": customer.full_name_with_company,
+                        "email": customer.email or "",
+                        "telephone": customer.telephone or "",
+                        "company_name": customer.company_name or "",
+                        "npwp": customer.npwp or "",
+                        "passport_number": customer.passport_number or "",
+                        "passport_expiration_date": (
+                            str(customer.passport_expiration_date) if customer.passport_expiration_date else ""
+                        ),
+                        "birth_place": customer.birth_place or "",
+                        "address_abroad": customer.address_abroad or "",
+                    },
                 },
-            },
+                request=request,
+            ),
             status=status.HTTP_201_CREATED,
         )
 
@@ -1424,12 +1511,22 @@ def customer_quick_create(request):
         if hasattr(e, "message_dict"):
             # Django ValidationError
             return Response(
-                {"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST
+                build_error_payload(
+                    code="validation_error",
+                    message="Validation error",
+                    details=getattr(e, "message_dict"),
+                    request=request,
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         logger.exception("Error in customer_quick_create")
         return Response(
-            {"success": False, "error": "Server error while creating customer."},
+            build_error_payload(
+                code="error",
+                message="Server error while creating customer.",
+                request=request,
+            ),
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -1448,15 +1545,31 @@ def customer_application_quick_create(request):
         if not serializer.is_valid():
             if "doc_date" in serializer.errors:
                 return Response(
-                    {"success": False, "error": "Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY."},
+                    build_error_payload(
+                        code="validation_error",
+                        message="Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY.",
+                        request=request,
+                    ),
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             if "customer" in serializer.errors or "product" in serializer.errors:
                 return Response(
-                    {"success": False, "error": "Customer or product not found."},
+                    build_error_payload(
+                        code="not_found",
+                        message="Customer or product not found.",
+                        request=request,
+                    ),
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                build_error_payload(
+                    code="validation_error",
+                    message="Validation error",
+                    details=serializer.errors,
+                    request=request,
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         validated_data = serializer.validated_data
         doc_app = create_quick_customer_application(
@@ -1468,19 +1581,22 @@ def customer_application_quick_create(request):
         )
 
         return Response(
-            {
-                "success": True,
-                "application": {
-                    "id": doc_app.id,
-                    "product_name": str(doc_app.product.name),
-                    "product_code": str(doc_app.product.code),
-                    "customer_name": str(doc_app.customer.full_name),
-                    "doc_date": str(doc_app.doc_date),
-                    "base_price": float(doc_app.product.base_price or 0),
-                    "retail_price": float(doc_app.product.retail_price or doc_app.product.base_price or 0),
-                    "display_name": f"{doc_app.product.code} - {doc_app.product.name} ({doc_app.customer.full_name})",
+            build_success_payload(
+                {
+                    "success": True,
+                    "application": {
+                        "id": doc_app.id,
+                        "product_name": str(doc_app.product.name),
+                        "product_code": str(doc_app.product.code),
+                        "customer_name": str(doc_app.customer.full_name),
+                        "doc_date": str(doc_app.doc_date),
+                        "base_price": float(doc_app.product.base_price or 0),
+                        "retail_price": float(doc_app.product.retail_price or doc_app.product.base_price or 0),
+                        "display_name": f"{doc_app.product.code} - {doc_app.product.name} ({doc_app.customer.full_name})",
+                    },
                 },
-            },
+                request=request,
+            ),
             status=status.HTTP_201_CREATED,
         )
 
@@ -1491,11 +1607,21 @@ def customer_application_quick_create(request):
         if hasattr(e, "message_dict"):
             # Django ValidationError
             return Response(
-                {"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST
+                build_error_payload(
+                    code="validation_error",
+                    message="Validation error",
+                    details=getattr(e, "message_dict"),
+                    request=request,
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         return Response(
-            {"success": False, "error": "Server error while creating customer application."},
+            build_error_payload(
+                code="error",
+                message="Server error while creating customer application.",
+                request=request,
+            ),
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -1512,26 +1638,37 @@ def product_quick_create(request):
     try:
         serializer = ProductQuickCreateSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                build_error_payload(
+                    code="validation_error",
+                    message="Validation error",
+                    details=serializer.errors,
+                    request=request,
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         product = create_quick_product(validated_data=serializer.validated_data, user=request.user)
 
         return Response(
-            {
-                "success": True,
-                "product": {
-                    "id": product.id,
-                    "name": product.name,
-                    "code": product.code,
-                    "product_type": product.product_category.product_type if product.product_category else None,
-                    "base_price": product.base_price,
-                    "retail_price": product.retail_price,
-                    "created_at": product.created_at,
-                    "updated_at": product.updated_at,
-                    "created_by": product.created_by_id,
-                    "updated_by": product.updated_by_id,
+            build_success_payload(
+                {
+                    "success": True,
+                    "product": {
+                        "id": product.id,
+                        "name": product.name,
+                        "code": product.code,
+                        "product_type": product.product_category.product_type if product.product_category else None,
+                        "base_price": product.base_price,
+                        "retail_price": product.retail_price,
+                        "created_at": product.created_at,
+                        "updated_at": product.updated_at,
+                        "created_by": product.created_by_id,
+                        "updated_by": product.updated_by_id,
+                    },
                 },
-            },
+                request=request,
+            ),
             status=status.HTTP_201_CREATED,
         )
 
@@ -1540,11 +1677,21 @@ def product_quick_create(request):
         if hasattr(e, "message_dict"):
             # Django ValidationError
             return Response(
-                {"success": False, "errors": getattr(e, "message_dict")}, status=status.HTTP_400_BAD_REQUEST
+                build_error_payload(
+                    code="validation_error",
+                    message="Validation error",
+                    details=getattr(e, "message_dict"),
+                    request=request,
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         logger.exception("Error in product_quick_create")
         return Response(
-            {"success": False, "error": "Server error while creating product."},
+            build_error_payload(
+                code="error",
+                message="Server error while creating product.",
+                request=request,
+            ),
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

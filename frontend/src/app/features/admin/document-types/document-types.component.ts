@@ -402,8 +402,10 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
             error?.status === 409 &&
             error?.error?.code === 'deprecated_products_confirmation_required'
           ) {
-            const relatedProducts = Array.isArray(error?.error?.relatedProducts)
-              ? error.error.relatedProducts
+            const relatedProducts = Array.isArray(error?.error?.details?.relatedProducts)
+              ? error.error.details.relatedProducts
+              : Array.isArray(error?.error?.relatedProducts)
+                ? error.error.relatedProducts
               : [];
             const relatedNames = relatedProducts
               .map((product: any) => `${product.code} - ${product.name}`)

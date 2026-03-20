@@ -586,6 +586,10 @@ REST_FRAMEWORK = {
         "products_price_list_print_start": "6/minute",
         "invoice_download_async": "10/minute",
         "invoice_import_batch": "4/minute",
+        "server_management_openrouter_status": "6/minute",
+        "server_management_media_diagnostic": "10/minute",
+        "server_management_media_repair": "10/minute",
+        "server_management_media_cleanup": "4/minute",
     },
 }
 
@@ -845,6 +849,9 @@ if USE_CLOUD_STORAGE:
 elif LOCAL_MEDIA_ENCRYPTION_ENABLED:
     DEFAULT_FILE_STORAGE = "core.storage.encrypted_local.EncryptedLocalStorage"
 else:
+    DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+
+if TESTING:
     DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 
 STORAGES = {

@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import AsyncGenerator
 
@@ -7,6 +8,8 @@ from django.http import StreamingHttpResponse
 from api.utils.redis_sse import iter_replay_and_live_events_async
 from api.utils.sse_auth import sse_token_auth_required
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_user_key
+
+logger = logging.getLogger(__name__)
 
 # Server-side max SSE connection duration (seconds).
 # Must be shorter than Cloudflare's 100 s proxy timeout.
@@ -22,12 +25,13 @@ async def realtime_stream_sse(request):
     user_id = request.user.id
     stream_key = stream_user_key(user_id)
     replay_cursor = resolve_last_event_id(request)
+    logger.info("realtime_stream_sse connect user_id=%s replay_cursor=%s", user_id, replay_cursor)
 
     async def event_stream() -> AsyncGenerator[str, None]:
         deadline = time.monotonic() + _SSE_MAX_DURATION_SECONDS
 
         # Send initial connection success message for debugging/state sync
-        yield format_sse_event(data={"event": "connected", "user_id": user_id})
+        yield format_sse_event(data={"event": "connected", "userId": user_id})
 
         async for stream_event in iter_replay_and_live_events_async(
             stream_key=stream_key,
@@ -60,6 +64,7 @@ async def realtime_stream_sse(request):
             except GeneratorExit:
                 return
             except Exception as exc:
+                logger.exception("realtime_stream_sse failure user_id=%s error=%s", user_id, exc)
                 yield format_sse_event(data={"event": "realtime_error", "error": str(exc)})
                 return
 

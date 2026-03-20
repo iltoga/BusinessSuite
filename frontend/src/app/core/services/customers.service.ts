@@ -5,9 +5,8 @@
  * Customer-facing API models now come from `core/api/`, which is the
  * repository source of truth for OpenAPI-derived types.
  *
- * **Implementation note:** This service still performs light normalization so
- * UI callers remain resilient to snake_case payloads and relative file URLs,
- * but its public types should stay aligned with the generated models.
+ * This service only performs lightweight URL normalization for file paths;
+ * its payload mapping is otherwise aligned with the generated models.
  *
  * ## Methods
  * | Method | Description |
@@ -141,13 +140,10 @@ export class CustomersService {
       hideDisabled,
     };
     return this.http
-      .post<{
-        deletedCount?: number;
-        deleted_count?: number;
-      }>(`${this.apiUrl}bulk-delete/`, payload, { headers })
+      .post<{ deletedCount?: number }>(`${this.apiUrl}bulk-delete/`, payload, { headers })
       .pipe(
         map((response) => ({
-          deletedCount: response.deletedCount ?? response.deleted_count ?? 0,
+          deletedCount: response.deletedCount ?? 0,
         })),
       );
   }
@@ -210,13 +206,13 @@ export class CustomersService {
 
   private readonly mapCustomer = (item: any): Customer => ({
     id: item.id,
-    createdAt: item.created_at ?? item.createdAt ?? '',
-    updatedAt: item.updated_at ?? item.updatedAt ?? '',
+    createdAt: item.createdAt ?? '',
+    updatedAt: item.updatedAt ?? '',
     title: item.title ?? null,
-    customerType: item.customer_type ?? item.customerType ?? 'person',
-    firstName: item.first_name ?? item.firstName ?? null,
-    lastName: item.last_name ?? item.lastName ?? null,
-    companyName: item.company_name ?? item.companyName ?? null,
+    customerType: item.customerType ?? 'person',
+    firstName: item.firstName ?? null,
+    lastName: item.lastName ?? null,
+    companyName: item.companyName ?? null,
     email: item.email ?? null,
     telephone: item.telephone ?? null,
     whatsapp: item.whatsapp ?? null,
@@ -227,27 +223,25 @@ export class CustomersService {
     npwp: item.npwp ?? null,
     nationality: item.nationality ?? null,
     birthdate: item.birthdate ?? null,
-    birthPlace: item.birth_place ?? item.birthPlace ?? null,
-    passportNumber: item.passport_number ?? item.passportNumber ?? null,
-    passportIssueDate: item.passport_issue_date ?? item.passportIssueDate ?? null,
-    passportExpirationDate: item.passport_expiration_date ?? item.passportExpirationDate ?? null,
-    passportFile: this.normalizeFileUrl(item.passport_file ?? item.passportFile ?? null),
-    passportMetadata: item.passport_metadata ?? item.passportMetadata ?? null,
-    passportExpired: item.passport_expired ?? item.passportExpired ?? false,
-    passportExpiringSoon: item.passport_expiring_soon ?? item.passportExpiringSoon ?? false,
+    birthPlace: item.birthPlace ?? null,
+    passportNumber: item.passportNumber ?? null,
+    passportIssueDate: item.passportIssueDate ?? null,
+    passportExpirationDate: item.passportExpirationDate ?? null,
+    passportFile: this.normalizeFileUrl(item.passportFile ?? null),
+    passportMetadata: item.passportMetadata ?? null,
+    passportExpired: item.passportExpired ?? false,
+    passportExpiringSoon: item.passportExpiringSoon ?? false,
     gender: item.gender ?? null,
-    genderDisplay: item.gender_display ?? item.genderDisplay ?? '',
-    nationalityName: item.nationality_name ?? item.nationalityName ?? '',
-    nationalityCode: item.nationality_code ?? item.nationalityCode ?? '',
-    addressBali: item.address_bali ?? item.addressBali ?? null,
-    addressAbroad: item.address_abroad ?? item.addressAbroad ?? null,
-    notifyDocumentsExpiration:
-      item.notify_documents_expiration ?? item.notifyDocumentsExpiration ?? false,
-    notifyBy: item.notify_by ?? item.notifyBy ?? null,
+    genderDisplay: item.genderDisplay ?? '',
+    nationalityName: item.nationalityName ?? '',
+    nationalityCode: item.nationalityCode ?? '',
+    addressBali: item.addressBali ?? null,
+    addressAbroad: item.addressAbroad ?? null,
+    notifyDocumentsExpiration: item.notifyDocumentsExpiration ?? false,
+    notifyBy: item.notifyBy ?? null,
     active: item.active ?? true,
-    fullName: item.full_name ?? item.fullName ?? item.full_name_with_company ?? '',
-    fullNameWithCompany:
-      item.full_name_with_company ?? item.fullNameWithCompany ?? item.full_name ?? '',
+    fullName: item.fullName ?? item.fullNameWithCompany ?? '',
+    fullNameWithCompany: item.fullNameWithCompany ?? item.fullName ?? '',
   });
 
   private readonly mapProduct = (item: any): Product => ({
@@ -255,27 +249,25 @@ export class CustomersService {
     name: item?.name ?? '',
     code: item?.code ?? '',
     description: item?.description ?? '',
-    immigrationId: item?.immigration_id ?? item?.immigrationId ?? null,
-    basePrice: item?.base_price ?? item?.basePrice ?? null,
-    retailPrice:
-      item?.retail_price ?? item?.retailPrice ?? item?.base_price ?? item?.basePrice ?? '0',
+    immigrationId: item?.immigrationId ?? null,
+    basePrice: item?.basePrice ?? null,
+    retailPrice: item?.retailPrice ?? item?.basePrice ?? '0',
     currency: item?.currency ?? 'IDR',
-    productCategory: Number(item?.product_category ?? item?.productCategory ?? 0),
-    productCategoryName: item?.product_category_name ?? item?.productCategoryName ?? '',
-    productType: item?.product_type ?? item?.productType ?? '',
+    productCategory: Number(item?.productCategory ?? 0),
+    productCategoryName: item?.productCategoryName ?? '',
+    productType: item?.productType ?? '',
     validity: item?.validity ?? null,
-    requiredDocuments: item?.required_documents ?? item?.requiredDocuments ?? '',
-    optionalDocuments: item?.optional_documents ?? item?.optionalDocuments ?? '',
-    documentsMinValidity: item?.documents_min_validity ?? item?.documentsMinValidity ?? null,
-    applicationWindowDays: item?.application_window_days ?? item?.applicationWindowDays ?? null,
-    validationPrompt: item?.validation_prompt ?? item?.validationPrompt ?? '',
+    requiredDocuments: item?.requiredDocuments ?? '',
+    optionalDocuments: item?.optionalDocuments ?? '',
+    documentsMinValidity: item?.documentsMinValidity ?? null,
+    applicationWindowDays: item?.applicationWindowDays ?? null,
+    validationPrompt: item?.validationPrompt ?? '',
     deprecated: item?.deprecated ?? false,
-    usesCustomerAppWorkflow:
-      item?.uses_customer_app_workflow ?? item?.usesCustomerAppWorkflow ?? false,
-    createdAt: item?.created_at ?? item?.createdAt ?? '',
-    updatedAt: item?.updated_at ?? item?.updatedAt ?? '',
-    createdBy: item?.created_by ?? item?.createdBy ?? '',
-    updatedBy: item?.updated_by ?? item?.updatedBy ?? '',
+    usesCustomerAppWorkflow: item?.usesCustomerAppWorkflow ?? false,
+    createdAt: item?.createdAt ?? '',
+    updatedAt: item?.updatedAt ?? '',
+    createdBy: item?.createdBy ?? '',
+    updatedBy: item?.updatedBy ?? '',
   });
 
   private normalizeFileUrl(value: unknown): string | null {
@@ -307,54 +299,39 @@ export class CustomersService {
       id: Number(item?.id ?? 0),
       customer: this.mapCustomer(item?.customer ?? {}),
       product: this.mapProduct(item?.product ?? {}),
-      docDate: item?.docDate ?? item?.doc_date ?? '',
-      dueDate: item?.dueDate ?? item?.due_date ?? null,
+      docDate: item?.docDate ?? '',
+      dueDate: item?.dueDate ?? null,
       status: item?.status ?? '',
-      addDeadlinesToCalendar:
-        item?.addDeadlinesToCalendar ?? item?.add_deadlines_to_calendar ?? false,
+      addDeadlinesToCalendar: item?.addDeadlinesToCalendar ?? false,
       notes: item?.notes ?? null,
-      strField: item?.strField ?? item?.str_field ?? '',
-      statusDisplay: item?.statusDisplay ?? item?.status_display ?? item?.status ?? '',
-      productTypeDisplay:
-        item?.productTypeDisplay ??
-        item?.product_type_display ??
-        item?.product?.productTypeDisplay ??
-        '',
-      hasInvoice: Boolean(item?.hasInvoice ?? item?.has_invoice ?? false),
-      invoiceId: item?.invoiceId ?? item?.invoice_id ?? null,
-      isDocumentCollectionCompleted: Boolean(
-        item?.isDocumentCollectionCompleted ?? item?.is_document_collection_completed ?? false,
-      ),
-      readyForInvoice: Boolean(item?.readyForInvoice ?? item?.ready_for_invoice ?? false),
+      strField: item?.strField ?? '',
+      statusDisplay: item?.statusDisplay ?? item?.status ?? '',
+      productTypeDisplay: item?.productTypeDisplay ?? '',
+      hasInvoice: Boolean(item?.hasInvoice ?? false),
+      invoiceId: item?.invoiceId ?? null,
+      isDocumentCollectionCompleted: Boolean(item?.isDocumentCollectionCompleted ?? false),
+      readyForInvoice: Boolean(item?.readyForInvoice ?? false),
     };
   }
 
   private mapCustomerApplicationHistory(item: any): CustomerApplicationHistory {
     const base = this.mapUninvoicedApplication(item);
-    const paymentStatus = (item?.paymentStatus ??
-      item?.payment_status ??
-      'uninvoiced') as CustomerApplicationPaymentStatus;
+    const paymentStatus = (item?.paymentStatus ?? 'uninvoiced') as CustomerApplicationPaymentStatus;
 
     return {
       ...base,
       paymentStatus,
       paymentStatusDisplay:
         item?.paymentStatusDisplay ??
-        item?.payment_status_display ??
         (paymentStatus === 'paid'
           ? 'Paid'
           : paymentStatus === 'pending_payment'
             ? 'Pending Payment'
             : 'Uninvoiced'),
-      invoiceStatus: item?.invoiceStatus ?? item?.invoice_status ?? null,
+      invoiceStatus: item?.invoiceStatus ?? null,
       invoiceStatusDisplay:
-        item?.invoiceStatusDisplay ??
-        item?.invoice_status_display ??
-        item?.invoiceStatus ??
-        item?.invoice_status ??
-        (paymentStatus === 'uninvoiced' ? 'Uninvoiced' : '—'),
-      submissionWindowLastDate:
-        item?.submissionWindowLastDate ?? item?.submission_window_last_date ?? null,
+        item?.invoiceStatusDisplay ?? (paymentStatus === 'uninvoiced' ? 'Uninvoiced' : '—'),
+      submissionWindowLastDate: item?.submissionWindowLastDate ?? null,
     };
   }
 }

@@ -2193,10 +2193,9 @@ export class ApplicationDetailComponent implements OnInit {
   private normalizeApplicationPayload(raw: any): ApplicationDetail {
     return {
       ...raw,
-      notifyCustomer:
-        raw?.notifyCustomer ?? raw?.notifyCustomerToo ?? raw?.notify_customer_too ?? false,
-      notifyCustomerChannel: raw?.notifyCustomerChannel ?? raw?.notify_customer_channel ?? null,
-      readyForInvoice: raw?.readyForInvoice ?? raw?.ready_for_invoice ?? undefined,
+      notifyCustomer: raw?.notifyCustomer ?? raw?.notifyCustomerToo ?? false,
+      notifyCustomerChannel: raw?.notifyCustomerChannel ?? null,
+      readyForInvoice: raw?.readyForInvoice ?? undefined,
     };
   }
 
@@ -2224,12 +2223,12 @@ export class ApplicationDetailComponent implements OnInit {
     const raw = response as Record<string, unknown>;
     const patch: Partial<ApplicationWorkflow> = {};
     const status = raw['status'];
-    const dueDate = raw['dueDate'] ?? raw['due_date'];
-    const completionDate = raw['completionDate'] ?? raw['completion_date'];
-    const startDate = raw['startDate'] ?? raw['start_date'];
-    const isCurrentStep = raw['isCurrentStep'] ?? raw['is_current_step'];
-    const isOverdue = raw['isOverdue'] ?? raw['is_overdue'];
-    const hasNotes = raw['hasNotes'] ?? raw['has_notes'];
+    const dueDate = raw['dueDate'];
+    const completionDate = raw['completionDate'];
+    const startDate = raw['startDate'];
+    const isCurrentStep = raw['isCurrentStep'];
+    const isOverdue = raw['isOverdue'];
+    const hasNotes = raw['hasNotes'];
 
     if (typeof status === 'string' && status.trim()) {
       patch.status = status;
@@ -2652,12 +2651,8 @@ export class ApplicationDetailComponent implements OnInit {
 
   private getConfiguredDocumentNames(application: ApplicationDetail): Set<string> {
     return new Set([
-      ...this.parseDocumentNames(
-        application.product?.requiredDocuments ?? (application.product as any)?.required_documents,
-      ),
-      ...this.parseDocumentNames(
-        application.product?.optionalDocuments ?? (application.product as any)?.optional_documents,
-      ),
+      ...this.parseDocumentNames(application.product?.requiredDocuments),
+      ...this.parseDocumentNames(application.product?.optionalDocuments),
     ]);
   }
 
