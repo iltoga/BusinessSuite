@@ -282,7 +282,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
     this.config = {
       entityType: 'applications',
       entityLabel: 'Applications',
-      defaultPageSize: 8,
+      defaultPageSize: 10,
       defaultOrdering: '-id',
       enableBulkDelete: true,
       enableDelete: true,
