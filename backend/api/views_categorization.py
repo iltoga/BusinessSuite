@@ -14,6 +14,7 @@ import traceback as tb_module
 from typing import Any, cast
 
 from api.serializers.categorization_serializer import CategorizationApplySerializer, DocumentCategorizationJobSerializer
+from api.utils.contracts import build_error_payload
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from core.services.ai_document_categorizer import (
@@ -444,11 +445,11 @@ def categorization_stream_sse(request, job_id):
     try:
         job = DocumentCategorizationJob.objects.get(id=job_id)
     except DocumentCategorizationJob.DoesNotExist:
-        return JsonResponse({"error": "Job not found"}, status=404)
+        return JsonResponse(build_error_payload(code="not_found", message="Job not found", request=request), status=404)
 
     # Only owner or staff can stream
     if not request.user.is_staff and job.created_by_id != request.user.id:
-        return JsonResponse({"error": "Forbidden"}, status=403)
+        return JsonResponse(build_error_payload(code="forbidden", message="Forbidden", request=request), status=403)
 
     replay_cursor = resolve_last_event_id(request)
     stream_key = stream_job_key(job.id)
@@ -1204,7 +1205,10 @@ def document_validation_stream_sse(request, document_id):
     try:
         document = Document.objects.select_related("doc_type").get(id=document_id)
     except Document.DoesNotExist:
-        return JsonResponse({"error": "Document not found"}, status=404)
+        return JsonResponse(
+            build_error_payload(code="not_found", message="Document not found", request=request),
+            status=404,
+        )
 
     replay_cursor = resolve_last_event_id(request)
     stream_key = stream_file_key(document.id)

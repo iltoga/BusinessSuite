@@ -14,6 +14,7 @@ describe('isCategorizationPipelineTerminal', () => {
         pipelineStage: 'categorized',
         aiValidationEnabled: true,
         validationStatus: null,
+        documentId: 42,
       }),
     ).toBe(false);
 
@@ -23,8 +24,21 @@ describe('isCategorizationPipelineTerminal', () => {
         pipelineStage: 'validating',
         aiValidationEnabled: true,
         validationStatus: 'pending',
+        documentId: 42,
       }),
     ).toBe(false);
+  });
+
+  it('treats categorized no-slot results as terminal even without validation state', () => {
+    expect(
+      isCategorizationPipelineTerminal({
+        status: 'categorized',
+        pipelineStage: 'categorized',
+        aiValidationEnabled: null,
+        validationStatus: null,
+        documentId: null,
+      }),
+    ).toBe(true);
   });
 
   it('treats successful, invalid, and failed validations as terminal states', () => {

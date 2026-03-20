@@ -82,4 +82,5 @@ class AdminToolsPermissionTests(TestCase):
         response = self.client.get("/api/backups/start/", HTTP_AUTHORIZATION=f"Token {token.key}")
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json()["error"], SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR)
+        self.assertEqual(response.json()["error"]["code"], "forbidden")
+        self.assertEqual(response.json()["error"]["message"], SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR)

@@ -65,12 +65,20 @@ class RealtimeEventDispatcherService:
         Helper method to specifically broadcast a job progress update.
         """
         full_payload = {
+            "id": str(job_id),
             "job_id": str(job_id),
+            "jobId": str(job_id),
             "status": status,
             "progress": progress,
         }
         if payload:
             full_payload.update(payload)
+            if "jobId" not in full_payload:
+                full_payload["jobId"] = str(job_id)
+            if "job_id" not in full_payload:
+                full_payload["job_id"] = str(job_id)
+            if "id" not in full_payload:
+                full_payload["id"] = str(job_id)
             
         return cls.publish_event(
             user_id=user_id,

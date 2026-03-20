@@ -44,6 +44,7 @@ import {
 } from '@/shared/core/base-list.component';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import { extractJobId } from '@/core/utils/async-job-contract';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import {
@@ -439,7 +440,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
     this.productImportExportApi.startExport(this.query().trim() || undefined).subscribe({
       next: (response) => {
-        const jobId = (response as any)?.job_id ?? (response as any)?.jobId;
+        const jobId = extractJobId(response);
         if (!jobId) {
           this.toast.error('Export job was started but no job id was returned');
           this.exportInProgress.set(false);
@@ -471,7 +472,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
     try {
       previewWindow = openPendingPdfPrintPreviewWindow();
       const response = await firstValueFrom(this.productsApi.productsPriceListPrintStartCreate());
-      const jobId = String(response.jobId ?? '').trim();
+      const jobId = extractJobId(response) ?? '';
 
       if (!jobId) {
         throw new Error('Print job was started but no job id was returned.');
@@ -547,7 +548,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
     this.productImportExportApi.startImport(file).subscribe({
       next: (response) => {
-        const jobId = (response as any)?.job_id ?? (response as any)?.jobId;
+        const jobId = extractJobId(response);
         if (!jobId) {
           this.toast.error('Import job was started but no job id was returned');
           this.importInProgress.set(false);

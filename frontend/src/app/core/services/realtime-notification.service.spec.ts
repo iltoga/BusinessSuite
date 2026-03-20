@@ -5,7 +5,7 @@ import { mapJobUpdateToAsyncJob, type RealtimeJobUpdate } from './realtime-notif
 describe('mapJobUpdateToAsyncJob', () => {
   it('maps top-level job fields emitted by the backend dispatcher', () => {
     const job = mapJobUpdateToAsyncJob({
-      job_id: 'job-1',
+      jobId: 'job-1',
       status: 'completed',
       progress: 100,
       message: 'Passport verified successfully.',
@@ -21,7 +21,7 @@ describe('mapJobUpdateToAsyncJob', () => {
 
   it('falls back to nested payload fields for older event shapes', () => {
     const job = mapJobUpdateToAsyncJob({
-      job_id: 'job-2',
+      id: 'job-2',
       status: 'failed',
       progress: 100,
       payload: {

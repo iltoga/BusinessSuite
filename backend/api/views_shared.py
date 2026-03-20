@@ -18,7 +18,27 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle, UserRateThrottle
 
+from api.utils.contracts import build_error_payload
+
 logger = logging.getLogger(__name__)
+
+
+def _status_code_to_code(status_code: int) -> str:
+    if status_code == status.HTTP_400_BAD_REQUEST:
+        return "validation_error"
+    if status_code == status.HTTP_401_UNAUTHORIZED:
+        return "authentication_required"
+    if status_code == status.HTTP_403_FORBIDDEN:
+        return "forbidden"
+    if status_code == status.HTTP_404_NOT_FOUND:
+        return "not_found"
+    if status_code == status.HTTP_409_CONFLICT:
+        return "conflict"
+    if status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+        return "rate_limited"
+    if status_code == status.HTTP_503_SERVICE_UNAVAILABLE:
+        return "service_unavailable"
+    return "error"
 
 
 class ResilientThrottleMixin:
@@ -123,10 +143,14 @@ def _observe_async_guard_event(
 
 class ApiErrorHandlingMixin:
     def error_response(self, message, status_code=status.HTTP_400_BAD_REQUEST, details=None):
-        payload = {"error": message}
-        if details is not None:
-            payload["details"] = details
-        return Response(payload, status=status_code)
+        return Response(
+            build_error_payload(
+                code=status_code and _status_code_to_code(status_code) or "error",
+                message=str(message),
+                details=details,
+            ),
+            status=status_code,
+        )
 
     def check_throttles(self, request):
         try:
@@ -186,15 +210,6 @@ class ApiErrorHandlingMixin:
             if settings.DEBUG:
                 return self.error_response("Server error: Response is None", status.HTTP_500_INTERNAL_SERVER_ERROR)
             return self.error_response("Server error", status.HTTP_500_INTERNAL_SERVER_ERROR)
-        if isinstance(exc, ValidationError):
-            data = response.data or {}
-            errors = data.get("errors", data)
-            code = data.get("code", getattr(exc, "default_code", "invalid"))
-            return Response({"error": "Validation error", "code": code, "errors": errors}, status=response.status_code)
-        if isinstance(exc, NotFound):
-            return self.error_response("Not found", response.status_code)
-        if isinstance(response.data, dict) and "detail" in response.data:
-            return self.error_response(response.data["detail"], response.status_code)
         return response
 
 
@@ -217,6 +232,7 @@ class AsyncEnqueueGuardResult:
     response: Response | None = None
     lock_key: str | None = None
     lock_token: str | None = None
+    existing_job: Any | None = None
 
 
 def prepare_async_enqueue(
@@ -239,7 +255,7 @@ def prepare_async_enqueue(
             job_id=str(existing_job.id),
             status_code=status.HTTP_202_ACCEPTED,
         )
-        return AsyncEnqueueGuardResult(response=deduplicated_response_builder(existing_job))
+        return AsyncEnqueueGuardResult(response=deduplicated_response_builder(existing_job), existing_job=existing_job)
 
     lock_key, lock_token = _get_enqueue_guard_token(namespace=namespace, user=user, scope=scope)
     if not lock_token:
@@ -259,7 +275,7 @@ def prepare_async_enqueue(
                 job_id=str(existing_job.id),
                 status_code=status.HTTP_202_ACCEPTED,
             )
-            return AsyncEnqueueGuardResult(response=deduplicated_response_builder(existing_job))
+            return AsyncEnqueueGuardResult(response=deduplicated_response_builder(existing_job), existing_job=existing_job)
 
         _observe_async_guard_event(
             namespace=namespace,
@@ -281,6 +297,6 @@ def prepare_async_enqueue(
             status_code=status.HTTP_202_ACCEPTED,
         )
         release_enqueue_guard(lock_key, lock_token)
-        return AsyncEnqueueGuardResult(response=deduplicated_response_builder(existing_job))
+        return AsyncEnqueueGuardResult(response=deduplicated_response_builder(existing_job), existing_job=existing_job)
 
     return AsyncEnqueueGuardResult(lock_key=lock_key, lock_token=lock_token)

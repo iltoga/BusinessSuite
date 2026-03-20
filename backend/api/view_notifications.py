@@ -906,7 +906,10 @@ def calendar_reminders_stream_sse(request):
     """SSE endpoint for calendar reminder list live updates."""
     user = request.user
     if not (user and user.is_authenticated):
-        return JsonResponse({"error": "Authentication required"}, status=403)
+        return JsonResponse(
+            build_error_payload(code="authentication_required", message="Authentication required", request=request),
+            status=401,
+        )
 
     def _latest_reminder_state():
         latest = (
@@ -1034,7 +1037,14 @@ def workflow_notifications_stream_sse(request):
     is_admin = is_staff_or_admin_group(user)
     if not is_admin:
         from api.views_imports import STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR
-        return JsonResponse({"error": STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
+        return JsonResponse(
+            build_error_payload(
+                code="forbidden",
+                message=STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
+                request=request,
+            ),
+            status=403,
+        )
 
     def _latest_recent_notification_state():
         cutoff = timezone.now() - timedelta(hours=RECENT_WORKFLOW_NOTIFICATION_WINDOW_HOURS)
@@ -1174,7 +1184,7 @@ def async_job_status_sse(request, job_id):
     job_queryset = _get_job_queryset()
     exists = _job_exists(job_queryset)
     if not exists:
-        return JsonResponse({"error": "Job not found"}, status=404)
+        return JsonResponse(build_error_payload(code="not_found", message="Job not found", request=request), status=404)
 
     from api.utils.redis_sse import iter_replay_and_live_events
     def event_stream():
@@ -1194,7 +1204,7 @@ def async_job_status_sse(request, job_id):
         try:
             job = _get_job()
         except AsyncJob.DoesNotExist:
-            yield format_sse_event(data={"error": "Job not found"})
+            yield format_sse_event(data=build_error_payload(code="not_found", message="Job not found", request=request))
             return
 
         initial_payload = _serialize_job(job)

@@ -76,6 +76,7 @@ export async function initializeApplication({
     console.debug('[AppInit] Config loaded');
 
     authService.initMockAuth();
+    await firstValueFrom(authService.restoreSession());
 
     const defaultTheme = configService.settings.theme as ThemeName;
     themeService.initializeTheme(defaultTheme);

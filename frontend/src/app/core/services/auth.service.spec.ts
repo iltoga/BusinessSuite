@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { firstValueFrom, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AuthService } from './auth.service';
@@ -21,6 +21,7 @@ describe('AuthService logout', () => {
       setItem: vi.fn(),
       removeItem: vi.fn(),
     };
+    document.cookie = 'bs_refresh_session_hint=; Max-Age=0; path=/';
 
     httpClientMock = {
       post: vi.fn(() => of(null)),
@@ -95,7 +96,14 @@ describe('AuthService logout', () => {
     service.logout();
 
     expect(routerMock.navigate).toHaveBeenCalledWith(['/login']);
-    expect(httpClientMock.post).not.toHaveBeenCalled();
+    expect(httpClientMock.post).toHaveBeenCalledWith(
+      '/api/user-profile/logout/',
+      {},
+      expect.objectContaining({
+        withCredentials: true,
+        headers: undefined,
+      }),
+    );
   });
 
   it('does not call backend logout when token is already expired', () => {
@@ -105,6 +113,125 @@ describe('AuthService logout', () => {
     service.logout();
 
     expect(routerMock.navigate).toHaveBeenCalledWith(['/login']);
+    expect(httpClientMock.post).toHaveBeenCalledWith(
+      '/api/user-profile/logout/',
+      {},
+      expect.objectContaining({
+        withCredentials: true,
+      }),
+    );
+  });
+});
+
+describe('AuthService auth flow', () => {
+  let service: AuthService;
+  let httpClientMock: { post: ReturnType<typeof vi.fn> };
+  let routerMock: { navigate: ReturnType<typeof vi.fn> };
+  let configServiceMock: { config: () => { MOCK_AUTH_ENABLED: boolean } };
+  let desktopBridgeMock: { publishAuthToken: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    (globalThis as any).localStorage = {
+      getItem: vi.fn().mockReturnValue(null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    };
+    document.cookie = 'bs_refresh_session_hint=; Max-Age=0; path=/';
+
+    httpClientMock = {
+      post: vi.fn(),
+    };
+    routerMock = { navigate: vi.fn() };
+    configServiceMock = {
+      config: () => ({ MOCK_AUTH_ENABLED: false }),
+    };
+    desktopBridgeMock = { publishAuthToken: vi.fn() };
+
+    service = new AuthService(
+      httpClientMock as unknown as HttpClient,
+      routerMock as unknown as Router,
+      configServiceMock as unknown as ConfigService,
+      desktopBridgeMock as unknown as DesktopBridgeService,
+      'browser',
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('normalizes canonical login envelopes and stores the access token in memory', async () => {
+    httpClientMock.post.mockReturnValueOnce(
+      of({
+        data: {
+          access_token: 'access-token-123',
+          refresh_token: 'refresh-token-123',
+          user: {
+            id: 7,
+            username: 'auth-user',
+            email: 'auth-user@example.com',
+            full_name: 'Auth User',
+            roles: ['admin'],
+            groups: ['admin'],
+            is_superuser: true,
+            is_staff: true,
+          },
+        },
+        meta: { requestId: 'req-1', apiVersion: 'v1' },
+      }),
+    );
+
+    const response = await firstValueFrom(
+      service.login({ username: 'auth-user', password: 'password123' }),
+    );
+
+    expect(response.data?.access_token).toBe('access-token-123');
+    expect(service.getToken()).toBe('access-token-123');
+    expect(service.claims()?.email).toBe('auth-user@example.com');
+    expect(service.claims()?.isSuperuser).toBe(true);
+    expect(desktopBridgeMock.publishAuthToken).toHaveBeenCalledWith('access-token-123');
+    expect(httpClientMock.post).toHaveBeenCalledWith(
+      '/api/api-token-auth/',
+      { username: 'auth-user', password: 'password123' },
+      expect.objectContaining({ withCredentials: true }),
+    );
+  });
+
+  it('restores a session by calling the cookie-backed refresh endpoint', async () => {
+    document.cookie = 'bs_refresh_session_hint=1; path=/';
+    httpClientMock.post.mockReturnValueOnce(
+      of({
+        data: {
+          access_token: 'refreshed-access-token',
+          refresh_token: 'refresh-token-123',
+          user: {
+            id: 7,
+            username: 'auth-user',
+            email: 'auth-user@example.com',
+            full_name: 'Auth User',
+            roles: ['admin'],
+            groups: ['admin'],
+            is_superuser: true,
+            is_staff: true,
+          },
+        },
+        meta: { requestId: 'req-2', apiVersion: 'v1' },
+      }),
+    );
+
+    await expect(firstValueFrom(service.restoreSession())).resolves.toBe(true);
+
+    expect(httpClientMock.post).toHaveBeenCalledWith(
+      '/api/token/refresh/',
+      {},
+      expect.objectContaining({ withCredentials: true }),
+    );
+    expect(service.getToken()).toBe('refreshed-access-token');
+  });
+
+  it('skips refresh when there is no refresh session hint cookie', async () => {
+    await expect(firstValueFrom(service.restoreSession())).resolves.toBe(false);
+
     expect(httpClientMock.post).not.toHaveBeenCalled();
   });
 });

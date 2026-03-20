@@ -129,7 +129,8 @@ class WorkflowNotificationApiTests(TestCase):
         response = unauthenticated_client.get("/api/workflow-notifications/stream/")
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json()["error"], "Staff or 'admin' group permission required")
+        self.assertEqual(response.json()["error"]["code"], "forbidden")
+        self.assertEqual(response.json()["error"]["message"], "Staff or 'admin' group permission required")
 
     def test_updating_old_notification_does_not_bump_stream_cursor(self):
         WorkflowNotification.objects.filter(pk=self.notification.id).update(

@@ -19,6 +19,7 @@ from api.permissions import (
 )
 from api.serializers.local_resilience_serializer import LocalResilienceSettingsSerializer
 from api.serializers.ui_settings_serializer import UiSettingsSerializer
+from api.utils.contracts import build_error_payload
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
@@ -138,7 +139,14 @@ def _stream_admin_events(
 def backup_start_sse(request):
     """SSE endpoint for backup with replay support."""
     if not is_superuser_or_admin_group(request.user):
-        return JsonResponse({"error": SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
+        return JsonResponse(
+            build_error_payload(
+                code="forbidden",
+                message=SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
+                request=request,
+            ),
+            status=403,
+        )
 
     include_users = _as_bool(_query_param(request, "include_users", "0"))
     replay_mode = _as_bool(_query_param(request, "replay", "0"))
@@ -159,11 +167,21 @@ def backup_start_sse(request):
 def backup_restore_sse(request):
     """SSE endpoint for restore with replay support."""
     if not is_superuser_or_admin_group(request.user):
-        return JsonResponse({"error": SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
+        return JsonResponse(
+            build_error_payload(
+                code="forbidden",
+                message=SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
+                request=request,
+            ),
+            status=403,
+        )
 
     gz_path = _resolve_backup_path(_query_param(request, "file"))
     if not gz_path:
-        return JsonResponse({"error": "Missing file parameter"}, status=400)
+        return JsonResponse(
+            build_error_payload(code="validation_error", message="Missing file parameter", request=request),
+            status=400,
+        )
 
     include_users = _as_bool(_query_param(request, "include_users", "0"))
     replay_mode = _as_bool(_query_param(request, "replay", "0"))
@@ -191,7 +209,14 @@ def backup_restore_sse(request):
 def media_cleanup_start_sse(request):
     """SSE endpoint for live unlinked media cleanup progress."""
     if not is_superuser_or_admin_group(request.user):
-        return JsonResponse({"error": SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
+        return JsonResponse(
+            build_error_payload(
+                code="forbidden",
+                message=SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
+                request=request,
+            ),
+            status=403,
+        )
 
     dry_run = _as_bool(_query_param(request, "dry_run", "1"))
     replay_mode = _as_bool(_query_param(request, "replay", "0"))

@@ -2,11 +2,9 @@ import { inject, Injectable } from '@angular/core';
 import { catchError, map, Observable, timeout } from 'rxjs';
 
 import { AsyncJob } from '@/core/api';
-import {
-  mapJobUpdateToAsyncJob,
-  RealtimeNotificationService,
-} from '@/core/services/realtime-notification.service';
+import { RealtimeNotificationService } from '@/core/services/realtime-notification.service';
 import { SseService } from '@/core/services/sse.service';
+import { normalizeAsyncJobUpdate } from '@/core/utils/async-job-contract';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { JobProgressDialogComponent } from '@/shared/components/job-progress-dialog/job-progress-dialog.component';
 
@@ -41,8 +39,8 @@ export class JobService {
 
   private watchJobDirect(jobId: string): Observable<AsyncJob> {
     return this.sseService
-      .connect<any>(`/api/async-jobs/status/${jobId}/`)
-      .pipe(map((payload) => mapJobUpdateToAsyncJob(payload)));
+      .connect<unknown>(`/api/async-jobs/status/${jobId}/`)
+      .pipe(map((payload) => normalizeAsyncJobUpdate(payload)));
   }
 
   /**

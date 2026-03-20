@@ -40,6 +40,7 @@ import {
   getDocumentAiValidationBadge,
   type PipelineBadgeState,
 } from '@/core/utils/document-categorization-pipeline';
+import { extractJobId } from '@/core/utils/async-job-contract';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -1206,9 +1207,8 @@ export class ApplicationDetailComponent implements OnInit {
       })
       .subscribe({
         next: (response) => {
-          // If the backend returned a job_id, subscribe to the SSE stream
-          const jobId =
-            ('jobId' in response && response.jobId) || (response as { job_id?: string }).job_id;
+          // If the backend returned a job id, subscribe to the SSE stream.
+          const jobId = extractJobId(response);
           if (jobId && typeof jobId === 'string') {
             this.trackOcrJob(jobId);
           } else {

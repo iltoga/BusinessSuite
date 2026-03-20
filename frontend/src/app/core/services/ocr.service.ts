@@ -1,8 +1,8 @@
-import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
-import { AuthService } from '@/core/services/auth.service';
+import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
 
 export interface OcrQueuedResponse {
   jobId: string;
@@ -10,6 +10,8 @@ export interface OcrQueuedResponse {
   progress?: number;
   statusUrl?: string;
   streamUrl?: string;
+  queued?: boolean;
+  deduplicated?: boolean;
 }
 
 export interface OcrStatusResponse {
@@ -61,13 +63,11 @@ export interface PassportOcrOptions {
 })
 export class OcrService {
   private http = inject(HttpClient);
-  private authService = inject(AuthService);
 
   startPassportOcr(
     file: File,
     options: PassportOcrOptions,
   ): Observable<OcrQueuedResponse | OcrStatusResponse> {
-    const headers = this.buildHeaders();
     const formData = new FormData();
     formData.append('file', file);
     formData.append('doc_type', 'passport');
@@ -81,22 +81,20 @@ export class OcrService {
       formData.append('use_ai', 'true');
     }
 
-    return this.http.post<OcrQueuedResponse | OcrStatusResponse>('/api/ocr/check/', formData, {
-      headers,
-    });
+    return this.http.post<OcrQueuedResponse | OcrStatusResponse>('/api/ocr/check/', formData).pipe(
+      map((response) => normalizeJobEnvelope(response)),
+    );
   }
 
   getOcrStatus(statusUrl: string): Observable<OcrStatusResponse> {
     return this.getOcrStatusResponse(statusUrl).pipe(
-      map((response) => response.body as OcrStatusResponse),
+      map((response) => normalizeJobEnvelope(response.body as OcrStatusResponse)),
     );
   }
 
   getOcrStatusResponse(statusUrl: string): Observable<HttpResponse<OcrStatusResponse>> {
-    const headers = this.buildHeaders();
     const normalizedUrl = statusUrl.replace(/^https?:\/\/[^/]+/, '');
     return this.http.get<OcrStatusResponse>(normalizedUrl, {
-      headers,
       observe: 'response',
     });
   }
@@ -105,7 +103,6 @@ export class OcrService {
     file: File,
     options?: { documentId?: number; docTypeId?: number },
   ): Observable<OcrQueuedResponse | DocumentOcrStatusResponse> {
-    const headers = this.buildHeaders();
     const formData = new FormData();
     formData.append('file', file);
     if (typeof options?.documentId === 'number') {
@@ -118,29 +115,23 @@ export class OcrService {
     return this.http.post<OcrQueuedResponse | DocumentOcrStatusResponse>(
       '/api/document-ocr/check/',
       formData,
-      { headers },
-    );
+    ).pipe(map((response) => normalizeJobEnvelope(response)));
   }
 
   getDocumentOcrStatus(statusUrl: string): Observable<DocumentOcrStatusResponse> {
     return this.getDocumentOcrStatusResponse(statusUrl).pipe(
-      map((response) => response.body as DocumentOcrStatusResponse),
+      map((response) =>
+        normalizeJobEnvelope(response.body as DocumentOcrStatusResponse),
+      ),
     );
   }
 
   getDocumentOcrStatusResponse(
     statusUrl: string,
   ): Observable<HttpResponse<DocumentOcrStatusResponse>> {
-    const headers = this.buildHeaders();
     const normalizedUrl = statusUrl.replace(/^https?:\/\/[^/]+/, '');
     return this.http.get<DocumentOcrStatusResponse>(normalizedUrl, {
-      headers,
       observe: 'response',
     });
-  }
-
-  private buildHeaders(): HttpHeaders | undefined {
-    const token = this.authService.getToken();
-    return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
   }
 }

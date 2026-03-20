@@ -1,11 +1,15 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
+
+import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
 
 interface ProductImportExportStartResponse {
-  job_id: string;
+  jobId: string;
   status: string;
   progress: number;
+  queued?: boolean;
+  deduplicated?: boolean;
 }
 
 @Injectable({
@@ -15,18 +19,19 @@ export class ProductImportExportService {
   constructor(private http: HttpClient) {}
 
   startExport(searchQuery?: string): Observable<ProductImportExportStartResponse> {
-    return this.http.post<ProductImportExportStartResponse>('/api/products/export/start/', {
-      search_query: searchQuery ?? '',
-    });
+    return this.http
+      .post<ProductImportExportStartResponse>('/api/products/export/start/', {
+        search_query: searchQuery ?? '',
+      })
+      .pipe(map((response) => normalizeJobEnvelope(response)));
   }
 
   startImport(file: File): Observable<ProductImportExportStartResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<ProductImportExportStartResponse>(
-      '/api/products/import/start/',
-      formData,
-    );
+    return this.http
+      .post<ProductImportExportStartResponse>('/api/products/import/start/', formData)
+      .pipe(map((response) => normalizeJobEnvelope(response)));
   }
 
   downloadExport(jobId: string): Observable<HttpResponse<Blob>> {

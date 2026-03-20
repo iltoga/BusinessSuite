@@ -13,6 +13,7 @@ export * from './calendar-reminder-inbox-snooze';
 export * from './change-password';
 export * from './country-code';
 export * from './custom-token-obtain';
+export * from './custom-token-refresh';
 export * from './customer';
 export * from './customer-application-history';
 export * from './customer-minimal';

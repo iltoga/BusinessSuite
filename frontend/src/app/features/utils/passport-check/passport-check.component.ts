@@ -24,6 +24,7 @@ import { AppDatePipe } from '../../../shared/pipes/app-date-pipe';
 import { HelpService } from '../../../shared/services/help.service';
 import { buildLocalFilePreview } from '../../../shared/utils/document-preview-source';
 import { extractServerErrorMessage } from '../../../shared/utils/form-errors';
+import { extractJobId } from '@/core/utils/async-job-contract';
 
 interface PassportExtractedData {
   first_name?: string | null;
@@ -193,16 +194,12 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
       formData.append('method', this.method());
 
       const response = await firstValueFrom(
-        this.http.post<{ job_id?: string; jobId?: string }>(
-          `${environment.apiUrl}/api/customers/check-passport/`,
-          formData,
-          {
-            withCredentials: true,
-          },
-        ),
+        this.http.post<unknown>(`${environment.apiUrl}/api/customers/check-passport/`, formData, {
+          withCredentials: true,
+        }),
       );
 
-      const jobId = response?.job_id ?? response?.jobId;
+      const jobId = extractJobId(response);
       if (jobId) {
         this.listenToJobProgress(jobId);
       } else {

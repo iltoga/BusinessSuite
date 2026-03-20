@@ -2,8 +2,6 @@ import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { AuthService } from '@/core/services/auth.service';
-
 export interface DocumentPartialUpdatePayload {
   docNumber?: string | null;
   expirationDate?: string | null;
@@ -20,7 +18,6 @@ export interface DocumentPartialUpdatePayload {
 })
 export class DocumentsService {
   private http = inject(HttpClient);
-  private auth = inject(AuthService);
 
   documentsPartialUpdateWithProgress(
     documentId: number,
@@ -58,13 +55,9 @@ export class DocumentsService {
       form.append('ai_validation_result_override', JSON.stringify(payload.aiValidationResultOverride ?? null));
     }
 
-    const token = this.auth.getToken();
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-
     // Use low-level request so we can return HttpEvent for progress
     return this.http.request('patch', url, {
       body: form,
-      headers,
       reportProgress: true,
       observe: 'events',
     }) as Observable<HttpEvent<any>>;
@@ -72,25 +65,19 @@ export class DocumentsService {
 
   downloadDocumentFile(documentId: number): Observable<Blob> {
     const url = `/api/documents/${documentId}/download/`;
-    const token = this.auth.getToken();
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
     return this.http.get(url, {
-      headers,
       responseType: 'blob',
     });
   }
 
   mergePdf(documentIds: number[]): Observable<Blob> {
     const url = '/api/documents/merge-pdf/';
-    const token = this.auth.getToken();
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
     return this.http.post(
       url,
       { document_ids: documentIds },
       {
-        headers,
         responseType: 'blob',
       },
     );

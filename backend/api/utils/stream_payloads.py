@@ -24,10 +24,13 @@ def _coerce_int(value: Any) -> int | None:
 def serialize_async_job_payload(job) -> dict[str, Any]:
     return {
         "id": str(job.id),
+        "job_id": str(job.id),
+        "jobId": str(job.id),
         "status": job.status,
         "progress": int(job.progress or 0),
         "message": job.message,
         "result": job.result,
+        "error": job.error_message,
         "errorMessage": job.error_message,
         "error_message": job.error_message,
     }
@@ -43,10 +46,12 @@ def normalize_async_job_payload(payload: dict[str, Any] | None) -> dict[str, Any
         return None
     return {
         "id": str(job_id),
+        "job_id": str(job_id),
         "status": str(status),
         "progress": progress,
         "message": first_present(payload, "message"),
         "result": first_present(payload, "result"),
+        "error": first_present(payload, "error", "errorMessage", "error_message", default=""),
         "errorMessage": first_present(payload, "errorMessage", "error_message", default=""),
         "error_message": first_present(payload, "error_message", "errorMessage", default=""),
     }

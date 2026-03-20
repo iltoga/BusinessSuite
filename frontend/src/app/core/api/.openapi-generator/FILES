@@ -28,6 +28,7 @@ api/push-notifications.service.ts
 api/server-management.service.ts
 api/sync.service.ts
 api/tasks.service.ts
+api/token.service.ts
 api/user-profile.service.ts
 api/user-settings.service.ts
 api/v1.service.ts
@@ -51,6 +52,7 @@ model/calendar-reminder.ts
 model/change-password.ts
 model/country-code.ts
 model/custom-token-obtain.ts
+model/custom-token-refresh.ts
 model/customer-application-history.ts
 model/customer-minimal.ts
 model/customer-uninvoiced-application.ts

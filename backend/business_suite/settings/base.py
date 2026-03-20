@@ -185,6 +185,9 @@ GLOBAL_SETTINGS = {
     "LOGO_INVERTED_FILENAME": os.getenv("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
 }
 
+API_VERSION = os.getenv("API_VERSION", "v1").strip() or "v1"
+ASYNC_JOB_IDEMPOTENCY_TTL_SECONDS = int(os.getenv("ASYNC_JOB_IDEMPOTENCY_TTL_SECONDS", "86400"))
+
 # Date format exposed to Angular frontend via /api/app-config/.
 # Uses Angular DatePipe tokens (e.g. dd-MM-yyyy, yyyy-MM-dd, dd/MM/yyyy).
 DATE_FORMAT_JS = os.getenv("DATE_FORMAT_JS", "dd-MM-yyyy")
@@ -614,7 +617,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", "15"))),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
@@ -636,6 +639,14 @@ SIMPLE_JWT = {
     "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
     "JTI_CLAIM": "jti",
 }
+
+JWT_REFRESH_COOKIE_NAME = os.getenv("JWT_REFRESH_COOKIE_NAME", "bs_refresh_token").strip() or "bs_refresh_token"
+JWT_REFRESH_COOKIE_PATH = os.getenv("JWT_REFRESH_COOKIE_PATH", "/api/token/refresh/").strip() or "/api/token/refresh/"
+JWT_REFRESH_COOKIE_DOMAIN = _normalize_cookie_domain(os.getenv("JWT_REFRESH_COOKIE_DOMAIN", APP_DOMAIN))
+JWT_REFRESH_COOKIE_SECURE = _parse_bool(
+    os.getenv("JWT_REFRESH_COOKIE_SECURE", "True" if _IS_PROD_SETTINGS else "False")
+)
+JWT_REFRESH_COOKIE_SAMESITE = os.getenv("JWT_REFRESH_COOKIE_SAMESITE", "Lax").strip() or "Lax"
 
 # CORS configuration - read from environment in production
 # Preferred env var: CORS_ALLOWED_ORIGINS (comma separated list of origins)

@@ -5249,6 +5249,37 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/token/refresh/:
+    post:
+      operationId: tokenRefreshCreate
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomTokenRefresh'
+          description: ''
   /api/user-profile/change_password/:
     post:
       operationId: userProfileChangePasswordCreate
@@ -5292,6 +5323,7 @@ paths:
       security:
       - jwtAuth: []
       - cookieAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -10664,6 +10696,37 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/token/refresh/:
+    post:
+      operationId: v1TokenRefreshCreate
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomTokenRefresh'
+          description: ''
   /api/v1/user-profile/change_password/:
     post:
       operationId: v1UserProfileChangePasswordCreate
@@ -10707,6 +10770,7 @@ paths:
       security:
       - jwtAuth: []
       - cookieAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -11904,6 +11968,16 @@ components:
       required:
       - password
       - username
+    CustomTokenRefresh:
+      type: object
+      properties:
+        refresh:
+          type: string
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
     Customer:
       type: object
       description: |-

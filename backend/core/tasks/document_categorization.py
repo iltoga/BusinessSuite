@@ -1,7 +1,11 @@
 import traceback as tb_module
 
 from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
-from core.services.ai_document_categorizer import AIDocumentCategorizer, get_document_types_for_prompt
+from core.services.ai_document_categorizer import (
+    AIDocumentCategorizer,
+    build_document_validation_prompts,
+    get_document_types_for_prompt,
+)
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from core.tasks.runtime import QUEUE_REALTIME, db_task, retry_on_transient_external_failure
@@ -235,6 +239,29 @@ def _run_validation_step(
     current_result["ai_validation_enabled"] = True
     item.result = current_result
     item.save(update_fields=["result", "updated_at"])
+
+    system_prompt, user_prompt = build_document_validation_prompts(
+        filename=item.filename,
+        doc_type_name=doc_type.name,
+        positive_prompt=positive_prompt,
+        negative_prompt=negative_prompt,
+        product_prompt=product_prompt,
+        require_expiration_date=bool(doc_type.has_expiration_date),
+        require_doc_number=bool(doc_type.has_doc_number),
+        require_details=bool(doc_type.has_details),
+    )
+    logger.info(
+        "Document validation system prompt for categorization item %s (%s):\n%s",
+        item.id,
+        item.filename,
+        system_prompt,
+    )
+    logger.info(
+        "Document validation user prompt for categorization item %s (%s):\n%s",
+        item.id,
+        item.filename,
+        user_prompt,
+    )
 
     try:
         validation = AIDocumentCategorizer.validate_document(

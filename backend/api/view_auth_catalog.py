@@ -1,10 +1,112 @@
 from .views_imports import *
+from rest_framework_simplejwt.views import TokenRefreshView as SimpleJWTTokenRefreshView
+from rest_framework.renderers import JSONRenderer
+
+
+def _refresh_cookie_name() -> str:
+    return getattr(settings, "JWT_REFRESH_COOKIE_NAME", "bs_refresh_token")
+
+
+def _refresh_session_hint_cookie_name() -> str:
+    return getattr(settings, "JWT_REFRESH_SESSION_HINT_COOKIE_NAME", "bs_refresh_session_hint")
+
+
+def _refresh_cookie_path() -> str:
+    return getattr(settings, "JWT_REFRESH_COOKIE_PATH", "/api/token/refresh/")
+
+
+def _refresh_session_hint_cookie_path() -> str:
+    return getattr(settings, "JWT_REFRESH_SESSION_HINT_COOKIE_PATH", "/")
+
+
+def _refresh_cookie_domain() -> str | None:
+    return getattr(settings, "JWT_REFRESH_COOKIE_DOMAIN", None)
+
+
+def _refresh_cookie_secure() -> bool:
+    return bool(getattr(settings, "JWT_REFRESH_COOKIE_SECURE", False))
+
+
+def _refresh_cookie_samesite() -> str:
+    return getattr(settings, "JWT_REFRESH_COOKIE_SAMESITE", "Lax")
+
+
+def _refresh_cookie_max_age_seconds() -> int | None:
+    lifetime = getattr(settings, "SIMPLE_JWT", {}).get("REFRESH_TOKEN_LIFETIME")
+    try:
+        return int(lifetime.total_seconds()) if lifetime is not None else None
+    except Exception:
+        return None
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str | None) -> None:
+    if not refresh_token:
+        return
+    response.set_cookie(
+        key=_refresh_cookie_name(),
+        value=refresh_token,
+        max_age=_refresh_cookie_max_age_seconds(),
+        httponly=True,
+        secure=_refresh_cookie_secure(),
+        samesite=_refresh_cookie_samesite(),
+        path=_refresh_cookie_path(),
+        domain=_refresh_cookie_domain(),
+    )
+    response.set_cookie(
+        key=_refresh_session_hint_cookie_name(),
+        value="1",
+        max_age=_refresh_cookie_max_age_seconds(),
+        httponly=False,
+        secure=_refresh_cookie_secure(),
+        samesite=_refresh_cookie_samesite(),
+        path=_refresh_session_hint_cookie_path(),
+        domain=_refresh_cookie_domain(),
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(
+        _refresh_cookie_name(),
+        path=_refresh_cookie_path(),
+        domain=_refresh_cookie_domain(),
+    )
+    response.delete_cookie(
+        _refresh_session_hint_cookie_name(),
+        path=_refresh_session_hint_cookie_path(),
+        domain=_refresh_cookie_domain(),
+    )
 
 
 class TokenAuthView(TokenObtainPairView):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainSerializer
+    renderer_classes = [JSONRenderer]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data
+        refresh_token = payload.pop("refresh_token", None)
+        response = Response(build_success_payload(payload, request=request), status=status.HTTP_200_OK)
+        _set_refresh_cookie(response, refresh_token if isinstance(refresh_token, str) else None)
+        return response
+
+
+class TokenRefreshView(SimpleJWTTokenRefreshView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    serializer_class = CustomTokenRefreshSerializer
+    renderer_classes = [JSONRenderer]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data
+        refresh_token = payload.pop("refresh_token", None)
+        response = Response(build_success_payload(payload, request=request), status=status.HTTP_200_OK)
+        _set_refresh_cookie(response, refresh_token if isinstance(refresh_token, str) else None)
+        return response
 
 
 class UserProfileViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
@@ -19,11 +121,13 @@ class UserProfileViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def logout(self, request):
         """Logout current user and record it in Django."""
         django_logout(request)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        _clear_refresh_cookie(response)
+        return response
 
     @extend_schema(request=UserProfileSerializer, responses={200: UserProfileSerializer})
     @action(detail=False, methods=["patch"], url_path="update_profile")
@@ -406,13 +510,13 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if not product.deprecated:
                 return Response(
                     {
-                        "canDelete": False,
+                        "can_delete": False,
                         "message": f"Cannot delete '{document_type.name}' because it is used in one or more products.",
                         "warning": None,
                     }
                 )
 
-        return Response({"canDelete": True, "message": None, "warning": None})
+        return Response({"can_delete": True, "message": None, "warning": None})
 
     @action(detail=True, methods=["get"], url_path="deprecation-impact")
     def deprecation_impact(self, request, pk=None):
@@ -657,7 +761,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         # Enqueue task
         check_passport_uploadability_task.delay(str(job.id), saved_path, method)
 
-        return Response({"job_id": str(job.id)}, status=status.HTTP_202_ACCEPTED)
+        return Response({"jobId": str(job.id)}, status=status.HTTP_202_ACCEPTED)
 
 
 class ProductOrderingFilter(filters.OrderingFilter):

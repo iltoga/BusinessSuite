@@ -11,6 +11,7 @@ import { ReactiveFormsModule, Validators, type FormGroup } from '@angular/forms'
 import { Observable, Subscription } from 'rxjs';
 
 import { AsyncJob, type CountryCode, type Customer } from '@/core/api';
+import { extractJobId } from '@/core/utils/async-job-contract';
 import { CustomersService } from '@/core/services/customers.service';
 import { JobService } from '@/core/services/job.service';
 import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service';
@@ -585,9 +586,7 @@ export class CustomerFormComponent
       })
       .subscribe({
         next: (response) => {
-          const jobId =
-            ('jobId' in response && response.jobId) || (response as { job_id?: string }).job_id;
-
+          const jobId = extractJobId(response);
           if (jobId && typeof jobId === 'string') {
             this.subscribeToOcrStream(jobId);
             return;

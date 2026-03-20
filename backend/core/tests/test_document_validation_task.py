@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from unittest.mock import patch
 
 import dramatiq
+from core.services.ai_document_categorizer import build_document_validation_prompts
 from core.tasks.document_validation import run_document_validation
 from customer_applications.models import DocApplication, Document
 from customers.models import Customer
@@ -88,9 +89,65 @@ class DocumentValidationTaskTests(TestCase):
         self.assertTrue(validate_document_mock.call_args.kwargs["require_details"])
         release_lock_mock.assert_called_once()
 
+    @patch("core.tasks.document_validation.logger.info")
     @patch("core.tasks.document_validation.default_storage.open")
     @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
     @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-2")
+    @patch("core.tasks.document_validation.release_task_lock")
+    def test_validation_logs_exact_ai_prompt_before_calling_validator(
+        self,
+        _release_lock_mock,
+        _acquire_lock_mock,
+        validate_document_mock,
+        storage_open_mock,
+        info_mock,
+    ):
+        self.doc_type.validation_rule_ai_negative = "No blur and no heavy glare"
+        self.doc_type.save(update_fields=["validation_rule_ai_negative"])
+        self.product.validation_prompt = "Use the product-specific validation prompt."
+        self.product.save(update_fields=["validation_prompt"])
+
+        storage_open_mock.return_value.__enter__.return_value.read.return_value = b"fake-file-bytes"
+        validate_document_mock.return_value = {
+            "valid": True,
+            "confidence": 0.91,
+            "positive_analysis": "Looks valid.",
+            "negative_issues": [],
+            "reasoning": "Checks passed.",
+            "extracted_expiration_date": "2031-12-31",
+            "extracted_doc_number": "NEW-DOC-NO",
+            "extracted_details_markdown": "## New Details",
+        }
+
+        expected_system_prompt, expected_user_prompt = build_document_validation_prompts(
+            filename=self.document.file.name.split("/")[-1],
+            doc_type_name=self.doc_type.name,
+            positive_prompt=self.doc_type.validation_rule_ai_positive or "",
+            negative_prompt=self.doc_type.validation_rule_ai_negative or "",
+            product_prompt=self.product.validation_prompt or "",
+            require_expiration_date=bool(self.doc_type.has_expiration_date),
+            require_doc_number=bool(self.doc_type.has_doc_number),
+            require_details=bool(self.doc_type.has_details),
+        )
+
+        _run_huey_task(run_document_validation, document_id=self.document.id)
+
+        info_mock.assert_any_call(
+            "Document validation system prompt for document %s (%s):\n%s",
+            self.document.id,
+            self.document.file.name.split("/")[-1],
+            expected_system_prompt,
+        )
+        info_mock.assert_any_call(
+            "Document validation user prompt for document %s (%s):\n%s",
+            self.document.id,
+            self.document.file.name.split("/")[-1],
+            expected_user_prompt,
+        )
+
+    @patch("core.tasks.document_validation.default_storage.open")
+    @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
+    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-3")
     @patch("core.tasks.document_validation.release_task_lock")
     def test_validation_overrides_existing_expiration_date_and_doc_number(
         self,
@@ -125,7 +182,7 @@ class DocumentValidationTaskTests(TestCase):
 
     @patch("core.tasks.document_validation.default_storage.open")
     @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
-    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-3")
+    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-4")
     @patch("core.tasks.document_validation.release_task_lock")
     def test_validation_marks_expired_document_as_invalid(
         self,
@@ -159,7 +216,7 @@ class DocumentValidationTaskTests(TestCase):
 
     @patch("core.tasks.document_validation.default_storage.open")
     @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
-    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-4")
+    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-5")
     @patch("core.tasks.document_validation.release_task_lock")
     def test_validation_marks_expiring_document_as_invalid(
         self,
@@ -195,7 +252,7 @@ class DocumentValidationTaskTests(TestCase):
 
     @patch("core.tasks.document_validation.default_storage.open")
     @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
-    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-5")
+    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-6")
     @patch("core.tasks.document_validation.release_task_lock")
     def test_validation_keeps_valid_when_not_expiring(
         self,
@@ -231,7 +288,7 @@ class DocumentValidationTaskTests(TestCase):
 
     @patch("core.tasks.document_validation.default_storage.open")
     @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
-    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-6")
+    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-7")
     @patch("core.tasks.document_validation.release_task_lock")
     def test_validation_error_keeps_runtime_metadata_when_available(
         self,
@@ -257,7 +314,7 @@ class DocumentValidationTaskTests(TestCase):
 
     @patch("core.tasks.document_validation.default_storage.open")
     @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
-    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-7")
+    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-8")
     @patch("core.tasks.document_validation.release_task_lock")
     def test_transient_ai_failure_raises_retry_before_marking_error(
         self,

@@ -12,6 +12,7 @@ import traceback as tb_module
 from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.ai_document_categorizer import (
     AIDocumentCategorizer,
+    build_document_validation_prompts,
     extract_validation_details_markdown,
     extract_validation_doc_number,
     extract_validation_expiration_date,
@@ -149,6 +150,29 @@ def run_document_validation(document_id: int, task=None) -> None:
             return
 
         filename = document.file.name.split("/")[-1] if "/" in document.file.name else document.file.name
+
+        system_prompt, user_prompt = build_document_validation_prompts(
+            filename=filename,
+            doc_type_name=doc_type.name,
+            positive_prompt=positive_prompt,
+            negative_prompt=negative_prompt,
+            product_prompt=product_prompt,
+            require_expiration_date=bool(doc_type.has_expiration_date),
+            require_doc_number=bool(doc_type.has_doc_number),
+            require_details=bool(doc_type.has_details),
+        )
+        logger.info(
+            "Document validation system prompt for document %s (%s):\n%s",
+            document_id,
+            filename,
+            system_prompt,
+        )
+        logger.info(
+            "Document validation user prompt for document %s (%s):\n%s",
+            document_id,
+            filename,
+            user_prompt,
+        )
 
         try:
             validation = AIDocumentCategorizer.validate_document(

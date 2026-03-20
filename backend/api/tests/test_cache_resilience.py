@@ -54,8 +54,9 @@ class ApiErrorHandlingMixinTests(SimpleTestCase):
         response = view.handle_exception(RuntimeError("Redis is loading the dataset in memory"))
 
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.data["error"]["code"], "service_unavailable")
         self.assertEqual(
-            response.data["error"],
+            response.data["error"]["message"],
             "Service temporarily unavailable while cache services are warming up. Please retry shortly.",
         )
 

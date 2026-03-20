@@ -142,8 +142,8 @@ export class InvoiceDownloadDropdownComponent {
       const payload = await firstValueFrom(
         this.invoicesService.invoicesDownloadAsyncCreate(this.invoiceId(), { format: 'pdf' }),
       );
-      const jobId = payload?.['job_id'] || payload?.['jobId'];
-      const downloadUrl = payload?.['download_url'] || payload?.['downloadUrl'];
+      const jobId = payload?.['jobId'] || payload?.['id'];
+      const downloadUrl = payload?.['downloadUrl'] || payload?.['download_url'];
       let finalUrl: string;
 
       if (jobId) {

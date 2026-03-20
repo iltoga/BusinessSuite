@@ -50,7 +50,7 @@ describe('CustomerFormComponent OCR flow', () => {
 
     (component as any).ocrService.startPassportOcr.mockReturnValue(
       of({
-        job_id: 'job-1',
+        jobId: 'job-1',
         status: 'queued',
       }),
     );

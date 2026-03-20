@@ -1,10 +1,10 @@
 import time
-from typing import Generator
+from collections.abc import AsyncGenerator
 
 from django.http import StreamingHttpResponse
 
 
-from api.utils.redis_sse import iter_replay_and_live_events
+from api.utils.redis_sse import iter_replay_and_live_events_async
 from api.utils.sse_auth import sse_token_auth_required
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_user_key
 
@@ -13,7 +13,7 @@ from core.services.redis_streams import format_sse_event, resolve_last_event_id,
 _SSE_MAX_DURATION_SECONDS = 55
 
 @sse_token_auth_required
-def realtime_stream_sse(request):
+async def realtime_stream_sse(request):
     """
     Global Multiplexed SSE Stream for a specific User.
     Listens to `user:{user_id}:realtime` Redis Stream and yields generic events 
@@ -23,13 +23,13 @@ def realtime_stream_sse(request):
     stream_key = stream_user_key(user_id)
     replay_cursor = resolve_last_event_id(request)
 
-    def event_stream() -> Generator[str, None, None]:
+    async def event_stream() -> AsyncGenerator[str, None]:
         deadline = time.monotonic() + _SSE_MAX_DURATION_SECONDS
 
         # Send initial connection success message for debugging/state sync
         yield format_sse_event(data={"event": "connected", "user_id": user_id})
 
-        for stream_event in iter_replay_and_live_events(
+        async for stream_event in iter_replay_and_live_events_async(
             stream_key=stream_key,
             last_event_id=replay_cursor,
             block_ms=10_000,

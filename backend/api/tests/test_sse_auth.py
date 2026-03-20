@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.core.cache import cache
@@ -33,6 +35,8 @@ class SSEAuthObservabilityTests(TestCase):
         response = view(request)
 
         self.assertEqual(response.status_code, 401)
+        body = json.loads(response.content.decode("utf-8"))
+        self.assertEqual(body["error"]["code"], "authentication_required")
         key = build_guard_counter_key(namespace="sse_auth", event="auth_401")
         self.assertEqual(cache.get(key), 1)
 
@@ -44,5 +48,7 @@ class SSEAuthObservabilityTests(TestCase):
         response = view(request)
 
         self.assertEqual(response.status_code, 403)
+        body = json.loads(response.content.decode("utf-8"))
+        self.assertEqual(body["error"]["code"], "forbidden")
         key = build_guard_counter_key(namespace="sse_auth", event="superuser_forbidden_403")
         self.assertEqual(cache.get(key), 1)
