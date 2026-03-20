@@ -52,38 +52,37 @@ class CalendarReminderApiTests(TestCase):
             self._sync_iters[key] = SyncAsyncIter(stream)
         return self._sync_iters[key]
 
-    def _next_sse_payload_with_timeout(self, stream, timeout_seconds: int = 5):
+    async def _next_sse_payload_with_timeout(self, stream, timeout_seconds: int = 5):
         """Consume chunks from the stream, skipping keepalive lines, and return the first JSON payload."""
         import asyncio
-        from asgiref.sync import async_to_sync
+        from asgiref.sync import sync_to_async
 
-        async def _read():
-            import asyncio
-            while True:
-                try:
-                    chunk = await asyncio.wait_for(stream.__anext__(), timeout=timeout_seconds)
-                except asyncio.TimeoutError:
-                    raise TimeoutError(f"SSE stream read exceeded {timeout_seconds}s")
-                if isinstance(chunk, bytes):
-                    chunk = chunk.decode("utf-8")
-                if chunk.startswith(":"):
-                    continue
-                return self._decode_sse_payload(chunk)
-
-        return async_to_sync(_read)()
-
-    def _next_sse_chunk_with_timeout(self, stream, timeout_seconds: int = 5):
-        """Read the next raw chunk from the stream."""
-        import asyncio
-        from asgiref.sync import async_to_sync
-
-        async def _read():
+        while True:
             try:
-                return await asyncio.wait_for(stream.__anext__(), timeout=timeout_seconds)
+                chunk = await asyncio.wait_for(
+                    sync_to_async(next, thread_sensitive=True)(stream),
+                    timeout=timeout_seconds,
+                )
             except asyncio.TimeoutError:
                 raise TimeoutError(f"SSE stream read exceeded {timeout_seconds}s")
+            if isinstance(chunk, bytes):
+                chunk = chunk.decode("utf-8")
+            if chunk.startswith(":"):
+                continue
+            return self._decode_sse_payload(chunk)
 
-        return async_to_sync(_read)()
+    async def _next_sse_chunk_with_timeout(self, stream, timeout_seconds: int = 5):
+        """Read the next raw chunk from the stream."""
+        import asyncio
+        from asgiref.sync import sync_to_async
+
+        try:
+            return await asyncio.wait_for(
+                sync_to_async(next, thread_sensitive=True)(stream),
+                timeout=timeout_seconds,
+            )
+        except asyncio.TimeoutError:
+            raise TimeoutError(f"SSE stream read exceeded {timeout_seconds}s")
 
     def test_bulk_create_creates_one_record_per_user(self):
         response = self.client.post(
@@ -406,8 +405,6 @@ class CalendarReminderApiTests(TestCase):
         @async_to_sync
         async def run_test():
             from asgiref.sync import sync_to_async
-            import asyncio
-            import json
 
             reminder = await sync_to_async(CalendarReminder.objects.create)(
                 user=self.user,
@@ -424,23 +421,7 @@ class CalendarReminderApiTests(TestCase):
             await sync_to_async(self.assertEqual)(response.status_code, 200)
 
             stream = response.streaming_content
-
-            async def get_payload():
-                while True:
-                    try:
-                        chunk = await asyncio.wait_for(anext(stream), timeout=5.0)
-                    except asyncio.TimeoutError:
-                        raise TimeoutError("SSE stream read exceeded 5s")
-                    if isinstance(chunk, bytes):
-                        chunk = chunk.decode("utf-8")
-                    if chunk.startswith(":"):
-                        continue
-                    data_line = next((line for line in chunk.splitlines() if line.startswith("data: ")), "")
-                    if not data_line:
-                        continue
-                    return json.loads(data_line.replace("data: ", "", 1))
-
-            payload = await get_payload()
+            payload = await self._next_sse_payload_with_timeout(stream)
             await sync_to_async(self.assertEqual)(payload["event"], "calendar_reminders_snapshot")
             await sync_to_async(self.assertEqual)(payload["reason"], "initial")
             await sync_to_async(self.assertEqual)(payload["lastReminderId"], reminder.id)
@@ -449,10 +430,7 @@ class CalendarReminderApiTests(TestCase):
             reminder.error_message = "Delivery error"
             await sync_to_async(reminder.save)(update_fields=["status", "error_message", "updated_at"])
 
-            changed_payload = await get_payload()
-            if changed_payload.get("event") == "calendar_reminders_error":
-                print("\n\nERROR PAYLOAD:", changed_payload, "\n\n")
-                
+            changed_payload = await self._next_sse_payload_with_timeout(stream)
             await sync_to_async(self.assertEqual)(changed_payload["event"], "calendar_reminders_changed")
             await sync_to_async(self.assertEqual)(changed_payload["lastReminderId"], reminder.id)
             await sync_to_async(self.assertIn)(changed_payload["reason"], {"signal", "db_state_change"})

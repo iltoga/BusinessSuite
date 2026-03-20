@@ -1,19 +1,17 @@
-import os
+from __future__ import annotations
+
+from _bootstrap import REPO_ROOT, bootstrap_django
 
 
 def main() -> None:
-    import django
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "business_suite.settings.dev")
-    os.environ.setdefault("SECRET_KEY", "django-insecure-dev-only")
-    django.setup()
+    bootstrap_django()
 
     from core.services.ai_passport_parser import AIPassportParser
 
     parser = AIPassportParser(model="qwen/qwen3.5-flash-02-23", use_openrouter=True)
     client = parser.ai_client
 
-    with open("../business_suite/files/media/tmpfiles/passport_big.jpg", "rb") as f:
+    with (REPO_ROOT / "business_suite" / "files" / "media" / "tmpfiles" / "passport_big.jpg").open("rb") as f:
         img_data = f.read()
 
     messages = client.build_vision_message(

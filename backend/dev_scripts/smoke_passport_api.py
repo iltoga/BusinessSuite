@@ -1,13 +1,12 @@
-import os
+from __future__ import annotations
+
 import time
+
+from _bootstrap import REPO_ROOT, bootstrap_django
 
 
 def main() -> None:
-    import django
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "business_suite.settings.dev")
-    os.environ.setdefault("SECRET_KEY", "django-insecure-dev-only")
-    django.setup()
+    bootstrap_django()
 
     from core.models.async_job import AsyncJob
     from django.contrib.auth.models import User
@@ -22,7 +21,7 @@ def main() -> None:
     client = APIClient()
     client.force_authenticate(user=user)
 
-    with open("business_suite/files/media/tmpfiles/passport_big.jpg", "rb") as f:
+    with (REPO_ROOT / "business_suite" / "files" / "media" / "tmpfiles" / "passport_big.jpg").open("rb") as f:
         passport_data = f.read()
 
     print("Sending POST request to /api/customers/check-passport/ ...")

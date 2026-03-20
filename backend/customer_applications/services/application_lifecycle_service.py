@@ -44,6 +44,9 @@ class ApplicationLifecycleService:
             step.save()
 
         previous_due_date = application.due_date
+        current_after_update = application.current_workflow
+        if current_after_update and current_after_update.due_date != application.due_date:
+            application.due_date = current_after_update.due_date
         application.updated_by = user
         application.save()
 

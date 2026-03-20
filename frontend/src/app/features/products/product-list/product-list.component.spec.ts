@@ -107,6 +107,8 @@ describe('ProductListComponent', () => {
     component = TestBed.runInInjectionContext(() => new ProductListComponent());
     (component as any).focusAfterLoad = vi.fn();
     component.ngOnInit();
+    component.page.set(1);
+    component.query.set('');
   });
 
   it('hides deprecated products by default and restores that default when the filter is cleared', () => {
