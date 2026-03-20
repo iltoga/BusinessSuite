@@ -70,7 +70,7 @@
       (lineCustomerApplicationChange)="onLineCustomerApplicationComboboxChange($event.group, $event.value)"
     />
 
-    <div class="flex items-center gap-3">
+    <div class="invoice-form-actions flex items-center gap-3">
       <z-button zType="default" (click)="save()" [zDisabled]="isSaving()">
         {{ isEditMode() ? 'Update Invoice' : 'Create Invoice' }}
       </z-button>
