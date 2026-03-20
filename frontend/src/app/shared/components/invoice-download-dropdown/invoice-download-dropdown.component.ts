@@ -10,7 +10,15 @@ import { ZardIconComponent } from '@/shared/components/icon/icon.component';
 import { PdfViewerHostComponent } from '@/shared/components/pdf-viewer-host/pdf-viewer-host.component';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { JobService } from '@/core/services/job.service';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { extractJobId } from '@/core/utils/async-job-contract';
@@ -32,6 +40,7 @@ export class InvoiceDownloadDropdownComponent {
   private invoicesService = inject(InvoicesService);
   private authService = inject(AuthService);
   private jobService = inject(JobService);
+  private destroyRef = inject(DestroyRef);
 
   invoiceId = input.required<number>();
   invoiceNumber = input.required<string>();
@@ -166,7 +175,22 @@ export class InvoiceDownloadDropdownComponent {
     onProgress: (progress: number) => void,
   ): Promise<string> {
     return new Promise((resolve, reject) => {
+      let settled = false;
       let sub: Subscription | null = null;
+      const settleResolve = (value: string) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        resolve(value);
+      };
+      const settleReject = (error: unknown) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        reject(error);
+      };
       sub = this.jobService.watchJob(jobId).subscribe({
         next: (jobStatus) => {
           if (typeof jobStatus.progress === 'number') {
@@ -177,20 +201,25 @@ export class InvoiceDownloadDropdownComponent {
             const finalUrl = result?.['downloadUrl'] || downloadUrl;
             if (!finalUrl) {
               sub?.unsubscribe();
-              reject(new Error('PDF generation completed without a download URL'));
+              settleReject(new Error('PDF generation completed without a download URL'));
               return;
             }
             sub?.unsubscribe();
-            resolve(finalUrl as string);
+            settleResolve(finalUrl as string);
           } else if (jobStatus.status === 'failed') {
             const result = jobStatus.result as Record<string, any> | undefined;
             sub?.unsubscribe();
-            reject(new Error((result?.['errorMessage'] as string) || 'PDF generation failed'));
+            settleReject(new Error((result?.['errorMessage'] as string) || 'PDF generation failed'));
           }
         },
         error: (err) => {
           sub?.unsubscribe();
-          reject(err);
+          settleReject(err);
+        },
+        complete: () => {
+          if (!settled) {
+            settleReject(new Error('PDF generation tracking stopped before completion'));
+          }
         },
       });
     });

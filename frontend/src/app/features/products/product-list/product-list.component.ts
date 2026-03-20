@@ -9,6 +9,7 @@ import {
   viewChild,
   type TemplateRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { RouterLink } from '@angular/router';
 import { firstValueFrom, forkJoin, map, type Observable } from 'rxjs';
@@ -655,52 +656,58 @@ export class ProductListComponent extends BaseListComponent<Product> {
    * Watch export job progress
    */
   private watchExportJob(jobId: string): void {
-    this.jobService.watchJob(jobId).subscribe({
-      next: (job) => {
-        this.exportProgress.set(Number(job.progress ?? 0));
+    this.jobService
+      .watchJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (job) => {
+          this.exportProgress.set(Number(job.progress ?? 0));
 
-        if (job.status === 'completed') {
-          this.downloadExport(jobId);
+          if (job.status === 'completed') {
+            this.downloadExport(jobId);
+            this.exportInProgress.set(false);
+            this.exportProgress.set(null);
+          } else if (job.status === 'failed') {
+            this.toast.error(job.errorMessage || 'Product export failed');
+            this.exportInProgress.set(false);
+            this.exportProgress.set(null);
+          }
+        },
+        error: () => {
+          this.toast.error('Failed to track export progress');
           this.exportInProgress.set(false);
           this.exportProgress.set(null);
-        } else if (job.status === 'failed') {
-          this.toast.error(job.errorMessage || 'Product export failed');
-          this.exportInProgress.set(false);
-          this.exportProgress.set(null);
-        }
-      },
-      error: () => {
-        this.toast.error('Failed to track export progress');
-        this.exportInProgress.set(false);
-        this.exportProgress.set(null);
-      },
-    });
+        },
+      });
   }
 
   /**
    * Watch import job progress
    */
   private watchImportJob(jobId: string): void {
-    this.jobService.watchJob(jobId).subscribe({
-      next: (job) => {
-        this.importProgress.set(Number(job.progress ?? 0));
-        if (job.status === 'completed') {
-          this.toast.success('Import completed successfully');
+    this.jobService
+      .watchJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (job) => {
+          this.importProgress.set(Number(job.progress ?? 0));
+          if (job.status === 'completed') {
+            this.toast.success('Import completed successfully');
+            this.importInProgress.set(false);
+            this.importProgress.set(null);
+            this.reload();
+          } else if (job.status === 'failed') {
+            this.toast.error(job.errorMessage || 'Product import failed');
+            this.importInProgress.set(false);
+            this.importProgress.set(null);
+          }
+        },
+        error: () => {
+          this.toast.error('Failed to track import progress');
           this.importInProgress.set(false);
           this.importProgress.set(null);
-          this.reload();
-        } else if (job.status === 'failed') {
-          this.toast.error(job.errorMessage || 'Product import failed');
-          this.importInProgress.set(false);
-          this.importProgress.set(null);
-        }
-      },
-      error: () => {
-        this.toast.error('Failed to track import progress');
-        this.importInProgress.set(false);
-        this.importProgress.set(null);
-      },
-    });
+        },
+      });
   }
 
   /**

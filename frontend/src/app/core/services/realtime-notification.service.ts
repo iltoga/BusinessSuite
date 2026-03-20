@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
-import { filter, map, Observable, shareReplay } from 'rxjs';
+import { filter, map, Observable, shareReplay, takeWhile } from 'rxjs';
 
-import { AsyncJob } from '@/core/api';
-import { normalizeAsyncJobUpdate } from '@/core/utils/async-job-contract';
+import { type AsyncJob } from '@/core/api';
+import { isTerminalAsyncJob, normalizeAsyncJobUpdate } from '@/core/utils/async-job-contract';
 import { SseMessage, SseService } from '@/core/services/sse.service';
 
 export interface RealtimeJobUpdate {
@@ -57,6 +57,7 @@ export class RealtimeNotificationService {
     return this.events$.pipe(
       map((msg) => normalizeAsyncJobUpdate(msg.data)),
       filter((job) => job.jobId === jobId),
+      takeWhile((job) => !isTerminalAsyncJob(job), true),
     );
   }
 }

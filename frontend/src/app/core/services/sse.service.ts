@@ -219,6 +219,12 @@ export class SseService {
       void streamSse();
       return () => {
         clearRotationTimeout();
+        if (!isSettled) {
+          console.info('[SseService] SSE stream unsubscribed', {
+            url,
+            lastEventId: this.lastEventIds.get(url) ?? null,
+          });
+        }
         controller.abort();
       };
     });

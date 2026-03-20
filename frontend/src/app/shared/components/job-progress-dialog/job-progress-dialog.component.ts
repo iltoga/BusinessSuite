@@ -5,7 +5,15 @@ import { Z_MODAL_DATA, ZardDialogRef } from '@/shared/components/dialog';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardLoaderComponent } from '@/shared/components/loader/loader.component';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 export interface JobProgressData {
   jobId: string;
@@ -72,6 +80,7 @@ export interface JobProgressData {
 export class JobProgressDialogComponent implements OnInit {
   private jobService = inject(JobService);
   private dialogRef = inject(ZardDialogRef);
+  private destroyRef = inject(DestroyRef);
   readonly data = inject<JobProgressData>(Z_MODAL_DATA);
 
   readonly job = signal<AsyncJob | null>(null);
@@ -79,27 +88,30 @@ export class JobProgressDialogComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.data.jobId) {
-      this.jobService.watchJob(this.data.jobId).subscribe({
-        next: (job) => {
-          this.job.set(job);
-          if (this.jobService.isFinished(job)) {
-            this.isFinished.set(true);
-            if (job.status === 'completed') {
-              // Automatically close on success after a short delay
-              setTimeout(() => this.dialogRef.close(job), 1500);
+      this.jobService
+        .watchJob(this.data.jobId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (job) => {
+            this.job.set(job);
+            if (this.jobService.isFinished(job)) {
+              this.isFinished.set(true);
+              if (job.status === 'completed') {
+                // Automatically close on success after a short delay
+                setTimeout(() => this.dialogRef.close(job), 1500);
+              }
             }
-          }
-        },
-        error: (err) => {
-          this.isFinished.set(true);
-          this.job.set({
-            status: 'failed' as any,
-            errorMessage: 'Lost connection to server.',
-            message: 'Failed to track task',
-            progress: 100,
-          } as any);
-        },
-      });
+          },
+          error: (err) => {
+            this.isFinished.set(true);
+            this.job.set({
+              status: 'failed' as any,
+              errorMessage: 'Lost connection to server.',
+              message: 'Failed to track task',
+              progress: 100,
+            } as any);
+          },
+        });
     }
   }
 

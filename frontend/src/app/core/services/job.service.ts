@@ -1,10 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import { catchError, map, Observable, timeout } from 'rxjs';
+import { catchError, map, Observable, takeWhile, timeout } from 'rxjs';
 
-import { AsyncJob } from '@/core/api';
+import { type AsyncJob } from '@/core/api';
 import { RealtimeNotificationService } from '@/core/services/realtime-notification.service';
 import { SseService } from '@/core/services/sse.service';
-import { normalizeAsyncJobUpdate } from '@/core/utils/async-job-contract';
+import { isTerminalAsyncJob, normalizeAsyncJobUpdate } from '@/core/utils/async-job-contract';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { JobProgressDialogComponent } from '@/shared/components/job-progress-dialog/job-progress-dialog.component';
 
@@ -34,7 +34,10 @@ export class JobService {
   private watchJobDirect(jobId: string): Observable<AsyncJob> {
     return this.sseService
       .connect<unknown>(`/api/async-jobs/status/${jobId}/`)
-      .pipe(map((payload) => normalizeAsyncJobUpdate(payload)));
+      .pipe(
+        map((payload) => normalizeAsyncJobUpdate(payload)),
+        takeWhile((job) => !isTerminalAsyncJob(job), true),
+      );
   }
 
   /**
@@ -61,8 +64,6 @@ export class JobService {
    * Helper to check if a job is finished.
    */
   isFinished(job: AsyncJob): boolean {
-    return (
-      job.status === AsyncJob.StatusEnum.Completed || job.status === AsyncJob.StatusEnum.Failed
-    );
+    return isTerminalAsyncJob(job);
   }
 }

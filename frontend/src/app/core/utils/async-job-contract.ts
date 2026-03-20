@@ -176,3 +176,7 @@ export function normalizeAsyncJobUpdate(update: unknown): AsyncJob {
 
   return job as AsyncJob;
 }
+
+export function isTerminalAsyncJob(job: Pick<AsyncJob, 'status'> | null | undefined): boolean {
+  return job?.status === 'completed' || job?.status === 'failed';
+}
