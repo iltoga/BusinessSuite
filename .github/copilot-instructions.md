@@ -67,6 +67,7 @@ frontend/src/app/
 ### General (Both Stacks)
 
 - **DRY first:** Search for existing implementations before creating anything new.
+- **Plan before coding:** When planning a task, write an implementation plan to `TODO.md`, then follow and update it as you complete the work.
 - **Cleanup is automatic:** After any task, remove unused imports, dead code, debug logs. Report what was removed.
 - **No hardcoded credentials:** All secrets via `.env`.
 

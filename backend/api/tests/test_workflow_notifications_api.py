@@ -56,33 +56,30 @@ class WorkflowNotificationApiTests(TestCase):
         self.assertTrue(data_line, f"Expected SSE data line in chunk: {chunk!r}")
         return json.loads(data_line.replace("data: ", "", 1))
 
-    def _next_sse_payload(self, stream):
-        """Skip keepalive lines and return the first JSON payload from an async stream.
-        Each call runs a fresh async_to_sync so it stays on the main thread.
-        """
+    async def _next_sse_payload(self, stream, timeout_seconds: int = 5):
+        """Skip keepalive lines and return the first JSON payload from the stream."""
         import asyncio
-        from asgiref.sync import async_to_sync
+        from asgiref.sync import sync_to_async
 
-        async def _read():
-            while True:
-                try:
-                    chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
-                except asyncio.TimeoutError:
-                    raise TimeoutError("SSE stream read exceeded 5s")
-                if isinstance(chunk, bytes):
-                    chunk = chunk.decode("utf-8")
-                if chunk.startswith(":"):
-                    continue
-                return self._decode_sse_payload(chunk)
-
-        return async_to_sync(_read)()
+        while True:
+            try:
+                chunk = await asyncio.wait_for(
+                    sync_to_async(next, thread_sensitive=True)(stream),
+                    timeout=timeout_seconds,
+                )
+            except asyncio.TimeoutError:
+                raise TimeoutError(f"SSE stream read exceeded {timeout_seconds}s")
+            if isinstance(chunk, bytes):
+                chunk = chunk.decode("utf-8")
+            if chunk.startswith(":"):
+                continue
+            return self._decode_sse_payload(chunk)
 
     def test_stream_returns_initial_snapshot_event(self):
         from asgiref.sync import async_to_sync
 
         @async_to_sync
         async def run_test():
-            import asyncio, json
             from asgiref.sync import sync_to_async
 
             await sync_to_async(self.client.credentials)(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
@@ -91,23 +88,7 @@ class WorkflowNotificationApiTests(TestCase):
             await sync_to_async(self.assertTrue)(response["Content-Type"].startswith("text/event-stream"))
 
             stream = response.streaming_content
-
-            async def get_payload():
-                while True:
-                    try:
-                        chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
-                    except asyncio.TimeoutError:
-                        raise TimeoutError("SSE stream read exceeded 5s")
-                    if isinstance(chunk, bytes):
-                        chunk = chunk.decode("utf-8")
-                    if chunk.startswith(":"):
-                        continue
-                    data_line = next((c for c in chunk.splitlines() if c.startswith("data: ")), "")
-                    if not data_line:
-                        continue
-                    return json.loads(data_line.replace("data: ", "", 1))
-
-            payload = await get_payload()
+            payload = await self._next_sse_payload(stream)
             await sync_to_async(self.assertEqual)(payload["event"], "workflow_notifications_snapshot")
             await sync_to_async(self.assertEqual)(payload["reason"], "initial")
             await sync_to_async(self.assertEqual)(payload["windowHours"], 24)
@@ -121,35 +102,18 @@ class WorkflowNotificationApiTests(TestCase):
 
         @async_to_sync
         async def run_test():
-            import asyncio, json
             from asgiref.sync import sync_to_async
 
             await sync_to_async(self.client.credentials)(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
             response = await sync_to_async(self.client.get)("/api/workflow-notifications/stream/")
 
             stream = response.streaming_content
-
-            async def get_payload():
-                while True:
-                    try:
-                        chunk = await asyncio.wait_for(stream.__anext__(), timeout=5)
-                    except asyncio.TimeoutError:
-                        raise TimeoutError("SSE stream read exceeded 5s")
-                    if isinstance(chunk, bytes):
-                        chunk = chunk.decode("utf-8")
-                    if chunk.startswith(":"):
-                        continue
-                    data_line = next((c for c in chunk.splitlines() if c.startswith("data: ")), "")
-                    if not data_line:
-                        continue
-                    return json.loads(data_line.replace("data: ", "", 1))
-
-            _ = await get_payload()  # consume snapshot
+            _ = await self._next_sse_payload(stream)  # consume snapshot
 
             self.notification.status = WorkflowNotification.STATUS_DELIVERED
             await sync_to_async(self.notification.save)(update_fields=["status", "updated_at"])
 
-            payload = await get_payload()
+            payload = await self._next_sse_payload(stream)
             await sync_to_async(self.assertEqual)(payload["event"], "workflow_notifications_changed")
             await sync_to_async(self.assertEqual)(payload["lastNotificationId"], self.notification.id)
             await sync_to_async(self.assertIn)(payload["reason"], {"signal", "db_state_change"})
