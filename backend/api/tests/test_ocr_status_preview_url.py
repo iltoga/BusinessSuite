@@ -32,6 +32,5 @@ class OCRStatusPreviewUrlTests(TestCase):
             response = view(request, job_id=str(job.id))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data.get("preview_url"), "https://signed.example.com/ocr_previews/job-1.png")
         self.assertEqual(response.data.get("previewUrl"), "https://signed.example.com/ocr_previews/job-1.png")
-        self.assertEqual(response.data.get("mrz_data"), {"number": "ABC123"})
+        self.assertEqual(response.data.get("mrzData"), {"number": "ABC123"})

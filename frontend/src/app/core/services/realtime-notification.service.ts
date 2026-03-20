@@ -10,11 +10,13 @@ export interface RealtimeJobUpdate {
   progress?: number;
   id?: string;
   jobId?: string;
+  taskName?: string;
   message?: string | null;
   result?: unknown;
-  error?: string | null;
   errorMessage?: string | null;
-  error_message?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: number | null;
   payload?: unknown;
 }
 
@@ -54,7 +56,7 @@ export class RealtimeNotificationService {
   watchJob(jobId: string): Observable<AsyncJob> {
     return this.events$.pipe(
       map((msg) => normalizeAsyncJobUpdate(msg.data)),
-      filter((job) => job.id === jobId),
+      filter((job) => job.jobId === jobId),
     );
   }
 }

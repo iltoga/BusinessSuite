@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { JobService } from '@/core/services/job.service';
 import { firstValueFrom, Subscription } from 'rxjs';
+import { extractJobId } from '@/core/utils/async-job-contract';
 
 @Component({
   selector: 'app-invoice-download-dropdown',
@@ -142,8 +143,8 @@ export class InvoiceDownloadDropdownComponent {
       const payload = await firstValueFrom(
         this.invoicesService.invoicesDownloadAsyncCreate(this.invoiceId(), { format: 'pdf' }),
       );
-      const jobId = payload?.['jobId'] || payload?.['id'];
-      const downloadUrl = payload?.['downloadUrl'] || payload?.['download_url'];
+      const jobId = extractJobId(payload);
+      const downloadUrl = payload?.['downloadUrl'];
       let finalUrl: string;
 
       if (jobId) {
@@ -173,8 +174,7 @@ export class InvoiceDownloadDropdownComponent {
           }
           if (jobStatus.status === 'completed') {
             const result = jobStatus.result as Record<string, any> | undefined;
-            const finalUrl =
-              result?.['download_url'] || result?.['downloadUrl'] || downloadUrl;
+            const finalUrl = result?.['downloadUrl'] || downloadUrl;
             if (!finalUrl) {
               sub?.unsubscribe();
               reject(new Error('PDF generation completed without a download URL'));
@@ -185,7 +185,7 @@ export class InvoiceDownloadDropdownComponent {
           } else if (jobStatus.status === 'failed') {
             const result = jobStatus.result as Record<string, any> | undefined;
             sub?.unsubscribe();
-            reject(new Error((result?.['error'] as string) || 'PDF generation failed'));
+            reject(new Error((result?.['errorMessage'] as string) || 'PDF generation failed'));
           }
         },
         error: (err) => {

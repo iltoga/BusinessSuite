@@ -279,7 +279,7 @@ export class RemindersService {
       sentAt: item?.sentAt ?? item?.sent_at ?? null,
       readAt: item?.readAt ?? item?.read_at ?? null,
       readDeviceLabel: String(item?.readDeviceLabel ?? item?.read_device_label ?? ''),
-      errorMessage: String(item?.errorMessage ?? item?.error_message ?? ''),
+      errorMessage: String(item?.errorMessage ?? ''),
       deliveryChannel: String(item?.deliveryChannel ?? item?.delivery_channel ?? ''),
       deliveryDeviceLabel: String(
         item?.deliveryDeviceLabel ?? item?.delivery_device_label ?? '',

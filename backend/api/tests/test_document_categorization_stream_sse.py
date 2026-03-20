@@ -62,17 +62,20 @@ class DocumentCategorizationStreamSseTests(TestCase):
 
         response = self.client.get(reverse("api-categorization-stream-sse", kwargs={"job_id": str(job.id)}))
 
-        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.status_code, 200)
         self.assertTrue(response["Content-Type"].startswith("text/event-stream"))
 
         stream = iter(response.streaming_content)
         first_chunk = self._decode_chunk(next(stream))
         second_chunk = self._decode_chunk(next(stream))
+        third_chunk = self._decode_chunk(next(stream))
 
         self.assertIn("event: start", first_chunk)
         self.assertIn(f'"jobId": "{job.id}"', first_chunk)
-        self.assertEqual(second_chunk, ": keep-alive\n\n")
-        iter_events_mock.assert_called_once()
+        self.assertIn("event: progress", second_chunk)
+        self.assertIn(f'"jobId": "{job.id}"', second_chunk)
+        self.assertIn("event: upload_progress", third_chunk)
+        self.assertIn(f'"jobId": "{job.id}"', third_chunk)
 
     @patch("api.views_categorization.iter_replay_and_live_events")
     def test_document_validation_stream_returns_start_and_keepalive(self, iter_events_mock):
@@ -88,7 +91,7 @@ class DocumentCategorizationStreamSseTests(TestCase):
             reverse("api-document-validation-stream", kwargs={"document_id": document.id})
         )
 
-        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.status_code, 200)
         self.assertTrue(response["Content-Type"].startswith("text/event-stream"))
 
         stream = iter(response.streaming_content)

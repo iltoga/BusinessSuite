@@ -350,7 +350,7 @@ class ProductImportStartSerializer(serializers.Serializer):
 
 
 class ProductImportStartResponseSerializer(serializers.Serializer):
-    job_id = serializers.UUIDField()
+    jobId = serializers.UUIDField()
     status = serializers.CharField()
     progress = serializers.IntegerField()
     queued = serializers.BooleanField()
@@ -362,7 +362,7 @@ class ProductPriceListPrintStartSerializer(serializers.Serializer):
 
 
 class ProductPriceListPrintStartResponseSerializer(serializers.Serializer):
-    job_id = serializers.UUIDField()
+    jobId = serializers.UUIDField()
     status = serializers.CharField()
     progress = serializers.IntegerField()
     queued = serializers.BooleanField()

@@ -63,7 +63,7 @@ class StreamingPerformanceTests(TestCase):
                 status=AsyncJob.STATUS_PROCESSING,
                 timestamp="2026-03-06T10:00:00+00:00",
                 payload={
-                    "id": str(job.id),
+                    "jobId": str(job.id),
                     "status": AsyncJob.STATUS_PROCESSING,
                     "progress": 45,
                     "message": "Halfway there",
@@ -111,7 +111,7 @@ class StreamingPerformanceTests(TestCase):
                 status=AsyncJob.STATUS_COMPLETED,
                 timestamp="2026-03-06T10:01:00+00:00",
                 payload={
-                    "id": str(job.id),
+                    "jobId": str(job.id),
                     "status": AsyncJob.STATUS_COMPLETED,
                     "progress": 100,
                     "message": "Done",

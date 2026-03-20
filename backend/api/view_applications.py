@@ -44,31 +44,25 @@ payload shape is normalised by ``normalize_ocr_job_payload()`` /
 Streams.
 """
 
-from api.utils.stream_payloads import normalize_document_ocr_job_payload, normalize_ocr_job_payload
+from api.utils.stream_payloads import (
+    normalize_document_ocr_job_payload,
+    normalize_ocr_job_payload,
+    normalize_ocr_result_payload,
+)
 
 from .views_imports import *
 
 
 def _build_ocr_status_payload(job: OCRJob, request) -> dict[str, Any]:
     response_data = {
-        "job_id": str(job.id),
+        "jobId": str(job.id),
         "status": job.status,
         "progress": job.progress,
     }
 
     if job.status == OCRJob.STATUS_COMPLETED:
         if job.result:
-            result_data = dict(job.result)
-            preview_storage_path = result_data.get("preview_storage_path")
-            if preview_storage_path:
-                try:
-                    preview_url = get_ocr_preview_url(preview_storage_path)
-                except Exception:
-                    preview_url = None
-                if preview_url:
-                    result_data["preview_url"] = preview_url
-                    result_data["previewUrl"] = preview_url
-            response_data.update(result_data)
+            response_data.update(normalize_ocr_result_payload(job.result) or {})
         if job.save_session and not job.session_saved and job.result:
             request.session["file_path"] = job.file_path
             request.session["file_url"] = job.file_url
@@ -77,54 +71,55 @@ def _build_ocr_status_payload(job: OCRJob, request) -> dict[str, Any]:
             job.session_saved = True
             job.save(update_fields=["session_saved", "updated_at"])
     elif job.status == OCRJob.STATUS_FAILED:
-        response_data["error"] = job.error_message or "OCR job failed"
+        response_data["errorMessage"] = job.error_message or "OCR job failed"
 
     return response_data
 
 
 def _build_document_ocr_status_payload(job: DocumentOCRJob) -> dict[str, Any]:
     response_data = {
-        "job_id": str(job.id),
+        "jobId": str(job.id),
         "status": job.status,
         "progress": job.progress,
     }
 
     if job.status == DocumentOCRJob.STATUS_COMPLETED:
-        response_data["text"] = job.result_text
+        response_data["resultText"] = job.result_text
         try:
             structured_data = json.loads(job.result_text or "")
         except (TypeError, ValueError, json.JSONDecodeError):
             structured_data = None
         if isinstance(structured_data, dict):
-            response_data["structured_data"] = structured_data
-            response_data["structuredData"] = structured_data
+            response_data["structuredData"] = normalize_ocr_result_payload(
+                {"structuredData": structured_data}
+            )["structuredData"]
     elif job.status == DocumentOCRJob.STATUS_FAILED:
-        response_data["error"] = job.error_message or "Document OCR job failed"
+        response_data["errorMessage"] = job.error_message or "Document OCR job failed"
 
     return response_data
 
 
 def _build_ocr_stream_payload(stream_payload: dict[str, Any]) -> dict[str, Any]:
     response_data = {
-        "job_id": str(stream_payload["job_id"]),
+        "jobId": str(stream_payload["jobId"]),
         "status": stream_payload["status"],
         "progress": stream_payload["progress"],
     }
-    error_message = stream_payload.get("error") or stream_payload.get("errorMessage")
+    error_message = stream_payload.get("errorMessage")
     if error_message:
-        response_data["error"] = error_message
+        response_data["errorMessage"] = error_message
     return response_data
 
 
 def _build_document_ocr_stream_payload(stream_payload: dict[str, Any]) -> dict[str, Any]:
     response_data = {
-        "job_id": str(stream_payload["job_id"]),
+        "jobId": str(stream_payload["jobId"]),
         "status": stream_payload["status"],
         "progress": stream_payload["progress"],
     }
-    error_message = stream_payload.get("error") or stream_payload.get("errorMessage")
+    error_message = stream_payload.get("errorMessage")
     if error_message:
-        response_data["error"] = error_message
+        response_data["errorMessage"] = error_message
     return response_data
 
 
@@ -895,11 +890,11 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             stream_url = request.build_absolute_uri(reverse("api-ocr-stream", kwargs={"job_id": str(existing_job.id)}))
             return Response(
                 data={
-                    "job_id": str(existing_job.id),
+                    "jobId": str(existing_job.id),
                     "status": existing_job.status,
                     "progress": existing_job.progress,
-                    "status_url": status_url,
-                    "stream_url": stream_url,
+                    "statusUrl": status_url,
+                    "streamUrl": stream_url,
                     "queued": False,
                     "deduplicated": True,
                 },
@@ -946,11 +941,11 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             stream_url = request.build_absolute_uri(reverse("api-ocr-stream", kwargs={"job_id": str(job.id)}))
             return Response(
                 data={
-                    "job_id": str(job.id),
+                    "jobId": str(job.id),
                     "status": job.status,
                     "progress": job.progress,
-                    "status_url": status_url,
-                    "stream_url": stream_url,
+                    "statusUrl": status_url,
+                    "streamUrl": stream_url,
                     "queued": True,
                     "deduplicated": False,
                 },
@@ -1026,10 +1021,10 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
                         return
                 except OCRJob.DoesNotExist:
-                    yield format_sse_event(data={"error": "OCR job not found"})
+                    yield format_sse_event(data={"errorMessage": "OCR job not found"})
                     return
                 except Exception as exc:
-                    yield format_sse_event(data={"error": str(exc)})
+                    yield format_sse_event(data={"errorMessage": str(exc)})
                     return
 
         return _sync_stream()
@@ -1129,11 +1124,11 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             )
             return Response(
                 data={
-                    "job_id": str(existing_job.id),
+                    "jobId": str(existing_job.id),
                     "status": existing_job.status,
                     "progress": existing_job.progress,
-                    "status_url": status_url,
-                    "stream_url": stream_url,
+                    "statusUrl": status_url,
+                    "streamUrl": stream_url,
                     "queued": False,
                     "deduplicated": True,
                 },
@@ -1181,11 +1176,11 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             stream_url = request.build_absolute_uri(reverse("api-document-ocr-stream", kwargs={"job_id": str(job.id)}))
             return Response(
                 data={
-                    "job_id": str(job.id),
+                    "jobId": str(job.id),
                     "status": job.status,
                     "progress": job.progress,
-                    "status_url": status_url,
-                    "stream_url": stream_url,
+                    "statusUrl": status_url,
+                    "streamUrl": stream_url,
                     "queued": True,
                     "deduplicated": False,
                 },
@@ -1264,10 +1259,10 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
                         return
                 except DocumentOCRJob.DoesNotExist:
-                    yield format_sse_event(data={"error": "Document OCR job not found"})
+                    yield format_sse_event(data={"errorMessage": "Document OCR job not found"})
                     return
                 except Exception as exc:
-                    yield format_sse_event(data={"error": str(exc)})
+                    yield format_sse_event(data={"errorMessage": str(exc)})
                     return
 
         return _sync_stream()

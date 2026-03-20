@@ -1100,7 +1100,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             busy_message="Product export trigger is already being processed. Please retry in a moment.",
             deduplicated_response_builder=lambda existing_job: Response(
                 {
-                    "job_id": str(existing_job.id),
+                    "jobId": str(existing_job.id),
                     "status": existing_job.status,
                     "progress": existing_job.progress,
                     "queued": False,
@@ -1131,7 +1131,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         return Response(
             {
-                "job_id": str(job.id),
+                "jobId": str(job.id),
                 "status": job.status,
                 "progress": job.progress,
                 "queued": True,
@@ -1163,7 +1163,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             busy_message="Price list print preparation is already being processed. Please retry in a moment.",
             deduplicated_response_builder=lambda existing_job: Response(
                 {
-                    "job_id": str(existing_job.id),
+                    "jobId": str(existing_job.id),
                     "status": existing_job.status,
                     "progress": existing_job.progress,
                     "queued": False,
@@ -1194,7 +1194,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         return Response(
             {
-                "job_id": str(job.id),
+                "jobId": str(job.id),
                 "status": job.status,
                 "progress": job.progress,
                 "queued": True,
@@ -1294,7 +1294,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             busy_message="Product import trigger is already being processed. Please retry in a moment.",
             deduplicated_response_builder=lambda existing_job: Response(
                 {
-                    "job_id": str(existing_job.id),
+                    "jobId": str(existing_job.id),
                     "status": existing_job.status,
                     "progress": existing_job.progress,
                     "queued": False,
@@ -1329,7 +1329,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         return Response(
             {
-                "job_id": str(job.id),
+                "jobId": str(job.id),
                 "status": job.status,
                 "progress": job.progress,
                 "queued": True,

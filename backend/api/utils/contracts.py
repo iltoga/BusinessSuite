@@ -84,7 +84,11 @@ def build_error_payload(
     if details is not None:
         error["details"] = details
 
-    return {
+    payload = {
         "error": error,
         "meta": build_meta(request, request_id=request_id, api_version=api_version, extra=extra_meta),
     }
+    if details is not None:
+        # Backward-compatible alias for callers that still expect top-level field errors.
+        payload["errors"] = details
+    return payload

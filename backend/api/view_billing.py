@@ -356,16 +356,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         def build_existing_response(existing_job):
             return Response(
                 {
-                    "job_id": str(existing_job.id),
+                    "jobId": str(existing_job.id),
                     "status": existing_job.status,
                     "progress": existing_job.progress,
-                    "status_url": request.build_absolute_uri(
+                    "statusUrl": request.build_absolute_uri(
                         reverse("invoices-download-async-status", kwargs={"job_id": str(existing_job.id)})
                     ),
-                    "stream_url": request.build_absolute_uri(
+                    "streamUrl": request.build_absolute_uri(
                         reverse("invoices-download-async-stream", kwargs={"job_id": str(existing_job.id)})
                     ),
-                    "download_url": request.build_absolute_uri(
+                    "downloadUrl": request.build_absolute_uri(
                         reverse("invoices-download-async-file", kwargs={"job_id": str(existing_job.id)})
                     ),
                     "queued": False,
@@ -411,16 +411,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         return Response(
             {
-                "job_id": str(job.id),
+                "jobId": str(job.id),
                 "status": job.status,
                 "progress": job.progress,
-                "status_url": request.build_absolute_uri(
+                "statusUrl": request.build_absolute_uri(
                     reverse("invoices-download-async-status", kwargs={"job_id": str(job.id)})
                 ),
-                "stream_url": request.build_absolute_uri(
+                "streamUrl": request.build_absolute_uri(
                     reverse("invoices-download-async-stream", kwargs={"job_id": str(job.id)})
                 ),
-                "download_url": request.build_absolute_uri(
+                "downloadUrl": request.build_absolute_uri(
                     reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
                 ),
                 "queued": True,
@@ -454,16 +454,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
 
         payload = {
-            "job_id": str(job.id),
+            "jobId": str(job.id),
             "status": job.status,
             "progress": job.progress,
-            "download_url": request.build_absolute_uri(
+            "downloadUrl": request.build_absolute_uri(
                 reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
             ),
         }
 
         if job.status == InvoiceDownloadJob.STATUS_FAILED:
-            payload["error"] = job.error_message or "Job failed"
+            payload["errorMessage"] = job.error_message or "Job failed"
 
         return Response(payload)
 
@@ -523,7 +523,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                         "complete",
                         {
                             "message": "Invoice ready",
-                            "download_url": request.build_absolute_uri(
+                            "downloadUrl": request.build_absolute_uri(
                                 reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
                             ),
                             "status": verified_payload["status"],

@@ -1,3 +1,4 @@
+from api.utils.contracts import build_error_payload
 from api.utils.stream_payloads import normalize_async_job_payload, serialize_async_job_payload
 
 from .views_imports import *
@@ -23,7 +24,14 @@ def whatsapp_webhook(request):
             expected_token = getattr(settings, "META_TOKEN_CLIENT", "")
             if verify_token and expected_token and verify_token == expected_token:
                 return HttpResponse(challenge, status=status.HTTP_200_OK, content_type="text/plain")
-            return Response({"error": "Invalid verify token"}, status=status.HTTP_403_FORBIDDEN)
+            return JsonResponse(
+                build_error_payload(
+                    code="forbidden",
+                    message="Invalid verify token",
+                    request=request,
+                ),
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
@@ -33,7 +41,14 @@ def whatsapp_webhook(request):
     if not signature_valid:
         if enforce_signature:
             webhook_logger.warning("Rejected WhatsApp webhook due to invalid signature.")
-            return Response({"error": "Invalid webhook signature"}, status=status.HTTP_403_FORBIDDEN)
+            return JsonResponse(
+                build_error_payload(
+                    code="forbidden",
+                    message="Invalid webhook signature",
+                    request=request,
+                ),
+                status=status.HTTP_403_FORBIDDEN,
+            )
         webhook_logger.warning("Processing WhatsApp webhook with invalid signature (enforcement disabled).")
 
     data = request.data
@@ -1239,10 +1254,10 @@ def async_job_status_sse(request, job_id):
                 if data["status"] in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
                     return
             except AsyncJob.DoesNotExist:
-                yield format_sse_event(data={"error": "Job not found"})
+                yield format_sse_event(data={"errorMessage": "Job not found"})
                 break
             except Exception as e:
-                yield format_sse_event(data={"error": str(e)})
+                yield format_sse_event(data={"errorMessage": str(e)})
                 break
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")

@@ -117,8 +117,9 @@ class DocumentPreuploadValidationApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400, response.content)
         body = response.json()
-        self.assertEqual(body["code"], "validation_error")
-        self.assertIn("file", body["errors"])
+        self.assertEqual(body["error"]["code"], "validation_error")
+        self.assertEqual(body["error"]["message"], "No file provided.")
+        self.assertIn("file", body["error"]["details"])
 
     @patch("api.views_categorization.AIDocumentCategorizer.validate_document")
     def test_validate_document_category_hides_provider_error_details(self, validate_document_mock):

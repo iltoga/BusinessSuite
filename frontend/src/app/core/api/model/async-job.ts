@@ -9,7 +9,7 @@
  */
 
 export interface AsyncJob {
-  readonly id: string;
+  readonly jobId: string;
   readonly taskName: string;
   /**
    * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `failed` - Failed
@@ -17,7 +17,7 @@ export interface AsyncJob {
   readonly status: AsyncJob.StatusEnum;
   readonly progress: number;
   readonly message: string | null;
-  readonly result: any | null;
+  readonly result: { [key: string]: any };
   readonly errorMessage: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;

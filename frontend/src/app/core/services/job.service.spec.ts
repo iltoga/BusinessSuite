@@ -1,25 +1,19 @@
-import { NEVER, firstValueFrom, of, throwError } from 'rxjs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { firstValueFrom, of, throwError } from 'rxjs';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AsyncJob } from '@/core/api';
 import { JobService } from './job.service';
 
 describe('JobService.watchJob', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('falls back to the per-job SSE endpoint when the multiplexed stream stays silent', async () => {
-    vi.useFakeTimers();
-
+  it('uses the per-job SSE endpoint as the primary stream', async () => {
     const service = Object.create(JobService.prototype) as any;
     service.realtimeService = {
-      watchJob: vi.fn(() => NEVER),
+      watchJob: vi.fn(() => of({ jobId: 'job-1', status: 'completed', progress: 100 })),
     };
     service.sseService = {
       connect: vi.fn(() =>
         of({
-          id: 'job-1',
+          jobId: 'job-1',
           status: 'processing',
           progress: 25,
           message: 'Reading passport image...',
@@ -27,38 +21,36 @@ describe('JobService.watchJob', () => {
       ),
     };
 
-    const resultPromise = firstValueFrom(service.watchJob('job-1'));
-    await vi.advanceTimersByTimeAsync(1600);
+    const job = (await firstValueFrom(service.watchJob('job-1'))) as AsyncJob;
 
-    const job = (await resultPromise) as AsyncJob;
-
-    expect(service.realtimeService.watchJob).toHaveBeenCalledWith('job-1');
     expect(service.sseService.connect).toHaveBeenCalledWith('/api/async-jobs/status/job-1/');
-    expect(job.id).toBe('job-1');
+    expect(service.realtimeService.watchJob).not.toHaveBeenCalled();
+    expect(job.jobId).toBe('job-1');
     expect(job.progress).toBe(25);
-    expect((job as any).message).toBe('Reading passport image...');
+    expect(job.message).toBe('Reading passport image...');
   });
 
-  it('falls back to the per-job SSE endpoint when the multiplexed stream errors', async () => {
+  it('falls back to the multiplexed stream when the per-job SSE endpoint errors', async () => {
     const service = Object.create(JobService.prototype) as any;
     service.realtimeService = {
-      watchJob: vi.fn(() => throwError(() => new Error('global stream failed'))),
-    };
-    service.sseService = {
-      connect: vi.fn(() =>
+      watchJob: vi.fn(() =>
         of({
-          id: 'job-2',
+          jobId: 'job-2',
           status: 'completed',
           progress: 100,
-          result: { is_valid: true },
+          result: { isValid: true },
         }),
       ),
+    };
+    service.sseService = {
+      connect: vi.fn(() => throwError(() => new Error('direct stream failed'))),
     };
 
     const job = (await firstValueFrom(service.watchJob('job-2'))) as AsyncJob;
 
     expect(service.sseService.connect).toHaveBeenCalledWith('/api/async-jobs/status/job-2/');
-    expect(job.id).toBe('job-2');
-    expect((job as any).result).toEqual({ is_valid: true });
+    expect(service.realtimeService.watchJob).toHaveBeenCalledWith('job-2');
+    expect(job.jobId).toBe('job-2');
+    expect(job.result).toEqual({ isValid: true });
   });
 });

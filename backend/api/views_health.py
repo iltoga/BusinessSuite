@@ -14,6 +14,7 @@ import time
 from django.db import close_old_connections, connection
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -26,6 +27,7 @@ class HealthCheckView(APIView):
 
     authentication_classes: list = []
     permission_classes = [AllowAny]
+    renderer_classes = [JSONRenderer]
     throttle_classes: list = []
 
     def get(self, request: Request) -> Response:
@@ -33,27 +35,49 @@ class HealthCheckView(APIView):
         details: dict[str, str] = {}
         t0 = time.monotonic()
 
-        # --- Database ---
-        # Close stale/broken connections first so the probe creates a fresh one.
-        try:
-            close_old_connections()
-        except Exception:
-            pass
-
-        try:
+        def _check_database() -> None:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
                 cursor.fetchone()
-            checks["db"] = True
-        except Exception as exc:
-            checks["db"] = False
-            details["db"] = str(exc)[:200]
-            logger.warning("[HEALTH] Database check failed: %s", exc)
-            # Force-close the broken connection so the next request gets a fresh one
+
+        # --- Database ---
+        # Close stale/broken connections first so the probe creates a fresh one.
+        if not getattr(connection, "in_atomic_block", False):
             try:
-                connection.close()
+                close_old_connections()
             except Exception:
                 pass
+
+        try:
+            _check_database()
+            checks["db"] = True
+        except Exception as exc:
+            retry_exc = exc
+            # `close_old_connections()` can leave us with a stale closed PostgreSQL
+            # connection in test/dev setups. Force a reconnect once before failing.
+            if "connection already closed" in str(exc).lower() and not getattr(connection, "in_atomic_block", False):
+                try:
+                    connection.close()
+                except Exception:
+                    pass
+                try:
+                    _check_database()
+                    checks["db"] = True
+                except Exception as retry_exc_2:
+                    retry_exc = retry_exc_2
+                    checks["db"] = False
+            else:
+                checks["db"] = False
+
+            if not checks["db"]:
+                details["db"] = str(retry_exc)[:200]
+                logger.warning("[HEALTH] Database check failed: %s", retry_exc)
+                # Force-close the broken connection so the next request gets a fresh one
+                if not getattr(connection, "in_atomic_block", False):
+                    try:
+                        connection.close()
+                    except Exception:
+                        pass
 
         # --- Redis cache ---
         try:

@@ -26,15 +26,9 @@ export class JobService {
    * @returns Observable of AsyncJob updates
    */
   watchJob(jobId: string): Observable<AsyncJob> {
-    // Prefer the global multiplexed stream, but fall back to the per-job SSE endpoint
-    // when no first update arrives promptly.
-    return this.realtimeService.watchJob(jobId).pipe(
-      timeout({
-        first: 1500,
-        with: () => this.watchJobDirect(jobId),
-      }),
-      catchError(() => this.watchJobDirect(jobId)),
-    );
+    // Prefer the per-job SSE stream because it returns the canonical job payload
+    // immediately and closes cleanly on completion.
+    return this.watchJobDirect(jobId).pipe(catchError(() => this.realtimeService.watchJob(jobId)));
   }
 
   private watchJobDirect(jobId: string): Observable<AsyncJob> {

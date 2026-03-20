@@ -12,26 +12,26 @@ describe('mapJobUpdateToAsyncJob', () => {
       result: { is_valid: true },
     } as RealtimeJobUpdate);
 
-    expect(job.id).toBe('job-1');
+    expect(job.jobId).toBe('job-1');
     expect(job.status).toBe('completed');
     expect(job.progress).toBe(100);
-    expect((job as any).message).toBe('Passport verified successfully.');
-    expect((job as any).result).toEqual({ is_valid: true });
+    expect(job.message).toBe('Passport verified successfully.');
+    expect(job.result).toEqual({ isValid: true });
   });
 
-  it('falls back to nested payload fields for older event shapes', () => {
+  it('uses nested payload fields and canonical error messages', () => {
     const job = mapJobUpdateToAsyncJob({
       id: 'job-2',
       status: 'failed',
       progress: 100,
       payload: {
-        error: 'Verification failed',
+        errorMessage: 'Verification failed',
         message: 'Passport verification failed.',
       },
     } as RealtimeJobUpdate);
 
-    expect(job.id).toBe('job-2');
-    expect((job as any).errorMessage).toBe('Verification failed');
-    expect((job as any).message).toBe('Passport verification failed.');
+    expect(job.jobId).toBe('job-2');
+    expect(job.errorMessage).toBe('Verification failed');
+    expect(job.message).toBe('Passport verification failed.');
   });
 });

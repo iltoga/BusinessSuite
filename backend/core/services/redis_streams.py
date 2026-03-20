@@ -7,6 +7,7 @@ from typing import Any
 
 from django.conf import settings
 
+from api.utils.stream_payloads import camelize_payload
 from core.services.redis_client import get_redis_client
 
 STREAM_KEY_USER_PREFIX = "stream:user"
@@ -103,11 +104,12 @@ def publish_stream_event(
     correlation_id: str | None = None,
 ) -> str:
     client = get_redis_client()
+    normalized_payload = camelize_payload(payload or {})
     fields: dict[str, str] = {
         "event": event,
         "status": status,
         "timestamp": _utc_now_iso(),
-        "payload": json.dumps(payload or {}, separators=(",", ":")),
+        "payload": json.dumps(normalized_payload, separators=(",", ":")),
     }
     if job_id:
         fields["job_id"] = str(job_id)

@@ -34,13 +34,42 @@ export function toOptionalNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+function snakeToCamelKey(key: string): string {
+  if (!key.includes('_')) {
+    return key;
+  }
+
+  const parts = key.split('_').filter(Boolean);
+  if (parts.length === 0) {
+    return key;
+  }
+
+  const [head, ...tail] = parts;
+  return tail.reduce(
+    (acc, part) => `${acc}${part.slice(0, 1).toUpperCase()}${part.slice(1)}`,
+    head,
+  );
+}
+
+export function camelizePayload(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => camelizePayload(item));
+  }
+
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [snakeToCamelKey(key), camelizePayload(item)]),
+  );
+}
+
 function extractJobIdFromRecord(
   record: Record<string, unknown>,
-  allowLegacyAlias = false,
 ): string | undefined {
   return firstDefined(
     toOptionalString(record['jobId']),
-    allowLegacyAlias ? toOptionalString(record['job_id']) : undefined,
     toOptionalString(record['id']),
   );
 }
@@ -72,44 +101,37 @@ export function extractJobId(value: unknown): string | undefined {
     return undefined;
   }
 
-  return extractJobIdFromRecord(value) ?? extractJobIdFromRecord(extractNestedRecord(value) ?? {});
-}
-
-function extractLegacyJobId(value: unknown): string | undefined {
-  if (!isRecord(value)) {
+  const record = camelizePayload(value);
+  if (!isRecord(record)) {
     return undefined;
   }
 
-  return (
-    extractJobIdFromRecord(value, true) ??
-    extractJobIdFromRecord(extractNestedRecord(value) ?? {}, true)
-  );
+  return extractJobIdFromRecord(record) ?? extractJobIdFromRecord(extractNestedRecord(record) ?? {});
 }
 
 export function normalizeJobEnvelope<T extends object>(
   value: T,
 ): T & { jobId?: string } {
   const record = isRecord(value)
-    ? (value as Record<string, unknown>)
+    ? (camelizePayload(value) as Record<string, unknown>)
     : ({} as Record<string, unknown>);
-  const jobId = extractLegacyJobId(record);
+  const jobId = extractJobIdFromRecord(record) ?? extractJobIdFromRecord(extractNestedRecord(record) ?? {});
   if (!jobId) {
-    return value as T & { jobId?: string };
+    return record as T & { jobId?: string };
   }
 
-  const { job_id: _legacyJobId, ...rest } = record;
   return {
-    ...rest,
+    ...record,
     jobId: toOptionalString(record['jobId']) ?? jobId,
   } as T & { jobId?: string };
 }
 
 export function normalizeAsyncJobUpdate(update: unknown): AsyncJob {
-  const record = isRecord(update) ? update : {};
+  const record = isRecord(update) ? (camelizePayload(update) as Record<string, unknown>) : {};
   const nested = extractPayloadRecord(record);
   const jobId = firstDefined(
-    extractLegacyJobId(record),
-    nested ? extractLegacyJobId(nested) : undefined,
+    extractJobIdFromRecord(record),
+    nested ? extractJobIdFromRecord(nested) : undefined,
   ) ?? '';
   const status = firstDefined(
     toOptionalString(record['status']),
@@ -119,38 +141,38 @@ export function normalizeAsyncJobUpdate(update: unknown): AsyncJob {
     toOptionalNumber(record['progress']),
     nested ? toOptionalNumber(nested['progress']) : undefined,
   ) ?? 0;
+  const taskName = firstDefined(
+    toOptionalString(record['taskName']),
+    nested ? toOptionalString(nested['taskName']) : undefined,
+  ) ?? '';
 
   const job: Record<string, unknown> = {
-    id: jobId,
+    jobId,
+    taskName,
     status: status as AsyncJob.StatusEnum,
     progress,
+    message: firstDefined(
+      toOptionalString(record['message']),
+      nested ? toOptionalString(nested['message']) : undefined,
+    ) ?? null,
+    result: firstDefined(record['result'], nested?.['result']) ?? null,
+    errorMessage: firstDefined(
+      toOptionalString(record['errorMessage']),
+      nested ? toOptionalString(nested['errorMessage']) : undefined,
+    ) ?? null,
+    createdAt: firstDefined(
+      toOptionalString(record['createdAt']),
+      nested ? toOptionalString(nested['createdAt']) : undefined,
+    ) ?? '',
+    updatedAt: firstDefined(
+      toOptionalString(record['updatedAt']),
+      nested ? toOptionalString(nested['updatedAt']) : undefined,
+    ) ?? '',
+    createdBy: firstDefined(
+      toOptionalNumber(record['createdBy']),
+      nested ? toOptionalNumber(nested['createdBy']) : undefined,
+    ) ?? null,
   };
-
-  const message = firstDefined(
-    toOptionalString(record['message']),
-    nested ? toOptionalString(nested['message']) : undefined,
-  );
-  if (message !== undefined) {
-    job['message'] = message;
-  }
-
-  const result = firstDefined(record['result'], nested?.['result']);
-  if (result !== undefined) {
-    job['result'] = result;
-  }
-
-  const errorMessage = firstDefined(
-    toOptionalString(record['errorMessage']),
-    toOptionalString(record['error_message']),
-    toOptionalString(record['error']),
-    nested ? toOptionalString(nested['errorMessage']) : undefined,
-    nested ? toOptionalString(nested['error_message']) : undefined,
-    nested ? toOptionalString(nested['error']) : undefined,
-  );
-  if (errorMessage !== undefined) {
-    job['errorMessage'] = errorMessage;
-    job['error'] = errorMessage;
-  }
 
   return job as AsyncJob;
 }

@@ -11668,11 +11668,11 @@ components:
     AsyncJob:
       type: object
       properties:
-        id:
+        jobId:
           type: string
           format: uuid
           readOnly: true
-        task_name:
+        taskName:
           type: string
           readOnly: true
         status:
@@ -11697,35 +11697,36 @@ components:
           readOnly: true
           nullable: true
         result:
+          type: object
+          additionalProperties: {}
           readOnly: true
-          nullable: true
-        error_message:
+        errorMessage:
           type: string
           readOnly: true
           nullable: true
-        created_at:
+        createdAt:
           type: string
           format: date-time
           readOnly: true
-        updated_at:
+        updatedAt:
           type: string
           format: date-time
           readOnly: true
-        created_by:
+        createdBy:
           type: integer
           readOnly: true
           nullable: true
       required:
-      - created_at
-      - created_by
-      - error_message
-      - id
+      - createdAt
+      - createdBy
+      - errorMessage
+      - jobId
       - message
       - progress
       - result
       - status
-      - task_name
-      - updated_at
+      - taskName
+      - updatedAt
     CalendarReminder:
       type: object
       properties:
@@ -14205,7 +14206,7 @@ components:
     ProductImportStartResponse:
       type: object
       properties:
-        job_id:
+        jobId:
           type: string
           format: uuid
         status:
@@ -14218,7 +14219,7 @@ components:
           type: boolean
       required:
       - deduplicated
-      - job_id
+      - jobId
       - progress
       - queued
       - status
@@ -14239,7 +14240,7 @@ components:
     ProductPriceListPrintStartResponse:
       type: object
       properties:
-        job_id:
+        jobId:
           type: string
           format: uuid
         status:
@@ -14252,7 +14253,7 @@ components:
           type: boolean
       required:
       - deduplicated
-      - job_id
+      - jobId
       - progress
       - queued
       - status

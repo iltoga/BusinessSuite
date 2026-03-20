@@ -128,7 +128,7 @@ class AiModelAuthorizationTests(TestCase):
         response = self.staff_client.get("/api/ai-models/openrouter-search/?limit=foo")
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["error"], "Invalid limit parameter.")
+        self.assertEqual(response.data["error"]["message"], "Invalid limit parameter.")
 
 
 class AsyncOwnershipAuthorizationTests(TestCase):
@@ -289,7 +289,7 @@ class AsyncOwnershipAuthorizationTests(TestCase):
             reverse("invoices-download-async-status", kwargs={"job_id": str(download_job.id)})
         )
         self.assertEqual(allowed.status_code, 200)
-        self.assertEqual(allowed.data["job_id"], str(download_job.id))
+        self.assertEqual(allowed.data["jobId"], str(download_job.id))
 
     def test_invoice_download_stream_endpoint_is_owner_scoped(self):
         customer = Customer.objects.create(first_name="Jake", last_name="Owner")
@@ -327,13 +327,13 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
     def test_product_export_start_reuses_existing_inflight_job(self, enqueue_mock):
         first = self.client.post("/api/products/export/start/", {"search_query": "visa"}, format="json")
         self.assertEqual(first.status_code, 202)
-        first_job_id = first.data["job_id"]
+        first_job_id = first.data["jobId"]
         self.assertTrue(first.data["queued"])
         enqueue_mock.assert_called_once()
 
         second = self.client.post("/api/products/export/start/", {"search_query": "visa"}, format="json")
         self.assertEqual(second.status_code, 202)
-        self.assertEqual(second.data["job_id"], first_job_id)
+        self.assertEqual(second.data["jobId"], first_job_id)
         self.assertFalse(second.data["queued"])
         self.assertTrue(second.data["deduplicated"])
         self.assertEqual(AsyncJob.objects.filter(task_name="products_export_excel", created_by=self.user).count(), 1)
@@ -364,7 +364,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         )
         first = self.client.post("/api/products/import/start/", {"file": upload_one}, format="multipart")
         self.assertEqual(first.status_code, 202)
-        first_job_id = first.data["job_id"]
+        first_job_id = first.data["jobId"]
         self.assertTrue(first.data["queued"])
         enqueue_mock.assert_called_once()
 
@@ -375,7 +375,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         )
         second = self.client.post("/api/products/import/start/", {"file": upload_two}, format="multipart")
         self.assertEqual(second.status_code, 202)
-        self.assertEqual(second.data["job_id"], first_job_id)
+        self.assertEqual(second.data["jobId"], first_job_id)
         self.assertFalse(second.data["queued"])
         self.assertTrue(second.data["deduplicated"])
         self.assertEqual(AsyncJob.objects.filter(task_name="products_import_excel", created_by=self.user).count(), 1)
@@ -395,13 +395,13 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
 
         first = self.client.post(f"/api/invoices/{invoice.id}/download-async/", {"file_format": "pdf"}, format="json")
         self.assertEqual(first.status_code, 202)
-        first_job_id = first.data["job_id"]
+        first_job_id = first.data["jobId"]
         self.assertTrue(first.data["queued"])
         enqueue_mock.assert_called_once()
 
         second = self.client.post(f"/api/invoices/{invoice.id}/download-async/", {"file_format": "pdf"}, format="json")
         self.assertEqual(second.status_code, 202)
-        self.assertEqual(second.data["job_id"], first_job_id)
+        self.assertEqual(second.data["jobId"], first_job_id)
         self.assertFalse(second.data["queued"])
         self.assertTrue(second.data["deduplicated"])
         self.assertEqual(InvoiceDownloadJob.objects.filter(invoice=invoice, created_by=self.user).count(), 1)
@@ -414,18 +414,18 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         passport_one = SimpleUploadedFile("passport.png", b"png-bytes", content_type="image/png")
         first = self.client.post("/api/ocr/check/", {"file": passport_one, "doc_type": "passport"}, format="multipart")
         self.assertEqual(first.status_code, 202)
-        first_job_id = first.data["job_id"]
+        first_job_id = first.data["jobId"]
         self.assertTrue(first.data["queued"])
-        self.assertTrue(first.data["stream_url"].endswith(f"/api/ocr/stream/{first_job_id}/"))
+        self.assertTrue(first.data["streamUrl"].endswith(f"/api/ocr/stream/{first_job_id}/"))
         enqueue_mock.assert_called_once()
 
         passport_two = SimpleUploadedFile("passport.png", b"png-bytes-2", content_type="image/png")
         second = self.client.post("/api/ocr/check/", {"file": passport_two, "doc_type": "passport"}, format="multipart")
         self.assertEqual(second.status_code, 202)
-        self.assertEqual(second.data["job_id"], first_job_id)
+        self.assertEqual(second.data["jobId"], first_job_id)
         self.assertFalse(second.data["queued"])
         self.assertTrue(second.data["deduplicated"])
-        self.assertTrue(second.data["stream_url"].endswith(f"/api/ocr/stream/{first_job_id}/"))
+        self.assertTrue(second.data["streamUrl"].endswith(f"/api/ocr/stream/{first_job_id}/"))
         self.assertEqual(OCRJob.objects.filter(created_by=self.user).count(), 1)
         enqueue_mock.assert_called_once()
         storage_save_mock.assert_called_once()
@@ -438,18 +438,18 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         document_one = SimpleUploadedFile("document.pdf", b"pdf-bytes", content_type="application/pdf")
         first = self.client.post("/api/document-ocr/check/", {"file": document_one}, format="multipart")
         self.assertEqual(first.status_code, 202)
-        first_job_id = first.data["job_id"]
+        first_job_id = first.data["jobId"]
         self.assertTrue(first.data["queued"])
-        self.assertTrue(first.data["stream_url"].endswith(f"/api/document-ocr/stream/{first_job_id}/"))
+        self.assertTrue(first.data["streamUrl"].endswith(f"/api/document-ocr/stream/{first_job_id}/"))
         enqueue_mock.assert_called_once()
 
         document_two = SimpleUploadedFile("document.pdf", b"pdf-bytes-2", content_type="application/pdf")
         second = self.client.post("/api/document-ocr/check/", {"file": document_two}, format="multipart")
         self.assertEqual(second.status_code, 202)
-        self.assertEqual(second.data["job_id"], first_job_id)
+        self.assertEqual(second.data["jobId"], first_job_id)
         self.assertFalse(second.data["queued"])
         self.assertTrue(second.data["deduplicated"])
-        self.assertTrue(second.data["stream_url"].endswith(f"/api/document-ocr/stream/{first_job_id}/"))
+        self.assertTrue(second.data["streamUrl"].endswith(f"/api/document-ocr/stream/{first_job_id}/"))
         self.assertEqual(DocumentOCRJob.objects.filter(created_by=self.user).count(), 1)
         enqueue_mock.assert_called_once()
         storage_save_mock.assert_called_once()

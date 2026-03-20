@@ -1271,7 +1271,6 @@ export class ApplicationDetailComponent implements OnInit {
           key === 'status' ||
           key === 'progress' ||
           key === 'previewUrl' ||
-          key === 'preview_url' ||
           key === 'b64ResizedImage'
         ) {
           continue;
@@ -1300,7 +1299,7 @@ export class ApplicationDetailComponent implements OnInit {
 
     const directStructured =
       status.structuredData ??
-      (status as { structured_data?: Record<string, string | null> }).structured_data;
+      null;
     if (directStructured && typeof directStructured === 'object') {
       return directStructured;
     }
@@ -2573,7 +2572,7 @@ export class ApplicationDetailComponent implements OnInit {
           const result: OcrStatusResponse = {
             ...jobResult,
             status: 'completed',
-            jobId: jobStatus.id,
+            jobId: jobStatus.jobId,
           };
           this.handleOcrResult(result);
           this.pollSub?.unsubscribe();
@@ -2582,7 +2581,7 @@ export class ApplicationDetailComponent implements OnInit {
 
         if (jobStatus.status === 'failed') {
           const jobResult = (jobStatus.result as Record<string, any>) || {};
-          this.toast.error((jobResult['error'] as string) || 'OCR failed');
+          this.toast.error((jobResult['errorMessage'] as string) || 'OCR failed');
           this.ocrPolling.set(false);
           this.pollSub?.unsubscribe();
           return;
@@ -2606,7 +2605,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.ocrStatus.set('Completed');
     this.ocrReviewData.set(status);
     const openedExtractedDataDialog = this.handleOcrExtractionForSelectedDocument();
-    const previewUrl = status.previewUrl ?? (status as { preview_url?: string }).preview_url;
+    const previewUrl = status.previewUrl;
     if (previewUrl) {
       this.ocrPreviewImage.set(previewUrl);
     } else if (status.b64ResizedImage) {
@@ -2624,11 +2623,7 @@ export class ApplicationDetailComponent implements OnInit {
       return null;
     }
     const textValue =
-      typeof status.text === 'string'
-        ? status.text
-        : typeof (status as { result_text?: string }).result_text === 'string'
-          ? (status as { result_text?: string }).result_text!
-          : null;
+      typeof status.resultText === 'string' ? status.resultText : null;
     if (!textValue) {
       return null;
     }

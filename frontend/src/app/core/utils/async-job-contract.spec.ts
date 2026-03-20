@@ -38,18 +38,29 @@ describe('normalizeAsyncJobUpdate', () => {
         status: 'failed',
         progress: '100',
         payload: {
-          error: 'Verification failed',
+          errorMessage: 'Verification failed',
           message: 'Passport verification failed.',
+          result: {
+            ai_warning: 'Low confidence',
+            mrz_data: {
+              number: 'A1234567',
+            },
+          },
         },
       }),
     ).toEqual(
       expect.objectContaining({
-        id: 'job-2',
+        jobId: 'job-2',
         status: 'failed',
         progress: 100,
         message: 'Passport verification failed.',
         errorMessage: 'Verification failed',
-        error: 'Verification failed',
+        result: {
+          aiWarning: 'Low confidence',
+          mrzData: {
+            number: 'A1234567',
+          },
+        },
       }),
     );
   });

@@ -171,16 +171,16 @@ export interface OcrQueuedResponse {
   status: string;
   progress?: number;
   statusUrl?: string;
+  streamUrl?: string;
 }
 
 export interface OcrStatusResponse {
   jobId: string;
   status: string;
   progress?: number;
-  text?: string;
+  resultText?: string;
   structuredData?: Record<string, string | null>;
-  structured_data?: Record<string, string | null>;
-  error?: string;
+  errorMessage?: string;
   mrzData?: {
     number?: string;
     expirationDateYyyyMmDd?: string;

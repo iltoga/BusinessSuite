@@ -26,6 +26,78 @@ import { buildLocalFilePreview } from '../../../shared/utils/document-preview-so
 import { extractServerErrorMessage } from '../../../shared/utils/form-errors';
 import { extractJobId } from '@/core/utils/async-job-contract';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readField(record: Record<string, unknown>, ...keys: string[]): unknown {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(record, key)) {
+      const value = record[key];
+      if (value !== null && value !== undefined) {
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
+
+function readString(record: Record<string, unknown>, ...keys: string[]): string | null {
+  const value = readField(record, ...keys);
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return null;
+}
+
+function readNumber(record: Record<string, unknown>, ...keys: string[]): number | null {
+  const value = readField(record, ...keys);
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function readBoolean(record: Record<string, unknown>, ...keys: string[]): boolean | null {
+  const value = readField(record, ...keys);
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'yes'].includes(normalized)) {
+      return true;
+    }
+    if (['false', '0', 'no'].includes(normalized)) {
+      return false;
+    }
+  }
+  return null;
+}
+
+function readStringArray(record: Record<string, unknown>, ...keys: string[]): string[] | null {
+  const value = readField(record, ...keys);
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const items = value
+    .map((item) => String(item ?? '').trim())
+    .filter((item) => item.length > 0);
+  return items.length > 0 ? items : null;
+}
+
 interface PassportExtractedData {
   first_name?: string | null;
   last_name?: string | null;
@@ -69,6 +141,110 @@ interface CustomerMatchResult {
   exact_matches: CustomerMatchCandidate[];
   similar_matches: CustomerMatchCandidate[];
   recommended_action: 'update_customer' | 'choose_customer' | 'create_customer' | 'none';
+}
+
+function normalizePassportExtractedData(value: unknown): PassportExtractedData | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return {
+    first_name: readString(value, 'first_name', 'firstName'),
+    last_name: readString(value, 'last_name', 'lastName'),
+    nationality: readString(value, 'nationality'),
+    nationality_code: readString(value, 'nationality_code', 'nationalityCode'),
+    gender: readString(value, 'gender'),
+    date_of_birth: readString(value, 'date_of_birth', 'dateOfBirth'),
+    birth_place: readString(value, 'birth_place', 'birthPlace'),
+    passport_number: readString(value, 'passport_number', 'passportNumber'),
+    passport_issue_date: readString(value, 'passport_issue_date', 'passportIssueDate'),
+    expiration_date: readString(
+      value,
+      'expiration_date',
+      'passport_expiration_date',
+      'expirationDate',
+      'passportExpirationDate',
+    ),
+    address_abroad: readString(value, 'address_abroad', 'addressAbroad'),
+    confidence_score: readNumber(value, 'confidence_score', 'confidenceScore'),
+  };
+}
+
+function normalizeCustomerMatchCandidate(value: unknown): CustomerMatchCandidate | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return {
+    id: readNumber(value, 'id') ?? 0,
+    first_name: readString(value, 'first_name', 'firstName'),
+    last_name: readString(value, 'last_name', 'lastName'),
+    full_name: readString(value, 'full_name', 'fullName'),
+    passport_number: readString(value, 'passport_number', 'passportNumber'),
+    passport_issue_date: readString(value, 'passport_issue_date', 'passportIssueDate'),
+    passport_expiration_date: readString(
+      value,
+      'passport_expiration_date',
+      'passportExpirationDate',
+    ),
+    nationality_code: readString(value, 'nationality_code', 'nationalityCode'),
+    nationality_name: readString(value, 'nationality_name', 'nationalityName'),
+    match_kind: readString(value, 'match_kind', 'matchKind'),
+    passport_status: (readString(value, 'passport_status', 'passportStatus') as
+      | 'missing'
+      | 'present'
+      | null) ?? null,
+    similarity: readNumber(value, 'similarity'),
+  };
+}
+
+function normalizeCustomerMatch(value: unknown): CustomerMatchResult | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const exactMatches = readField(value, 'exact_matches', 'exactMatches');
+  const similarMatches = readField(value, 'similar_matches', 'similarMatches');
+
+  return {
+    status: (readString(value, 'status') as CustomerMatchResult['status']) ?? 'error',
+    message: readString(value, 'message') ?? '',
+    passport_number: readString(value, 'passport_number', 'passportNumber'),
+    exact_matches: Array.isArray(exactMatches)
+      ? exactMatches
+          .map((candidate) => normalizeCustomerMatchCandidate(candidate))
+          .filter((candidate): candidate is CustomerMatchCandidate => candidate !== null)
+      : [],
+    similar_matches: Array.isArray(similarMatches)
+      ? similarMatches
+          .map((candidate) => normalizeCustomerMatchCandidate(candidate))
+          .filter((candidate): candidate is CustomerMatchCandidate => candidate !== null)
+      : [],
+    recommended_action:
+      (readString(value, 'recommended_action', 'recommendedAction') as
+        | CustomerMatchResult['recommended_action']
+        | null) ?? 'none',
+  };
+}
+
+export function normalizePassportCheckResult(value: unknown): PassportCheckResult | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return {
+    is_valid: readBoolean(value, 'is_valid', 'isValid') ?? false,
+    method_used: readString(value, 'method_used', 'methodUsed') ?? undefined,
+    model_used: readString(value, 'model_used', 'modelUsed') ?? undefined,
+    passport_data: normalizePassportExtractedData(
+      readField(value, 'passport_data', 'passportData'),
+    ) ?? undefined,
+    rejection_code: readString(value, 'rejection_code', 'rejectionCode') ?? undefined,
+    rejection_reason: readString(value, 'rejection_reason', 'rejectionReason') ?? undefined,
+    rejection_reasons: readStringArray(value, 'rejection_reasons', 'rejectionReasons') ?? undefined,
+    customer_match:
+      normalizeCustomerMatch(readField(value, 'customer_match', 'customerMatch')) ?? undefined,
+  };
 }
 
 interface PassportCheckResult {
@@ -217,9 +393,9 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
     this.stopProgressStream();
     this.jobProgressSubscription = this.jobService.watchJob(jobId).subscribe({
       next: (job: any) => {
-        if (job?.error) {
+        if (job?.errorMessage) {
           this.isChecking.set(false);
-          this.toast.error(String(job.error));
+          this.toast.error(String(job.errorMessage));
           this.stopProgressStream();
           return;
         }
@@ -231,12 +407,11 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
 
         if (job?.status === 'completed') {
           this.isChecking.set(false);
-          const result = (job?.result ?? null) as PassportCheckResult | null;
-          this.result.set(result);
+          this.result.set(normalizePassportCheckResult(job?.result));
           this.stopProgressStream();
         } else if (job?.status === 'failed') {
           this.isChecking.set(false);
-          this.toast.error(job?.errorMessage || job?.error_message || 'Verification failed');
+          this.toast.error(job?.errorMessage || 'Verification failed');
           this.stopProgressStream();
         }
       },
