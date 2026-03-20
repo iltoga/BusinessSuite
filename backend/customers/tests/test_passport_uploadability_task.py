@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from io import BytesIO
 import os
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -10,28 +10,12 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "business_suite.settings.dev")
 os.environ.setdefault("SECRET_KEY", "django-insecure-dev-only")
 
 import django
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
 from django.test import SimpleTestCase
 
 django.setup()
 
 from core.models.async_job import AsyncJob
 from customers.tasks import check_passport_uploadability_task
-
-
-def _locate_passport_fixture() -> Path:
-    backend_root = Path(__file__).resolve().parents[2]
-    candidates = [
-        backend_root / "business_suite" / "files" / "media" / "tmpfiles" / "passport_big.jpg",
-        backend_root / "business_suite" / "files" / "media" / "tmpfiles" / "passport_big_6vsUjnK.jpg",
-        backend_root / "business_suite" / "files" / "media" / "tmpfiles" / "passport_big_EGZ40Me.jpg",
-        backend_root / "tmp" / "passport.jpeg",
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    raise FileNotFoundError("Could not find a passport fixture in the known locations.")
 
 
 @dataclass
@@ -98,36 +82,32 @@ class FakePassportUploadabilityService:
 
 class CheckPassportUploadabilityTaskTestCase(SimpleTestCase):
     def test_call_local_completes_job_with_stubbed_dependencies(self):
-        passport_path = _locate_passport_fixture()
-        with passport_path.open("rb") as handle:
-            image_bytes = handle.read()
-
-        storage_path = default_storage.save(
-            "test_passport_uploadability_task/passport_big.jpg",
-            ContentFile(image_bytes),
-        )
+        storage_path = "test_passport_uploadability_task/passport_big.jpg"
+        image_bytes = b"fake passport bytes"
         fake_job = FakeAsyncJob(job_id="smoke_passport_dramatiq")
 
-        try:
-            with (
-                patch("customers.tasks.AsyncJob.objects.get", return_value=fake_job),
-                patch("customers.tasks.PassportUploadabilityService", new=FakePassportUploadabilityService),
-                patch(
-                    "customers.tasks._build_customer_match_payload",
-                    return_value={
-                        "status": "no_match",
-                        "message": "Stubbed customer match for smoke test.",
-                        "passport_number": "X1234567",
-                        "exact_matches": [],
-                        "similar_matches": [],
-                        "recommended_action": "create_customer",
-                    },
-                ),
-            ):
-                check_passport_uploadability_task.call_local(fake_job.job_id, storage_path, "ai")
-        finally:
-            if default_storage.exists(storage_path):
-                default_storage.delete(storage_path)
+        with (
+            patch("customers.tasks.AsyncJob.objects.get", return_value=fake_job),
+            patch("customers.tasks.PassportUploadabilityService", new=FakePassportUploadabilityService),
+            patch(
+                "customers.tasks._build_customer_match_payload",
+                return_value={
+                    "status": "no_match",
+                    "message": "Stubbed customer match for smoke test.",
+                    "passport_number": "X1234567",
+                    "exact_matches": [],
+                    "similar_matches": [],
+                    "recommended_action": "create_customer",
+                },
+            ),
+            patch("customers.tasks.default_storage.exists", return_value=True) as exists_mock,
+            patch(
+                "customers.tasks.default_storage.open",
+                return_value=BytesIO(image_bytes),
+            ) as open_mock,
+            patch("customers.tasks.default_storage.delete") as delete_mock,
+        ):
+            check_passport_uploadability_task.call_local(fake_job.job_id, storage_path, "ai")
 
         self.assertEqual(fake_job.status, AsyncJob.STATUS_COMPLETED)
         self.assertEqual(fake_job.progress, 100)
@@ -140,4 +120,6 @@ class CheckPassportUploadabilityTaskTestCase(SimpleTestCase):
         self.assertEqual(fake_job.result["passport_data"]["passport_number"], "X1234567")
         self.assertEqual(fake_job.result["customer_match"]["status"], "no_match")
         self.assertGreaterEqual(len(fake_job.updates), 5)
-        self.assertFalse(default_storage.exists(storage_path))
+        exists_mock.assert_called_once_with(storage_path)
+        open_mock.assert_called_once_with(storage_path, "rb")
+        delete_mock.assert_called_once_with(storage_path)

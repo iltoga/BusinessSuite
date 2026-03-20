@@ -22,4 +22,4 @@ class HealthCheckViewTests(TestCase):
         self.assertEqual(payload["status"], "healthy")
         self.assertTrue(payload["checks"]["db"])
         self.assertTrue(payload["checks"]["redis"])
-        self.assertIn("elapsedMs", payload)
+        self.assertIn("elapsed_ms", payload)
