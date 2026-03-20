@@ -7,6 +7,7 @@ class ConditionalLoginView(auth_views.LoginView):
     """Login view for Django admin access. Redirects to /admin/ after successful login."""
 
     template_name = "registration/login_simple.html"
+    redirect_authenticated_user = True
 
     def get_success_url(self):
         return "/admin/"
