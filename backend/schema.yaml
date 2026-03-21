@@ -5249,6 +5249,37 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/token/refresh/:
+    post:
+      operationId: tokenRefreshCreate
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomTokenRefresh'
+          description: ''
   /api/user-profile/change_password/:
     post:
       operationId: userProfileChangePasswordCreate
@@ -5292,6 +5323,7 @@ paths:
       security:
       - jwtAuth: []
       - cookieAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -10664,6 +10696,37 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/token/refresh/:
+    post:
+      operationId: v1TokenRefreshCreate
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefresh'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomTokenRefresh'
+          description: ''
   /api/v1/user-profile/change_password/:
     post:
       operationId: v1UserProfileChangePasswordCreate
@@ -10707,6 +10770,7 @@ paths:
       security:
       - jwtAuth: []
       - cookieAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -11490,21 +11554,25 @@ components:
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-token value.
         completion_price_per_token:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-token value.
         image_price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-unit value.
         request_price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-unit value.
         top_provider_id:
           type: string
           maxLength: 255
@@ -11524,6 +11592,10 @@ components:
         pricing:
           allOf:
           - $ref: '#/components/schemas/AiModelPricing'
+          readOnly: true
+        pricing_display:
+          allOf:
+          - $ref: '#/components/schemas/AiModelPricingDisplay'
           readOnly: true
         architecture:
           allOf:
@@ -11545,6 +11617,7 @@ components:
       - model_id
       - name
       - pricing
+      - pricing_display
       - provider
       - updated_at
     AiModelArchitecture:
@@ -11581,26 +11654,62 @@ components:
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-token value.
         completion_price_per_token:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-token value.
         image_price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-unit value.
         request_price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-unit value.
       required:
       - completion_price_per_token
       - image_price
       - prompt_price_per_token
       - request_price
+    AiModelPricingDisplay:
+      type: object
+      properties:
+        prompt_price_per_million_tokens:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Displayed in USD per 1M tokens.
+        completion_price_per_million_tokens:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Displayed in USD per 1M tokens.
+        image_price_per_million_tokens:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Displayed in USD per 1M tokens.
+        request_price_per_million_tokens:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Displayed in USD per 1M tokens.
+      required:
+      - completion_price_per_million_tokens
+      - image_price_per_million_tokens
+      - prompt_price_per_million_tokens
+      - request_price_per_million_tokens
     AsyncJob:
       type: object
       properties:
@@ -11608,7 +11717,11 @@ components:
           type: string
           format: uuid
           readOnly: true
-        task_name:
+        jobId:
+          type: string
+          format: uuid
+          readOnly: true
+        taskName:
           type: string
           readOnly: true
         status:
@@ -11633,35 +11746,37 @@ components:
           readOnly: true
           nullable: true
         result:
+          type: object
+          additionalProperties: {}
           readOnly: true
-          nullable: true
-        error_message:
+        errorMessage:
           type: string
           readOnly: true
           nullable: true
-        created_at:
+        createdAt:
           type: string
           format: date-time
           readOnly: true
-        updated_at:
+        updatedAt:
           type: string
           format: date-time
           readOnly: true
-        created_by:
+        createdBy:
           type: integer
           readOnly: true
           nullable: true
       required:
-      - created_at
-      - created_by
-      - error_message
+      - createdAt
+      - createdBy
+      - errorMessage
       - id
+      - jobId
       - message
       - progress
       - result
       - status
-      - task_name
-      - updated_at
+      - taskName
+      - updatedAt
     CalendarReminder:
       type: object
       properties:
@@ -11904,6 +12019,16 @@ components:
       required:
       - password
       - username
+    CustomTokenRefresh:
+      type: object
+      properties:
+        refresh:
+          type: string
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
     Customer:
       type: object
       description: |-
@@ -14131,7 +14256,7 @@ components:
     ProductImportStartResponse:
       type: object
       properties:
-        job_id:
+        jobId:
           type: string
           format: uuid
         status:
@@ -14144,7 +14269,7 @@ components:
           type: boolean
       required:
       - deduplicated
-      - job_id
+      - jobId
       - progress
       - queued
       - status
@@ -14165,7 +14290,7 @@ components:
     ProductPriceListPrintStartResponse:
       type: object
       properties:
-        job_id:
+        jobId:
           type: string
           format: uuid
         status:
@@ -14178,7 +14303,7 @@ components:
           type: boolean
       required:
       - deduplicated
-      - job_id
+      - jobId
       - progress
       - queued
       - status

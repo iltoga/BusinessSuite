@@ -33,7 +33,7 @@ class BackupsApiTimezoneTests(TestCase):
             response = self.client.get("/api/backups/")
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         backups = payload["backups"]
         self.assertEqual(len(backups), 2)
 
@@ -54,6 +54,6 @@ class BackupsApiTimezoneTests(TestCase):
             response = self.client.get("/api/backups/")
 
         self.assertEqual(response.status_code, 200)
-        backups = response.json()["backups"]
+        backups = response.json()["data"]["backups"]
         self.assertEqual(backups[0]["filename"], "backup-20260218-052729.json")
         self.assertEqual(backups[1]["filename"], "uploaded-20260218-122742-existing-backup.json")

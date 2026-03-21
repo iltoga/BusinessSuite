@@ -14,6 +14,8 @@ import traceback as tb_module
 from typing import Any, cast
 
 from api.serializers.categorization_serializer import CategorizationApplySerializer, DocumentCategorizationJobSerializer
+from api.utils.contracts import build_error_payload, build_success_payload
+from api.utils.idempotency import resolve_request_idempotent_job, store_request_idempotent_job
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from core.services.ai_document_categorizer import (
@@ -25,6 +27,7 @@ from core.services.ai_document_categorizer import (
 from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.logger_service import Logger
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_file_key, stream_job_key
+from api.utils.stream_payloads import build_async_job_start_payload, camelize_payload
 from core.tasks.document_categorization import (
     categorization_item_has_terminal_validation,
     categorization_item_is_terminal,
@@ -40,6 +43,25 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 logger = Logger.get_logger(__name__)
+
+
+def _error_response(
+    message: str,
+    status_code: int,
+    *,
+    code: str = "error",
+    details: Any | None = None,
+    request=None,
+) -> Response:
+    return Response(
+        build_error_payload(
+            code=code,
+            message=message,
+            details=details,
+            request=request,
+        ),
+        status=status_code,
+    )
 
 
 class _ProgressTrackedUploadedFile:
@@ -322,16 +344,29 @@ def categorize_documents_init(request, application_id):
     try:
         doc_application = DocApplication.objects.get(id=application_id)
     except DocApplication.DoesNotExist:
-        return Response(
-            {"code": "not_found", "errors": {"detail": ["Application not found."]}},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        return _error_response("Application not found.", status.HTTP_404_NOT_FOUND, code="not_found", request=request)
 
     model = request.data.get("model")
     provider_order_raw = request.data.get("providerOrder", request.data.get("provider_order"))
     provider_order = _parse_provider_order(provider_order_raw)
     total_files_raw = request.data.get("totalFiles", request.data.get("total_files"))
     total_files = _normalize_total_files(total_files_raw)
+
+    idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+        request=request,
+        namespace="document_categorization_init",
+        user_id=request.user.id,
+        queryset=DocumentCategorizationJob.objects.filter(doc_application=doc_application, created_by=request.user),
+    )
+    if cached_job is not None:
+        return Response(
+            {
+                "jobId": str(cached_job.id),
+                "totalFiles": int(cached_job.total_files or total_files),
+                "status": cached_job.status,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     job = _create_categorization_job(
         doc_application=doc_application,
@@ -340,6 +375,8 @@ def categorize_documents_init(request, application_id):
         provider_order=provider_order,
         total_files=total_files,
     )
+
+    store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
 
     return Response(
         {
@@ -362,21 +399,40 @@ def categorize_documents(request, application_id):
     try:
         doc_application = DocApplication.objects.get(id=application_id)
     except DocApplication.DoesNotExist:
-        return Response(
-            {"code": "not_found", "errors": {"detail": ["Application not found."]}},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        return _error_response("Application not found.", status.HTTP_404_NOT_FOUND, code="not_found", request=request)
 
     files = request.FILES.getlist("files")
-    if not files:
-        return Response(
-            {"code": "validation_error", "errors": {"files": ["No files provided."]}},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
     model = request.data.get("model")
     provider_order_raw = request.data.get("providerOrder", request.data.get("provider_order"))
     provider_order = _parse_provider_order(provider_order_raw)
+
+    idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+        request=request,
+        namespace="document_categorization_upload",
+        user_id=request.user.id,
+        queryset=DocumentCategorizationJob.objects.filter(doc_application=doc_application, created_by=request.user),
+    )
+    if cached_job is not None:
+        return Response(
+            build_success_payload(
+                {
+                    "jobId": str(cached_job.id),
+                    "totalFiles": int(cached_job.total_files or len(files)),
+                    "status": cached_job.status,
+                },
+                request=request,
+            ),
+            status=status.HTTP_201_CREATED,
+        )
+
+    if not files:
+        return _error_response(
+            "No files provided.",
+            status.HTTP_400_BAD_REQUEST,
+            code="validation_error",
+            details={"files": ["No files provided."]},
+            request=request,
+        )
 
     job = _create_categorization_job(
         doc_application=doc_application,
@@ -387,13 +443,17 @@ def categorize_documents(request, application_id):
     )
 
     _upload_files_to_job(job=job, files=files)
+    store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
 
     return Response(
-        {
-            "jobId": str(job.id),
-            "totalFiles": len(files),
-            "status": "queued",
-        },
+        build_success_payload(
+            {
+                "jobId": str(job.id),
+                "totalFiles": len(files),
+                "status": "queued",
+            },
+            request=request,
+        ),
         status=status.HTTP_201_CREATED,
     )
 
@@ -406,22 +466,19 @@ def categorization_upload_files(request, job_id):
     try:
         job = DocumentCategorizationJob.objects.select_related("doc_application").get(id=job_id)
     except DocumentCategorizationJob.DoesNotExist:
-        return Response(
-            {"code": "not_found", "errors": {"detail": ["Job not found."]}},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        return _error_response("Job not found.", status.HTTP_404_NOT_FOUND, code="not_found", request=request)
 
     if not request.user.is_staff and job.created_by_id != request.user.id:
-        return Response(
-            {"code": "forbidden", "errors": {"detail": ["Permission denied."]}},
-            status=status.HTTP_403_FORBIDDEN,
-        )
+        return _error_response("Permission denied.", status.HTTP_403_FORBIDDEN, code="forbidden", request=request)
 
     files = request.FILES.getlist("files")
     if not files:
-        return Response(
-            {"code": "validation_error", "errors": {"files": ["No files provided."]}},
-            status=status.HTTP_400_BAD_REQUEST,
+        return _error_response(
+            "No files provided.",
+            status.HTTP_400_BAD_REQUEST,
+            code="validation_error",
+            details={"files": ["No files provided."]},
+            request=request,
         )
 
     uploaded_files, dispatched_count = _upload_files_to_job(job=job, files=files)
@@ -444,11 +501,11 @@ def categorization_stream_sse(request, job_id):
     try:
         job = DocumentCategorizationJob.objects.get(id=job_id)
     except DocumentCategorizationJob.DoesNotExist:
-        return JsonResponse({"error": "Job not found"}, status=404)
+        return JsonResponse(build_error_payload(code="not_found", message="Job not found", request=request), status=404)
 
     # Only owner or staff can stream
     if not request.user.is_staff and job.created_by_id != request.user.id:
-        return JsonResponse({"error": "Forbidden"}, status=403)
+        return JsonResponse(build_error_payload(code="forbidden", message="Forbidden", request=request), status=403)
 
     replay_cursor = resolve_last_event_id(request)
     stream_key = stream_job_key(job.id)
@@ -760,7 +817,7 @@ def categorization_stream_sse(request, job_id):
                                 "index": item.sort_index,
                                 "filename": item.filename,
                                 "message": f"✗ {item.filename}: {item.error_message or 'Unknown error'}",
-                                "error": item.error_message or "Unknown error",
+                                "errorMessage": item.error_message or "Unknown error",
                             },
                             event_id=event_id,
                         )
@@ -802,7 +859,7 @@ def categorization_stream_sse(request, job_id):
                             "confidence": item.confidence,
                             "reasoning": item_result.get("reasoning", ""),
                             "categorizationPass": item_result.get("pass_used", 1),
-                            "error": item.error_message or None,
+                            "errorMessage": item.error_message or None,
                             "pipelineStage": item_result.get("stage"),
                             "aiValidationEnabled": bool(item_result.get("ai_validation_enabled")),
                             "validationStatus": item.validation_status or None,
@@ -924,16 +981,10 @@ def categorization_apply(request, job_id):
     try:
         job = DocumentCategorizationJob.objects.get(id=job_id)
     except DocumentCategorizationJob.DoesNotExist:
-        return Response(
-            {"code": "not_found", "errors": {"detail": ["Job not found."]}},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        return _error_response("Job not found.", status.HTTP_404_NOT_FOUND, code="not_found", request=request)
 
     if not request.user.is_staff and job.created_by_id != request.user.id:
-        return Response(
-            {"code": "forbidden", "errors": {"detail": ["Permission denied."]}},
-            status=status.HTTP_403_FORBIDDEN,
-        )
+        return _error_response("Permission denied.", status.HTTP_403_FORBIDDEN, code="forbidden", request=request)
 
     serializer = CategorizationApplySerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -954,17 +1005,17 @@ def categorization_apply(request, job_id):
         pending_list = ", ".join(incomplete_items[:3])
         if len(incomplete_items) > 3:
             pending_list = f"{pending_list}, +{len(incomplete_items) - 3} more"
-        return Response(
-            {
-                "code": "processing_incomplete",
-                "errors": {
-                    "detail": [
-                        "Document categorization/validation is still running. "
-                        f"Wait for all files to finish before applying: {pending_list}."
-                    ]
-                },
+        return _error_response(
+            "Document categorization/validation is still running.",
+            status.HTTP_409_CONFLICT,
+            code="processing_incomplete",
+            details={
+                "detail": [
+                    "Document categorization/validation is still running. "
+                    f"Wait for all files to finish before applying: {pending_list}."
+                ]
             },
-            status=status.HTTP_409_CONFLICT,
+            request=request,
         )
 
     for mapping in mappings:
@@ -974,7 +1025,7 @@ def categorization_apply(request, job_id):
         try:
             item = DocumentCategorizationItem.objects.get(id=item_id, job=job)
         except DocumentCategorizationItem.DoesNotExist:
-            errors.append({"itemId": str(item_id), "error": "Item not found"})
+            errors.append({"itemId": str(item_id), "errorMessage": "Item not found"})
             continue
 
         try:
@@ -983,7 +1034,7 @@ def categorization_apply(request, job_id):
                 doc_application=job.doc_application,
             )
         except Document.DoesNotExist:
-            errors.append({"itemId": str(item_id), "error": "Document not found in this application"})
+            errors.append({"itemId": str(item_id), "errorMessage": "Document not found in this application"})
             continue
 
         try:
@@ -1050,7 +1101,7 @@ def categorization_apply(request, job_id):
 
         except Exception as exc:
             logger.error("Error applying categorization item %s: %s", item_id, exc, exc_info=True)
-            errors.append({"itemId": str(item_id), "error": str(exc)})
+            errors.append({"itemId": str(item_id), "errorMessage": str(exc)})
 
     # Clean up temp files for applied items
     for item_data in applied:
@@ -1079,16 +1130,16 @@ def validate_document_category(request, document_id):
     try:
         document = Document.objects.select_related("doc_type", "doc_application__product").get(id=document_id)
     except Document.DoesNotExist:
-        return Response(
-            {"code": "not_found", "errors": {"detail": ["Document not found."]}},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        return _error_response("Document not found.", status.HTTP_404_NOT_FOUND, code="not_found", request=request)
 
     file = request.FILES.get("file")
     if not file:
-        return Response(
-            {"code": "validation_error", "errors": {"file": ["No file provided."]}},
-            status=status.HTTP_400_BAD_REQUEST,
+        return _error_response(
+            "No file provided.",
+            status.HTTP_400_BAD_REQUEST,
+            code="validation_error",
+            details={"file": ["No file provided."]},
+            request=request,
         )
 
     try:
@@ -1116,18 +1167,18 @@ def validate_document_category(request, document_id):
         response_payload = {
             # Backward-compatible fields from the previous endpoint contract.
             "matches": validation_status == "valid",
-            "expected_type": doc_type.name,
-            "detected_type": doc_type.name,
+            "expectedType": doc_type.name,
+            "detectedType": doc_type.name,
             "confidence": validation_result.get("confidence", 0),
             "reasoning": validation_result.get("reasoning", ""),
-            "document_type_id": doc_type.id,
+            "documentTypeId": doc_type.id,
             # New pre-validation fields used by single Upload/Update flow.
-            "validation_status": validation_status,
-            "validation_result": validation_result,
-            "ai_validation_enabled": bool(doc_type.ai_validation),
-            "validation_provider": runtime["provider"],
-            "validation_provider_name": runtime["provider_name"],
-            "validation_model": runtime["model"],
+            "validationStatus": validation_status,
+            "validationResult": camelize_payload(validation_result),
+            "aiValidationEnabled": bool(doc_type.ai_validation),
+            "validationProvider": runtime["provider"],
+            "validationProviderName": runtime["provider_name"],
+            "validationModel": runtime["model"],
         }
         return Response(response_payload)
     except Exception as exc:
@@ -1143,13 +1194,13 @@ def validate_document_category(request, document_id):
         return Response(
             {
                 "matches": False,
-                "expected_type": doc_type.name,
-                "detected_type": doc_type.name,
+                "expectedType": doc_type.name,
+                "detectedType": doc_type.name,
                 "confidence": 0,
                 "reasoning": user_message,
-                "document_type_id": doc_type.id,
-                "validation_status": "error",
-                "validation_result": {
+                "documentTypeId": doc_type.id,
+                "validationStatus": "error",
+                "validationResult": camelize_payload({
                     "valid": False,
                     "confidence": 0,
                     "positive_analysis": "",
@@ -1162,11 +1213,11 @@ def validate_document_category(request, document_id):
                     "ai_provider": runtime["provider"],
                     "ai_provider_name": runtime["provider_name"],
                     "ai_model": runtime["model"],
-                },
-                "ai_validation_enabled": bool(doc_type.ai_validation),
-                "validation_provider": runtime["provider"],
-                "validation_provider_name": runtime["provider_name"],
-                "validation_model": runtime["model"],
+                }),
+                "aiValidationEnabled": bool(doc_type.ai_validation),
+                "validationProvider": runtime["provider"],
+                "validationProviderName": runtime["provider_name"],
+                "validationModel": runtime["model"],
             }
         )
 
@@ -1178,16 +1229,10 @@ def categorization_job_status(request, job_id):
     try:
         job = DocumentCategorizationJob.objects.prefetch_related("items").get(id=job_id)
     except DocumentCategorizationJob.DoesNotExist:
-        return Response(
-            {"code": "not_found", "errors": {"detail": ["Job not found."]}},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        return _error_response("Job not found.", status.HTTP_404_NOT_FOUND, code="not_found", request=request)
 
     if not request.user.is_staff and job.created_by_id != request.user.id:
-        return Response(
-            {"code": "forbidden", "errors": {"detail": ["Permission denied."]}},
-            status=status.HTTP_403_FORBIDDEN,
-        )
+        return _error_response("Permission denied.", status.HTTP_403_FORBIDDEN, code="forbidden", request=request)
 
     serializer = DocumentCategorizationJobSerializer(job)
     return Response(serializer.data)
@@ -1204,7 +1249,10 @@ def document_validation_stream_sse(request, document_id):
     try:
         document = Document.objects.select_related("doc_type").get(id=document_id)
     except Document.DoesNotExist:
-        return JsonResponse({"error": "Document not found"}, status=404)
+        return JsonResponse(
+            build_error_payload(code="not_found", message="Document not found", request=request),
+            status=404,
+        )
 
     replay_cursor = resolve_last_event_id(request)
     stream_key = stream_file_key(document.id)

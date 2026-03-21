@@ -3,6 +3,8 @@ import { catchError, EMPTY, finalize, Observable, of } from 'rxjs';
 
 import { ServerManagementService } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { TypeaheadOption } from '@/shared/components/typeahead-combobox';
 
 import {
@@ -642,9 +644,9 @@ export class ServerManagementAiWorkflowFacade {
       .pipe(
         catchError((error) => {
           this.aiWorkflowDraft.set(previousDraft);
-          const detail = error?.error?.detail;
           const fallbackPrefix = options?.errorPrefix || 'Failed to update AI settings';
-          this.toast.error(detail ? `${fallbackPrefix}: ${detail}` : fallbackPrefix);
+          const message = extractServerErrorMessage(error);
+          this.toast.error(message ? `${fallbackPrefix}: ${message}` : fallbackPrefix);
           return EMPTY;
         }),
         finalize(() => this.aiWorkflowSaving.set(false)),
@@ -773,7 +775,8 @@ export class ServerManagementAiWorkflowFacade {
   }
 
   private normalizeAiWorkflowStatus(raw: any): AiWorkflowStatusResponse {
-    const aiModelsRaw = raw?.aiModels ?? {};
+    const source = unwrapApiRecord(raw) as Record<string, any> | null;
+    const aiModelsRaw = source?.['aiModels'] ?? {};
     const failoverRaw = aiModelsRaw?.failover ?? {};
     const featuresRaw = Array.isArray(aiModelsRaw?.features) ? aiModelsRaw.features : [];
     const runtimeSettingsRaw = Array.isArray(aiModelsRaw?.runtimeSettings)

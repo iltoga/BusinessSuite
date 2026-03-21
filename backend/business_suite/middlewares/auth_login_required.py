@@ -16,8 +16,9 @@ class AuthLoginRequiredMiddleware(MiddlewareMixin):
     def __call__(self, request):
         response = self.process_request(request)
         if response is None:
-            # self.get_response is always set by MiddlewareMixin
-            response = super().__call__(request)
+            # MiddlewareMixin would call process_request() again, so invoke the
+            # downstream handler directly once we know the request is allowed.
+            response = self.get_response(request)
         return response
 
     def process_request(self, request):

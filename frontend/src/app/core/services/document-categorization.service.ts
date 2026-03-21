@@ -3,6 +3,12 @@ import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
 import { SseService } from '@/core/services/sse.service';
+import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
+import {
+  createAsyncRequestMetadata,
+  requestMetadataContext,
+  type RequestMetadata,
+} from '@/core/utils/request-metadata';
 
 export interface CategorizationStartResponse {
   jobId: string;
@@ -137,7 +143,9 @@ export class DocumentCategorizationService {
     totalFiles: number,
     model?: string,
     providerOrder?: string[],
+    requestMetadata?: RequestMetadata | null,
   ): Observable<CategorizationStartResponse> {
+    const metadata = requestMetadata ?? createAsyncRequestMetadata();
     return this.http.post<CategorizationStartResponse>(
       `/api/customer-applications/${applicationId}/categorize-documents/init/`,
       {
@@ -145,7 +153,10 @@ export class DocumentCategorizationService {
         model: model ?? null,
         providerOrder: providerOrder ?? null,
       },
-    );
+      {
+        context: requestMetadataContext(metadata),
+      },
+    ).pipe(map((response) => normalizeJobEnvelope(response)));
   }
 
   /**
@@ -172,7 +183,7 @@ export class DocumentCategorizationService {
         // Preserve the existing consumer contract: { type, data }.
         // `type` comes from SSE `event:` with fallback to "message".
         // Cursor handling is done inside SseService via SSE `id`.
-        map(mapMessageToCategorizationEvent),
+        map((message) => ({ type: message.event || 'message', data: message.data })),
       );
   }
 
@@ -208,14 +219,4 @@ export class DocumentCategorizationService {
       formData,
     );
   }
-}
-
-function mapMessageToCategorizationEvent(message: {
-  event: string;
-  data: CategorizationSseEvent['data'];
-}): CategorizationSseEvent {
-  return {
-    type: message.event || 'message',
-    data: message.data,
-  };
 }

@@ -40,6 +40,7 @@ import {
   getDocumentAiValidationBadge,
   type PipelineBadgeState,
 } from '@/core/utils/document-categorization-pipeline';
+import { extractJobId } from '@/core/utils/async-job-contract';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -1206,9 +1207,8 @@ export class ApplicationDetailComponent implements OnInit {
       })
       .subscribe({
         next: (response) => {
-          // If the backend returned a job_id, subscribe to the SSE stream
-          const jobId =
-            ('jobId' in response && response.jobId) || (response as { job_id?: string }).job_id;
+          // If the backend returned a job id, subscribe to the SSE stream.
+          const jobId = extractJobId(response);
           if (jobId && typeof jobId === 'string') {
             this.trackOcrJob(jobId);
           } else {
@@ -1271,7 +1271,6 @@ export class ApplicationDetailComponent implements OnInit {
           key === 'status' ||
           key === 'progress' ||
           key === 'previewUrl' ||
-          key === 'preview_url' ||
           key === 'b64ResizedImage'
         ) {
           continue;
@@ -1300,7 +1299,7 @@ export class ApplicationDetailComponent implements OnInit {
 
     const directStructured =
       status.structuredData ??
-      (status as { structured_data?: Record<string, string | null> }).structured_data;
+      null;
     if (directStructured && typeof directStructured === 'object') {
       return directStructured;
     }
@@ -2194,10 +2193,9 @@ export class ApplicationDetailComponent implements OnInit {
   private normalizeApplicationPayload(raw: any): ApplicationDetail {
     return {
       ...raw,
-      notifyCustomer:
-        raw?.notifyCustomer ?? raw?.notifyCustomerToo ?? raw?.notify_customer_too ?? false,
-      notifyCustomerChannel: raw?.notifyCustomerChannel ?? raw?.notify_customer_channel ?? null,
-      readyForInvoice: raw?.readyForInvoice ?? raw?.ready_for_invoice ?? undefined,
+      notifyCustomer: raw?.notifyCustomer ?? raw?.notifyCustomerToo ?? false,
+      notifyCustomerChannel: raw?.notifyCustomerChannel ?? null,
+      readyForInvoice: raw?.readyForInvoice ?? undefined,
     };
   }
 
@@ -2225,12 +2223,12 @@ export class ApplicationDetailComponent implements OnInit {
     const raw = response as Record<string, unknown>;
     const patch: Partial<ApplicationWorkflow> = {};
     const status = raw['status'];
-    const dueDate = raw['dueDate'] ?? raw['due_date'];
-    const completionDate = raw['completionDate'] ?? raw['completion_date'];
-    const startDate = raw['startDate'] ?? raw['start_date'];
-    const isCurrentStep = raw['isCurrentStep'] ?? raw['is_current_step'];
-    const isOverdue = raw['isOverdue'] ?? raw['is_overdue'];
-    const hasNotes = raw['hasNotes'] ?? raw['has_notes'];
+    const dueDate = raw['dueDate'];
+    const completionDate = raw['completionDate'];
+    const startDate = raw['startDate'];
+    const isCurrentStep = raw['isCurrentStep'];
+    const isOverdue = raw['isOverdue'];
+    const hasNotes = raw['hasNotes'];
 
     if (typeof status === 'string' && status.trim()) {
       patch.status = status;
@@ -2573,7 +2571,7 @@ export class ApplicationDetailComponent implements OnInit {
           const result: OcrStatusResponse = {
             ...jobResult,
             status: 'completed',
-            jobId: jobStatus.id,
+            jobId: jobStatus.jobId,
           };
           this.handleOcrResult(result);
           this.pollSub?.unsubscribe();
@@ -2582,7 +2580,7 @@ export class ApplicationDetailComponent implements OnInit {
 
         if (jobStatus.status === 'failed') {
           const jobResult = (jobStatus.result as Record<string, any>) || {};
-          this.toast.error((jobResult['error'] as string) || 'OCR failed');
+          this.toast.error((jobResult['errorMessage'] as string) || 'OCR failed');
           this.ocrPolling.set(false);
           this.pollSub?.unsubscribe();
           return;
@@ -2606,7 +2604,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.ocrStatus.set('Completed');
     this.ocrReviewData.set(status);
     const openedExtractedDataDialog = this.handleOcrExtractionForSelectedDocument();
-    const previewUrl = status.previewUrl ?? (status as { preview_url?: string }).preview_url;
+    const previewUrl = status.previewUrl;
     if (previewUrl) {
       this.ocrPreviewImage.set(previewUrl);
     } else if (status.b64ResizedImage) {
@@ -2624,11 +2622,7 @@ export class ApplicationDetailComponent implements OnInit {
       return null;
     }
     const textValue =
-      typeof status.text === 'string'
-        ? status.text
-        : typeof (status as { result_text?: string }).result_text === 'string'
-          ? (status as { result_text?: string }).result_text!
-          : null;
+      typeof status.resultText === 'string' ? status.resultText : null;
     if (!textValue) {
       return null;
     }
@@ -2657,12 +2651,8 @@ export class ApplicationDetailComponent implements OnInit {
 
   private getConfiguredDocumentNames(application: ApplicationDetail): Set<string> {
     return new Set([
-      ...this.parseDocumentNames(
-        application.product?.requiredDocuments ?? (application.product as any)?.required_documents,
-      ),
-      ...this.parseDocumentNames(
-        application.product?.optionalDocuments ?? (application.product as any)?.optional_documents,
-      ),
+      ...this.parseDocumentNames(application.product?.requiredDocuments),
+      ...this.parseDocumentNames(application.product?.optionalDocuments),
     ]);
   }
 

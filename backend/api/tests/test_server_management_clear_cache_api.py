@@ -38,7 +38,7 @@ class ServerManagementClearCacheApiTests(TestCase):
         response = self.client.post("/api/server-management/clear-cache/")
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertTrue(payload["ok"])
         cleared_stores = payload.get("clearedStores", payload.get("cleared_stores"))
         self.assertEqual(cleared_stores, ["default", "cacheops"])
@@ -52,7 +52,7 @@ class ServerManagementClearCacheApiTests(TestCase):
         response = self.client.post("/api/server-management/clear-cache/?user_id=123")
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertTrue(payload["ok"])
         user_id = payload.get("userId", payload.get("user_id"))
         new_version = payload.get("newVersion", payload.get("new_version"))
@@ -72,8 +72,8 @@ class ServerManagementClearCacheApiTests(TestCase):
 
         self.assertEqual(response.status_code, 500)
         payload = response.json()
-        self.assertFalse(payload["ok"])
-        self.assertIn("cacheops down", payload["message"])
+        self.assertEqual(payload["error"]["code"], "error")
+        self.assertIn("cacheops down", payload["error"]["message"])
         default_cache.clear.assert_called_once()
 
     @patch("api.views_admin.services.get_cache_health_status")
@@ -96,7 +96,7 @@ class ServerManagementClearCacheApiTests(TestCase):
         response = self.client.get("/api/server-management/cache-health/")
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertTrue(payload["ok"])
         self.assertTrue(payload["redisConnected"])
         self.assertTrue(payload["writeReadDeleteOk"])
@@ -110,8 +110,8 @@ class ServerManagementClearCacheApiTests(TestCase):
 
         self.assertEqual(response.status_code, 500)
         payload = response.json()
-        self.assertFalse(payload["ok"])
-        self.assertIn("Failed to run cache health check", payload["message"])
+        self.assertEqual(payload["error"]["code"], "error")
+        self.assertIn("Failed to run cache health check", payload["error"]["message"])
 
     @patch("api.views_admin.services.get_calendar_sync_health_status")
     def test_calendar_sync_health_returns_payload(self, calendar_health_mock):
@@ -134,7 +134,7 @@ class ServerManagementClearCacheApiTests(TestCase):
         response = self.client.get("/api/server-management/calendar-sync-health/?stuck_after_minutes=5&sample_limit=20")
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertFalse(payload["ok"])
         self.assertEqual(payload["severity"], "critical")
         self.assertEqual(payload["counts"]["stuckPending"], 2)
@@ -145,13 +145,13 @@ class ServerManagementClearCacheApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         payload = response.json()
-        self.assertFalse(payload["ok"])
-        self.assertIn("Invalid stuck_after_minutes", payload["message"])
+        self.assertEqual(payload["error"]["code"], "validation_error")
+        self.assertIn("Invalid stuck_after_minutes", payload["error"]["message"])
 
     def test_local_resilience_get_returns_defaults(self):
         response = self.client.get("/api/server-management/local-resilience/")
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertFalse(payload.get("enabled"))
         self.assertTrue(payload.get("encryptionRequired", payload.get("encryption_required")))
 
@@ -173,7 +173,7 @@ class ServerManagementClearCacheApiTests(TestCase):
 
         response = self.client.post("/api/server-management/local-resilience/reset-vault/")
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertTrue(payload.get("ok"))
 
         settings_obj.refresh_from_db()
@@ -199,7 +199,7 @@ class ServerManagementClearCacheApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertTrue(payload["ok"])
         self.assertTrue(payload["cleanup"]["dryRun"])
         cleanup_mock.assert_called_once_with(dry_run=True)
@@ -227,7 +227,7 @@ class ServerManagementClearCacheApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertTrue(payload["ok"])
         self.assertFalse(payload["cleanup"]["dryRun"])
         self.assertEqual(payload["cleanup"]["deletedFiles"], 2)
@@ -255,3 +255,24 @@ class ServerManagementClearCacheApiTests(TestCase):
         except StopIteration:
             pass  # Stream ended immediately — that's fine for this test
         media_cleanup_delay_mock.assert_called_once_with(user_id=self.user.id, dry_run=True)
+
+    @patch("api.views_admin.iter_replay_and_live_events", return_value=iter(()))
+    @patch("api.views_admin.admin_tasks.run_media_cleanup_stream.delay")
+    def test_media_cleanup_stream_is_idempotent_for_same_key(self, media_cleanup_delay_mock, _stream_iter_mock):
+        token = Token.objects.create(user=self.user)
+
+        first_response = self.client.get(
+            "/api/server-management/media-cleanup/stream/?dry_run=1",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+            HTTP_IDEMPOTENCY_KEY="media-cleanup-1",
+        )
+        second_response = self.client.get(
+            "/api/server-management/media-cleanup/stream/?dry_run=1",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+            HTTP_IDEMPOTENCY_KEY="media-cleanup-1",
+        )
+
+        list(first_response.streaming_content)
+        list(second_response.streaming_content)
+
+        self.assertEqual(media_cleanup_delay_mock.call_count, 1)

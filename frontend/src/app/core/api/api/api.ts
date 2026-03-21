@@ -48,6 +48,8 @@ export * from './sync.service';
 import { SyncService } from './sync.service';
 export * from './tasks.service';
 import { TasksService } from './tasks.service';
+export * from './token.service';
+import { TokenService } from './token.service';
 export * from './user-profile.service';
 import { UserProfileService } from './user-profile.service';
 export * from './user-settings.service';
@@ -56,4 +58,35 @@ export * from './v1.service';
 import { V1Service } from './v1.service';
 export * from './workflow-notifications.service';
 import { WorkflowNotificationsService } from './workflow-notifications.service';
-export const APIS = [AiModelsService, ApiTokenAuthService, AsyncJobsService, BackupsService, CalendarService, CalendarRemindersService, ComputeService, CountryCodesService, CustomerApplicationsService, CustomersService, DashboardStatsService, DocumentOcrService, DocumentTypesService, DocumentsService, HolidaysService, InvoicesService, LettersService, MockService, OcrService, PaymentsService, ProductsService, PushNotificationsService, ServerManagementService, SyncService, TasksService, UserProfileService, UserSettingsService, V1Service, WorkflowNotificationsService];
+export const APIS = [
+  AiModelsService,
+  ApiTokenAuthService,
+  AsyncJobsService,
+  BackupsService,
+  CalendarService,
+  CalendarRemindersService,
+  ComputeService,
+  CountryCodesService,
+  CustomerApplicationsService,
+  CustomersService,
+  DashboardStatsService,
+  DocumentOcrService,
+  DocumentTypesService,
+  DocumentsService,
+  HolidaysService,
+  InvoicesService,
+  LettersService,
+  MockService,
+  OcrService,
+  PaymentsService,
+  ProductsService,
+  PushNotificationsService,
+  ServerManagementService,
+  SyncService,
+  TasksService,
+  TokenService,
+  UserProfileService,
+  UserSettingsService,
+  V1Service,
+  WorkflowNotificationsService,
+];

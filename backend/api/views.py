@@ -13,6 +13,7 @@ from . import view_applications as _view_applications
 from . import view_auth_catalog as _view_auth_catalog
 from . import view_billing as _view_billing
 from . import view_notifications as _view_notifications
+from .utils import stream_payloads as _stream_payloads
 from . import views_shared as _views_shared
 from .view_applications import *  # noqa: F401,F403
 from .view_auth_catalog import *  # noqa: F401,F403
@@ -27,6 +28,7 @@ _PATCH_TARGET_MODULES = (
     _view_billing,
     _view_applications,
     _view_notifications,
+    _stream_payloads,
 )
 
 

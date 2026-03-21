@@ -248,7 +248,7 @@ export class RemindersService {
   }
 
   private mapReminder(item: any): ReminderItem {
-    const calendarEventRaw = item?.calendarEvent ?? item?.calendar_event ?? null;
+    const calendarEventRaw = item?.calendarEvent ?? null;
     const statusRaw = String(item?.status ?? 'pending').toLowerCase();
     const status: ReminderStatus =
       statusRaw === 'sent' || statusRaw === 'failed' ? (statusRaw as ReminderStatus) : 'pending';
@@ -256,36 +256,29 @@ export class RemindersService {
     return {
       id: Number(item?.id ?? 0),
       user: Number(item?.user ?? 0),
-      userFullName: String(item?.userFullName ?? item?.user_full_name ?? ''),
-      userEmail: String(item?.userEmail ?? item?.user_email ?? ''),
-      createdBy:
-        item?.createdBy !== undefined && item?.createdBy !== null
-          ? Number(item.createdBy)
-          : item?.created_by !== undefined && item?.created_by !== null
-            ? Number(item.created_by)
-            : null,
-      createdByFullName: String(item?.createdByFullName ?? item?.created_by_full_name ?? ''),
-      createdByEmail: String(item?.createdByEmail ?? item?.created_by_email ?? ''),
+      userFullName: String(item?.userFullName ?? ''),
+      userEmail: String(item?.userEmail ?? ''),
+      createdBy: item?.createdBy !== undefined && item?.createdBy !== null ? Number(item.createdBy) : null,
+      createdByFullName: String(item?.createdByFullName ?? ''),
+      createdByEmail: String(item?.createdByEmail ?? ''),
       calendarEvent:
         calendarEventRaw === null || calendarEventRaw === undefined
           ? null
           : String(calendarEventRaw),
-      reminderDate: String(item?.reminderDate ?? item?.reminder_date ?? ''),
-      reminderTime: String(item?.reminderTime ?? item?.reminder_time ?? ''),
+      reminderDate: String(item?.reminderDate ?? ''),
+      reminderTime: String(item?.reminderTime ?? ''),
       timezone: String(item?.timezone ?? 'Asia/Makassar'),
-      scheduledFor: String(item?.scheduledFor ?? item?.scheduled_for ?? ''),
+      scheduledFor: String(item?.scheduledFor ?? ''),
       content: String(item?.content ?? ''),
       status,
-      sentAt: item?.sentAt ?? item?.sent_at ?? null,
-      readAt: item?.readAt ?? item?.read_at ?? null,
-      readDeviceLabel: String(item?.readDeviceLabel ?? item?.read_device_label ?? ''),
-      errorMessage: String(item?.errorMessage ?? item?.error_message ?? ''),
-      deliveryChannel: String(item?.deliveryChannel ?? item?.delivery_channel ?? ''),
-      deliveryDeviceLabel: String(
-        item?.deliveryDeviceLabel ?? item?.delivery_device_label ?? '',
-      ),
-      createdAt: String(item?.createdAt ?? item?.created_at ?? ''),
-      updatedAt: String(item?.updatedAt ?? item?.updated_at ?? ''),
+      sentAt: item?.sentAt ?? null,
+      readAt: item?.readAt ?? null,
+      readDeviceLabel: String(item?.readDeviceLabel ?? ''),
+      errorMessage: String(item?.errorMessage ?? ''),
+      deliveryChannel: String(item?.deliveryChannel ?? ''),
+      deliveryDeviceLabel: String(item?.deliveryDeviceLabel ?? ''),
+      createdAt: String(item?.createdAt ?? ''),
+      updatedAt: String(item?.updatedAt ?? ''),
     };
   }
 
@@ -294,10 +287,8 @@ export class RemindersService {
       id: Number(item?.id ?? 0),
       username: String(item?.username ?? ''),
       email: String(item?.email ?? ''),
-      fullName: String(item?.full_name ?? item?.fullName ?? item?.username ?? ''),
-      activePushSubscriptions: Number(
-        item?.active_push_subscriptions ?? item?.activePushSubscriptions ?? 0,
-      ),
+      fullName: String(item?.fullName ?? item?.username ?? ''),
+      activePushSubscriptions: Number(item?.activePushSubscriptions ?? 0),
     };
   }
 }

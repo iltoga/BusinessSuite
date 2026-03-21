@@ -11,6 +11,7 @@ import { ReactiveFormsModule, Validators, type FormGroup } from '@angular/forms'
 import { Observable, Subscription } from 'rxjs';
 
 import { AsyncJob, type CountryCode, type Customer } from '@/core/api';
+import { extractJobId } from '@/core/utils/async-job-contract';
 import { CustomersService } from '@/core/services/customers.service';
 import { JobService } from '@/core/services/job.service';
 import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service';
@@ -585,9 +586,7 @@ export class CustomerFormComponent
       })
       .subscribe({
         next: (response) => {
-          const jobId =
-            ('jobId' in response && response.jobId) || (response as { job_id?: string }).job_id;
-
+          const jobId = extractJobId(response);
           if (jobId && typeof jobId === 'string') {
             this.subscribeToOcrStream(jobId);
             return;
@@ -613,7 +612,7 @@ export class CustomerFormComponent
           const result: OcrStatusResponse = {
             ...jobResult,
             status: 'completed',
-            jobId: jobStatus.id,
+            jobId: jobStatus.jobId,
           };
           this.handleOcrResult(result);
           this.clearOcrAsyncTracking();
@@ -624,7 +623,7 @@ export class CustomerFormComponent
           this.clearOcrAsyncTracking();
           this.ocrProcessing.set(false);
           const jobResult = (jobStatus.result as Record<string, any>) || {};
-          this.ocrMessage.set((jobResult['error'] as string) || 'OCR failed');
+          this.ocrMessage.set((jobResult['errorMessage'] as string) || 'OCR failed');
           this.ocrMessageTone.set('error');
           return;
         }
@@ -660,10 +659,7 @@ export class CustomerFormComponent
     this.ocrProcessing.set(false);
     this.ocrData.set(status);
 
-    const mrz = (status.mrzData ??
-      (status as { mrz_data?: OcrStatusResponse['mrzData'] }).mrz_data) as
-      | NonNullable<OcrStatusResponse['mrzData']>
-      | undefined;
+    const mrz = status.mrzData as NonNullable<OcrStatusResponse['mrzData']> | undefined;
     if (!mrz) {
       this.ocrMessage.set('OCR completed but no data was extracted');
       this.ocrMessageTone.set('error');
@@ -672,7 +668,7 @@ export class CustomerFormComponent
 
     const confidence =
       this.getMrzValue<number>(mrz, 'aiConfidenceScore', 'ai_confidence_score') ?? null;
-    const aiWarning = (status.aiWarning ?? (status as { ai_warning?: string }).ai_warning) || null;
+    const aiWarning = status.aiWarning || null;
     const hasMismatches =
       this.getMrzValue<boolean>(mrz, 'hasMismatches', 'has_mismatches') ?? false;
     const mismatchSummary =
@@ -704,9 +700,8 @@ export class CustomerFormComponent
       this.ocrMessageTone.set('success');
     }
 
-    const previewImage =
-      status.b64ResizedImage ?? (status as { b64_resized_image?: string }).b64_resized_image;
-    const previewUrl = status.previewUrl ?? (status as { preview_url?: string }).preview_url;
+    const previewImage = status.b64ResizedImage;
+    const previewUrl = status.previewUrl;
     if (previewUrl) {
       this.passportPreviewUrl.set(previewUrl);
     } else if (previewImage) {

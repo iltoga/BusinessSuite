@@ -5,6 +5,7 @@ import {
 } from '@/core/services/document-categorization.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { isCategorizationPipelineTerminal } from '@/core/utils/document-categorization-pipeline';
+import { extractJobId } from '@/core/utils/async-job-contract';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { HttpEventType } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
@@ -69,14 +70,21 @@ export class ApplicationCategorizationHandler {
 
     this.categorizationService.createCategorizationJob(appId, files.length).subscribe({
       next: (response) => {
-        this.jobId.set(response.jobId);
+        const jobId = extractJobId(response);
+        if (!jobId) {
+          this.toast.error('Categorization job was started but no job id was returned');
+          this.dismiss();
+          return;
+        }
+
+        this.jobId.set(jobId);
         this.totalFiles.set(response.totalFiles || files.length);
         this.refreshStatusMessage(
           `Preparing upload (${response.totalFiles || files.length} file(s))...`,
         );
-        this.watchJob(response.jobId);
+        this.watchJob(jobId);
 
-        this.categorizationService.uploadFilesToJob(response.jobId, files).subscribe({
+        this.categorizationService.uploadFilesToJob(jobId, files).subscribe({
           next: (event) => {
             if (event.type === HttpEventType.UploadProgress) {
               const total = Number(event.total || 0);

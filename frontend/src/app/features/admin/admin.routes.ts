@@ -43,6 +43,13 @@ export const adminRoutes: Routes = [
       import('./ai-models/ai-model-form.component').then((c) => c.AiModelFormComponent),
   },
   {
+    path: 'ai-models/:id',
+    title: 'AI Model Details',
+    canActivate: [staffGuard],
+    loadComponent: () =>
+      import('./ai-models/ai-model-detail.component').then((c) => c.AiModelDetailComponent),
+  },
+  {
     path: 'workflow-notifications',
     title: 'Notifications Center',
     canActivate: [staffGuard],

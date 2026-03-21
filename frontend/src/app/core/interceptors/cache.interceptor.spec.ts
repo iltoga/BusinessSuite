@@ -385,6 +385,33 @@ describe('Cache Interceptor', () => {
       expect(pendingRequests.length).toBe(0);
     });
 
+    it('should normalize query parameter order when resolving cached responses', async () => {
+      const cachedData = { id: 1, name: 'Query Normalized User' };
+      const url = '/api/users/1/?b=2&a=1';
+
+      await cacheService.set(buildCacheKey('/api/users/1/?a=1&b=2'), cachedData, 300, 123, 1);
+      await cacheService.setVersion(1);
+
+      let responseData: any;
+      let completed = false;
+      httpClient.get(url).subscribe({
+        next: (data) => {
+          responseData = data;
+        },
+        complete: () => {
+          completed = true;
+        },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect(responseData).toEqual(cachedData);
+      expect(completed).toBe(true);
+
+      const pendingRequests = httpTestingController.match(() => true);
+      expect(pendingRequests.length).toBe(0);
+    });
+
     /**
      * Test: cache miss makes network request
      * Requirements: 8.3

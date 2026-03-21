@@ -55,6 +55,30 @@ class DocumentCategorizationUploadProgressTests(TestCase):
         self.assertEqual(job.result.get("overall_progress_percent"), 0)
         self.assertFalse(job.result.get("upload", {}).get("complete"))
 
+    def test_init_is_idempotent_for_the_same_key(self):
+        url = reverse("api-categorize-documents-init", kwargs={"application_id": self.application.id})
+
+        first = self.client.post(
+            url,
+            data={"totalFiles": 2},
+            HTTP_IDEMPOTENCY_KEY="categorization-init-1",
+        )
+        second = self.client.post(
+            url,
+            data={"totalFiles": 2},
+            HTTP_IDEMPOTENCY_KEY="categorization-init-1",
+        )
+
+        self.assertEqual(first.status_code, 201, first.content)
+        self.assertEqual(second.status_code, 201, second.content)
+
+        first_body = first.json()
+        second_body = second.json()
+        self.assertEqual(first_body["jobId"], second_body["jobId"])
+        self.assertEqual(first_body["totalFiles"], 2)
+        self.assertEqual(second_body["totalFiles"], 2)
+        self.assertEqual(DocumentCategorizationJob.objects.filter(doc_application=self.application).count(), 1)
+
     @patch("api.views_categorization.run_document_categorization_item")
     @patch("api.views_categorization.default_storage.save", side_effect=lambda path, _content: path)
     def test_upload_updates_progress_and_dispatches_items(self, _storage_save_mock, run_task_mock):

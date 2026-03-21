@@ -655,11 +655,8 @@ export class RemindersComponent implements OnInit, OnDestroy {
     this.streamSubscription?.unsubscribe();
     this.streamSubscription = this.remindersStreamService.connect().subscribe({
       next: (event) => this.handleLiveEvent(event),
-      error: () => {
-        this.liveConnecting.set(false);
-        this.liveConnected.set(false);
-        this.scheduleReconnect();
-      },
+      error: () => this.handleLiveDisconnect(),
+      complete: () => this.handleLiveDisconnect(),
     });
   }
 
@@ -696,6 +693,12 @@ export class RemindersComponent implements OnInit, OnDestroy {
     );
     this.reconnectAttempt += 1;
     this.reconnectTimeoutId = window.setTimeout(() => this.connectLiveStream(), delay);
+  }
+
+  private handleLiveDisconnect(): void {
+    this.liveConnecting.set(false);
+    this.liveConnected.set(false);
+    this.scheduleReconnect();
   }
 
   private clearReconnectTimeout(): void {

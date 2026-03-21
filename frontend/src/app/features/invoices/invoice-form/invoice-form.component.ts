@@ -30,6 +30,7 @@ import { CustomerSelectComponent } from '@/shared/components/customer-select/cus
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { InvoiceLineItemsSectionComponent } from './invoice-line-items-section.component';
 
@@ -530,8 +531,8 @@ export class InvoiceFormComponent implements OnInit {
     if (!product) {
       return 0;
     }
-    const retail = (product as any).retailPrice ?? (product as any).retail_price;
-    const base = (product as any).basePrice ?? (product as any).base_price;
+    const retail = (product as any).retailPrice;
+    const base = (product as any).basePrice;
     const price = Number(retail ?? base ?? 0);
     return Number.isNaN(price) ? 0 : price;
   }
@@ -545,14 +546,11 @@ export class InvoiceFormComponent implements OnInit {
 
     this.invoicesApi.invoicesFromApplicationPrefillRetrieve(applicationId).subscribe({
       next: (response) => {
-        const payload = (response ?? null) as Record<string, any> | null;
+        const payload = unwrapApiRecord(response) as Record<string, any> | null;
         const customerId = payload?.['customer']?.id ?? null;
-        const sourceLine =
-          payload?.['invoiceApplication'] ?? payload?.['invoice_application'] ?? null;
-        const sourceApplication =
-          payload?.['sourceApplication'] ?? payload?.['source_application'] ?? null;
-        const sourceApplicationId =
-          sourceLine?.['customerApplication'] ?? sourceLine?.['customer_application'] ?? null;
+        const sourceLine = payload?.['invoiceApplication'] ?? null;
+        const sourceApplication = payload?.['sourceApplication'] ?? null;
+        const sourceApplicationId = sourceLine?.['customerApplication'] ?? null;
         const sourceProductId = sourceLine?.['product'] ?? null;
 
         if (!customerId || !sourceProductId || !sourceApplicationId) {
@@ -854,9 +852,10 @@ export class InvoiceFormComponent implements OnInit {
       next: (res) => {
         const ctrl = this.form.get('invoiceNo');
         if (ctrl && !ctrl.dirty) {
-          const proposedNo = res.invoiceNo;
+          const payload = unwrapApiRecord(res) as { invoiceNo?: number | string } | null;
+          const proposedNo = payload?.invoiceNo;
           if (proposedNo) {
-            ctrl.setValue(proposedNo, { emitEvent: false });
+            ctrl.setValue(Number(proposedNo), { emitEvent: false });
             ctrl.markAsPristine();
             this.cdr.markForCheck();
           }

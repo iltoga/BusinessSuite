@@ -1,19 +1,23 @@
+import logging
 import time
-from typing import Generator
+from collections.abc import AsyncGenerator
 
 from django.http import StreamingHttpResponse
 
 
-from api.utils.redis_sse import iter_replay_and_live_events
+from api.utils.contracts import get_request_id
+from api.utils.redis_sse import iter_replay_and_live_events_async
 from api.utils.sse_auth import sse_token_auth_required
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_user_key
+
+logger = logging.getLogger(__name__)
 
 # Server-side max SSE connection duration (seconds).
 # Must be shorter than Cloudflare's 100 s proxy timeout.
 _SSE_MAX_DURATION_SECONDS = 55
 
 @sse_token_auth_required
-def realtime_stream_sse(request):
+async def realtime_stream_sse(request):
     """
     Global Multiplexed SSE Stream for a specific User.
     Listens to `user:{user_id}:realtime` Redis Stream and yields generic events 
@@ -22,14 +26,20 @@ def realtime_stream_sse(request):
     user_id = request.user.id
     stream_key = stream_user_key(user_id)
     replay_cursor = resolve_last_event_id(request)
+    logger.info(
+        "realtime_stream_sse connect user_id=%s request_id=%s replay_cursor=%s",
+        user_id,
+        get_request_id(request),
+        replay_cursor,
+    )
 
-    def event_stream() -> Generator[str, None, None]:
+    async def event_stream() -> AsyncGenerator[str, None]:
         deadline = time.monotonic() + _SSE_MAX_DURATION_SECONDS
 
         # Send initial connection success message for debugging/state sync
-        yield format_sse_event(data={"event": "connected", "user_id": user_id})
+        yield format_sse_event(data={"event": "connected", "userId": user_id})
 
-        for stream_event in iter_replay_and_live_events(
+        async for stream_event in iter_replay_and_live_events_async(
             stream_key=stream_key,
             last_event_id=replay_cursor,
             block_ms=10_000,
@@ -60,6 +70,12 @@ def realtime_stream_sse(request):
             except GeneratorExit:
                 return
             except Exception as exc:
+                logger.exception(
+                    "realtime_stream_sse failure user_id=%s request_id=%s error=%s",
+                    user_id,
+                    get_request_id(request),
+                    exc,
+                )
                 yield format_sse_event(data={"event": "realtime_error", "error": str(exc)})
                 return
 

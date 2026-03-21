@@ -75,8 +75,8 @@ describe('ProductListComponent', () => {
     };
 
     productImportExportService = {
-      startExport: vi.fn().mockReturnValue(of({ job_id: 'job-1' })),
-      startImport: vi.fn().mockReturnValue(of({ job_id: 'job-2' })),
+      startExport: vi.fn().mockReturnValue(of({ jobId: 'job-1' })),
+      startImport: vi.fn().mockReturnValue(of({ jobId: 'job-2' })),
       downloadExport: vi.fn().mockReturnValue(of({ body: new Blob() })),
       downloadPriceListPdf: vi
         .fn()
@@ -118,7 +118,7 @@ describe('ProductListComponent', () => {
       false,
       'name',
       1,
-      8,
+      10,
       undefined,
       undefined,
       undefined,
@@ -131,7 +131,7 @@ describe('ProductListComponent', () => {
       false,
       'name',
       1,
-      8,
+      10,
       undefined,
       undefined,
       undefined,
@@ -144,7 +144,7 @@ describe('ProductListComponent', () => {
       true,
       'name',
       1,
-      8,
+      10,
       undefined,
       undefined,
       undefined,
@@ -160,7 +160,7 @@ describe('ProductListComponent', () => {
       false,
       'name',
       1,
-      8,
+      10,
       undefined,
       undefined,
       undefined,

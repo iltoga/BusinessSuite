@@ -27,6 +27,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from rest_framework.routers import DefaultRouter
 
 from . import view_realtime, views
+from .view_auth_catalog import TokenAuthView, TokenRefreshView
 from .views_admin import (
     BackupsViewSet,
     ServerManagementViewSet,
@@ -105,7 +106,8 @@ urlpatterns = [
     path("schema/swagger-ui/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("schema/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     # Authentication endpoints
-    path("api-token-auth/", views.TokenAuthView.as_view(), name="api-token-auth"),
+    path("api-token-auth/", TokenAuthView.as_view(), name="api-token-auth"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("session-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # Cache control API endpoints
     path("cache/", include("cache.urls")),

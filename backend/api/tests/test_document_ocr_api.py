@@ -30,9 +30,11 @@ class DocumentOcrApiTests(TestCase):
         response = self.client.post("/api/document-ocr/check/", {"file": image_file}, format="multipart")
 
         self.assertEqual(response.status_code, 202)
+        self.assertIn("jobId", response.data)
+        self.assertNotIn("job_id", response.data)
         self.assertTrue(response.data["queued"])
         self.assertEqual(response.data["status"], "queued")
-        self.assertTrue(response.data["stream_url"].endswith(f"/api/document-ocr/stream/{response.data['job_id']}/"))
+        self.assertTrue(response.data["streamUrl"].endswith(f"/api/document-ocr/stream/{response.data['jobId']}/"))
         enqueue_mock.assert_called_once()
 
     def test_document_ocr_status_returns_structured_payload_when_result_text_is_json(self):
@@ -49,5 +51,5 @@ class DocumentOcrApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["status"], "completed")
-        self.assertEqual(response.data["structured_data"]["permit_number"], "ITK-77")
-        self.assertEqual(response.data["structuredData"]["holder_name"], "John Doe")
+        self.assertEqual(response.data["structuredData"]["holderName"], "John Doe")
+        self.assertEqual(response.data["structuredData"]["permitNumber"], "ITK-77")

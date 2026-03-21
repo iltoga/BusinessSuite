@@ -23,6 +23,10 @@ CSRF_COOKIE_DOMAIN = None
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = None
 SESSION_COOKIE_DOMAIN = None
+# JWT refresh cookies must use domain=None in dev so the browser accepts them
+# on localhost (base.py defaults to APP_DOMAIN which is the production domain).
+JWT_REFRESH_COOKIE_DOMAIN = None
+JWT_REFRESH_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = [
     "http://192.168.100.80",
     "https://192.168.100.80",

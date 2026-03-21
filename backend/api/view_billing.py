@@ -38,7 +38,11 @@ Helper functions
 - ``_import_item_stream_payload_from_item(item)`` — per-item progress payload.
 """
 
+from api.utils.contracts import build_success_payload
+from api.utils.idempotency import build_request_idempotency_fingerprint, resolve_request_idempotent_job, store_request_idempotent_job
 from api.utils.stream_payloads import (
+    build_async_job_links,
+    build_async_job_start_payload,
     first_present,
     normalize_invoice_download_job_payload,
     normalize_invoice_import_item_payload,
@@ -74,6 +78,10 @@ def _import_item_stream_payload_from_item(item) -> dict[str, Any]:
 class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     throttle_scope = None
+    throttle_cache_fail_open_actions = {
+        "download_async": False,
+        "import_batch": False,
+    }
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
@@ -185,15 +193,18 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         preview = build_invoice_delete_preview(invoice)
 
         return Response(
-            {
-                "invoice_no_display": invoice.invoice_no_display,
-                "customer_name": invoice.customer.full_name,
-                "total_amount": invoice.total_amount,
-                "status_display": invoice.get_status_display(),
-                "invoice_applications_count": preview.invoice_applications_count,
-                "customer_applications_count": preview.customer_applications_count,
-                "payments_count": preview.payments_count,
-            }
+            build_success_payload(
+                {
+                    "invoiceNoDisplay": invoice.invoice_no_display,
+                    "customerName": invoice.customer.full_name,
+                    "totalAmount": invoice.total_amount,
+                    "statusDisplay": invoice.get_status_display(),
+                    "invoiceApplicationsCount": preview.invoice_applications_count,
+                    "customerApplicationsCount": preview.customer_applications_count,
+                    "paymentsCount": preview.payments_count,
+                },
+                request=request,
+            )
         )
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
@@ -219,7 +230,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         invoice = self.get_object()
         result = force_delete_invoice(invoice, delete_customer_apps=delete_customer_apps)
 
-        return Response({"deleted": True, **result})
+        return Response(build_success_payload({"deleted": True, **result}, request=request))
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
     @action(detail=False, methods=["post"], url_path="bulk-delete")
@@ -243,7 +254,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             delete_customer_apps=delete_customer_apps,
         )
 
-        return Response(result)
+        return Response(build_success_payload(result, request=request))
 
     @extend_schema(
         parameters=[
@@ -316,6 +327,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     )
     def download_async(self, request, pk=None):
         namespace = "invoice_download_async"
+        request_fingerprint = build_request_idempotency_fingerprint(request)
         format_type = (
             request.data.get("file_format")
             or request.data.get("format")
@@ -327,6 +339,32 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return self.error_response("Invalid format. Use 'docx' or 'pdf'.", status.HTTP_400_BAD_REQUEST)
 
         invoice = self.get_object()
+        idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+            request=request,
+            namespace=namespace,
+            user_id=request.user.id,
+            queryset=InvoiceDownloadJob.objects.filter(invoice=invoice, format_type=format_type, created_by=request.user),
+            fingerprint=request_fingerprint,
+        )
+        if cached_job is not None:
+            return Response(
+                build_async_job_start_payload(
+                    job_id=cached_job.id,
+                    status=cached_job.status,
+                    progress=cached_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                    links=build_async_job_links(
+                        request,
+                        cached_job.id,
+                        status_route="invoices-download-async-status",
+                        stream_route="invoices-download-async-stream",
+                        download_route="invoices-download-async-file",
+                    ),
+                ),
+                status=status.HTTP_202_ACCEPTED,
+            )
+
         stale_seconds = max(30, int(getattr(settings, "INVOICE_DOWNLOAD_STALE_SECONDS", 180) or 180))
         stale_cutoff = timezone.now() - timedelta(seconds=stale_seconds)
         stale_jobs = InvoiceDownloadJob.objects.filter(
@@ -355,22 +393,20 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         def build_existing_response(existing_job):
             return Response(
-                {
-                    "job_id": str(existing_job.id),
-                    "status": existing_job.status,
-                    "progress": existing_job.progress,
-                    "status_url": request.build_absolute_uri(
-                        reverse("invoices-download-async-status", kwargs={"job_id": str(existing_job.id)})
+                build_async_job_start_payload(
+                    job_id=existing_job.id,
+                    status=existing_job.status,
+                    progress=existing_job.progress,
+                    queued=False,
+                    deduplicated=True,
+                    links=build_async_job_links(
+                        request,
+                        existing_job.id,
+                        status_route="invoices-download-async-status",
+                        stream_route="invoices-download-async-stream",
+                        download_route="invoices-download-async-file",
                     ),
-                    "stream_url": request.build_absolute_uri(
-                        reverse("invoices-download-async-stream", kwargs={"job_id": str(existing_job.id)})
-                    ),
-                    "download_url": request.build_absolute_uri(
-                        reverse("invoices-download-async-file", kwargs={"job_id": str(existing_job.id)})
-                    ),
-                    "queued": False,
-                    "deduplicated": True,
-                },
+                ),
                 status=status.HTTP_202_ACCEPTED,
             )
 
@@ -405,27 +441,30 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
 
             run_invoice_download_job(str(job.id))
+            store_request_idempotent_job(
+                cache_key=idempotency_cache_key,
+                job_id=job.id,
+                fingerprint=request_fingerprint,
+            )
         finally:
             if lock_key and lock_token:
                 release_enqueue_guard(lock_key, lock_token)
 
         return Response(
-            {
-                "job_id": str(job.id),
-                "status": job.status,
-                "progress": job.progress,
-                "status_url": request.build_absolute_uri(
-                    reverse("invoices-download-async-status", kwargs={"job_id": str(job.id)})
+            build_async_job_start_payload(
+                job_id=job.id,
+                status=InvoiceDownloadJob.STATUS_QUEUED,
+                progress=job.progress,
+                queued=True,
+                deduplicated=False,
+                links=build_async_job_links(
+                    request,
+                    job.id,
+                    status_route="invoices-download-async-status",
+                    stream_route="invoices-download-async-stream",
+                    download_route="invoices-download-async-file",
                 ),
-                "stream_url": request.build_absolute_uri(
-                    reverse("invoices-download-async-stream", kwargs={"job_id": str(job.id)})
-                ),
-                "download_url": request.build_absolute_uri(
-                    reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
-                ),
-                "queued": True,
-                "deduplicated": False,
-            },
+            ),
             status=status.HTTP_202_ACCEPTED,
         )
 
@@ -454,16 +493,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
 
         payload = {
-            "job_id": str(job.id),
+            "jobId": str(job.id),
             "status": job.status,
             "progress": job.progress,
-            "download_url": request.build_absolute_uri(
+            "downloadUrl": request.build_absolute_uri(
                 reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
             ),
         }
 
         if job.status == InvoiceDownloadJob.STATUS_FAILED:
-            payload["error"] = job.error_message or "Job failed"
+            payload["errorMessage"] = job.error_message or "Job failed"
 
         return Response(payload)
 
@@ -523,7 +562,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                         "complete",
                         {
                             "message": "Invoice ready",
-                            "download_url": request.build_absolute_uri(
+                            "downloadUrl": request.build_absolute_uri(
                                 reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
                             ),
                             "status": verified_payload["status"],
@@ -820,19 +859,22 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         amount = product.retail_price if product.retail_price is not None else product.base_price or 0
 
         return Response(
-            {
-                "customer": CustomerSerializer(source_application.customer).data,
-                "source_application": DocApplicationInvoiceSerializer(source_application).data,
-                "invoice_application": {
-                    "product": product.id,
-                    "customer_application": source_application.id,
-                    "amount": str(amount),
+            build_success_payload(
+                {
+                    "customer": CustomerSerializer(source_application.customer).data,
+                    "sourceApplication": DocApplicationInvoiceSerializer(source_application).data,
+                    "invoiceApplication": {
+                        "product": product.id,
+                        "customerApplication": source_application.id,
+                        "amount": str(amount),
+                    },
+                    "locks": {
+                        "customer": True,
+                        "sourceLine": True,
+                    },
                 },
-                "locks": {
-                    "customer": True,
-                    "source_line": True,
-                },
-            }
+                request=request,
+            )
         )
 
     @action(
@@ -846,11 +888,14 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         except InvoiceApplication.DoesNotExist:
             return self.error_response("Invoice Application does not exist", status.HTTP_404_NOT_FOUND)
         return Response(
-            {
-                "due_amount": str(invoice_application.due_amount),
-                "amount": str(invoice_application.amount),
-                "paid_amount": str(invoice_application.paid_amount),
-            }
+            build_success_payload(
+                {
+                    "dueAmount": str(invoice_application.due_amount),
+                    "amount": str(invoice_application.amount),
+                    "paidAmount": str(invoice_application.paid_amount),
+                },
+                request=request,
+            )
         )
 
     @extend_schema(
@@ -882,7 +927,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             year = timezone.now().year
 
         proposed = Invoice.get_next_invoice_no_for_year(year)
-        return Response({"invoice_no": proposed, "invoiceNo": proposed})
+        return Response(build_success_payload({"invoiceNo": proposed}, request=request))
 
     @extend_schema(request=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["post"], url_path="mark-as-paid")
@@ -908,7 +953,10 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             payment_date=parsed_date,
             user=request.user,
         )
-        return Response({"created": len(created)}, status=status.HTTP_201_CREATED)
+        return Response(
+            build_success_payload({"created": len(created)}, request=request),
+            status=status.HTTP_201_CREATED,
+        )
 
     # --------------------------------------------------------------------- #
     # Invoice Import Endpoints                                               #
@@ -1055,6 +1103,23 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         from invoices.tasks.import_jobs import run_invoice_import_item
 
         namespace = "invoice_import_batch"
+        request_fingerprint = build_request_idempotency_fingerprint(request)
+        idempotency_cache_key, cached_job = resolve_request_idempotent_job(
+            request=request,
+            namespace=namespace,
+            user_id=request.user.id,
+            queryset=InvoiceImportJob.objects.filter(created_by=request.user),
+            fingerprint=request_fingerprint,
+        )
+        if cached_job is not None:
+            response = StreamingHttpResponse(
+                self._stream_import_job(cached_job.id, request),
+                content_type="text/event-stream",
+            )
+            response["Cache-Control"] = "no-cache"
+            response["X-Accel-Buffering"] = "no"
+            return response
+
         files = request.FILES.getlist("files")
         paid_status_list = request.POST.getlist("paid_status") or request.data.getlist("paidStatus")
         llm_provider = request.POST.get("llm_provider") or request.data.get("llmProvider")
@@ -1093,6 +1158,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 total_files=len(files),
                 created_by=request.user,
                 request_params={"llm_provider": llm_provider, "llm_model": llm_model},
+            )
+            store_request_idempotent_job(
+                cache_key=idempotency_cache_key,
+                job_id=job.id,
+                fingerprint=request_fingerprint,
             )
 
             for index, uploaded_file in enumerate(files, 1):

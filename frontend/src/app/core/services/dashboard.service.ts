@@ -3,6 +3,7 @@ import { map, Observable } from 'rxjs';
 
 import { DashboardStatsService } from '@/core/api/api/dashboard-stats.service';
 import type { DashboardStats as DashboardStatsDto } from '@/core/api/model/dashboard-stats';
+import { unwrapApiEnvelope } from '@/core/utils/api-envelope';
 
 export type DashboardStats = DashboardStatsDto;
 
@@ -15,12 +16,24 @@ export class DashboardService {
   getStats(): Observable<DashboardStats> {
     return this.dashboardStatsApi.dashboardStatsList().pipe(
       map((response) => {
-        if (Array.isArray(response)) {
-          return response[0] ?? { customers: 0, applications: 0, invoices: 0 };
+        const normalized = unwrapApiEnvelope<DashboardStats | DashboardStats[] | null>(response) as
+          | DashboardStats
+          | DashboardStats[]
+          | null;
+
+        if (Array.isArray(normalized)) {
+          return normalized[0] ?? { customers: 0, applications: 0, invoices: 0 };
         }
-        return (
-          (response as DashboardStats | null) ?? { customers: 0, applications: 0, invoices: 0 }
-        );
+
+        if (!normalized || typeof normalized !== 'object') {
+          return { customers: 0, applications: 0, invoices: 0 };
+        }
+
+        return {
+          customers: Number(normalized.customers ?? 0),
+          applications: Number(normalized.applications ?? 0),
+          invoices: Number(normalized.invoices ?? 0),
+        };
       }),
     );
   }

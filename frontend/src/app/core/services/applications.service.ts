@@ -45,6 +45,7 @@ import {
   type DocumentOcrStatusResponse,
   type OcrQueuedResponse as ServiceOcrQueuedResponse,
 } from '@/core/services/ocr.service';
+import type { RequestMetadata } from '@/core/utils/request-metadata';
 
 export interface ApplicationCustomer {
   id: number;
@@ -171,16 +172,16 @@ export interface OcrQueuedResponse {
   status: string;
   progress?: number;
   statusUrl?: string;
+  streamUrl?: string;
 }
 
 export interface OcrStatusResponse {
   jobId: string;
   status: string;
   progress?: number;
-  text?: string;
+  resultText?: string;
   structuredData?: Record<string, string | null>;
-  structured_data?: Record<string, string | null>;
-  error?: string;
+  errorMessage?: string;
   mrzData?: {
     number?: string;
     expirationDateYyyyMmDd?: string;
@@ -314,7 +315,7 @@ export class ApplicationsService {
 
   startDocumentOcr(
     file: File,
-    options?: { documentId?: number; docTypeId?: number },
+    options?: { documentId?: number; docTypeId?: number; requestMetadata?: RequestMetadata | null },
   ): Observable<ServiceOcrQueuedResponse | DocumentOcrStatusResponse> {
     return this.ocrService.startDocumentOcr(file, options);
   }

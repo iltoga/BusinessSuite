@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 from api.async_controls import acquire_enqueue_guard, increment_guard_counter, release_enqueue_guard
 from api.cache_resilience import is_transient_cache_backend_error
 from api.views_shared import ApiErrorHandlingMixin, ResilientAnonRateThrottle
+from api.views_admin import ServerManagementViewSet
 from django.test import SimpleTestCase
 from rest_framework import status
 
@@ -54,8 +55,9 @@ class ApiErrorHandlingMixinTests(SimpleTestCase):
         response = view.handle_exception(RuntimeError("Redis is loading the dataset in memory"))
 
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.data["error"]["code"], "service_unavailable")
         self.assertEqual(
-            response.data["error"],
+            response.data["error"]["message"],
             "Service temporarily unavailable while cache services are warming up. Please retry shortly.",
         )
 
@@ -75,3 +77,17 @@ class AsyncControlsCacheResilienceTests(SimpleTestCase):
     @patch("api.async_controls.cache.get", side_effect=RuntimeError("Redis is loading the dataset in memory"))
     def test_release_enqueue_guard_ignores_transient_cache_failures(self, _cache_get_mock):
         release_enqueue_guard("async:test:guard", "real-token")
+
+
+class ServerManagementThrottlePolicyTests(SimpleTestCase):
+    def test_openrouter_status_fails_open_on_throttle_cache_error(self):
+        view = ServerManagementViewSet()
+        view.action = "openrouter_status"
+
+        self.assertTrue(view._should_fail_open_on_throttle_cache_error())
+
+    def test_media_cleanup_fails_closed_on_throttle_cache_error(self):
+        view = ServerManagementViewSet()
+        view.action = "media_cleanup"
+
+        self.assertFalse(view._should_fail_open_on_throttle_cache_error())

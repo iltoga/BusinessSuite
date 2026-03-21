@@ -9,6 +9,7 @@ import {
   viewChild,
   type TemplateRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { RouterLink } from '@angular/router';
 import { firstValueFrom, forkJoin, map, type Observable } from 'rxjs';
@@ -17,6 +18,9 @@ import { ProductsService, type AsyncJob, type Product } from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
 import { JobService } from '@/core/services/job.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
+import { extractJobId } from '@/core/utils/async-job-contract';
+import { createAsyncRequestMetadata, requestMetadataContext } from '@/core/utils/request-metadata';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { BulkDeleteDialogComponent } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -201,7 +205,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       key: 'deprecated',
       header: 'Deprecated',
       subtitle: 'Active',
-      width: '7%',
+      width: '9%',
       template: this.deprecatedTemplate(),
       filter: {
         options: this.deprecatedFilterOptions,
@@ -215,7 +219,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
-      width: '12%',
+      width: '15%',
       template: this.createdAtTemplate(),
     },
     { key: 'actions', header: 'Actions', width: '4%' },
@@ -253,7 +257,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
     this.config = {
       entityType: 'products',
       entityLabel: 'Products',
-      defaultPageSize: 8,
+      defaultPageSize: 10,
       defaultOrdering: 'name',
       enableBulkDelete: true,
       enableDelete: true,
@@ -399,8 +403,11 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
     this.productsApi.productsBulkDeleteCreate({ searchQuery: query || '' } as any).subscribe({
       next: (response) => {
-        const payload = response as { deletedCount?: number; deleted_count?: number };
-        const count = payload.deletedCount ?? payload.deleted_count ?? 0;
+        const payload = unwrapApiRecord(response) as {
+          deletedCount?: number;
+          deleted_count?: number;
+        } | null;
+        const count = payload?.deletedCount ?? payload?.deleted_count ?? 0;
         this.toast.success(`Deleted ${count} product(s)`);
         this.bulkDeleteOpen.set(false);
         this.bulkDeleteData.set(null);
@@ -439,7 +446,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
     this.productImportExportApi.startExport(this.query().trim() || undefined).subscribe({
       next: (response) => {
-        const jobId = (response as any)?.job_id ?? (response as any)?.jobId;
+        const jobId = extractJobId(response);
         if (!jobId) {
           this.toast.error('Export job was started but no job id was returned');
           this.exportInProgress.set(false);
@@ -470,8 +477,13 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
     try {
       previewWindow = openPendingPdfPrintPreviewWindow();
-      const response = await firstValueFrom(this.productsApi.productsPriceListPrintStartCreate());
-      const jobId = String(response.jobId ?? '').trim();
+      const requestMetadata = createAsyncRequestMetadata();
+      const response = await firstValueFrom(
+        this.productsApi.productsPriceListPrintStartCreate(undefined, false, {
+          context: requestMetadataContext(requestMetadata),
+        }),
+      );
+      const jobId = extractJobId(response) ?? '';
 
       if (!jobId) {
         throw new Error('Print job was started but no job id was returned.');
@@ -547,7 +559,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
     this.productImportExportApi.startImport(file).subscribe({
       next: (response) => {
-        const jobId = (response as any)?.job_id ?? (response as any)?.jobId;
+        const jobId = extractJobId(response);
         if (!jobId) {
           this.toast.error('Import job was started but no job id was returned');
           this.importInProgress.set(false);
@@ -654,52 +666,58 @@ export class ProductListComponent extends BaseListComponent<Product> {
    * Watch export job progress
    */
   private watchExportJob(jobId: string): void {
-    this.jobService.watchJob(jobId).subscribe({
-      next: (job) => {
-        this.exportProgress.set(Number(job.progress ?? 0));
+    this.jobService
+      .watchJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (job) => {
+          this.exportProgress.set(Number(job.progress ?? 0));
 
-        if (job.status === 'completed') {
-          this.downloadExport(jobId);
+          if (job.status === 'completed') {
+            this.downloadExport(jobId);
+            this.exportInProgress.set(false);
+            this.exportProgress.set(null);
+          } else if (job.status === 'failed') {
+            this.toast.error(job.errorMessage || 'Product export failed');
+            this.exportInProgress.set(false);
+            this.exportProgress.set(null);
+          }
+        },
+        error: () => {
+          this.toast.error('Failed to track export progress');
           this.exportInProgress.set(false);
           this.exportProgress.set(null);
-        } else if (job.status === 'failed') {
-          this.toast.error(job.errorMessage || 'Product export failed');
-          this.exportInProgress.set(false);
-          this.exportProgress.set(null);
-        }
-      },
-      error: () => {
-        this.toast.error('Failed to track export progress');
-        this.exportInProgress.set(false);
-        this.exportProgress.set(null);
-      },
-    });
+        },
+      });
   }
 
   /**
    * Watch import job progress
    */
   private watchImportJob(jobId: string): void {
-    this.jobService.watchJob(jobId).subscribe({
-      next: (job) => {
-        this.importProgress.set(Number(job.progress ?? 0));
-        if (job.status === 'completed') {
-          this.toast.success('Import completed successfully');
+    this.jobService
+      .watchJob(jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (job) => {
+          this.importProgress.set(Number(job.progress ?? 0));
+          if (job.status === 'completed') {
+            this.toast.success('Import completed successfully');
+            this.importInProgress.set(false);
+            this.importProgress.set(null);
+            this.reload();
+          } else if (job.status === 'failed') {
+            this.toast.error(job.errorMessage || 'Product import failed');
+            this.importInProgress.set(false);
+            this.importProgress.set(null);
+          }
+        },
+        error: () => {
+          this.toast.error('Failed to track import progress');
           this.importInProgress.set(false);
           this.importProgress.set(null);
-          this.reload();
-        } else if (job.status === 'failed') {
-          this.toast.error(job.errorMessage || 'Product import failed');
-          this.importInProgress.set(false);
-          this.importProgress.set(null);
-        }
-      },
-      error: () => {
-        this.toast.error('Failed to track import progress');
-        this.importInProgress.set(false);
-        this.importProgress.set(null);
-      },
-    });
+        },
+      });
   }
 
   /**
@@ -746,11 +764,10 @@ export class ProductListComponent extends BaseListComponent<Product> {
    * Map product delete preview response
    */
   private mapProductDeletePreview(response: unknown, product: Product): ProductDeletePreviewData {
-    const payload: any = response ?? {};
-    const relatedCounts: any = payload.relatedCounts ?? payload.related_counts ?? {};
-    const relatedRecords: any = payload.relatedRecords ?? payload.related_records ?? {};
-    const relatedRecordsTruncated: any =
-      payload.relatedRecordsTruncated ?? payload.related_records_truncated ?? {};
+    const payload: any = unwrapApiRecord(response) ?? {};
+    const relatedCounts: any = payload.relatedCounts ?? {};
+    const relatedRecords: any = payload.relatedRecords ?? {};
+    const relatedRecordsTruncated: any = payload.relatedRecordsTruncated ?? {};
 
     const taskRecords = this.asArray<any>(relatedRecords.tasks).map((task: any) => ({
       id: this.asNumber(task?.id),
@@ -761,55 +778,45 @@ export class ProductListComponent extends BaseListComponent<Product> {
     const applicationRecords = this.asArray<any>(relatedRecords.applications).map(
       (application: any) => ({
         id: this.asNumber(application?.id),
-        customerName: String(application?.customerName ?? application?.customer_name ?? '—'),
+        customerName: String(application?.customerName ?? '—'),
         status: String(application?.status ?? ''),
-        statusDisplay: String(application?.statusDisplay ?? application?.status_display ?? ''),
-        docDate: application?.docDate ?? application?.doc_date ?? null,
-        dueDate: application?.dueDate ?? application?.due_date ?? null,
-        workflowCount: this.asNumber(application?.workflowCount ?? application?.workflow_count),
-        documentCount: this.asNumber(application?.documentCount ?? application?.document_count),
-        invoiceLineCount: this.asNumber(
-          application?.invoiceLineCount ?? application?.invoice_line_count,
-        ),
+        statusDisplay: String(application?.statusDisplay ?? ''),
+        docDate: application?.docDate ?? null,
+        dueDate: application?.dueDate ?? null,
+        workflowCount: this.asNumber(application?.workflowCount),
+        documentCount: this.asNumber(application?.documentCount),
+        invoiceLineCount: this.asNumber(application?.invoiceLineCount),
       }),
     );
 
-    const invoiceLineRecords = this.asArray<any>(
-      relatedRecords.invoiceApplications ?? relatedRecords.invoice_applications,
-    ).map((invoiceLine: any) => ({
-      id: this.asNumber(invoiceLine?.id),
-      invoiceId: this.asNumber(invoiceLine?.invoiceId ?? invoiceLine?.invoice_id),
-      invoiceNoDisplay: String(
-        invoiceLine?.invoiceNoDisplay ?? invoiceLine?.invoice_no_display ?? '',
-      ),
-      invoiceStatus: String(invoiceLine?.invoiceStatus ?? invoiceLine?.invoice_status ?? ''),
-      customerApplicationId: this.asNullableNumber(
-        invoiceLine?.customerApplicationId ?? invoiceLine?.customer_application_id,
-      ),
-      customerName: String(invoiceLine?.customerName ?? invoiceLine?.customer_name ?? '—'),
-      amount: invoiceLine?.amount ?? '0',
-      status: String(invoiceLine?.status ?? ''),
-      statusDisplay: String(invoiceLine?.statusDisplay ?? invoiceLine?.status_display ?? ''),
-      paymentCount: this.asNumber(invoiceLine?.paymentCount ?? invoiceLine?.payment_count),
-    }));
+    const invoiceLineRecords = this.asArray<any>(relatedRecords.invoiceApplications).map(
+      (invoiceLine: any) => ({
+        id: this.asNumber(invoiceLine?.id),
+        invoiceId: this.asNumber(invoiceLine?.invoiceId),
+        invoiceNoDisplay: String(invoiceLine?.invoiceNoDisplay ?? ''),
+        invoiceStatus: String(invoiceLine?.invoiceStatus ?? ''),
+        customerApplicationId: this.asNullableNumber(invoiceLine?.customerApplicationId),
+        customerName: String(invoiceLine?.customerName ?? '—'),
+        amount: invoiceLine?.amount ?? '0',
+        status: String(invoiceLine?.status ?? ''),
+        statusDisplay: String(invoiceLine?.statusDisplay ?? ''),
+        paymentCount: this.asNumber(invoiceLine?.paymentCount),
+      }),
+    );
 
     return {
-      productId: this.asNumber(payload.productId ?? payload.product_id ?? product.id),
-      productCode: String(payload.productCode ?? payload.product_code ?? product.code ?? ''),
-      productName: String(payload.productName ?? payload.product_name ?? product.name ?? ''),
-      canDelete: Boolean(payload.canDelete ?? payload.can_delete ?? true),
-      requiresForceDelete: Boolean(
-        payload.requiresForceDelete ?? payload.requires_force_delete ?? false,
-      ),
+      productId: this.asNumber(payload.productId ?? product.id),
+      productCode: String(payload.productCode ?? product.code ?? ''),
+      productName: String(payload.productName ?? product.name ?? ''),
+      canDelete: Boolean(payload.canDelete ?? true),
+      requiresForceDelete: Boolean(payload.requiresForceDelete ?? false),
       message: payload.message ?? null,
       relatedCounts: {
         tasks: this.asNumber(relatedCounts.tasks),
         applications: this.asNumber(relatedCounts.applications),
         workflows: this.asNumber(relatedCounts.workflows),
         documents: this.asNumber(relatedCounts.documents),
-        invoiceApplications: this.asNumber(
-          relatedCounts.invoiceApplications ?? relatedCounts.invoice_applications,
-        ),
+        invoiceApplications: this.asNumber(relatedCounts.invoiceApplications),
         invoices: this.asNumber(relatedCounts.invoices),
         payments: this.asNumber(relatedCounts.payments),
       },
@@ -821,12 +828,9 @@ export class ProductListComponent extends BaseListComponent<Product> {
       relatedRecordsTruncated: {
         tasks: Boolean(relatedRecordsTruncated.tasks),
         applications: Boolean(relatedRecordsTruncated.applications),
-        invoiceApplications: Boolean(
-          relatedRecordsTruncated.invoiceApplications ??
-          relatedRecordsTruncated.invoice_applications,
-        ),
+        invoiceApplications: Boolean(relatedRecordsTruncated.invoiceApplications),
       },
-      recordLimit: this.asNullableNumber(payload.recordLimit ?? payload.record_limit) ?? undefined,
+      recordLimit: this.asNullableNumber(payload.recordLimit) ?? undefined,
     };
   }
 

@@ -2,6 +2,8 @@ from core.models import AiModel
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from api.utils.ai_model_pricing import price_to_display
+
 
 class AiModelCapabilitiesSerializer(serializers.Serializer):
     vision = serializers.BooleanField()
@@ -10,10 +12,57 @@ class AiModelCapabilitiesSerializer(serializers.Serializer):
 
 
 class AiModelPricingSerializer(serializers.Serializer):
-    prompt_price_per_token = serializers.DecimalField(max_digits=20, decimal_places=12, allow_null=True)
-    completion_price_per_token = serializers.DecimalField(max_digits=20, decimal_places=12, allow_null=True)
-    image_price = serializers.DecimalField(max_digits=20, decimal_places=12, allow_null=True)
-    request_price = serializers.DecimalField(max_digits=20, decimal_places=12, allow_null=True)
+    prompt_price_per_token = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=12,
+        allow_null=True,
+        help_text="Stored per-token value.",
+    )
+    completion_price_per_token = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=12,
+        allow_null=True,
+        help_text="Stored per-token value.",
+    )
+    image_price = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=12,
+        allow_null=True,
+        help_text="Stored per-unit value.",
+    )
+    request_price = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=12,
+        allow_null=True,
+        help_text="Stored per-unit value.",
+    )
+
+
+class AiModelPricingDisplaySerializer(serializers.Serializer):
+    prompt_price_per_million_tokens = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=12,
+        allow_null=True,
+        help_text="Displayed in USD per 1M tokens.",
+    )
+    completion_price_per_million_tokens = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=12,
+        allow_null=True,
+        help_text="Displayed in USD per 1M tokens.",
+    )
+    image_price_per_million_tokens = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=12,
+        allow_null=True,
+        help_text="Displayed in USD per 1M tokens.",
+    )
+    request_price_per_million_tokens = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=12,
+        allow_null=True,
+        help_text="Displayed in USD per 1M tokens.",
+    )
 
 
 class AiModelArchitectureSerializer(serializers.Serializer):
@@ -25,6 +74,7 @@ class AiModelArchitectureSerializer(serializers.Serializer):
 class AiModelSerializer(serializers.ModelSerializer):
     capabilities = serializers.SerializerMethodField(read_only=True)
     pricing = serializers.SerializerMethodField(read_only=True)
+    pricing_display = serializers.SerializerMethodField(read_only=True)
     architecture = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -56,10 +106,17 @@ class AiModelSerializer(serializers.ModelSerializer):
             "raw_metadata",
             "capabilities",
             "pricing",
+            "pricing_display",
             "architecture",
             "created_at",
             "updated_at",
         ]
+        extra_kwargs = {
+            "prompt_price_per_token": {"help_text": "Stored per-token value."},
+            "completion_price_per_token": {"help_text": "Stored per-token value."},
+            "image_price": {"help_text": "Stored per-unit value."},
+            "request_price": {"help_text": "Stored per-unit value."},
+        }
 
     @extend_schema_field(AiModelCapabilitiesSerializer)
     def get_capabilities(self, obj: AiModel) -> dict[str, bool]:
@@ -72,10 +129,23 @@ class AiModelSerializer(serializers.ModelSerializer):
     @extend_schema_field(AiModelPricingSerializer)
     def get_pricing(self, obj: AiModel) -> dict:
         return {
-            "prompt_price_per_token": str(obj.prompt_price_per_token) if obj.prompt_price_per_token else None,
-            "completion_price_per_token": str(obj.completion_price_per_token) if obj.completion_price_per_token else None,
-            "image_price": str(obj.image_price) if obj.image_price else None,
-            "request_price": str(obj.request_price) if obj.request_price else None,
+            "prompt_price_per_token": str(obj.prompt_price_per_token)
+            if obj.prompt_price_per_token is not None
+            else None,
+            "completion_price_per_token": str(obj.completion_price_per_token)
+            if obj.completion_price_per_token is not None
+            else None,
+            "image_price": str(obj.image_price) if obj.image_price is not None else None,
+            "request_price": str(obj.request_price) if obj.request_price is not None else None,
+        }
+
+    @extend_schema_field(AiModelPricingDisplaySerializer)
+    def get_pricing_display(self, obj: AiModel) -> dict:
+        return {
+            "prompt_price_per_million_tokens": price_to_display(obj.prompt_price_per_token),
+            "completion_price_per_million_tokens": price_to_display(obj.completion_price_per_token),
+            "image_price_per_million_tokens": price_to_display(obj.image_price),
+            "request_price_per_million_tokens": price_to_display(obj.request_price),
         }
 
     @extend_schema_field(AiModelArchitectureSerializer)

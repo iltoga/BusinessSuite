@@ -41,20 +41,20 @@ describe('CustomersService', () => {
 
     req.flush({
       id: 7,
-      created_at: '2026-03-01T00:00:00Z',
-      updated_at: '2026-03-02T00:00:00Z',
-      customer_type: 'person',
-      first_name: 'Stefano',
-      last_name: 'Galassi',
-      full_name: 'Stefano Galassi',
-      full_name_with_company: 'Stefano Galassi',
-      passport_file: 'media/passports/test.png',
-      passport_expired: false,
-      passport_expiring_soon: true,
-      nationality_name: 'Italy',
-      nationality_code: 'ITA',
-      gender_display: 'Male',
-      notify_documents_expiration: true,
+      createdAt: '2026-03-01T00:00:00Z',
+      updatedAt: '2026-03-02T00:00:00Z',
+      customerType: 'person',
+      firstName: 'Stefano',
+      lastName: 'Galassi',
+      fullName: 'Stefano Galassi',
+      fullNameWithCompany: 'Stefano Galassi',
+      passportFile: 'media/passports/test.png',
+      passportExpired: false,
+      passportExpiringSoon: true,
+      nationalityName: 'Italy',
+      nationalityCode: 'ITA',
+      genderDisplay: 'Male',
+      notifyDocumentsExpiration: true,
       active: true,
     });
 
@@ -104,19 +104,19 @@ describe('CustomersService', () => {
       results: [
         {
           id: 12,
-          created_at: '2026-03-03T00:00:00Z',
-          updated_at: '2026-03-04T00:00:00Z',
-          full_name: 'Mario Rossi',
-          full_name_with_company: 'Mario Rossi',
+          createdAt: '2026-03-03T00:00:00Z',
+          updatedAt: '2026-03-04T00:00:00Z',
+          fullName: 'Mario Rossi',
+          fullNameWithCompany: 'Mario Rossi',
           email: 'mario@example.com',
           whatsapp: '+62 812 0000',
-          passport_number: 'A12345',
-          nationality_name: 'Italy',
-          nationality_code: 'ITA',
-          passport_expired: false,
-          passport_expiring_soon: false,
+          passportNumber: 'A12345',
+          nationalityName: 'Italy',
+          nationalityCode: 'ITA',
+          passportExpired: false,
+          passportExpiringSoon: false,
           active: true,
-          gender_display: '',
+          genderDisplay: '',
         },
       ],
     });
@@ -151,51 +151,51 @@ describe('CustomersService', () => {
           id: 31,
           customer: {
             id: 21,
-            created_at: '2026-03-01T00:00:00Z',
-            updated_at: '2026-03-02T00:00:00Z',
-            customer_type: 'person',
-            first_name: 'Ada',
-            last_name: 'Lovelace',
-            full_name: 'Ada Lovelace',
-            full_name_with_company: 'Ada Lovelace',
-            passport_expired: false,
-            passport_expiring_soon: false,
-            nationality_name: 'United Kingdom',
-            nationality_code: 'GBR',
-            gender_display: '',
+            createdAt: '2026-03-01T00:00:00Z',
+            updatedAt: '2026-03-02T00:00:00Z',
+            customerType: 'person',
+            firstName: 'Ada',
+            lastName: 'Lovelace',
+            fullName: 'Ada Lovelace',
+            fullNameWithCompany: 'Ada Lovelace',
+            passportExpired: false,
+            passportExpiringSoon: false,
+            nationalityName: 'United Kingdom',
+            nationalityCode: 'GBR',
+            genderDisplay: '',
             active: true,
           },
           product: {
             id: 9,
             name: 'Visa Extension',
             code: 'VX-1',
-            product_type: 'visa',
-            base_price: '1000000.00',
-            retail_price: '1500000.00',
-            created_at: '2026-03-01T00:00:00Z',
-            updated_at: '2026-03-02T00:00:00Z',
-            created_by: 'admin',
-            updated_by: 'admin',
-            product_category: 2,
-            product_category_name: 'Visa',
+            productType: 'visa',
+            basePrice: '1000000.00',
+            retailPrice: '1500000.00',
+            createdAt: '2026-03-01T00:00:00Z',
+            updatedAt: '2026-03-02T00:00:00Z',
+            createdBy: 'admin',
+            updatedBy: 'admin',
+            productCategory: 2,
+            productCategoryName: 'Visa',
           },
-          doc_date: '2026-03-05',
-          due_date: '2026-03-10',
-          add_deadlines_to_calendar: true,
+          docDate: '2026-03-05',
+          dueDate: '2026-03-10',
+          addDeadlinesToCalendar: true,
           status: 'processing',
           notes: 'Priority',
-          str_field: 'VX-1 - Visa Extension',
-          status_display: 'Processing',
-          product_type_display: 'Visa',
-          has_invoice: true,
-          invoice_id: 44,
-          is_document_collection_completed: false,
-          ready_for_invoice: true,
-          payment_status: 'pending_payment',
-          payment_status_display: 'Pending Payment',
-          invoice_status: 'sent',
-          invoice_status_display: 'Sent',
-          submission_window_last_date: '2026-03-12',
+          strField: 'VX-1 - Visa Extension',
+          statusDisplay: 'Processing',
+          productTypeDisplay: 'Visa',
+          hasInvoice: true,
+          invoiceId: 44,
+          isDocumentCollectionCompleted: false,
+          readyForInvoice: true,
+          paymentStatus: 'pending_payment',
+          paymentStatusDisplay: 'Pending Payment',
+          invoiceStatus: 'sent',
+          invoiceStatusDisplay: 'Sent',
+          submissionWindowLastDate: '2026-03-12',
         },
       ],
     });
@@ -230,5 +230,54 @@ describe('CustomersService', () => {
       lastName: 'Lovelace',
       fullName: 'Ada Lovelace',
     });
+  });
+
+  it('unwraps canonical toggle-active envelopes', () => {
+    let actual: any;
+
+    service.toggleActive(19).subscribe((result) => {
+      actual = result;
+    });
+
+    const req = httpMock.expectOne('/api/customers/19/toggle-active/');
+    expect(req.request.method).toBe('POST');
+
+    req.flush({
+      data: {
+        id: 19,
+        active: false,
+      },
+      meta: {
+        request_id: 'req-1',
+        api_version: 'v1',
+      },
+    });
+
+    expect(actual).toEqual({ id: 19, active: false });
+  });
+
+  it('unwraps canonical bulk delete envelopes', () => {
+    let actual: any;
+
+    service.bulkDeleteCustomers('gal').subscribe((result) => {
+      actual = result;
+    });
+
+    const req = httpMock.expectOne((request) =>
+      request.url === '/api/customers/bulk-delete/' && request.method === 'POST',
+    );
+    expect(req.request.headers.get('Authorization')).toBe('Bearer test-token');
+
+    req.flush({
+      data: {
+        deletedCount: 4,
+      },
+      meta: {
+        request_id: 'req-2',
+        api_version: 'v1',
+      },
+    });
+
+    expect(actual).toEqual({ deletedCount: 4 });
   });
 });

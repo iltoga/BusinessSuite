@@ -167,4 +167,105 @@ describe('authInterceptor', () => {
       req2.flush({ ok: true });
     });
   });
+
+  it('logs out when a preflight refresh returns a token that is still expired', () => {
+    mockAuth.getToken.mockReturnValue('expired');
+    mockAuth.isTokenExpired.mockReturnValue(true);
+    mockAuth.refreshToken.mockReturnValue(
+      of('still-expired').pipe(
+        tap(() => {
+          mockAuth.getToken.mockReturnValue('still-expired');
+          mockAuth.isTokenExpired.mockReturnValue(true);
+        }),
+      ),
+    );
+
+    return new Promise<void>((resolve, reject) => {
+      http.get('/expired-preflight').subscribe({
+        next: () => {
+          reject(new Error('should not succeed'));
+        },
+        error: (err) => {
+          expect(mockAuth.logout).toHaveBeenCalledTimes(1);
+          expect(err.message).toBe('Token expired');
+          resolve();
+        },
+      });
+
+      httpTestingController.expectNone('/expired-preflight');
+    });
+  });
+
+  it('logs out when preflight token refresh fails', () => {
+    mockAuth.getToken.mockReturnValue('expired');
+    mockAuth.isTokenExpired.mockReturnValue(true);
+    mockAuth.refreshToken = vi.fn().mockReturnValue(throwError(() => new Error('refresh failed')));
+
+    return new Promise<void>((resolve, reject) => {
+      http.get('/preflight-refresh-fails').subscribe({
+        next: () => {
+          reject(new Error('should not succeed'));
+        },
+        error: (err) => {
+          expect(mockAuth.logout).toHaveBeenCalledTimes(1);
+          expect(err.message).toBe('refresh failed');
+          resolve();
+        },
+      });
+
+      httpTestingController.expectNone('/preflight-refresh-fails');
+    });
+  });
+
+  it('logs out when a 401 response is received but refresh does not restore a token', () => {
+    mockAuth.getToken.mockReturnValue('old-token');
+    mockAuth.isTokenExpired.mockReturnValue(false);
+    mockAuth.refreshToken.mockReturnValue(
+      of('new-token').pipe(
+        tap(() => {
+          mockAuth.getToken.mockReturnValue(null);
+        }),
+      ),
+    );
+
+    return new Promise<void>((resolve, reject) => {
+      http.get('/protected-missing-token').subscribe({
+        next: () => {
+          reject(new Error('should not succeed'));
+        },
+        error: (err) => {
+          expect(mockAuth.logout).toHaveBeenCalledTimes(1);
+          expect(err.status).toBe(401);
+          resolve();
+        },
+      });
+
+      const req = httpTestingController.expectOne('/protected-missing-token');
+      expect(req.request.headers.get('Authorization')).toBe('Bearer old-token');
+      req.flush(null, { status: 401, statusText: 'Unauthorized' });
+      expect(httpTestingController.match('/protected-missing-token').length).toBe(0);
+    });
+  });
+
+  it('logs out when the token endpoint itself returns 401', () => {
+    mockAuth.getToken.mockReturnValue('token-endpoint-token');
+    mockAuth.isTokenExpired.mockReturnValue(false);
+
+    return new Promise<void>((resolve, reject) => {
+      http.post('/api/api-token-auth/', {}).subscribe({
+        next: () => {
+          reject(new Error('should not succeed'));
+        },
+        error: (err) => {
+          expect(mockAuth.logout).toHaveBeenCalledTimes(1);
+          expect(err.status).toBe(401);
+          resolve();
+        },
+      });
+
+      const req = httpTestingController.expectOne('/api/api-token-auth/');
+      expect(req.request.headers.get('Authorization')).toBe('Bearer token-endpoint-token');
+      req.flush(null, { status: 401, statusText: 'Unauthorized' });
+    });
+  });
 });

@@ -8,7 +8,7 @@ Django 6 + Angular 21 ERP/CRM for visa/document-service agencies. Manages custom
 
 | Layer      | Technology                                                                                     |
 | ---------- | ---------------------------------------------------------------------------------------------- |
-| Backend    | Django 6, DRF, Python 3.14+, SimpleJWT (`Authorization: Bearer`)                               |
+| Backend    | Django 6, DRF, Python 3.12+, SimpleJWT (`Authorization: Bearer`)                               |
 | Async      | Dramatiq 2 + Redis broker; queues: `realtime`, `default`, `scheduled`, `low`, `doc_conversion` |
 | Frontend   | Angular 21, standalone+OnPush, signals, ZardUI (Tailwind v4), Bun                              |
 | DB         | PostgreSQL (source of truth) + Redis (broker/cache/results)                                    |
@@ -78,12 +78,19 @@ frontend/src/app/
 - **Auth:** `DjangoModelPermissions` on ViewSets; `JwtOrMockAuthentication` handles both JWT and dev mock mode.
 - **API error format:**
   ```python
-  {"code": "validation_error", "errors": {"field": ["message"]}}
+  {
+    "error": {
+      "code": "validation_error",
+      "message": "Validation error",
+      "details": {"field": ["message"]}   # optional
+    },
+    "errors": {"field": ["message"]}       # backward-compat alias
+  }
   ```
 - **File I/O:** Always `default_storage` (supports S3 + local); `get_upload_to()` for paths.
 - **N+1 prevention:** `select_related()` / `prefetch_related()` in every list query.
 - **Data integrity rules (MUST PRESERVE):**
-  - `Document.completed` is auto-calculated in `Document.save()` from `DocumentType.requires_verification`.
+  - `Document.completed` is auto-calculated in `Document.save()` from DocumentType's `has_file`, `has_doc_number`, `has_expiration_date`, and `has_details` flags.
   - `DocWorkflow` uses `calculate_due_date()` for scheduling.
   - Applications linked to invoices **cannot be deleted** — validate in service layer.
 - **Migrations:** Every model change requires `makemigrations`. Update admin, serializers, tests together.
@@ -107,6 +114,7 @@ frontend/src/app/
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | **Generated client is law**                       | `frontend/src/app/core/api/` is the single source of truth for types and methods                |
 | **Never duplicate**                               | Do not create hand-written services that mirror generated endpoints                             |
+| **Never hand-write backend fetching**             | Do not manually add fetch/HttpClient logic for backend data in Angular; always use generated `core/api/` clients |
 | **Never hand-write interfaces**                   | Run `bun run generate:api` after backend changes; import from `core/api/`                       |
 | **Need a different UI shape?**                    | Adapter/wrapper around generated client — do not bypass it                                      |
 | **Manual `fetch`/`HttpClient` allowed only for:** | SSE streams, browser bootstrap before DI, third-party proxies, multipart/progress gaps          |
@@ -115,6 +123,13 @@ frontend/src/app/
 ---
 
 ## Testing
+
+### Important Notes on Running Tests
+
+#### For Backend:
+
+- Always use DJANGO_TESTING=1 env var to prevent running tests on the production database. Use `uv run pytest` for all test runs.
+- (For Codex) never run tests in the sandbox. always run in the local environment where you can see the full output and debug if needed.
 
 ### Backend (Django/pytest)
 

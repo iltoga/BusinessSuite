@@ -4,7 +4,8 @@
 
 - **2026-02-13:** Calendar integration refactor completed (local `CalendarEvent` mirror model, signal-driven Dramatiq sync, Google Calendar API adjustments, workflow transition-on-done behavior, docs updated for new flow)
 - **2026-02-13:** Documentation alignment pass completed for `/.github/copilot-instructions.md` and `/docs/*`
-- **2026-02-02:** Completed Phase 11 - Integration & Finalization (feature flagging via `DISABLE_DJANGO_VIEWS`, CSP nonce middleware/tests, Playwright + axe accessibility coverage)
+- **2026-02-02:** Completed Phase 11 - Integration & Finalization (feature flagging via `DISABLE_DJANGO_VIEWS`, Playwright + axe accessibility coverage)
+- **2026-03-21:** CSP nonce middleware implemented using Django 6 built-in `ContentSecurityPolicyMiddleware` with Cloudflare compatibility; toggleable via `CSP_ENABLED` / `CSP_MODE` env vars; 14 unit tests.
 - **2026-01-24:** Completed Phase 0 - Foundation setup
 - **2026-01-24:** Added shared docs registry and custom API exception handler
 - **2026-01-24:** Initialized ZardUI and added shared DataTable/ConfirmDialog components

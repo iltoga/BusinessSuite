@@ -5,3 +5,14 @@
 :host {
   display: block;
 }
+
+.document-type-description-clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.4;
+  max-width: 100%;
+  word-break: break-word;
+  font-size: 0.75rem;
+}

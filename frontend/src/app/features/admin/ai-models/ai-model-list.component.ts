@@ -15,7 +15,12 @@ import {
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
-import { BaseListComponent, BaseListConfig, type ListRequestParams, type PaginatedResponse } from '@/shared/core/base-list.component';
+import {
+  BaseListComponent,
+  BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
+} from '@/shared/core/base-list.component';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 interface AiModelItem {
@@ -69,6 +74,20 @@ export class AiModelListComponent extends BaseListComponent<AiModelItem> {
 
   // Actions configuration
   override readonly actions = computed<DataTableAction<AiModelItem>[]>(() => [
+    {
+      label: 'View details',
+      icon: 'eye',
+      variant: 'default',
+      shortcut: 'v',
+      action: (item) =>
+        this.router.navigate(['/admin/ai-models', item.id], {
+          state: {
+            from: 'admin-ai-models',
+            focusId: item.id,
+            searchQuery: this.query(),
+          },
+        }),
+    },
     {
       label: 'Edit',
       icon: 'settings',

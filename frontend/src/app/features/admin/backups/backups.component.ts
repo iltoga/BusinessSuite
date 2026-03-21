@@ -21,6 +21,8 @@ import {
   type PaginatedResponse,
 } from '@/shared/core/base-list.component';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { createAsyncRequestMetadata } from '@/core/utils/request-metadata';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -140,7 +142,10 @@ export class BackupsComponent extends BaseListComponent<Backup> {
   ): Observable<PaginatedResponse<Backup>> {
     return this.backupsApi.backupsRetrieve().pipe(
       map((response: any) => {
-        const backups = response?.backups?.map((b: Backup) => ({ ...b, selected: false })) || [];
+        const payload = unwrapApiRecord(response) as { backups?: Backup[] } | null;
+        const backups = Array.isArray(payload?.backups)
+          ? payload.backups.map((b) => ({ ...b, selected: false }))
+          : [];
         return {
           results: backups,
           count: backups.length,
@@ -201,7 +206,10 @@ export class BackupsComponent extends BaseListComponent<Backup> {
       .connect<{
         message?: string;
         progress?: number;
-      }>(`/api/backups/start/?include_users=${this.includeUsers()}`, { useReplayCursor: false })
+      }>(`/api/backups/start/?include_users=${this.includeUsers()}`, {
+        useReplayCursor: false,
+        requestMetadata: createAsyncRequestMetadata(),
+      })
       .subscribe({
         next: (data) => {
           const message = data.message;
@@ -258,6 +266,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
         progress?: string | number;
       }>(`/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}`, {
         useReplayCursor: false,
+        requestMetadata: createAsyncRequestMetadata(),
       })
       .subscribe({
         next: (data) => {

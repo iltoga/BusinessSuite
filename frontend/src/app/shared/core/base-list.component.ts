@@ -26,6 +26,7 @@ import {
   type ColumnConfig,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 /**
@@ -454,8 +455,11 @@ export abstract class BaseListComponent<T> implements OnInit {
 
     deleteFn(query).subscribe({
       next: (response: any) => {
-        const payload = response as { deletedCount?: number; deleted_count?: number };
-        const count = payload.deletedCount ?? payload.deleted_count ?? 0;
+        const payload = unwrapApiRecord(response) as {
+          deletedCount?: number;
+          deleted_count?: number;
+        } | null;
+        const count = payload?.deletedCount ?? payload?.deleted_count ?? 0;
         this.toast.success(successMessage?.(count) ?? `Deleted ${count} item(s)`);
         this.bulkDeleteOpen.set(false);
         this.bulkDeleteData.set(null);

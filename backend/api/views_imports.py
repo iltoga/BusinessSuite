@@ -68,10 +68,11 @@ from api.serializers import (
     WorkflowNotificationSerializer,
     ordered_document_types,
 )
-from api.serializers.auth_serializer import CustomTokenObtainSerializer
+from api.serializers.auth_serializer import CustomTokenObtainSerializer, CustomTokenRefreshSerializer
 from api.serializers.passport_check_serializer import PassportCheckSerializer
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
+from api.utils.contracts import build_error_payload, build_success_payload
 from business_suite.authentication import JwtOrMockAuthentication
 from core.models import (
     AiModel,
@@ -146,7 +147,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views_shared import (
     ASYNC_JOB_INFLIGHT_STATUSES,

@@ -90,10 +90,16 @@ norecursedirs = [
 # Only consider files that follow the project's test naming convention
 python_files = ["test_*.py"]
 # Ensure markers are explicitly registered (helps catch typos) and run standard discovery
-addopts = "--strict-markers"
+addopts = [
+  "--cov=business_suite",
+  "--cov-report=term-missing",
+  "--cov-report=html",
+  "--cov-branch",
+]
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.2",
-    "pytest-django>=4.11.1",
+  "pytest>=9.0.2",
+  "pytest-django>=4.11.1",
+  "pytest-cov>=4.0.0",
 ]

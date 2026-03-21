@@ -1,11 +1,20 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
+
+import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
+import {
+  createAsyncRequestMetadata,
+  requestMetadataContext,
+  type RequestMetadata,
+} from '@/core/utils/request-metadata';
 
 interface ProductImportExportStartResponse {
-  job_id: string;
+  jobId: string;
   status: string;
   progress: number;
+  queued?: boolean;
+  deduplicated?: boolean;
 }
 
 @Injectable({
@@ -14,19 +23,36 @@ interface ProductImportExportStartResponse {
 export class ProductImportExportService {
   constructor(private http: HttpClient) {}
 
-  startExport(searchQuery?: string): Observable<ProductImportExportStartResponse> {
-    return this.http.post<ProductImportExportStartResponse>('/api/products/export/start/', {
-      search_query: searchQuery ?? '',
-    });
+  startExport(
+    searchQuery?: string,
+    requestMetadata?: RequestMetadata | null,
+  ): Observable<ProductImportExportStartResponse> {
+    const metadata = requestMetadata ?? createAsyncRequestMetadata();
+    return this.http
+      .post<ProductImportExportStartResponse>(
+        '/api/products/export/start/',
+        {
+          search_query: searchQuery ?? '',
+        },
+        {
+          context: requestMetadataContext(metadata),
+        },
+      )
+      .pipe(map((response) => normalizeJobEnvelope(response)));
   }
 
-  startImport(file: File): Observable<ProductImportExportStartResponse> {
+  startImport(
+    file: File,
+    requestMetadata?: RequestMetadata | null,
+  ): Observable<ProductImportExportStartResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<ProductImportExportStartResponse>(
-      '/api/products/import/start/',
-      formData,
-    );
+    const metadata = requestMetadata ?? createAsyncRequestMetadata();
+    return this.http
+      .post<ProductImportExportStartResponse>('/api/products/import/start/', formData, {
+        context: requestMetadataContext(metadata),
+      })
+      .pipe(map((response) => normalizeJobEnvelope(response)));
   }
 
   downloadExport(jobId: string): Observable<HttpResponse<Blob>> {

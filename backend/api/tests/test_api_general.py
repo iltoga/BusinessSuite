@@ -714,7 +714,7 @@ class ProductApiTestCase(TestCase):
         url = reverse("invoices-propose") + f"?invoice_date={year}-01-01"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = response.json()["data"]
         # Accept camelCase or snake_case
         self.assertTrue("invoice_no" in data or "invoiceNo" in data)
         value = data.get("invoice_no") or data.get("invoiceNo")
@@ -826,10 +826,16 @@ class ProductApiTestCase(TestCase):
         url = f"/api/invoices/from_application_prefill/{application.id}/"
         pending_response = self.client.get(url)
         self.assertEqual(pending_response.status_code, 200)
-        payload = pending_response.json()
+        payload = pending_response.json()["data"]
         self.assertEqual(payload["customer"]["id"], customer.id)
+        self.assertIn("sourceApplication", payload)
+        self.assertIn("invoiceApplication", payload)
+        self.assertNotIn("source_application", payload)
+        self.assertNotIn("invoice_application", payload)
         self.assertEqual(payload["invoiceApplication"]["product"], product.id)
         self.assertEqual(payload["invoiceApplication"]["customerApplication"], application.id)
+        self.assertIn("sourceLine", payload["locks"])
+        self.assertNotIn("source_line", payload["locks"])
 
         invoice = Invoice.objects.create(
             customer=customer,
@@ -846,6 +852,43 @@ class ProductApiTestCase(TestCase):
 
         invoiced_response = self.client.get(url)
         self.assertEqual(invoiced_response.status_code, 400)
+
+    def test_get_invoice_application_due_amount_returns_camelcase_payload(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Due", last_name="Amount", active=True)
+        product = Product.objects.create(
+            name="Due Amount Product",
+            code="DUE-1",
+            product_type="visa",
+            retail_price="250000.00",
+        )
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        invoice_application = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=product,
+            customer_application=application,
+            amount="250000.00",
+        )
+
+        response = self.client.get(f"/api/invoices/get_invoice_application_due_amount/{invoice_application.id}/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["data"]
+        self.assertEqual(payload["dueAmount"], str(invoice_application.due_amount))
+        self.assertEqual(payload["amount"], str(invoice_application.amount))
+        self.assertEqual(payload["paidAmount"], str(invoice_application.paid_amount))
+        self.assertNotIn("due_amount", payload)
+        self.assertNotIn("paid_amount", payload)
 
     def test_product_create_with_tasks_and_documents(self):
         url = reverse("products-list")
@@ -1053,9 +1096,9 @@ class ProductApiTestCase(TestCase):
         url = reverse("products-can-delete", kwargs={"pk": product.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        # Accept either snake_case or camelCase keys
-        self.assertTrue("can_delete" in payload or "canDelete" in payload)
+        payload = response.json()["data"]
+        self.assertIn("canDelete", payload)
+        self.assertNotIn("can_delete", payload)
 
     def test_product_delete_preview_includes_related_records(self):
         customer = Customer.objects.create(customer_type="person", first_name="Preview", last_name="Customer")
@@ -1095,24 +1138,21 @@ class ProductApiTestCase(TestCase):
         response = self.client.get(reverse("products-delete-preview", kwargs={"pk": product.id}))
         self.assertEqual(response.status_code, 200)
 
-        payload = response.json()
-        can_delete = payload.get("can_delete", payload.get("canDelete"))
-        requires_force = payload.get("requires_force_delete", payload.get("requiresForceDelete"))
-        related_counts = payload.get("related_counts", payload.get("relatedCounts", {}))
-        related_records = payload.get("related_records", payload.get("relatedRecords", {}))
+        payload = response.json()["data"]
+        can_delete = payload["canDelete"]
+        requires_force = payload["requiresForceDelete"]
+        related_counts = payload["relatedCounts"]
+        related_records = payload["relatedRecords"]
 
         self.assertFalse(can_delete)
         self.assertTrue(requires_force)
         self.assertEqual(related_counts.get("tasks"), 1)
         self.assertEqual(related_counts.get("applications"), 1)
-        self.assertEqual(
-            related_counts.get("invoice_applications", related_counts.get("invoiceApplications")),
-            1,
-        )
+        self.assertEqual(related_counts.get("invoiceApplications"), 1)
         self.assertEqual(related_counts.get("payments"), 1)
 
         applications = related_records.get("applications", [])
-        invoice_lines = related_records.get("invoice_applications", related_records.get("invoiceApplications", []))
+        invoice_lines = related_records.get("invoiceApplications", [])
         self.assertTrue(any(item.get("id") == application.id for item in applications))
         self.assertTrue(any(item.get("id") == invoice_line.id for item in invoice_lines))
 
@@ -1174,13 +1214,10 @@ class ProductApiTestCase(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertTrue(payload["deleted"])
-        self.assertEqual(
-            payload.get("deleted_invoice_applications", payload.get("deletedInvoiceApplications")),
-            1,
-        )
-        self.assertEqual(payload.get("deleted_payments", payload.get("deletedPayments")), 1)
+        self.assertEqual(payload["deletedInvoiceApplications"], 1)
+        self.assertEqual(payload["deletedPayments"], 1)
 
         self.assertFalse(Product.objects.filter(id=target_product.id).exists())
         self.assertFalse(Task.objects.filter(product_id=target_product.id).exists())
@@ -1234,8 +1271,8 @@ class ProductApiTestCase(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(payload.get("deleted_count", payload.get("deletedCount")), 1)
+        payload = response.json()["data"]
+        self.assertEqual(payload["deletedCount"], 1)
         self.assertFalse(Product.objects.filter(code="DESC-BULK-1").exists())
         self.assertTrue(Product.objects.filter(code="DESC-BULK-2").exists())
 
@@ -1253,8 +1290,8 @@ class ProductApiTestCase(TestCase):
         response = self.client.patch(url, data=json.dumps({"deprecated": True}), content_type="application/json")
         self.assertEqual(response.status_code, 409)
         body = response.json()
-        self.assertEqual(body.get("code"), "deprecated_products_confirmation_required")
-        self.assertTrue(body.get("relatedProducts"))
+        self.assertEqual(body["error"]["code"], "deprecated_products_confirmation_required")
+        self.assertTrue(body["error"]["details"]["relatedProducts"])
 
         response = self.client.patch(
             f"{url}?deprecate_related_products=true",

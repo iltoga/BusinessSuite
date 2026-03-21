@@ -4,6 +4,7 @@ import { catchError, EMPTY, finalize } from 'rxjs';
 
 import { ServerManagementService } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -138,7 +139,8 @@ export class SystemCostsComponent implements OnInit {
         finalize(() => this.openRouterLoading.set(false)),
       )
       .subscribe((response) => {
-        this.openRouterStatus.set(response as OpenRouterStatusResponse);
+        const payload = unwrapApiRecord(response);
+        this.openRouterStatus.set(payload ? (payload as unknown as OpenRouterStatusResponse) : null);
       });
   }
 

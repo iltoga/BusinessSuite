@@ -45,6 +45,16 @@ class SyncAsyncIter:
 
     def close(self):
         try:
+            try:
+                future = asyncio.run_coroutine_threadsafe(self._aiter.aclose(), self._loop)
+                future.result(timeout=2)
+            except Exception:
+                pass
+            try:
+                shutdown_future = asyncio.run_coroutine_threadsafe(self._loop.shutdown_asyncgens(), self._loop)
+                shutdown_future.result(timeout=2)
+            except Exception:
+                pass
             self._loop.call_soon_threadsafe(self._loop.stop)  # type: ignore
             self._thread.join(timeout=2)
         except Exception:

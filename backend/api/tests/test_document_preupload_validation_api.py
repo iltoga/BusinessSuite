@@ -72,6 +72,9 @@ class DocumentPreuploadValidationApiTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         body = response.json()
         self.assertEqual(body["validationStatus"], "invalid")
+        self.assertNotIn("validation_status", body)
+        self.assertNotIn("validation_result", body)
+        self.assertNotIn("document_type_id", body)
         self.assertFalse(body["matches"])
         self.assertEqual(body["expectedType"], "Passport")
         self.assertEqual(body["detectedType"], "Passport")
@@ -79,24 +82,21 @@ class DocumentPreuploadValidationApiTests(TestCase):
         self.assertEqual(body["confidence"], 0.74)
         self.assertEqual(body["reasoning"], "Photo quality is too low for acceptance.")
         negative_issues = body["validationResult"].get("negativeIssues")
-        if negative_issues is None:
-            negative_issues = body["validationResult"].get("negative_issues")
         self.assertEqual(negative_issues, ["Image is blurry"])
         self.assertTrue(body["aiValidationEnabled"])
         self.assertEqual(body["validationProvider"], "openrouter")
         self.assertEqual(body["validationProviderName"], "OpenRouter")
         self.assertEqual(body["validationModel"], "google/gemini-2.5-flash-lite")
         self.assertEqual(
-            body["validationResult"].get("aiProvider") or body["validationResult"].get("ai_provider"),
+            body["validationResult"].get("aiProvider"),
             "openrouter",
         )
         self.assertEqual(
-            body["validationResult"].get("aiProviderName")
-            or body["validationResult"].get("ai_provider_name"),
+            body["validationResult"].get("aiProviderName"),
             "OpenRouter",
         )
         self.assertEqual(
-            body["validationResult"].get("aiModel") or body["validationResult"].get("ai_model"),
+            body["validationResult"].get("aiModel"),
             "google/gemini-2.5-flash-lite",
         )
 
@@ -117,8 +117,9 @@ class DocumentPreuploadValidationApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400, response.content)
         body = response.json()
-        self.assertEqual(body["code"], "validation_error")
-        self.assertIn("file", body["errors"])
+        self.assertEqual(body["error"]["code"], "validation_error")
+        self.assertEqual(body["error"]["message"], "No file provided.")
+        self.assertIn("file", body["error"]["details"])
 
     @patch("api.views_categorization.AIDocumentCategorizer.validate_document")
     def test_validate_document_category_hides_provider_error_details(self, validate_document_mock):

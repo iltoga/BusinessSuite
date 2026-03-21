@@ -40,7 +40,7 @@ class SyncApiTests(TestCase):
 
         response = self.client.get("/api/sync/changes/pull/?after_seq=0&limit=10")
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertEqual(payload["count"], 1)
         self.assertEqual(payload["changes"][0]["modelLabel"], "core.holiday")
 
@@ -83,14 +83,14 @@ class SyncApiTests(TestCase):
 
         response = self.client.get("/api/sync/state/")
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertIn("lastSeq", payload)
         self.assertGreaterEqual(payload["lastSeq"], 1)
 
     def test_media_manifest_endpoint_returns_payload(self):
         response = self.client.get("/api/sync/media/manifest/?limit=5")
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertIn("items", payload)
 
     def test_push_older_change_creates_conflict_and_keeps_existing(self):
@@ -130,6 +130,9 @@ class SyncApiTests(TestCase):
 
         response = session_client.post("/api/sync/changes/push/", {"source_node": "remote-node", "changes": []}, format="json")
         self.assertEqual(response.status_code, 401)
+        body = response.json()
+        self.assertEqual(body["error"]["code"], "authentication_required")
+        self.assertEqual(body["error"]["message"], "Authentication required")
 
     @override_settings(LOCAL_SYNC_REMOTE_TOKEN="sync-shared-token")
     def test_service_token_can_access_sync_api_without_user_auth(self):
@@ -138,5 +141,5 @@ class SyncApiTests(TestCase):
 
         response = service_client.get("/api/sync/state/")
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertIn("nodeId", payload)

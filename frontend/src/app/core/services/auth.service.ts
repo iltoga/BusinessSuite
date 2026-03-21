@@ -1,40 +1,15 @@
 /**
  * AuthService — dual-mode JWT / mock authentication.
  *
- * ## Normal mode (JWT)
- * Tokens are stored in `localStorage` under `auth_token` (access) and
- * `auth_refresh_token` (refresh).  On login, both tokens are persisted;
- * on logout they are cleared and the user is redirected to `/login`.
- *
- * ### Auto-refresh flow
- * The `AuthInterceptor` watches for `401` responses and calls
- * `AuthService.refreshToken()`.  `refreshRequest$` ensures that concurrent
- * requests share a single in-flight `Observable<string>` so only one refresh
- * HTTP call is made even when multiple requests fail simultaneously.
- *
- * ### Token expiry check (`isTokenExpired`)
- * Decodes the JWT payload (base-64 split on `.`), reads the `exp` claim, and
- * compares it to `Date.now() / 1000`.  Returns `true` when no token is
- * present or the token is expired.
+ * ## Normal mode (JWT + refresh cookie)
+ * Access tokens are kept only in memory. Refresh tokens are issued by the
+ * backend as an HttpOnly cookie and refreshed through `/api/token/refresh/`.
+ * The service restores the session during app initialization so reloads do
+ * not depend on `localStorage`.
  *
  * ## Mock mode (`MOCK_AUTH_ENABLED`)
- * When `ConfigService.config().MOCK_AUTH_ENABLED` is truthy:
- * - `isAuthenticated` is always `true` (prevents redirect loops on init).
- * - Claims are loaded from `GET /api/mock-auth-config/` which returns a
- *   `MockAuthConfigResponse`.  Both snake_case (`is_superuser`) and
- *   camelCase (`isSuperuser`) forms are accepted and normalised.
- * - No tokens are stored; `getToken()` returns `null`.
- *
- * ## Reactive state (signals)
- * | Signal | Type | Description |
- * |---|---|---|
- * | `isAuthenticated` | `computed<boolean>` | True when a valid non-expired token exists (or mock is on) |
- * | `claims` | `readonly Signal<AuthClaims \| null>` | Decoded JWT claims or mock claims |
- * | `isSuperuser` | `computed<boolean>` | Derived from `claims.isSuperuser` |
- * | `isStaff` | `computed<boolean>` | Derived from `claims.isStaff` |
- * | `isAdminOrManager` | `computed<boolean>` | Superuser, `admin` group, or `manager` group |
- * | `isLoading` | `readonly Signal<boolean>` | True during login / refresh HTTP calls |
- * | `error` | `readonly Signal<string \| null>` | Last authentication error message |
+ * Mock auth stays dev-only. When enabled, the service returns a synthetic
+ * token and claims without touching persistent browser storage.
  */
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -43,12 +18,19 @@ import { Router } from '@angular/router';
 import { catchError, finalize, map, Observable, of, shareReplay, tap, throwError } from 'rxjs';
 
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { ConfigService } from './config.service';
 
 export interface AuthToken {
+  access_token?: string;
+  refresh_token?: string;
   token?: string;
   access?: string;
   refresh?: string;
+  user?: AuthUserPayload | null;
+  data?: AuthSessionPayload;
+  meta?: Record<string, unknown>;
 }
 
 export interface AuthClaims {
@@ -62,6 +44,30 @@ export interface AuthClaims {
   isStaff?: boolean;
   iat?: number;
   exp?: number;
+}
+
+export interface AuthUserPayload {
+  id?: number | string;
+  username?: string;
+  email?: string | null;
+  full_name?: string | null;
+  fullName?: string | null;
+  avatar?: string | null;
+  roles?: string[];
+  groups?: string[];
+  is_superuser?: boolean;
+  isSuperuser?: boolean;
+  is_staff?: boolean;
+  isStaff?: boolean;
+}
+
+export interface AuthSessionPayload {
+  access_token?: string;
+  refresh_token?: string;
+  token?: string;
+  access?: string;
+  refresh?: string;
+  user?: AuthUserPayload | null;
 }
 
 interface MockAuthConfigResponse {
@@ -81,12 +87,12 @@ export interface LoginCredentials {
   password: string;
 }
 
+const REFRESH_SESSION_HINT_COOKIE_NAME = 'bs_refresh_session_hint';
+
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly TOKEN_KEY = 'auth_token';
-  private readonly REFRESH_KEY = 'auth_refresh_token';
   private readonly API_URL = '/api';
   private readonly MOCK_CLAIMS_URL = '/api/mock-auth-config/';
 
@@ -142,12 +148,7 @@ export class AuthService {
     private desktopBridge: DesktopBridgeService,
     @Inject(PLATFORM_ID) private platformId: Object,
   ) {
-    if (isPlatformBrowser(this.platformId)) {
-      const stored = this.getStoredToken();
-      this._token.set(stored);
-      this._claims.set(this.buildClaimsFromToken(stored));
-      this.desktopBridge.publishAuthToken(stored);
-    }
+    this.desktopBridge.publishAuthToken(null);
   }
 
   /**
@@ -187,11 +188,23 @@ export class AuthService {
 
     // Short-circuit login for mock authentication
     if (this.mockAuthEnabled) {
-      const fake = { token: 'mock-token', refresh: 'mock-refresh' } as AuthToken;
-      const access = fake.token ?? fake.access ?? null;
-      const refresh = fake.refresh ?? null;
+      const fake = {
+        access_token: 'mock-token',
+        refresh_token: 'mock-refresh',
+        user: {
+          id: 'mock-user',
+          username: 'mock-user',
+          email: 'mock@example.com',
+          full_name: 'Mock User',
+          roles: ['admin'],
+          groups: ['admin'],
+          is_superuser: true,
+          is_staff: true,
+        },
+      } as AuthToken;
+      const access = fake.access_token ?? fake.access ?? fake.token ?? null;
       if (access) this.setToken(access);
-      if (refresh) this.setRefreshToken(refresh);
+      this.applyAuthSession(fake);
       const fallback = this.buildFallbackMockClaims();
       this._mockClaims.set(fallback);
       this._claims.set(fallback);
@@ -200,42 +213,40 @@ export class AuthService {
       return of(fake);
     }
 
-    return this.http.post<AuthToken>(`${this.API_URL}/api-token-auth/`, credentials).pipe(
-      tap((response) => {
-        const access = response.token ?? response.access ?? null;
-        const refresh = response.refresh ?? null;
-        if (access) this.setToken(access);
-        if (refresh) this.setRefreshToken(refresh);
-        this._claims.set(this.buildClaimsFromToken(access));
-        this._isLoading.set(false);
-      }),
-      catchError((error) => {
-        this._isLoading.set(false);
-        this._error.set(error.error?.detail || 'Login failed');
-        return throwError(() => error);
-      }),
-    );
+    return this.http
+      .post<AuthToken>(`${this.API_URL}/api-token-auth/`, credentials, {
+        withCredentials: true,
+      })
+      .pipe(
+        tap((response) => {
+          this.applyAuthSession(response);
+          this._isLoading.set(false);
+        }),
+        catchError((error) => {
+          this._isLoading.set(false);
+          this._error.set(this.extractErrorMessage(error) || 'Login failed');
+          return throwError(() => error);
+        }),
+      );
   }
 
   logout(): void {
     const tokenAtLogout = this.getToken();
-    const shouldNotifyBackend = tokenAtLogout ? !this.isTokenExpired(tokenAtLogout) : false;
 
     // Clear local tokens and claims first to avoid recursive interceptor behavior
     this.clearToken();
-    this.clearRefreshToken();
     this.router.navigate(['/login']);
 
     // If mock auth is enabled, there's no backend to record logout against
-    if (this.mockAuthEnabled || !shouldNotifyBackend) {
+    if (this.mockAuthEnabled) {
       return;
     }
 
     // Attempt to record logout event in backend (best-effort).
     // Treat 401 (already logged out / unauthorized) as success and swallow it.
-    const headers = new HttpHeaders({ Authorization: `Bearer ${tokenAtLogout}` });
+    const headers = tokenAtLogout ? new HttpHeaders({ Authorization: `Bearer ${tokenAtLogout}` }) : undefined;
     this.http
-      .post(`${this.API_URL}/user-profile/logout/`, {}, { headers })
+      .post(`${this.API_URL}/user-profile/logout/`, {}, { headers, withCredentials: true })
       .pipe(
         catchError((err) => {
           if (err?.status === 401) {
@@ -256,66 +267,41 @@ export class AuthService {
 
   private setToken(token: string): void {
     this._token.set(token);
-    if (isPlatformBrowser(this.platformId)) {
-      localStorage.setItem(this.TOKEN_KEY, token);
-    }
     this.desktopBridge.publishAuthToken(token);
   }
 
   private clearToken(): void {
     this._token.set(null);
     this._claims.set(null);
-    if (isPlatformBrowser(this.platformId)) {
-      localStorage.removeItem(this.TOKEN_KEY);
-    }
     this.desktopBridge.publishAuthToken(null);
   }
 
-  private getStoredToken(): string | null {
-    if (isPlatformBrowser(this.platformId)) {
-      try {
-        if (typeof localStorage?.getItem === 'function') {
-          return localStorage.getItem(this.TOKEN_KEY);
-        }
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
-
-  private setRefreshToken(refresh: string | null): void {
-    if (isPlatformBrowser(this.platformId)) {
-      if (refresh) localStorage.setItem(this.REFRESH_KEY, refresh);
-      else localStorage.removeItem(this.REFRESH_KEY);
-    }
-  }
-
-  private clearRefreshToken(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      localStorage.removeItem(this.REFRESH_KEY);
-    }
-  }
-
-  private getStoredRefreshToken(): string | null {
-    if (isPlatformBrowser(this.platformId)) {
-      try {
-        if (typeof localStorage?.getItem === 'function') {
-          return localStorage.getItem(this.REFRESH_KEY);
-        }
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
-
   getToken(): string | null {
-    return this._token() ?? this.getStoredToken();
+    return this._token();
   }
 
   getRefreshToken(): string | null {
-    return this.getStoredRefreshToken();
+    return null;
+  }
+
+  restoreSession(): Observable<boolean> {
+    if (!isPlatformBrowser(this.platformId) || this.mockAuthEnabled) {
+      return of(false);
+    }
+
+    const token = this.getToken();
+    if (token && !this.isTokenExpired(token)) {
+      return of(true);
+    }
+
+    if (!this.hasRefreshSessionHint()) {
+      return of(false);
+    }
+
+    return this.refreshToken().pipe(
+      map(() => true),
+      catchError(() => of(false)),
+    );
   }
 
   /**
@@ -326,41 +312,41 @@ export class AuthService {
     const existing = this.refreshRequest$;
     if (existing) return existing;
 
-    // FIX: Prevent SSR crash - avoid accessing localStorage on server
     if (!isPlatformBrowser(this.platformId)) {
-      // Return an error that can be caught or ignored, preventing the "No refresh token" crash
       return throwError(() => new Error('SSR: Cannot refresh token'));
     }
 
-    const refresh = this.getRefreshToken();
-    if (!refresh) {
-      return throwError(() => new Error('No refresh token'));
+    if (this.mockAuthEnabled) {
+      const mockToken = 'mock-token';
+      this.setToken(mockToken);
+      return of(mockToken);
     }
 
-    const obs$ = this.http.post<AuthToken>(`${this.API_URL}/token/refresh/`, { refresh }).pipe(
+    const obs$ = this.http.post<AuthToken>(`${this.API_URL}/token/refresh/`, {}, {
+      withCredentials: true,
+    }).pipe(
       tap((response) => {
-        const access = response.access ?? response.token ?? null;
-        const newRefresh = response.refresh ?? null;
+        this.applyAuthSession(response);
+      }),
+      map((resp) => {
+        const normalized = this.normalizeAuthSessionResponse(resp);
+        const access = normalized.access_token ?? normalized.access ?? normalized.token ?? null;
         if (!access) {
           throw new Error('No access token in refresh response');
         }
-        this.setToken(access);
-        if (newRefresh) this.setRefreshToken(newRefresh);
+        return access;
       }),
-      map((resp: any) => (resp.access ?? resp.token) as string),
       finalize(() => {
         this.refreshRequest$ = null;
       }),
       shareReplay(1),
       catchError((err) => {
-        // On refresh failure, clear tokens and forward error
         this.clearToken();
-        this.clearRefreshToken();
         return throwError(() => err);
       }),
     );
 
-    this.refreshRequest$ = obs$ as Observable<string>;
+    this.refreshRequest$ = obs$;
     return this.refreshRequest$;
   }
 
@@ -372,6 +358,74 @@ export class AuthService {
     if (current) {
       this._claims.set({ ...current, ...partialClaims });
     }
+  }
+
+  private applyAuthSession(response: AuthToken | AuthSessionPayload | null | undefined): void {
+    const session = this.normalizeAuthSessionResponse(response);
+    const access = session.access_token ?? session.access ?? session.token ?? null;
+    if (access) {
+      this.setToken(access);
+    } else {
+      this.clearToken();
+    }
+
+    const userClaims = session.user ? this.buildClaimsFromUser(session.user) : null;
+    const tokenClaims = access ? this.buildClaimsFromToken(access) : null;
+    const claims = userClaims ?? tokenClaims;
+    if (claims) {
+      this._claims.set(claims);
+    }
+  }
+
+  private normalizeAuthSessionResponse(
+    response: AuthToken | AuthSessionPayload | null | undefined,
+  ): AuthSessionPayload {
+    if (!response || typeof response !== 'object') {
+      return {};
+    }
+
+    const responseData = (response as { data?: AuthSessionPayload }).data;
+    const session = (responseData && typeof responseData === 'object' ? responseData : response) as AuthSessionPayload;
+    return {
+      access_token: session.access_token ?? session.access ?? session.token ?? undefined,
+      refresh_token: session.refresh_token ?? session.refresh ?? undefined,
+      token: session.token ?? session.access ?? session.access_token ?? undefined,
+      access: session.access ?? session.access_token ?? session.token ?? undefined,
+      refresh: session.refresh ?? session.refresh_token ?? undefined,
+      user: session.user ?? undefined,
+    };
+  }
+
+  private buildClaimsFromUser(user: AuthUserPayload): AuthClaims {
+    const groups = user.groups ?? user.roles ?? [];
+    const roles = user.roles ?? user.groups ?? [];
+    const fullName = user.full_name ?? user.fullName ?? user.username ?? null;
+    return {
+      sub: String(user.id ?? user.username ?? ''),
+      email: user.email ?? null,
+      fullName,
+      avatar: user.avatar ?? null,
+      roles,
+      groups,
+      isSuperuser: user.is_superuser ?? user.isSuperuser ?? false,
+      isStaff: user.is_staff ?? user.isStaff ?? false,
+    };
+  }
+
+  private hasRefreshSessionHint(): boolean {
+    if (!isPlatformBrowser(this.platformId)) {
+      return false;
+    }
+
+    const cookieString = globalThis.document?.cookie ?? '';
+    return cookieString.split(';').some((part) => {
+      const trimmed = part.trim();
+      return trimmed === `${REFRESH_SESSION_HINT_COOKIE_NAME}=1` || trimmed.startsWith(`${REFRESH_SESSION_HINT_COOKIE_NAME}=`);
+    });
+  }
+
+  private extractErrorMessage(error: any): string | null {
+    return extractServerErrorMessage(error);
   }
 
   private buildClaimsFromToken(token: string | null, isMockEnabled?: boolean): AuthClaims | null {
@@ -417,14 +471,29 @@ export class AuthService {
     };
   }
 
-  private normalizeMockClaims(response: MockAuthConfigResponse): AuthClaims {
+  private normalizeMockClaims(response: unknown): AuthClaims {
+    const source = (unwrapApiRecord(response) ?? {}) as Record<string, unknown>;
+    const toStringArray = (value: unknown): string[] =>
+      Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+
+    const sub =
+      typeof source['sub'] === 'string'
+        ? source['sub']
+        : typeof source['username'] === 'string'
+          ? source['username']
+          : 'mock-user';
+    const email = typeof source['email'] === 'string' ? source['email'] : null;
+    const roles = toStringArray(source['roles']);
+    const groups = toStringArray(source['groups']);
+    const isSuperuser = Boolean(source['isSuperuser'] ?? source['is_superuser'] ?? false);
+    const isStaff = Boolean(source['isStaff'] ?? source['is_staff'] ?? false);
     return {
-      sub: response.sub ?? response.username ?? 'mock-user',
-      email: response.email ?? null,
-      roles: response.roles ?? response.groups ?? [],
-      groups: response.groups ?? response.roles ?? [],
-      isSuperuser: response.isSuperuser ?? response.is_superuser ?? false,
-      isStaff: response.isStaff ?? response.is_staff ?? false,
+      sub,
+      email,
+      roles: roles.length ? roles : groups,
+      groups: groups.length ? groups : roles,
+      isSuperuser,
+      isStaff,
     } satisfies AuthClaims;
   }
 
@@ -434,7 +503,7 @@ export class AuthService {
     }
 
     this.http
-      .get<MockAuthConfigResponse>(this.MOCK_CLAIMS_URL)
+      .get<unknown>(this.MOCK_CLAIMS_URL)
       .pipe(
         tap((response) => {
           const claims = this.normalizeMockClaims(response);

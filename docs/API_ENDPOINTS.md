@@ -11,8 +11,9 @@ This file summarizes the main API surface in `backend/api/urls.py` and related D
 
 ## Authentication
 
-- `POST /api/api-token-auth/` — obtain JWT pair via custom token view
-- `GET /api/session-auth/` — DRF session auth endpoints
+- `POST /api/api-token-auth/` — obtain JWT pair (access + refresh) via custom token view; sets refresh token as HTTP-only cookie
+- `POST /api/token/refresh/` — obtain new access token using refresh token (from cookie or body)
+- `GET /api/session-auth/` — DRF session auth endpoints (admin/browsable API)
 - `GET /api/mock-auth-config/` — mock auth claims/config (dev/testing mode)
 
 ---
@@ -300,3 +301,65 @@ Push/webhook:
 - Most endpoints require authentication.
 - Some actions are superuser-only or staff/admin-group restricted.
 - Many heavy operations are asynchronous and should be tracked via job status/SSE endpoints.
+
+---
+
+## Health & System
+
+- `GET /api/health/` — unauthenticated healthcheck (Docker/load-balancer)
+- `GET /api/app-config/` — public application configuration (Firebase, currency, date format)
+
+---
+
+## AI Models
+
+- `GET /api/ai-models/`
+- `POST /api/ai-models/`
+- `GET /api/ai-models/{id}/`
+- `PATCH /api/ai-models/{id}/`
+- `DELETE /api/ai-models/{id}/`
+
+---
+
+## Cache Control
+
+- `GET /api/cache/status/`
+- `POST /api/cache/enable/`
+- `POST /api/cache/disable/`
+- `POST /api/cache/clear/`
+
+---
+
+## Sync / Local Resilience
+
+- `GET /api/sync/state/`
+- `POST /api/sync/changes/push/`
+- `GET /api/sync/changes/pull/`
+- `GET /api/sync/media/manifest/`
+- `POST /api/sync/media/fetch/`
+
+---
+
+## Compute
+
+- `GET /api/compute/doc_workflow_due_date/{task_id}/{start_date}/`
+
+---
+
+## Realtime
+
+- `GET /api/core/realtime/stream/` (SSE) — global realtime event multiplexer
+- `GET /api/server-management/media-cleanup/stream/` (SSE) — media cleanup progress
+
+---
+
+## Additional Invoice Endpoints
+
+- `GET /api/invoices/get_billable_products/{customer_id}/` — billable products for a customer
+
+---
+
+## Additional Product Endpoints
+
+- `POST /api/products/price-list/print/start/` — start price-list PDF generation (async)
+- `GET /api/products/price-list/print/download/{job_id}/` — download generated price-list PDF

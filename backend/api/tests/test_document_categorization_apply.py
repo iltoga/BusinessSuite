@@ -145,5 +145,6 @@ class DocumentCategorizationApplyTests(TestCase):
 
         self.assertEqual(response.status_code, 409, response.content)
         body = response.json()
-        self.assertEqual(body["code"], "processing_incomplete")
-        self.assertIn("still running", body["errors"]["detail"][0])
+        self.assertEqual(body["error"]["code"], "processing_incomplete")
+        self.assertIn("still running", body["error"]["message"])
+        self.assertIn("still running", body["error"]["details"]["detail"][0])

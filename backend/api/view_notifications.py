@@ -1,6 +1,12 @@
+import logging
+
+from api.utils.contracts import get_request_id
+from api.utils.contracts import build_error_payload
 from api.utils.stream_payloads import normalize_async_job_payload, serialize_async_job_payload
 
 from .views_imports import *
+
+logger = logging.getLogger(__name__)
 
 
 @csrf_exempt
@@ -23,7 +29,14 @@ def whatsapp_webhook(request):
             expected_token = getattr(settings, "META_TOKEN_CLIENT", "")
             if verify_token and expected_token and verify_token == expected_token:
                 return HttpResponse(challenge, status=status.HTTP_200_OK, content_type="text/plain")
-            return Response({"error": "Invalid verify token"}, status=status.HTTP_403_FORBIDDEN)
+            return JsonResponse(
+                build_error_payload(
+                    code="forbidden",
+                    message="Invalid verify token",
+                    request=request,
+                ),
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
@@ -33,7 +46,14 @@ def whatsapp_webhook(request):
     if not signature_valid:
         if enforce_signature:
             webhook_logger.warning("Rejected WhatsApp webhook due to invalid signature.")
-            return Response({"error": "Invalid webhook signature"}, status=status.HTTP_403_FORBIDDEN)
+            return JsonResponse(
+                build_error_payload(
+                    code="forbidden",
+                    message="Invalid webhook signature",
+                    request=request,
+                ),
+                status=status.HTTP_403_FORBIDDEN,
+            )
         webhook_logger.warning("Processing WhatsApp webhook with invalid signature (enforcement disabled).")
 
     data = request.data
@@ -906,7 +926,10 @@ def calendar_reminders_stream_sse(request):
     """SSE endpoint for calendar reminder list live updates."""
     user = request.user
     if not (user and user.is_authenticated):
-        return JsonResponse({"error": "Authentication required"}, status=403)
+        return JsonResponse(
+            build_error_payload(code="authentication_required", message="Authentication required", request=request),
+            status=401,
+        )
 
     def _latest_reminder_state():
         latest = (
@@ -1034,7 +1057,14 @@ def workflow_notifications_stream_sse(request):
     is_admin = is_staff_or_admin_group(user)
     if not is_admin:
         from api.views_imports import STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR
-        return JsonResponse({"error": STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
+        return JsonResponse(
+            build_error_payload(
+                code="forbidden",
+                message=STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
+                request=request,
+            ),
+            status=403,
+        )
 
     def _latest_recent_notification_state():
         cutoff = timezone.now() - timedelta(hours=RECENT_WORKFLOW_NOTIFICATION_WINDOW_HOURS)
@@ -1174,12 +1204,18 @@ def async_job_status_sse(request, job_id):
     job_queryset = _get_job_queryset()
     exists = _job_exists(job_queryset)
     if not exists:
-        return JsonResponse({"error": "Job not found"}, status=404)
+        return JsonResponse(build_error_payload(code="not_found", message="Job not found", request=request), status=404)
 
     from api.utils.redis_sse import iter_replay_and_live_events
     def event_stream():
         deadline = time.monotonic() + _SSE_MAX_DURATION_SECONDS
         replay_cursor = resolve_last_event_id(request)
+        logger.info(
+            "async_job_status_sse connect job_id=%s request_id=%s replay_cursor=%s",
+            job_id,
+            get_request_id(request),
+            replay_cursor,
+        )
         stream_key = stream_job_key(job_id)
         last_progress = None
         last_status = None
@@ -1194,7 +1230,12 @@ def async_job_status_sse(request, job_id):
         try:
             job = _get_job()
         except AsyncJob.DoesNotExist:
-            yield format_sse_event(data={"error": "Job not found"})
+            logger.warning(
+                "async_job_status_sse job_not_found job_id=%s request_id=%s",
+                job_id,
+                get_request_id(request),
+            )
+            yield format_sse_event(data=build_error_payload(code="not_found", message="Job not found", request=request))
             return
 
         initial_payload = _serialize_job(job)
@@ -1229,10 +1270,22 @@ def async_job_status_sse(request, job_id):
                 if data["status"] in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
                     return
             except AsyncJob.DoesNotExist:
-                yield format_sse_event(data={"error": "Job not found"})
+                logger.warning(
+                    "async_job_status_sse job_disappeared job_id=%s request_id=%s replay_cursor=%s",
+                    job_id,
+                    get_request_id(request),
+                    replay_cursor,
+                )
+                yield format_sse_event(data={"errorMessage": "Job not found"})
                 break
             except Exception as e:
-                yield format_sse_event(data={"error": str(e)})
+                logger.exception(
+                    "async_job_status_sse failure job_id=%s request_id=%s error=%s",
+                    job_id,
+                    get_request_id(request),
+                    e,
+                )
+                yield format_sse_event(data={"errorMessage": str(e)})
                 break
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")

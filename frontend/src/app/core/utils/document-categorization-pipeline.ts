@@ -37,6 +37,12 @@ export function isCategorizationPipelineTerminal(
     return false;
   }
 
+  // No-slot files are finished as soon as categorization resolves: there is
+  // nothing left to validate or apply in the application.
+  if (result.documentId == null) {
+    return true;
+  }
+
   if (result.aiValidationEnabled === false) {
     return result.pipelineStage === 'categorized' || result.pipelineStage === 'validated';
   }

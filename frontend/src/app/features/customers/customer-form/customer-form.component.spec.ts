@@ -50,7 +50,7 @@ describe('CustomerFormComponent OCR flow', () => {
 
     (component as any).ocrService.startPassportOcr.mockReturnValue(
       of({
-        job_id: 'job-1',
+        jobId: 'job-1',
         status: 'queued',
       }),
     );
@@ -69,7 +69,7 @@ describe('CustomerFormComponent OCR flow', () => {
     (component as any).jobService.watchJob.mockReturnValue(stream$);
 
     component['subscribeToOcrStream']('job-1');
-    stream$.next({ status: 'failed', progress: 100, id: 'job-1', error_message: 'Realtime OCR failed' } as unknown as AsyncJob);
+    stream$.next({ status: 'failed', progress: 100, jobId: 'job-1', errorMessage: 'Realtime OCR failed' } as unknown as AsyncJob);
 
     expect(component.ocrProcessing()).toBe(false);
   });
@@ -82,11 +82,11 @@ describe('CustomerFormComponent OCR flow', () => {
     (component as any).jobService.watchJob.mockReturnValue(stream$);
 
     component['subscribeToOcrStream']('job-1');
-    stream$.next({ status: 'processing', progress: 55, id: 'job-1' } as unknown as AsyncJob);
+    stream$.next({ status: 'processing', progress: 55, jobId: 'job-1' } as unknown as AsyncJob);
     stream$.next({
       status: 'completed',
       progress: 100,
-      id: 'job-1',
+      jobId: 'job-1',
       result: { number: 'X123' },
     } as unknown as AsyncJob);
 

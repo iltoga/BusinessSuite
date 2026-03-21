@@ -102,10 +102,10 @@ describe('ServerManagementAiWorkflowFacade', () => {
     mockServerManagementService = {
       serverManagementOpenrouterStatusRetrieve: vi
         .fn()
-        .mockReturnValue(of(buildAiWorkflowStatus())),
+        .mockReturnValue(of({ data: buildAiWorkflowStatus() })),
       serverManagementOpenrouterStatusPartialUpdate: vi
         .fn()
-        .mockReturnValue(of(buildAiWorkflowStatus())),
+        .mockReturnValue(of({ data: buildAiWorkflowStatus() })),
     };
 
     await TestBed.configureTestingModule({

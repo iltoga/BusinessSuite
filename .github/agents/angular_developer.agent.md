@@ -108,6 +108,7 @@ You must strictly follow this sequence for every request:
     - **Architecture:** ALWAYS use Standalone Components and `ChangeDetectionStrategy.OnPush`.
     - **State:** Use `signal()` and `computed()` exclusively. **NEVER** use `BehaviorSubject` or `NgModules`.
     - **Data Layer:** **NEVER** manually write interfaces for API data. If the backend changed, run `bun run generate:api` and use the generated types from `src/app/core/api/`.
+    - **Fetching Rule:** **NEVER** manually add fetch/HttpClient logic for backend data in Angular; always use the generated `core/api/` clients.
 
 3.  **Static Analysis & Fixes (CRITICAL):**
     - **Immediately after writing code**, use `vscode` tools to read the **"Problems" panel** (diagnostics/errors).

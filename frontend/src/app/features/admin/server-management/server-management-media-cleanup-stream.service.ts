@@ -2,6 +2,10 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { SseService } from '@/core/services/sse.service';
+import {
+  createAsyncRequestMetadata,
+  type RequestMetadata,
+} from '@/core/utils/request-metadata';
 
 export interface MediaCleanupStreamFile {
   path: string;
@@ -40,13 +44,16 @@ export interface MediaCleanupStreamEvent {
 export class ServerManagementMediaCleanupStreamService {
   private readonly sseService = inject(SseService);
 
-  connect(dryRun: boolean): Observable<MediaCleanupStreamEvent> {
+  connect(dryRun: boolean, requestMetadata?: RequestMetadata | null): Observable<MediaCleanupStreamEvent> {
     const params = new URLSearchParams({
       dry_run: dryRun ? '1' : '0',
     });
     return this.sseService.connect<MediaCleanupStreamEvent>(
       `/api/server-management/media-cleanup/stream/?${params.toString()}`,
-      { useReplayCursor: false },
+      {
+        useReplayCursor: false,
+        requestMetadata: requestMetadata ?? createAsyncRequestMetadata(),
+      },
     );
   }
 }

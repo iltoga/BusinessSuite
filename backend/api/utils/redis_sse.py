@@ -20,6 +20,7 @@ def iter_replay_and_live_events(
     cursor = last_event_id
 
     if last_event_id:
+        logger.info("SSE replay requested for stream '%s' from last_event_id=%s", stream_key, last_event_id)
         try:
             replay_events = read_stream_replay(stream_key, last_event_id=last_event_id, count=replay_count)
         except Exception as exc:
@@ -60,6 +61,7 @@ async def iter_replay_and_live_events_async(
     cursor = last_event_id
 
     if last_event_id:
+        logger.info("SSE replay requested for stream '%s' from last_event_id=%s", stream_key, last_event_id)
         try:
             replay_events = read_stream_replay(stream_key, last_event_id=last_event_id, count=replay_count)
         except Exception as exc:

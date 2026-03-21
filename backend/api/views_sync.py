@@ -24,6 +24,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
+from api.utils.contracts import build_error_payload, build_success_payload
+from api.utils.stream_payloads import camelize_payload
+
 User = get_user_model()
 
 
@@ -79,7 +82,14 @@ class SyncViewSet(viewsets.ViewSet):
 
         token_str = self._extract_header_token(request)
         if not token_str:
-            return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                build_error_payload(
+                    code="authentication_required",
+                    message="Authentication required",
+                    request=request,
+                ),
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
         if self._has_sync_service_token(token_str):
             return None
@@ -89,7 +99,14 @@ class SyncViewSet(viewsets.ViewSet):
             request.user = token_user
             return None
 
-        return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(
+            build_error_payload(
+                code="authentication_required",
+                message="Authentication required",
+                request=request,
+            ),
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
 
     @extend_schema(summary="Get sync state", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="state")
@@ -104,30 +121,35 @@ class SyncViewSet(viewsets.ViewSet):
         remote_cursor = SyncCursor.objects.filter(node_id="remote").first()
 
         return Response(
-            {
-                "nodeId": get_local_node_id(),
-                "lastSeq": int(last_seq),
-                "pendingConflicts": int(pending_conflicts),
-                "syncEnabled": bool(getattr(settings, "LOCAL_SYNC_ENABLED", False) and settings_obj.enabled),
-                "remoteCursor": {
-                    "lastPulledSeq": int(remote_cursor.last_pulled_seq) if remote_cursor else 0,
-                    "lastPushedSeq": int(remote_cursor.last_pushed_seq) if remote_cursor else 0,
-                    "lastPulledAt": (
-                        remote_cursor.last_pulled_at.isoformat()
-                        if remote_cursor and remote_cursor.last_pulled_at
-                        else None
-                    ),
-                    "lastPushedAt": (
-                        remote_cursor.last_pushed_at.isoformat()
-                        if remote_cursor and remote_cursor.last_pushed_at
-                        else None
-                    ),
-                    "lastError": remote_cursor.last_error if remote_cursor else "",
-                    "updatedAt": (
-                        remote_cursor.updated_at.isoformat() if remote_cursor and remote_cursor.updated_at else None
-                    ),
+            build_success_payload(
+                {
+                    "nodeId": get_local_node_id(),
+                    "lastSeq": int(last_seq),
+                    "pendingConflicts": int(pending_conflicts),
+                    "syncEnabled": bool(getattr(settings, "LOCAL_SYNC_ENABLED", False) and settings_obj.enabled),
+                    "remoteCursor": {
+                        "lastPulledSeq": int(remote_cursor.last_pulled_seq) if remote_cursor else 0,
+                        "lastPushedSeq": int(remote_cursor.last_pushed_seq) if remote_cursor else 0,
+                        "lastPulledAt": (
+                            remote_cursor.last_pulled_at.isoformat()
+                            if remote_cursor and remote_cursor.last_pulled_at
+                            else None
+                        ),
+                        "lastPushedAt": (
+                            remote_cursor.last_pushed_at.isoformat()
+                            if remote_cursor and remote_cursor.last_pushed_at
+                            else None
+                        ),
+                        "lastError": remote_cursor.last_error if remote_cursor else "",
+                        "updatedAt": (
+                            remote_cursor.updated_at.isoformat()
+                            if remote_cursor and remote_cursor.updated_at
+                            else None
+                        ),
+                    },
                 },
-            }
+                request=request,
+            )
         )
 
     @extend_schema(summary="Push sync changes", responses={200: OpenApiTypes.OBJECT})
@@ -142,7 +164,7 @@ class SyncViewSet(viewsets.ViewSet):
         changes = body.get("changes") if isinstance(body.get("changes"), list) else []
 
         result = ingest_remote_changes(source_node=source_node, changes=changes)
-        return Response(result)
+        return Response(build_success_payload(camelize_payload(result), request=request))
 
     @extend_schema(
         summary="Pull sync changes",
@@ -170,11 +192,14 @@ class SyncViewSet(viewsets.ViewSet):
         changes = pull_changes(after_seq=after_seq, limit=min(max(1, limit), 1000))
         next_seq = max((int(item.get("seq") or 0) for item in changes), default=after_seq)
         return Response(
-            {
-                "changes": changes,
-                "count": len(changes),
-                "nextSeq": next_seq,
-            }
+            build_success_payload(
+                {
+                    "changes": camelize_payload(changes),
+                    "count": len(changes),
+                    "nextSeq": next_seq,
+                },
+                request=request,
+            )
         )
 
     @extend_schema(
@@ -200,7 +225,12 @@ class SyncViewSet(viewsets.ViewSet):
 
         refreshed = refresh_media_manifest()
         items = get_media_manifest(after_updated_at=after_updated_at, limit=min(max(1, limit), 2000))
-        return Response({"refreshed": int(refreshed), "items": items, "count": len(items)})
+        return Response(
+            build_success_payload(
+                {"refreshed": int(refreshed), "items": camelize_payload(items), "count": len(items)},
+                request=request,
+            )
+        )
 
     @extend_schema(summary="Fetch media entries", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["post"], url_path="media/fetch")
@@ -223,4 +253,6 @@ class SyncViewSet(viewsets.ViewSet):
             include_content=include_content,
             content_size_limit=max(1024, content_size_limit),
         )
-        return Response({"items": items, "count": len(items)})
+        return Response(
+            build_success_payload({"items": camelize_payload(items), "count": len(items)}, request=request)
+        )

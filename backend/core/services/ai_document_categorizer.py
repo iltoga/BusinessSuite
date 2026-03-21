@@ -494,6 +494,94 @@ def _build_user_prompt(filename: str) -> str:
     )
 
 
+def build_document_validation_prompts(
+    *,
+    filename: str,
+    doc_type_name: str,
+    positive_prompt: str,
+    negative_prompt: str,
+    product_prompt: str = "",
+    require_expiration_date: bool = False,
+    require_doc_number: bool = False,
+    require_details: bool = False,
+) -> tuple[str, str]:
+    """Build the system and user prompts for document validation."""
+    normalized_negative_prompt = negative_prompt
+    negative_fields = parse_structured_output_fields(negative_prompt)
+    if negative_fields:
+        normalized_negative_prompt = (
+            "Flag document as invalid when any required extraction field is missing or unreliable:\n"
+            f"{format_fields_for_prompt(negative_fields)}"
+        )
+
+    sections = [
+        f"You are a document quality validator for a visa/immigration agency. "
+        f'You are validating a document classified as "{doc_type_name}".\n'
+    ]
+    if positive_prompt:
+        sections.append(f"POSITIVE VALIDATION CRITERIA (the document SHOULD meet these):\n{positive_prompt}\n")
+    if normalized_negative_prompt:
+        sections.append(
+            "NEGATIVE VALIDATION CRITERIA (the document should NOT have these issues):\n"
+            f"{normalized_negative_prompt}\n"
+        )
+    if product_prompt:
+        sections.append(
+            f"PRODUCT-SPECIFIC CONTEXT (applies to this visa/product and takes priority over generic rules):\n{product_prompt}\n"
+        )
+    if require_expiration_date:
+        sections.append(
+            "MANDATORY EXPIRATION DATE EXTRACTION:\n"
+            "- Extract the document expiration date from the document image/content.\n"
+            "- Return it in 'extracted_expiration_date' using YYYY-MM-DD format.\n"
+            "- If the date is missing or unreadable, return null.\n"
+            "- Do not guess or hallucinate."
+        )
+    else:
+        sections.append("Set 'extracted_expiration_date' to null unless expiration-date extraction is explicitly required.")
+    if require_doc_number:
+        sections.append(
+            "MANDATORY DOCUMENT NUMBER EXTRACTION:\n"
+            "- Extract the main document code/number/ID from the document.\n"
+            "- Return only the code value in 'extracted_doc_number'.\n"
+            "- If missing or unreadable, return null.\n"
+            "- Do not add labels, comments, or guessed values."
+        )
+    else:
+        sections.append("Set 'extracted_doc_number' to null unless document-number extraction is required.")
+    if require_details:
+        sections.append(
+            "MANDATORY DETAILS EXTRACTION:\n"
+            "- Extract only the main document data and return it as markdown in 'extracted_details_markdown'.\n"
+            "- Use concise markdown (headings and/or bullet points) containing only document facts.\n"
+            "- Do not add comments, explanations, warnings, or recommendations.\n"
+            "- If no reliable data can be extracted, return null."
+        )
+    else:
+        sections.append("Set 'extracted_details_markdown' to null unless details extraction is required.")
+    sections.append(
+        "Analyze the uploaded image/document against both sets of criteria.\n"
+        "Return valid=true ONLY if the document reasonably meets the positive criteria "
+        "AND has no major negative issues.\n"
+        "List each specific negative issue found in 'negative_issues' (empty array if none).\n"
+        "Provide an overall confidence score (0.0-1.0).\n"
+        "For invalid results, set 'reasoning' to one plain-text line using only the non-empty sections "
+        "missing data, invalid data, notes, to do or to ask, in that order.\n"
+        "Format it exactly like: 'missing data: ... | invalid data: ... | notes: ... | to do or to ask: ...'.\n"
+        "Separate multiple items inside one section with '; '. Do not use markdown, bullets, or line breaks.\n"
+        "For valid results, keep 'reasoning' to one short sentence.\n"
+        "Always include 'extracted_expiration_date', 'extracted_doc_number', and "
+        "'extracted_details_markdown'."
+    )
+    system_prompt = "\n".join(sections)
+    user_prompt = (
+        f"Validate this document (classified as '{doc_type_name}'). "
+        f"Original filename: '{filename}'. "
+        "Check it against the positive and negative validation criteria."
+    )
+    return system_prompt, user_prompt
+
+
 def get_document_types_for_prompt() -> list[dict]:
     """Fetch all DocumentType records formatted for the prompt."""
     return list(
@@ -815,6 +903,17 @@ class AIDocumentCategorizer:
                 "extracted_details_markdown": None,
             }
 
+        system_prompt, user_prompt = build_document_validation_prompts(
+            filename=filename,
+            doc_type_name=doc_type_name,
+            positive_prompt=positive_prompt,
+            negative_prompt=negative_prompt,
+            product_prompt=product_prompt,
+            require_expiration_date=require_expiration_date,
+            require_doc_number=require_doc_number,
+            require_details=require_details,
+        )
+
         validator_model = model or AIRuntimeSettingsService.get_document_validator_model()
         validation_timeout = timeout
         if validation_timeout is None:
@@ -828,83 +927,6 @@ class AIDocumentCategorizer:
             model=validator_model,
             feature_name=AIUsageFeature.DOCUMENT_AI_VALIDATOR,
             timeout=validation_timeout,
-        )
-
-        normalized_negative_prompt = negative_prompt
-        negative_fields = parse_structured_output_fields(negative_prompt)
-        if negative_fields:
-            normalized_negative_prompt = (
-                "Flag document as invalid when any required extraction field is missing or unreliable:\n"
-                f"{format_fields_for_prompt(negative_fields)}"
-            )
-
-        # Build system prompt incorporating both positive and negative rules
-        sections = [
-            f"You are a document quality validator for a visa/immigration agency. "
-            f'You are validating a document classified as "{doc_type_name}".\n'
-        ]
-        if positive_prompt:
-            sections.append(f"POSITIVE VALIDATION CRITERIA (the document SHOULD meet these):\n{positive_prompt}\n")
-        if normalized_negative_prompt:
-            sections.append(
-                "NEGATIVE VALIDATION CRITERIA (the document should NOT have these issues):\n"
-                f"{normalized_negative_prompt}\n"
-            )
-        if product_prompt:
-            sections.append(
-                f"PRODUCT-SPECIFIC CONTEXT (applies to this visa/product and takes priority over generic rules):\n{product_prompt}\n"
-            )
-        if require_expiration_date:
-            sections.append(
-                "MANDATORY EXPIRATION DATE EXTRACTION:\n"
-                "- Extract the document expiration date from the document image/content.\n"
-                "- Return it in 'extracted_expiration_date' using YYYY-MM-DD format.\n"
-                "- If the date is missing or unreadable, return null.\n"
-                "- Do not guess or hallucinate."
-            )
-        else:
-            sections.append(
-                "Set 'extracted_expiration_date' to null unless expiration-date extraction is explicitly required."
-            )
-        if require_doc_number:
-            sections.append(
-                "MANDATORY DOCUMENT NUMBER EXTRACTION:\n"
-                "- Extract the main document code/number/ID from the document.\n"
-                "- Return only the code value in 'extracted_doc_number'.\n"
-                "- If missing or unreadable, return null.\n"
-                "- Do not add labels, comments, or guessed values."
-            )
-        else:
-            sections.append("Set 'extracted_doc_number' to null unless document-number extraction is required.")
-        if require_details:
-            sections.append(
-                "MANDATORY DETAILS EXTRACTION:\n"
-                "- Extract only the main document data and return it as markdown in 'extracted_details_markdown'.\n"
-                "- Use concise markdown (headings and/or bullet points) containing only document facts.\n"
-                "- Do not add comments, explanations, warnings, or recommendations.\n"
-                "- If no reliable data can be extracted, return null."
-            )
-        else:
-            sections.append("Set 'extracted_details_markdown' to null unless details extraction is required.")
-        sections.append(
-            "Analyze the uploaded image/document against both sets of criteria.\n"
-            "Return valid=true ONLY if the document reasonably meets the positive criteria "
-            "AND has no major negative issues.\n"
-            "List each specific negative issue found in 'negative_issues' (empty array if none).\n"
-            "Provide an overall confidence score (0.0-1.0).\n"
-            "For invalid results, set 'reasoning' to one plain-text line using only the non-empty sections "
-            "missing data, invalid data, notes, to do or to ask, in that order.\n"
-            "Format it exactly like: 'missing data: ... | invalid data: ... | notes: ... | to do or to ask: ...'.\n"
-            "Separate multiple items inside one section with '; '. Do not use markdown, bullets, or line breaks.\n"
-            "For valid results, keep 'reasoning' to one short sentence.\n"
-            "Always include 'extracted_expiration_date', 'extracted_doc_number', and "
-            "'extracted_details_markdown'."
-        )
-        system_prompt = "\n".join(sections)
-        user_prompt = (
-            f"Validate this document (classified as '{doc_type_name}'). "
-            f"Original filename: '{filename}'. "
-            "Check it against the positive and negative validation criteria."
         )
 
         # Prepare vision bytes (PDF → image if needed)

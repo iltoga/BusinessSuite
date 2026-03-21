@@ -69,11 +69,11 @@ def streams_async_job_post_save(sender, instance: AsyncJob, created, **kwargs):
             status=instance.status,
             progress=int(instance.progress or 0),
             payload={
-                "id": str(instance.id),
+                "jobId": str(instance.id),
+                "taskName": instance.task_name,
                 "message": instance.message,
                 "result": instance.result,
                 "errorMessage": instance.error_message,
-                "error_message": instance.error_message,
             },
         )
 

@@ -185,6 +185,9 @@ GLOBAL_SETTINGS = {
     "LOGO_INVERTED_FILENAME": os.getenv("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
 }
 
+API_VERSION = os.getenv("API_VERSION", "v1").strip() or "v1"
+ASYNC_JOB_IDEMPOTENCY_TTL_SECONDS = int(os.getenv("ASYNC_JOB_IDEMPOTENCY_TTL_SECONDS", "86400"))
+
 # Date format exposed to Angular frontend via /api/app-config/.
 # Uses Angular DatePipe tokens (e.g. dd-MM-yyyy, yyyy-MM-dd, dd/MM/yyyy).
 DATE_FORMAT_JS = os.getenv("DATE_FORMAT_JS", "dd-MM-yyyy")
@@ -340,6 +343,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.request",
+                "django.template.context_processors.csp",
                 "business_suite.context_processors.site_info",
             ],
         },
@@ -583,6 +587,10 @@ REST_FRAMEWORK = {
         "products_price_list_print_start": "6/minute",
         "invoice_download_async": "10/minute",
         "invoice_import_batch": "4/minute",
+        "server_management_openrouter_status": "6/minute",
+        "server_management_media_diagnostic": "10/minute",
+        "server_management_media_repair": "10/minute",
+        "server_management_media_cleanup": "4/minute",
     },
 }
 
@@ -614,7 +622,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", "15"))),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
@@ -636,6 +644,14 @@ SIMPLE_JWT = {
     "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
     "JTI_CLAIM": "jti",
 }
+
+JWT_REFRESH_COOKIE_NAME = os.getenv("JWT_REFRESH_COOKIE_NAME", "bs_refresh_token").strip() or "bs_refresh_token"
+JWT_REFRESH_COOKIE_PATH = os.getenv("JWT_REFRESH_COOKIE_PATH", "/api/token/refresh/").strip() or "/api/token/refresh/"
+JWT_REFRESH_COOKIE_DOMAIN = _normalize_cookie_domain(os.getenv("JWT_REFRESH_COOKIE_DOMAIN", APP_DOMAIN))
+JWT_REFRESH_COOKIE_SECURE = _parse_bool(
+    os.getenv("JWT_REFRESH_COOKIE_SECURE", "True" if _IS_PROD_SETTINGS else "False")
+)
+JWT_REFRESH_COOKIE_SAMESITE = os.getenv("JWT_REFRESH_COOKIE_SAMESITE", "Lax").strip() or "Lax"
 
 # CORS configuration - read from environment in production
 # Preferred env var: CORS_ALLOWED_ORIGINS (comma separated list of origins)
@@ -766,6 +782,40 @@ if TESTING:
 # Content Security Policy support: generate per-request nonces and expose mode
 CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))
 CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
+CSP_REPORT_URI = os.getenv("CSP_REPORT_URI", "")  # optional report-uri endpoint
+
+# --- Build the CSP directive dict (used by Django 6 built-in CSP middleware) ---
+# Kept as a module-level helper so the policy is only constructed once.
+if CSP_ENABLED:
+    from django.utils.csp import CSP as _CSP
+
+    _csp_policy: dict = {
+        "default-src": [_CSP.SELF],
+        "script-src": [_CSP.SELF, _CSP.NONCE],
+        "style-src": [_CSP.SELF, _CSP.NONCE, _CSP.UNSAFE_INLINE],
+        "img-src": [_CSP.SELF, "data:", "blob:"],
+        "font-src": [_CSP.SELF, "data:"],
+        "connect-src": [_CSP.SELF],
+        "frame-src": [_CSP.SELF, "https://challenges.cloudflare.com"],
+        "object-src": [_CSP.NONE],
+        "base-uri": [_CSP.SELF],
+        "form-action": [_CSP.SELF],
+        "frame-ancestors": [_CSP.SELF],
+        "upgrade-insecure-requests": True,
+    }
+    if CSP_REPORT_URI:
+        _csp_policy["report-uri"] = CSP_REPORT_URI
+
+    # Expose on the correct setting key depending on the chosen mode.
+    if CSP_MODE == "enforce":
+        SECURE_CSP = _csp_policy
+        SECURE_CSP_REPORT_ONLY = {}
+    else:
+        SECURE_CSP = {}
+        SECURE_CSP_REPORT_ONLY = _csp_policy
+else:
+    SECURE_CSP = {}
+    SECURE_CSP_REPORT_ONLY = {}
 
 
 def _default_dramatiq_workers() -> str:
@@ -834,6 +884,9 @@ if USE_CLOUD_STORAGE:
 elif LOCAL_MEDIA_ENCRYPTION_ENABLED:
     DEFAULT_FILE_STORAGE = "core.storage.encrypted_local.EncryptedLocalStorage"
 else:
+    DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+
+if TESTING:
     DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 
 STORAGES = {
@@ -917,6 +970,17 @@ else:
         INSTALLED_APPS.remove("auditlog")
     if "auditlog.middleware.AuditlogMiddleware" in MIDDLEWARE:
         MIDDLEWARE.remove("auditlog.middleware.AuditlogMiddleware")
+
+# Conditionally enable Django 6 CSP middleware (toggled via CSP_ENABLED env var).
+if CSP_ENABLED:
+    _csp_mw = "django.middleware.csp.ContentSecurityPolicyMiddleware"
+    if _csp_mw not in MIDDLEWARE:
+        # Insert right after SecurityMiddleware so CSP headers are set early.
+        try:
+            _sec_idx = MIDDLEWARE.index("django.middleware.security.SecurityMiddleware")
+            MIDDLEWARE.insert(_sec_idx + 1, _csp_mw)
+        except ValueError:
+            MIDDLEWARE.insert(0, _csp_mw)
 
 # Determine if we are running as backend, task worker, or scheduler.
 COMPONENT = os.getenv("COMPONENT")

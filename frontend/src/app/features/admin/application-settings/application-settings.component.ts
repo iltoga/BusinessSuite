@@ -4,6 +4,8 @@ import { catchError, EMPTY, finalize } from 'rxjs';
 
 import { ServerManagementService } from '@/core/api/api/server-management.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
@@ -56,8 +58,8 @@ export class ApplicationSettingsComponent implements OnInit {
         finalize(() => this.appSettingsLoading.set(false)),
       )
       .subscribe((response) => {
-        const items = response?.['items'];
-        this.appSettings.set(Array.isArray(items) ? (items as AdminAppSettingItem[]) : []);
+        const payload = unwrapApiRecord(response) as { items?: AdminAppSettingItem[] } | null;
+        this.appSettings.set(Array.isArray(payload?.items) ? payload.items : []);
       });
   }
 
@@ -80,7 +82,7 @@ export class ApplicationSettingsComponent implements OnInit {
       })
       .pipe(
         catchError((error) => {
-          this.toast.error(error?.error?.detail || 'Failed to create app setting');
+          this.toast.error(extractServerErrorMessage(error) || 'Failed to create app setting');
           return EMPTY;
         }),
       )
@@ -100,7 +102,7 @@ export class ApplicationSettingsComponent implements OnInit {
       })
       .pipe(
         catchError((error) => {
-          this.toast.error(error?.error?.detail || `Failed to update ${item.name}`);
+          this.toast.error(extractServerErrorMessage(error) || `Failed to update ${item.name}`);
           return EMPTY;
         }),
       )
@@ -115,7 +117,7 @@ export class ApplicationSettingsComponent implements OnInit {
       .serverManagementAppSettingsDestroy(name)
       .pipe(
         catchError((error) => {
-          this.toast.error(error?.error?.detail || `Failed to delete ${name}`);
+          this.toast.error(extractServerErrorMessage(error) || `Failed to delete ${name}`);
           return EMPTY;
         }),
       )

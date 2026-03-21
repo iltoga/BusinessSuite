@@ -202,7 +202,7 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
     this.config = {
       entityType: 'invoices',
       entityLabel: 'Invoices',
-      defaultPageSize: 8,
+      defaultPageSize: 11,
       defaultOrdering: '-invoice_date',
       enableBulkDelete: true,
       enableDelete: true,
