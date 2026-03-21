@@ -10,6 +10,7 @@
 import { AiModelArchitecture } from './ai-model-architecture';
 import { AiModelPricing } from './ai-model-pricing';
 import { AiModelCapabilities } from './ai-model-capabilities';
+import { AiModelPricingDisplay } from './ai-model-pricing-display';
 
 export interface AiModel {
   readonly id: number;
@@ -29,9 +30,21 @@ export interface AiModel {
   architectureModality?: string;
   architectureTokenizer?: string;
   instructType?: string;
+  /**
+   * Stored per-token value.
+   */
   promptPricePerToken?: string | null;
+  /**
+   * Stored per-token value.
+   */
   completionPricePerToken?: string | null;
+  /**
+   * Stored per-unit value.
+   */
   imagePrice?: string | null;
+  /**
+   * Stored per-unit value.
+   */
   requestPrice?: string | null;
   topProviderId?: string;
   providerName?: string;
@@ -41,6 +54,7 @@ export interface AiModel {
   rawMetadata?: any | null;
   readonly capabilities: AiModelCapabilities;
   readonly pricing: AiModelPricing;
+  readonly pricingDisplay: AiModelPricingDisplay;
   readonly architecture: AiModelArchitecture;
   readonly createdAt: string;
   readonly updatedAt: string;

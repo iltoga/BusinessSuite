@@ -56,9 +56,10 @@ class CronExecAuthorizationTests(TestCase):
 
         staff_response = self.staff_client.get(url)
         self.assertEqual(staff_response.status_code, 202)
-        self.assertEqual(staff_response.data["status"], "queued")
-        self.assertEqual(staff_response.data["fullBackupQueued"], True)
-        self.assertEqual(staff_response.data["clearCacheQueued"], True)
+        payload = staff_response.data["data"]
+        self.assertEqual(payload["status"], "queued")
+        self.assertEqual(payload["fullBackupQueued"], True)
+        self.assertEqual(payload["clearCacheQueued"], True)
         backup_enqueue_mock.assert_called_once()
         clear_cache_enqueue_mock.assert_called_once()
 
@@ -71,15 +72,17 @@ class CronExecAuthorizationTests(TestCase):
 
         first_response = self.staff_client.get(url)
         self.assertEqual(first_response.status_code, 202)
-        self.assertEqual(first_response.data["status"], "queued")
-        self.assertEqual(first_response.data["fullBackupQueued"], True)
-        self.assertEqual(first_response.data["clearCacheQueued"], True)
+        first_payload = first_response.data["data"]
+        self.assertEqual(first_payload["status"], "queued")
+        self.assertEqual(first_payload["fullBackupQueued"], True)
+        self.assertEqual(first_payload["clearCacheQueued"], True)
 
         second_response = self.staff_client.get(url)
         self.assertEqual(second_response.status_code, 202)
-        self.assertEqual(second_response.data["status"], "already_queued")
-        self.assertEqual(second_response.data["fullBackupQueued"], False)
-        self.assertEqual(second_response.data["clearCacheQueued"], False)
+        second_payload = second_response.data["data"]
+        self.assertEqual(second_payload["status"], "already_queued")
+        self.assertEqual(second_payload["fullBackupQueued"], False)
+        self.assertEqual(second_payload["clearCacheQueued"], False)
 
         self.assertEqual(backup_enqueue_mock.call_count, 2)
         self.assertEqual(clear_cache_enqueue_mock.call_count, 2)
@@ -92,9 +95,10 @@ class CronExecAuthorizationTests(TestCase):
         response = self.admin_group_client.get(url)
 
         self.assertEqual(response.status_code, 202)
-        self.assertEqual(response.data["status"], "queued")
-        self.assertEqual(response.data["fullBackupQueued"], True)
-        self.assertEqual(response.data["clearCacheQueued"], True)
+        payload = response.data["data"]
+        self.assertEqual(payload["status"], "queued")
+        self.assertEqual(payload["fullBackupQueued"], True)
+        self.assertEqual(payload["clearCacheQueued"], True)
         backup_enqueue_mock.assert_called_once()
         clear_cache_enqueue_mock.assert_called_once()
 

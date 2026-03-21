@@ -4,6 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { AsyncJob } from '@/core/api';
 import { JobService } from './job.service';
 
+type JobUpdate = {
+  jobId: string;
+  status: AsyncJob.StatusEnum;
+  progress: number;
+  result?: Record<string, unknown>;
+};
+
 describe('JobService.watchJob', () => {
   it('uses the per-job SSE endpoint as the primary stream', async () => {
     const service = Object.create(JobService.prototype) as any;
@@ -31,7 +38,7 @@ describe('JobService.watchJob', () => {
   });
 
   it('completes the direct job stream after the terminal update', () => {
-    const updates$ = new Subject<Record<string, unknown>>();
+    const updates$ = new Subject<JobUpdate>();
     const service = Object.create(JobService.prototype) as any;
     service.realtimeService = {
       watchJob: vi.fn(),
@@ -60,7 +67,7 @@ describe('JobService.watchJob', () => {
 
   it('falls back to the multiplexed stream when the per-job SSE endpoint errors', async () => {
     const service = Object.create(JobService.prototype) as any;
-    const updates$ = new Subject<Record<string, unknown>>();
+    const updates$ = new Subject<JobUpdate>();
     service.realtimeService = {
       watchJob: vi.fn(() =>
         updates$.pipe(takeWhile((job) => job.status !== 'completed' && job.status !== 'failed', true)),

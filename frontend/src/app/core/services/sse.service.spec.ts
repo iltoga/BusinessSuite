@@ -93,6 +93,26 @@ describe('SseService', () => {
     sub.unsubscribe();
   });
 
+  it('sends explicit request metadata headers when provided', async () => {
+    (globalThis.fetch as any).mockResolvedValue(createSseResponse([': keepalive\n\n']));
+
+    const sub = sse
+      .connect('/sse', {
+        requestMetadata: {
+          requestId: 'req-123',
+          idempotencyKey: 'idem-456',
+        },
+      })
+      .subscribe({ next: () => {}, error: () => {} });
+
+    await Promise.resolve();
+
+    const [, options] = (globalThis.fetch as any).mock.calls[0];
+    expect(options.headers.get('X-Request-ID')).toBe('req-123');
+    expect(options.headers.get('Idempotency-Key')).toBe('idem-456');
+    sub.unsubscribe();
+  });
+
   it('parses SSE event/id frames via connectMessages', async () => {
     (globalThis.fetch as any).mockResolvedValue(
       createSseResponse([

@@ -73,8 +73,6 @@ export class CustomerDetailComponent extends BaseDetailComponent<Customer> {
 
   // Passport image skeleton state
   readonly passportSkeletonVisible = signal(false);
-  private passportImageAlreadyLoaded = false;
-  private passportSkeletonTimer?: ReturnType<typeof setTimeout>;
 
   // Customer-specific state
   readonly applicationsHistory = signal<CustomerApplicationHistory[]>([]);
@@ -139,26 +137,25 @@ export class CustomerDetailComponent extends BaseDetailComponent<Customer> {
         this.applicationsPage.set(totalPages);
       }
     });
-    // Setup effect for passport image skeleton (only show if load takes >150ms)
+    // Keep the passport skeleton visible until the image reports load or error.
     effect(() => {
-      const passportFile = this.item()?.passportFile;
-      clearTimeout(this.passportSkeletonTimer);
-      this.passportSkeletonVisible.set(false);
-      this.passportImageAlreadyLoaded = false;
-      if (passportFile) {
-        this.passportSkeletonTimer = setTimeout(() => {
-          if (!this.passportImageAlreadyLoaded) {
-            this.passportSkeletonVisible.set(true);
-          }
-        }, 150);
-      }
+      this.syncPassportImageLoadingState(this.item()?.passportFile ?? null);
     });
   }
 
   onPassportImageLoaded(): void {
-    this.passportImageAlreadyLoaded = true;
-    clearTimeout(this.passportSkeletonTimer);
     this.passportSkeletonVisible.set(false);
+  }
+
+  /**
+   * Exposed for unit tests and component behavior driving.
+   */
+  setPassportImageLoading(passportFile: string | null | undefined): void {
+    this.passportSkeletonVisible.set(Boolean(passportFile?.trim()));
+  }
+
+  private syncPassportImageLoadingState(passportFile: string | null | undefined): void {
+    this.setPassportImageLoading(passportFile);
   }
 
   /**

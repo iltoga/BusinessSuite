@@ -214,7 +214,7 @@ export class CustomerListComponent extends BaseListComponent<Customer> {
     this.config = {
       entityType: 'customers',
       entityLabel: 'Customers',
-      defaultPageSize: 8,
+      defaultPageSize: 10,
       defaultOrdering: '-created_at',
       enableBulkDelete: true,
       enableDelete: true,

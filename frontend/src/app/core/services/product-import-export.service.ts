@@ -3,6 +3,11 @@ import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
 import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
+import {
+  createAsyncRequestMetadata,
+  requestMetadataContext,
+  type RequestMetadata,
+} from '@/core/utils/request-metadata';
 
 interface ProductImportExportStartResponse {
   jobId: string;
@@ -18,19 +23,35 @@ interface ProductImportExportStartResponse {
 export class ProductImportExportService {
   constructor(private http: HttpClient) {}
 
-  startExport(searchQuery?: string): Observable<ProductImportExportStartResponse> {
+  startExport(
+    searchQuery?: string,
+    requestMetadata?: RequestMetadata | null,
+  ): Observable<ProductImportExportStartResponse> {
+    const metadata = requestMetadata ?? createAsyncRequestMetadata();
     return this.http
-      .post<ProductImportExportStartResponse>('/api/products/export/start/', {
-        search_query: searchQuery ?? '',
-      })
+      .post<ProductImportExportStartResponse>(
+        '/api/products/export/start/',
+        {
+          search_query: searchQuery ?? '',
+        },
+        {
+          context: requestMetadataContext(metadata),
+        },
+      )
       .pipe(map((response) => normalizeJobEnvelope(response)));
   }
 
-  startImport(file: File): Observable<ProductImportExportStartResponse> {
+  startImport(
+    file: File,
+    requestMetadata?: RequestMetadata | null,
+  ): Observable<ProductImportExportStartResponse> {
     const formData = new FormData();
     formData.append('file', file);
+    const metadata = requestMetadata ?? createAsyncRequestMetadata();
     return this.http
-      .post<ProductImportExportStartResponse>('/api/products/import/start/', formData)
+      .post<ProductImportExportStartResponse>('/api/products/import/start/', formData, {
+        context: requestMetadataContext(metadata),
+      })
       .pipe(map((response) => normalizeJobEnvelope(response)));
   }
 

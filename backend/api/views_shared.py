@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from collections.abc import Mapping
 from typing import Any, Callable
 
 from api.async_controls import (
@@ -142,6 +143,16 @@ def _observe_async_guard_event(
 
 
 class ApiErrorHandlingMixin:
+    throttle_cache_fail_open = True
+    throttle_cache_fail_open_actions: Mapping[str, bool] | None = None
+
+    def _should_fail_open_on_throttle_cache_error(self) -> bool:
+        action = getattr(self, "action", None)
+        action_policies = getattr(self, "throttle_cache_fail_open_actions", None)
+        if isinstance(action_policies, Mapping) and action in action_policies:
+            return bool(action_policies[action])
+        return bool(getattr(self, "throttle_cache_fail_open", True))
+
     def error_response(self, message, status_code=status.HTTP_400_BAD_REQUEST, details=None, request=None):
         request = request or getattr(self, "request", None)
         return Response(
@@ -159,6 +170,15 @@ class ApiErrorHandlingMixin:
             return super().check_throttles(request)
         except Exception as exc:
             if not is_transient_cache_backend_error(exc):
+                raise
+
+            if not self._should_fail_open_on_throttle_cache_error():
+                logger.warning(
+                    "Throttles failed closed for %s %s because the cache backend is temporarily unavailable: %s",
+                    getattr(request, "method", "?"),
+                    getattr(getattr(request, "_request", request), "path", "<unknown>"),
+                    exc,
+                )
                 raise
 
             logger.warning(

@@ -13,6 +13,7 @@ import { Observable } from 'rxjs';
 
 import { AiModelsService } from '@/core/api/api/ai-models.service';
 import { AiModel } from '@/core/api/model/ai-model';
+import type { AiModelPricingDisplay } from '@/core/api/model/ai-model-pricing-display';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { BaseFormComponent, BaseFormConfig } from '@/shared/core/base-form.component';
@@ -41,6 +42,7 @@ interface OpenRouterModelResult {
   completionPricePerToken?: string | number | null;
   imagePrice?: string | number | null;
   requestPrice?: string | number | null;
+  pricingDisplay?: AiModelPricingDisplay;
   // Provider info
   topProviderId?: string;
   providerName?: string;
@@ -179,6 +181,17 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
   }
 
   /**
+   * Patch form with loaded item data.
+   *
+   * The API uses camelCase for most fields, but the form keeps some snake_case
+   * controls for legacy compatibility. This mapping ensures those values are
+   * populated when editing an existing model.
+   */
+  protected override patchForm(item: AiModel): void {
+    this.populateForm(item);
+  }
+
+  /**
    * Create DTO from form value - converts display prices (per 1M tokens) back to per-token for API
    */
   protected override createDto(): AiModelDto {
@@ -252,30 +265,31 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
       return '';
     }
     const per1M = Number(displayPrice);
-    if (isNaN(per1M) || per1M === 0) {
+    if (!Number.isFinite(per1M)) {
       return '';
     }
     // Convert from per-1M-tokens to per-token
-    return (per1M / 1000000).toString();
+    const perToken = per1M / 1000000;
+    const formatted = perToken.toFixed(12).replace(/0+$/, '').replace(/\.$/, '');
+    return formatted || '0';
   }
 
   /**
-   * Helper to convert per-token price to display price (per 1M tokens)
+   * Format a display price consistently for the form.
    */
-  private toPer1MPrice(perTokenPrice: string | number | null | undefined): string {
-    if (perTokenPrice === null || perTokenPrice === undefined || perTokenPrice === '') {
+  private formatDisplayPrice(displayPrice: string | number | null | undefined): string {
+    if (displayPrice === null || displayPrice === undefined || displayPrice === '') {
       return '';
     }
-    const perToken = Number(perTokenPrice);
-    if (isNaN(perToken)) {
+    const numericPrice = Number(displayPrice);
+    if (isNaN(numericPrice)) {
       return '';
     }
-    // Convert from per-token to per-1M-tokens
-    return (perToken * 1000000).toFixed(2);
+    return numericPrice.toFixed(2);
   }
 
   /**
-   * Populate form with existing item data - converts per-token prices to per-1M-tokens for display
+   * Populate form with existing item data using display-priced values from the API.
    */
   protected populateForm(item: AiModel): void {
     this.form.patchValue({
@@ -298,11 +312,14 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
       per_request_limits: item.perRequestLimits ?? {},
       source: item.source ?? 'manual',
       raw_metadata: item.rawMetadata ?? {},
-      // Convert from per-token to per-1M-tokens for display
-      prompt_price_per_token: this.toPer1MPrice(item.promptPricePerToken),
-      completion_price_per_token: this.toPer1MPrice(item.completionPricePerToken),
-      image_price: this.toPer1MPrice(item.imagePrice),
-      request_price: this.toPer1MPrice(item.requestPrice),
+      prompt_price_per_token: this.formatDisplayPrice(
+        item.pricingDisplay?.promptPricePerMillionTokens,
+      ),
+      completion_price_per_token: this.formatDisplayPrice(
+        item.pricingDisplay?.completionPricePerMillionTokens,
+      ),
+      image_price: this.formatDisplayPrice(item.pricingDisplay?.imagePricePerMillionTokens),
+      request_price: this.formatDisplayPrice(item.pricingDisplay?.requestPricePerMillionTokens),
     });
   }
 
@@ -366,7 +383,8 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
     this.isLoadingModels.set(true);
     this.aiModelsApi.aiModelsOpenrouterSearchRetrieve(10, query).subscribe({
       next: (resp) => {
-        const results = ((resp as any)?.results ?? []) as OpenRouterModelResult[];
+        const payload = (resp as any)?.data ?? resp;
+        const results = ((payload as any)?.results ?? []) as OpenRouterModelResult[];
         this.modelOptions.set(
           results.map((result) => {
             const modelId = result.model_id ?? result.modelId ?? '';
@@ -400,21 +418,6 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
 
     const result = modelOption.model;
     const modelId = result.model_id ?? result.modelId ?? '';
-
-    // Convert pricing from per-token to per-1M-tokens for display
-    // Note: API returns camelCase due to OpenAPI generator transformation
-    const promptPrice =
-      result.promptPricePerToken != null
-        ? (Number(result.promptPricePerToken) * 1000000).toFixed(2)
-        : '';
-    const completionPrice =
-      result.completionPricePerToken != null
-        ? (Number(result.completionPricePerToken) * 1000000).toFixed(2)
-        : '';
-    const imagePrice =
-      result.imagePrice != null ? (Number(result.imagePrice) * 1000000).toFixed(2) : '';
-    const requestPrice =
-      result.requestPrice != null ? (Number(result.requestPrice) * 1000000).toFixed(2) : '';
     this.form.patchValue({
       provider: result.provider ?? 'openrouter',
       model_id: modelId,
@@ -429,10 +432,14 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
       architecture_modality: result.architectureModality ?? '',
       architecture_tokenizer: result.architectureTokenizer ?? '',
       instruct_type: result.instructType ?? '',
-      prompt_price_per_token: promptPrice,
-      completion_price_per_token: completionPrice,
-      image_price: imagePrice,
-      request_price: requestPrice,
+      prompt_price_per_token: this.formatDisplayPrice(
+        result.pricingDisplay?.promptPricePerMillionTokens,
+      ),
+      completion_price_per_token: this.formatDisplayPrice(
+        result.pricingDisplay?.completionPricePerMillionTokens,
+      ),
+      image_price: this.formatDisplayPrice(result.pricingDisplay?.imagePricePerMillionTokens),
+      request_price: this.formatDisplayPrice(result.pricingDisplay?.requestPricePerMillionTokens),
       top_provider_id: result.topProviderId ?? '',
       provider_name: result.providerName ?? '',
       supported_parameters: result.supportedParameters ?? [],

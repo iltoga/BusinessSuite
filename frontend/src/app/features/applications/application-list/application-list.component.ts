@@ -13,6 +13,7 @@ import { type Observable } from 'rxjs';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { DocApplicationList } from '@/core/api/model/doc-application-list';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import {
   ApplicationDeleteDialogComponent,
   type ApplicationDeleteDialogData,
@@ -282,7 +283,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
     this.config = {
       entityType: 'applications',
       entityLabel: 'Applications',
-      defaultPageSize: 10,
+      defaultPageSize: 11,
       defaultOrdering: '-id',
       enableBulkDelete: true,
       enableDelete: true,
@@ -511,8 +512,11 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       .customerApplicationsBulkDeleteCreate({ searchQuery: query || '' } as any)
       .subscribe({
         next: (response) => {
-          const payload = response as { deletedCount?: number; deleted_count?: number };
-          const count = payload.deletedCount ?? payload.deleted_count ?? 0;
+          const payload = unwrapApiRecord(response) as {
+            deletedCount?: number;
+            deleted_count?: number;
+          } | null;
+          const count = payload?.deletedCount ?? payload?.deleted_count ?? 0;
           this.toast.success(`Deleted ${count} application(s)`);
           this.bulkDeleteOpen.set(false);
           this.bulkDeleteData.set(null);

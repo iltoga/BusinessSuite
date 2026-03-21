@@ -4,6 +4,11 @@ import { map, Observable } from 'rxjs';
 
 import { SseService } from '@/core/services/sse.service';
 import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
+import {
+  createAsyncRequestMetadata,
+  requestMetadataContext,
+  type RequestMetadata,
+} from '@/core/utils/request-metadata';
 
 export interface CategorizationStartResponse {
   jobId: string;
@@ -138,13 +143,18 @@ export class DocumentCategorizationService {
     totalFiles: number,
     model?: string,
     providerOrder?: string[],
+    requestMetadata?: RequestMetadata | null,
   ): Observable<CategorizationStartResponse> {
+    const metadata = requestMetadata ?? createAsyncRequestMetadata();
     return this.http.post<CategorizationStartResponse>(
       `/api/customer-applications/${applicationId}/categorize-documents/init/`,
       {
         totalFiles,
         model: model ?? null,
         providerOrder: providerOrder ?? null,
+      },
+      {
+        context: requestMetadataContext(metadata),
       },
     ).pipe(map((response) => normalizeJobEnvelope(response)));
   }

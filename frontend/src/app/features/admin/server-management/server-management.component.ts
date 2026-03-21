@@ -19,6 +19,7 @@ import {
   DesktopVaultStatus,
 } from '@/core/services/desktop-bridge.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { createAsyncRequestMetadata } from '@/core/utils/request-metadata';
 import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -774,8 +775,9 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
     this.cleanupResult.set(this.createCleanupProgressState(this.cleanupDryRun()));
     this.stopMediaCleanupStream();
 
+    const requestMetadata = createAsyncRequestMetadata();
     this.mediaCleanupSubscription = this.mediaCleanupStream
-      .connect(this.cleanupDryRun())
+      .connect(this.cleanupDryRun(), requestMetadata)
       .subscribe({
         next: (event) => this.handleMediaCleanupStreamEvent(event),
         error: () => {

@@ -1,0 +1,46 @@
+:host {
+  display: block;
+}
+
+.ai-model-detail-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.ai-model-header {
+  transition: box-shadow 0.2s ease;
+}
+
+.ai-model-header.sticky {
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.technical-pre {
+  margin-top: 0.5rem;
+  max-height: 14rem;
+  overflow: auto;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background-color: color-mix(in srgb, var(--muted) 20%, transparent);
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 1023px) {
+  .ai-model-detail-container {
+    padding: 0;
+  }
+
+  .ai-model-header {
+    top: 0;
+    padding: 1rem;
+  }
+
+  z-card {
+    border-radius: 0;
+  }
+}

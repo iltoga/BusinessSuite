@@ -44,11 +44,17 @@ import { Injectable, NgZone } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
+import {
+  createRequestMetadata,
+  requestMetadataHeaders,
+  type RequestMetadata,
+} from '@/core/utils/request-metadata';
 
 export interface SseOptions {
   withCredentials?: boolean;
   useReplayCursor?: boolean;
   maxConnectionDurationMs?: number;
+  requestMetadata?: RequestMetadata | null;
 }
 
 export interface SseMessage<T> {
@@ -75,6 +81,7 @@ export class SseService {
   connectMessages<T>(url: string, options: SseOptions = {}): Observable<SseMessage<T>> {
     const withCredentials = options.withCredentials ?? true;
     const useReplayCursor = options.useReplayCursor ?? true;
+    const requestMetadata = options.requestMetadata ?? createRequestMetadata();
     const maxConnectionDurationMs =
       typeof options.maxConnectionDurationMs === 'number' && options.maxConnectionDurationMs > 0
         ? options.maxConnectionDurationMs
@@ -96,9 +103,16 @@ export class SseService {
       const lastEventIdAtOpen = useReplayCursor ? this.lastEventIds.get(url) ?? null : null;
 
       if (lastEventIdAtOpen) {
-        console.info('[SseService] Reconnecting SSE stream', { url, lastEventId: lastEventIdAtOpen });
+        console.info('[SseService] Reconnecting SSE stream', {
+          url,
+          requestId: requestMetadata.requestId,
+          lastEventId: lastEventIdAtOpen,
+        });
       } else {
-        console.info('[SseService] Opening SSE stream', { url });
+        console.info('[SseService] Opening SSE stream', {
+          url,
+          requestId: requestMetadata.requestId,
+        });
       }
 
       const clearRotationTimeout = () => {
@@ -139,7 +153,10 @@ export class SseService {
             }, maxConnectionDurationMs);
           }
 
-          const headers = new Headers({ Accept: 'text/event-stream' });
+          const headers = new Headers({
+            Accept: 'text/event-stream',
+            ...requestMetadataHeaders(requestMetadata),
+          });
           const token =
             this.authService.getToken() ?? (this.authService.isMockEnabled() ? 'mock-token' : null);
           if (token) {
@@ -195,6 +212,7 @@ export class SseService {
 
           console.info('[SseService] SSE stream completed', {
             url,
+            requestId: requestMetadata.requestId,
             lastEventId: this.lastEventIds.get(url) ?? null,
           });
           completeSubscriber();
@@ -204,6 +222,7 @@ export class SseService {
               shouldCompleteAfterAbort = false;
               console.info('[SseService] SSE stream rotated or aborted', {
                 url,
+                requestId: requestMetadata.requestId,
                 lastEventId: this.lastEventIds.get(url) ?? null,
               });
               completeSubscriber();
@@ -211,7 +230,11 @@ export class SseService {
             return;
           }
 
-          console.error('[SseService] SSE stream error', { url, error });
+          console.error('[SseService] SSE stream error', {
+            url,
+            requestId: requestMetadata.requestId,
+            error,
+          });
           errorSubscriber(error);
         }
       };
@@ -222,6 +245,7 @@ export class SseService {
         if (!isSettled) {
           console.info('[SseService] SSE stream unsubscribed', {
             url,
+            requestId: requestMetadata.requestId,
             lastEventId: this.lastEventIds.get(url) ?? null,
           });
         }

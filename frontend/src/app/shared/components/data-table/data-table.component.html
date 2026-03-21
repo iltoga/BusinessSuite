@@ -34,7 +34,9 @@
                     [class.items-start]="column.key !== 'actions'"
                   >
                     @if (column.key === 'actions') {
-                      <z-icon zType="circle-ellipsis" class="text-right h-4 w-4 text-foreground/70" />
+                      <div class="h-8 w-8 flex items-center justify-center">
+                        <z-icon zType="circle-ellipsis" class="h-4 w-4 text-foreground/70" />
+                      </div>
                     } @else {
                       <span>{{ column.header }}</span>
                     }
@@ -45,11 +47,21 @@
                     }
                   </div>
                   @if (column.sortable) {
-                    <z-icon 
-                      [zType]="currentSort()?.column === (column.sortKey ?? column.key) ? (currentSort()?.direction === 'asc' ? 'arrow-up' : 'arrow-down') : 'arrow-up-down'" 
+                    <z-icon
+                      [zType]="
+                        currentSort()?.column === (column.sortKey ?? column.key)
+                          ? currentSort()?.direction === 'asc'
+                            ? 'arrow-up'
+                            : 'arrow-down'
+                          : 'arrow-up-down'
+                      "
                       class="h-3.5 w-3.5"
-                      [class.text-foreground]="currentSort()?.column === (column.sortKey ?? column.key)"
-                      [class.text-muted-foreground]="currentSort()?.column !== (column.sortKey ?? column.key)"
+                      [class.text-foreground]="
+                        currentSort()?.column === (column.sortKey ?? column.key)
+                      "
+                      [class.text-muted-foreground]="
+                        currentSort()?.column !== (column.sortKey ?? column.key)
+                      "
                     />
                   }
                 </button>

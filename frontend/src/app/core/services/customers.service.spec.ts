@@ -231,4 +231,53 @@ describe('CustomersService', () => {
       fullName: 'Ada Lovelace',
     });
   });
+
+  it('unwraps canonical toggle-active envelopes', () => {
+    let actual: any;
+
+    service.toggleActive(19).subscribe((result) => {
+      actual = result;
+    });
+
+    const req = httpMock.expectOne('/api/customers/19/toggle-active/');
+    expect(req.request.method).toBe('POST');
+
+    req.flush({
+      data: {
+        id: 19,
+        active: false,
+      },
+      meta: {
+        request_id: 'req-1',
+        api_version: 'v1',
+      },
+    });
+
+    expect(actual).toEqual({ id: 19, active: false });
+  });
+
+  it('unwraps canonical bulk delete envelopes', () => {
+    let actual: any;
+
+    service.bulkDeleteCustomers('gal').subscribe((result) => {
+      actual = result;
+    });
+
+    const req = httpMock.expectOne((request) =>
+      request.url === '/api/customers/bulk-delete/' && request.method === 'POST',
+    );
+    expect(req.request.headers.get('Authorization')).toBe('Bearer test-token');
+
+    req.flush({
+      data: {
+        deletedCount: 4,
+      },
+      meta: {
+        request_id: 'req-2',
+        api_version: 'v1',
+      },
+    });
+
+    expect(actual).toEqual({ deletedCount: 4 });
+  });
 });

@@ -23,8 +23,14 @@
   background-color: var(--background);
 }
 
+.passport-image-stage {
+  aspect-ratio: 3 / 4;
+  min-height: 22rem;
+}
+
 .passport-image-wrapper app-image-magnifier {
   display: block;
+  height: 100%;
 }
 
 /* Table improvements */

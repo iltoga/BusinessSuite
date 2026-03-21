@@ -257,7 +257,13 @@ describe('ServerManagementComponent - Cache Controls', () => {
       },
     });
 
-    expect(mockMediaCleanupStreamService.connect).toHaveBeenCalledWith(true);
+    expect(mockMediaCleanupStreamService.connect).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        requestId: expect.any(String),
+        idempotencyKey: expect.any(String),
+      }),
+    );
     expect(component.cleanupResult()?.orphanedFiles).toBe(1);
     expect(mockToastService.success).toHaveBeenCalledWith('Preview found 1 unlinked files');
   });

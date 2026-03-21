@@ -9,7 +9,9 @@ class OcrParseDocumentMiddleware(MiddlewareMixin):
         if request.method == "POST" and request.FILES:
             file = request.FILES.get("file", False)
             try:
-                request.POST["data"] = extract_mrz_data(file)
+                post_data = request.POST.copy()
+                post_data["data"] = extract_mrz_data(file)
+                request._post = post_data
             except FileNotFoundError:
                 return JsonResponse({"error": "The specified file could not be found"})
             except Exception as e:

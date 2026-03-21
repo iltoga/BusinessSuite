@@ -18,6 +18,9 @@ import { ProductsService, type AsyncJob, type Product } from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
 import { JobService } from '@/core/services/job.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
+import { extractJobId } from '@/core/utils/async-job-contract';
+import { createAsyncRequestMetadata, requestMetadataContext } from '@/core/utils/request-metadata';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { BulkDeleteDialogComponent } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -45,7 +48,6 @@ import {
 } from '@/shared/core/base-list.component';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { extractJobId } from '@/core/utils/async-job-contract';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import {
@@ -203,7 +205,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       key: 'deprecated',
       header: 'Deprecated',
       subtitle: 'Active',
-      width: '7%',
+      width: '9%',
       template: this.deprecatedTemplate(),
       filter: {
         options: this.deprecatedFilterOptions,
@@ -217,7 +219,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       header: 'Added/Updated',
       sortable: true,
       sortKey: 'created_at',
-      width: '12%',
+      width: '15%',
       template: this.createdAtTemplate(),
     },
     { key: 'actions', header: 'Actions', width: '4%' },
@@ -255,7 +257,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
     this.config = {
       entityType: 'products',
       entityLabel: 'Products',
-      defaultPageSize: 8,
+      defaultPageSize: 10,
       defaultOrdering: 'name',
       enableBulkDelete: true,
       enableDelete: true,
@@ -401,8 +403,11 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
     this.productsApi.productsBulkDeleteCreate({ searchQuery: query || '' } as any).subscribe({
       next: (response) => {
-        const payload = response as { deletedCount?: number; deleted_count?: number };
-        const count = payload.deletedCount ?? payload.deleted_count ?? 0;
+        const payload = unwrapApiRecord(response) as {
+          deletedCount?: number;
+          deleted_count?: number;
+        } | null;
+        const count = payload?.deletedCount ?? payload?.deleted_count ?? 0;
         this.toast.success(`Deleted ${count} product(s)`);
         this.bulkDeleteOpen.set(false);
         this.bulkDeleteData.set(null);
@@ -472,7 +477,12 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
     try {
       previewWindow = openPendingPdfPrintPreviewWindow();
-      const response = await firstValueFrom(this.productsApi.productsPriceListPrintStartCreate());
+      const requestMetadata = createAsyncRequestMetadata();
+      const response = await firstValueFrom(
+        this.productsApi.productsPriceListPrintStartCreate(undefined, false, {
+          context: requestMetadataContext(requestMetadata),
+        }),
+      );
       const jobId = extractJobId(response) ?? '';
 
       if (!jobId) {
@@ -754,7 +764,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
    * Map product delete preview response
    */
   private mapProductDeletePreview(response: unknown, product: Product): ProductDeletePreviewData {
-    const payload: any = response ?? {};
+    const payload: any = unwrapApiRecord(response) ?? {};
     const relatedCounts: any = payload.relatedCounts ?? {};
     const relatedRecords: any = payload.relatedRecords ?? {};
     const relatedRecordsTruncated: any = payload.relatedRecordsTruncated ?? {};

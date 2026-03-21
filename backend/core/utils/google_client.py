@@ -27,11 +27,25 @@ SCOPES = getattr(
 SERVICE_ACCOUNT_FILE = getattr(
     settings, "GOOGLE_SERVICE_ACCOUNT_FILE", os.path.join(settings.BASE_DIR, "crm-revisbali-94d3dc9b6077.json")
 )
-TIMEZONE = str(AppSettingService.get_effective_raw("GOOGLE_TIMEZONE", "Asia/Makassar") or "Asia/Makassar")
-DEFAULT_CALENDAR_ID = str(AppSettingService.get_effective_raw("GOOGLE_CALENDAR_ID", "primary") or "primary")
-DEFAULT_TASKLIST_ID = str(AppSettingService.get_effective_raw("GOOGLE_TASKLIST_ID", "@default") or "@default")
 
 logger = logging.getLogger(__name__)
+
+
+def _app_setting(name: str, default: str) -> str:
+    value = AppSettingService.get_effective_raw(name, default)
+    return str(value or default)
+
+
+def _google_timezone() -> str:
+    return _app_setting("GOOGLE_TIMEZONE", "Asia/Makassar")
+
+
+def _google_calendar_id() -> str:
+    return _app_setting("GOOGLE_CALENDAR_ID", "primary")
+
+
+def _google_tasklist_id() -> str:
+    return _app_setting("GOOGLE_TASKLIST_ID", "@default")
 
 
 class GoogleClient:
@@ -71,7 +85,7 @@ class GoogleClient:
         import datetime
 
         if calendar_id is None:
-            calendar_id = DEFAULT_CALENDAR_ID
+            calendar_id = _google_calendar_id()
 
         if time_min is None and not include_past:
             # Default to now to show upcoming events
@@ -116,7 +130,7 @@ class GoogleClient:
 
     def get_event(self, event_id, calendar_id=None):
         if calendar_id is None:
-            calendar_id = DEFAULT_CALENDAR_ID
+            calendar_id = _google_calendar_id()
         try:
             return self.calendar_service.events().get(calendarId=calendar_id, eventId=event_id).execute()
         except HttpError as e:
@@ -131,7 +145,7 @@ class GoogleClient:
         import datetime
 
         if calendar_id is None:
-            calendar_id = DEFAULT_CALENDAR_ID
+            calendar_id = _google_calendar_id()
 
         start_time = data.get("start_time")
         if isinstance(start_time, (datetime.datetime, datetime.date)):
@@ -168,8 +182,9 @@ class GoogleClient:
             event_body["start"] = {"date": start_date}
             event_body["end"] = {"date": end_date}
         else:
-            event_body["start"] = {"dateTime": start_time, "timeZone": TIMEZONE}
-            event_body["end"] = {"dateTime": end_time, "timeZone": TIMEZONE}
+            timezone_name = _google_timezone()
+            event_body["start"] = {"dateTime": start_time, "timeZone": timezone_name}
+            event_body["end"] = {"dateTime": end_time, "timeZone": timezone_name}
 
         try:
             logger.debug(
@@ -193,7 +208,7 @@ class GoogleClient:
         import datetime
 
         if calendar_id is None:
-            calendar_id = DEFAULT_CALENDAR_ID
+            calendar_id = _google_calendar_id()
 
         try:
             body = {}
@@ -227,7 +242,7 @@ class GoogleClient:
                 if isinstance(start_time, (datetime.datetime, datetime.date)):
                     start_time = start_time.isoformat()
                 body.setdefault("start", {})["dateTime"] = start_time
-                body.setdefault("start", {})["timeZone"] = TIMEZONE
+                body.setdefault("start", {})["timeZone"] = _google_timezone()
                 body["start"].pop("date", None)
 
             if "end_time" in data:
@@ -235,7 +250,7 @@ class GoogleClient:
                 if isinstance(end_time, (datetime.datetime, datetime.date)):
                     end_time = end_time.isoformat()
                 body.setdefault("end", {})["dateTime"] = end_time
-                body.setdefault("end", {})["timeZone"] = TIMEZONE
+                body.setdefault("end", {})["timeZone"] = _google_timezone()
                 body["end"].pop("date", None)
 
             logger.debug(
@@ -259,7 +274,7 @@ class GoogleClient:
 
     def set_event_color(self, event_id, color_id, calendar_id=None):
         if calendar_id is None:
-            calendar_id = DEFAULT_CALENDAR_ID
+            calendar_id = _google_calendar_id()
         validated_color_id = GoogleCalendarEventColors.validate_color_id(color_id)
         return self.update_event(event_id=event_id, data={"color_id": validated_color_id}, calendar_id=calendar_id)
 
@@ -269,7 +284,7 @@ class GoogleClient:
 
     def delete_event(self, event_id, calendar_id=None):
         if calendar_id is None:
-            calendar_id = DEFAULT_CALENDAR_ID
+            calendar_id = _google_calendar_id()
         try:
             logger.debug(
                 "google_calendar_delete_request calendar_id=%s event_id=%s",
@@ -293,7 +308,7 @@ class GoogleClient:
 
     def list_tasks(self, tasklist=None):
         if tasklist is None:
-            tasklist = DEFAULT_TASKLIST_ID
+            tasklist = _google_tasklist_id()
         try:
             results = self.tasks_service.tasks().list(tasklist=tasklist).execute()
             return results.get("items", [])
@@ -306,7 +321,7 @@ class GoogleClient:
         import datetime
 
         if tasklist is None:
-            tasklist = DEFAULT_TASKLIST_ID
+            tasklist = _google_tasklist_id()
 
         if isinstance(due, (datetime.datetime, datetime.date)):
             due = due.isoformat()
@@ -325,7 +340,7 @@ class GoogleClient:
 
     def get_task(self, task_id, tasklist=None):
         if tasklist is None:
-            tasklist = DEFAULT_TASKLIST_ID
+            tasklist = _google_tasklist_id()
         try:
             return self.tasks_service.tasks().get(tasklist=tasklist, task=task_id).execute()
         except HttpError as e:
@@ -335,7 +350,7 @@ class GoogleClient:
 
     def update_task(self, task_id, data, tasklist=None):
         if tasklist is None:
-            tasklist = DEFAULT_TASKLIST_ID
+            tasklist = _google_tasklist_id()
         try:
             body = {}
             if "title" in data:
@@ -353,7 +368,7 @@ class GoogleClient:
 
     def delete_task(self, task_id, tasklist=None):
         if tasklist is None:
-            tasklist = DEFAULT_TASKLIST_ID
+            tasklist = _google_tasklist_id()
         try:
             self.tasks_service.tasks().delete(tasklist=tasklist, task=task_id).execute()
             return True

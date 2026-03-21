@@ -255,3 +255,24 @@ class ServerManagementClearCacheApiTests(TestCase):
         except StopIteration:
             pass  # Stream ended immediately — that's fine for this test
         media_cleanup_delay_mock.assert_called_once_with(user_id=self.user.id, dry_run=True)
+
+    @patch("api.views_admin.iter_replay_and_live_events", return_value=iter(()))
+    @patch("api.views_admin.admin_tasks.run_media_cleanup_stream.delay")
+    def test_media_cleanup_stream_is_idempotent_for_same_key(self, media_cleanup_delay_mock, _stream_iter_mock):
+        token = Token.objects.create(user=self.user)
+
+        first_response = self.client.get(
+            "/api/server-management/media-cleanup/stream/?dry_run=1",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+            HTTP_IDEMPOTENCY_KEY="media-cleanup-1",
+        )
+        second_response = self.client.get(
+            "/api/server-management/media-cleanup/stream/?dry_run=1",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+            HTTP_IDEMPOTENCY_KEY="media-cleanup-1",
+        )
+
+        list(first_response.streaming_content)
+        list(second_response.streaming_content)
+
+        self.assertEqual(media_cleanup_delay_mock.call_count, 1)

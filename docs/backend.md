@@ -1,7 +1,9 @@
 # Backend
 
 - Framework: Django 6 + DRF; Python 3.12+.
-- Apps: `core`, `cache`, `api`, `customers`, `products`, `customer_applications`, `invoices`, `payments`, `letters`, `reports`, `admin_tools`, `landing`.
+- Apps: `core`, `cache`, `customers`, `products`, `customer_applications`, `invoices`, `payments`, `letters`, `reports`, `admin_tools`, `landing`.
+- API endpoints: defined in `api/` module (not a Django app).
+- Notification providers: `notifications/services/` (not a separate Django app).
 - Models: domain models per app; audit logging enabled for customers/products/invoices/customer_applications.
 - Services: `core/services/*` host business logic (AI client, Redis client, app settings, storage helpers, logger).
 - API: DRF viewsets/APIViews under `backend/api`; camelCase serializers; throttling scopes for OCR, cron, invoice jobs; exception handler `api.utils.exception_handler.custom_exception_handler`.
@@ -12,7 +14,7 @@
 - Settings highlights:
   - Host/Redis resolution adapts to Docker vs host.
   - CORS via env; default localhost + APP_DOMAIN variants.
-  - SimpleJWT lifetimes: 1 day access, 7 days refresh.
+  - SimpleJWT lifetimes: 15 min access (configurable via `JWT_ACCESS_TOKEN_LIFETIME_MINUTES`), 7 days refresh.
   - DRAMATIQ namespace/results namespaces configurable; workers default counts in settings.
 - Logging: structured logging via Logger service; performance middleware; logs in `logs/`.
 - Feature flags: django-waffle flag `disable_django_views` plus env override.

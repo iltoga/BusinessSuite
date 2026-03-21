@@ -4,6 +4,7 @@ export * from './ai-model';
 export * from './ai-model-architecture';
 export * from './ai-model-capabilities';
 export * from './ai-model-pricing';
+export * from './ai-model-pricing-display';
 export * from './async-job';
 export * from './calendar-reminder';
 export * from './calendar-reminder-bulk-create';

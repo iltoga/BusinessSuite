@@ -171,6 +171,12 @@
 
   <!-- Table -->
   <z-card class="p-0">
+    <ng-template #descriptionTemplate let-row>
+      <span class="document-type-description-clamp" [attr.title]="row.description || ''">
+        {{ row.description || '—' }}
+      </span>
+    </ng-template>
+
     <div class="border-b p-3 sm:p-4">
       <app-search-toolbar
         [query]="query()"
@@ -196,7 +202,20 @@
       [columns]="columns()"
       [actions]="actions()"
       [isLoading]="isLoading()"
+      [currentPage]="page()"
+      [totalPages]="totalPages()"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
     />
+
+    <div class="border-t bg-muted/20 p-3 sm:p-4">
+      <app-pagination-controls
+        [page]="page()"
+        [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
+        (pageChange)="onPageChange($event)"
+      />
+    </div>
   </z-card>
 
   <!-- Confirm Delete Dialog -->

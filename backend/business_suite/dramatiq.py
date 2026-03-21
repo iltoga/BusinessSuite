@@ -115,6 +115,7 @@ def setup() -> RedisBroker:
         namespace=str(getattr(settings, "DRAMATIQ_NAMESPACE", "dramatiq:queue") or "dramatiq:queue"),
     )
     from core.middleware.dramatiq_realtime import RealtimeJobMiddleware
+
     broker.add_middleware(RealtimeJobMiddleware())
     broker.add_middleware(DramatiqTracingMiddleware())
     if bool(getattr(settings, "DRAMATIQ_RESULTS_ENABLED", True)):
@@ -134,9 +135,9 @@ def setup() -> RedisBroker:
 
     # Import actors so dramatiq can discover them.
     from admin_tools import tasks as admin_tasks  # noqa: F401
+    from core.tasks import calendar_reminders  # noqa: F401
     from core.tasks import (
         ai_usage,
-        calendar_reminders,  # noqa: F401
         calendar_sync,
         cron_jobs,
         document_categorization,
@@ -148,7 +149,7 @@ def setup() -> RedisBroker:
     from customer_applications import tasks as customer_application_tasks  # noqa: F401
     from customers import tasks as customer_tasks  # noqa: F401
     from invoices.tasks import document_jobs, download_jobs, import_jobs  # noqa: F401
-    from products.tasks import product_excel_jobs  # noqa: F401
+    from products.tasks import price_list_jobs, product_excel_jobs  # noqa: F401
 
     # `core.signals_calendar` imports `core.tasks.calendar_sync` during `django.setup()`,
     # which can happen before the Redis broker is created above. If that occurs, those

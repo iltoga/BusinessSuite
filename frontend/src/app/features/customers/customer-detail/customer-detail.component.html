@@ -350,18 +350,21 @@
             <!-- Passport Image -->
             @if (customer()!.passportFile) {
               <div class="passport-image-wrapper p-4 bg-background rounded-lg border">
-                <div class="relative">
+                <div
+                  class="passport-image-stage relative overflow-hidden rounded-md border bg-muted/20"
+                >
                   @if (passportSkeletonVisible()) {
-                    <div class="absolute inset-0 z-10 rounded bg-accent skeleton-delay"></div>
+                    <z-skeleton class="absolute inset-0 z-10 h-full w-full rounded-md" />
                   }
                   <app-image-magnifier
+                    wrapperClass="h-full w-full"
                     [src]="customer()!.passportFile"
                     [href]="customer()!.passportFile"
                     alt="Passport Image"
                     [imageClass]="
                       passportSkeletonVisible()
-                        ? 'w-full h-auto rounded shadow-sm opacity-0'
-                        : 'w-full h-auto rounded shadow-sm'
+                        ? 'h-full w-full rounded-md object-contain opacity-0 transition-opacity duration-200'
+                        : 'h-full w-full rounded-md object-contain opacity-100 transition-opacity duration-200'
                     "
                     (imageLoaded)="onPassportImageLoaded()"
                     (imageError)="onPassportImageLoaded()"

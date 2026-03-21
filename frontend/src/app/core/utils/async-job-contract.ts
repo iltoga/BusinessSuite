@@ -1,4 +1,5 @@
 import { type AsyncJob } from '@/core/api';
+import { unwrapApiEnvelope } from '@/core/utils/api-envelope';
 
 export function firstDefined<T>(...values: Array<T | null | undefined>): T | undefined {
   return values.find((value): value is T => value !== undefined && value !== null);
@@ -112,8 +113,9 @@ export function extractJobId(value: unknown): string | undefined {
 export function normalizeJobEnvelope<T extends object>(
   value: T,
 ): T & { jobId?: string } {
-  const record = isRecord(value)
-    ? (camelizePayload(value) as Record<string, unknown>)
+  const unwrapped = unwrapApiEnvelope(value);
+  const record = isRecord(unwrapped)
+    ? (camelizePayload(unwrapped) as Record<string, unknown>)
     : ({} as Record<string, unknown>);
   const jobId = extractJobIdFromRecord(record) ?? extractJobIdFromRecord(extractNestedRecord(record) ?? {});
   if (!jobId) {

@@ -15,6 +15,7 @@ import { provideRouter } from '@angular/router';
 import { UserSettingsApiService } from '@/core/api/user-settings.service';
 import { authInterceptor } from '@/core/interceptors/auth.interceptor';
 import { cacheInterceptor } from '@/core/interceptors/cache.interceptor';
+import { requestMetadataInterceptor } from '@/core/interceptors/request-metadata.interceptor';
 import { AuthService } from '@/core/services/auth.service';
 import { ConfigService } from '@/core/services/config.service';
 import { LoggerService } from '@/core/services/logger.service';
@@ -153,7 +154,7 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withFetch(), withInterceptors([cacheInterceptor, authInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([requestMetadataInterceptor, cacheInterceptor, authInterceptor])),
     provideApi(''),
     provideZard(),
     provideCharts(withDefaultRegisterables()),

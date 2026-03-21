@@ -11554,21 +11554,25 @@ components:
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-token value.
         completion_price_per_token:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-token value.
         image_price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-unit value.
         request_price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-unit value.
         top_provider_id:
           type: string
           maxLength: 255
@@ -11588,6 +11592,10 @@ components:
         pricing:
           allOf:
           - $ref: '#/components/schemas/AiModelPricing'
+          readOnly: true
+        pricing_display:
+          allOf:
+          - $ref: '#/components/schemas/AiModelPricingDisplay'
           readOnly: true
         architecture:
           allOf:
@@ -11609,6 +11617,7 @@ components:
       - model_id
       - name
       - pricing
+      - pricing_display
       - provider
       - updated_at
     AiModelArchitecture:
@@ -11645,26 +11654,62 @@ components:
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-token value.
         completion_price_per_token:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-token value.
         image_price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-unit value.
         request_price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+          description: Stored per-unit value.
       required:
       - completion_price_per_token
       - image_price
       - prompt_price_per_token
       - request_price
+    AiModelPricingDisplay:
+      type: object
+      properties:
+        prompt_price_per_million_tokens:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Displayed in USD per 1M tokens.
+        completion_price_per_million_tokens:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Displayed in USD per 1M tokens.
+        image_price_per_million_tokens:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Displayed in USD per 1M tokens.
+        request_price_per_million_tokens:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Displayed in USD per 1M tokens.
+      required:
+      - completion_price_per_million_tokens
+      - image_price_per_million_tokens
+      - prompt_price_per_million_tokens
+      - request_price_per_million_tokens
     AsyncJob:
       type: object
       properties:

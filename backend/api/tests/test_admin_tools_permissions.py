@@ -76,6 +76,28 @@ class AdminToolsPermissionTests(TestCase):
         _consume_stream(response)
         enqueue_mock.assert_not_called()
 
+    @patch("api.views_admin.iter_replay_and_live_events")
+    @patch("api.views_admin.admin_tasks.run_backup_stream.delay")
+    def test_backup_start_sse_is_idempotent_for_same_key(self, enqueue_mock, stream_iter_mock):
+        token = Token.objects.create(user=self.admin_group_user)
+        stream_iter_mock.return_value = _sync_iter()
+
+        first_response = self.client.get(
+            "/api/backups/start/",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+            HTTP_IDEMPOTENCY_KEY="backup-start-1",
+        )
+        second_response = self.client.get(
+            "/api/backups/start/",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+            HTTP_IDEMPOTENCY_KEY="backup-start-1",
+        )
+
+        _consume_stream(first_response)
+        _consume_stream(second_response)
+
+        self.assertEqual(enqueue_mock.call_count, 1)
+
     def test_backup_start_sse_rejects_non_admin_user(self):
         token = Token.objects.create(user=self.regular_user)
 

@@ -39,6 +39,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         }
 
         return authService.refreshToken().pipe(
+          catchError((refreshErr) => {
+            authService.logout();
+            return throwError(() => refreshErr);
+          }),
           switchMap(() => {
             const refreshedToken = authService.getToken();
             if (!refreshedToken) {
@@ -46,10 +50,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
               return throwError(() => err);
             }
             return next(withAuthorizationHeader(req, refreshedToken));
-          }),
-          catchError((refreshErr) => {
-            authService.logout();
-            return throwError(() => refreshErr);
           }),
         );
       }),
@@ -62,6 +62,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     !isLogoutEndpoint(req.url)
   ) {
     return authService.refreshToken().pipe(
+      catchError((refreshErr) => {
+        authService.logout();
+        return throwError(() => refreshErr);
+      }),
       switchMap(() => {
         const refreshedToken = authService.getToken();
         if (!refreshedToken || authService.isTokenExpired(refreshedToken)) {
@@ -69,10 +73,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           return throwError(() => new Error('Token expired'));
         }
         return sendRequest(withAuthorizationHeader(req, refreshedToken));
-      }),
-      catchError((refreshErr) => {
-        authService.logout();
-        return throwError(() => refreshErr);
       }),
     );
   }

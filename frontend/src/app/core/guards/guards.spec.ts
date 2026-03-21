@@ -6,6 +6,7 @@ import {
   Router,
   RouterStateSnapshot,
 } from '@angular/router';
+import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '@/core/services/auth.service';
@@ -19,6 +20,7 @@ type AuthMock = {
   isAuthenticated: ReturnType<typeof vi.fn>;
   isMockEnabled: ReturnType<typeof vi.fn>;
   getToken: ReturnType<typeof vi.fn>;
+  restoreSession: ReturnType<typeof vi.fn>;
   isInAdminGroup: ReturnType<typeof vi.fn>;
   isInManagerGroup: ReturnType<typeof vi.fn>;
   isAdminOrManager: ReturnType<typeof vi.fn>;
@@ -31,6 +33,7 @@ const createAuthMock = (overrides: Partial<AuthMock> = {}): AuthMock =>
     isAuthenticated: vi.fn(() => true),
     isMockEnabled: vi.fn(() => false),
     getToken: vi.fn(() => 'token'),
+    restoreSession: vi.fn(() => of(false)),
     isInAdminGroup: vi.fn(() => false),
     isInManagerGroup: vi.fn(() => false),
     isAdminOrManager: vi.fn(() => false),
@@ -76,22 +79,22 @@ describe('route guards', () => {
   it('authGuard allows authenticated browser users', () => {
     const { result, router } = runGuard(authGuard);
 
-    expect(result).toBe(true);
+    return expect(result).resolves.toBe(true);
     expect(router.createUrlTree).not.toHaveBeenCalled();
   });
 
-  it('authGuard redirects anonymous users to login', () => {
+  it('authGuard redirects anonymous users to login', async () => {
     const { result, router } = runGuard(authGuard, {
       auth: {
         isAuthenticated: vi.fn(() => false),
       },
     });
 
+    await expect(result).resolves.toEqual({ commands: ['/login'], extras: undefined });
     expect(router.createUrlTree).toHaveBeenCalledWith(['/login']);
-    expect(result).toEqual({ commands: ['/login'], extras: undefined });
   });
 
-  it('authGuard allows mock-token access when mock auth is enabled', () => {
+  it('authGuard allows mock-token access when mock auth is enabled', async () => {
     const { result, router } = runGuard(authGuard, {
       auth: {
         isAuthenticated: vi.fn(() => false),
@@ -100,11 +103,24 @@ describe('route guards', () => {
       },
     });
 
-    expect(result).toBe(true);
+    await expect(result).resolves.toBe(true);
     expect(router.createUrlTree).not.toHaveBeenCalled();
   });
 
-  it('authGuard bypasses auth checks on the server', () => {
+  it('authGuard restores the session before redirecting anonymous users', async () => {
+    const { result, router, auth } = runGuard(authGuard, {
+      auth: {
+        isAuthenticated: vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true),
+        restoreSession: vi.fn(() => of(true)),
+      },
+    });
+
+    await expect(result).resolves.toBe(true);
+    expect(auth.restoreSession).toHaveBeenCalledTimes(1);
+    expect(router.createUrlTree).not.toHaveBeenCalled();
+  });
+
+  it('authGuard bypasses auth checks on the server', async () => {
     const { result, router } = runGuard(authGuard, {
       platformId: 'server',
       auth: {
@@ -112,7 +128,7 @@ describe('route guards', () => {
       },
     });
 
-    expect(result).toBe(true);
+    await expect(result).resolves.toBe(true);
     expect(router.createUrlTree).not.toHaveBeenCalled();
   });
 

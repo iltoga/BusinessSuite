@@ -9,8 +9,20 @@
  */
 
 export interface AiModelPricing {
+  /**
+   * Stored per-token value.
+   */
   promptPricePerToken: string | null;
+  /**
+   * Stored per-token value.
+   */
   completionPricePerToken: string | null;
+  /**
+   * Stored per-unit value.
+   */
   imagePrice: string | null;
+  /**
+   * Stored per-unit value.
+   */
   requestPrice: string | null;
 }

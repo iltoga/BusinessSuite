@@ -30,7 +30,7 @@ class AiModel(models.Model):
     architecture_tokenizer = models.CharField(max_length=255, blank=True)
     instruct_type = models.CharField(max_length=120, blank=True)
 
-    # Pricing - per token
+    # Pricing is stored in per-token units; APIs expose display-friendly per-1M-token values.
     prompt_price_per_token = models.DecimalField(max_digits=20, decimal_places=12, null=True, blank=True)
     completion_price_per_token = models.DecimalField(max_digits=20, decimal_places=12, null=True, blank=True)
     image_price = models.DecimalField(max_digits=20, decimal_places=12, null=True, blank=True)

@@ -343,6 +343,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.request",
+                "django.template.context_processors.csp",
                 "business_suite.context_processors.site_info",
             ],
         },
@@ -781,6 +782,40 @@ if TESTING:
 # Content Security Policy support: generate per-request nonces and expose mode
 CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))
 CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
+CSP_REPORT_URI = os.getenv("CSP_REPORT_URI", "")  # optional report-uri endpoint
+
+# --- Build the CSP directive dict (used by Django 6 built-in CSP middleware) ---
+# Kept as a module-level helper so the policy is only constructed once.
+if CSP_ENABLED:
+    from django.utils.csp import CSP as _CSP
+
+    _csp_policy: dict = {
+        "default-src": [_CSP.SELF],
+        "script-src": [_CSP.SELF, _CSP.NONCE],
+        "style-src": [_CSP.SELF, _CSP.NONCE, _CSP.UNSAFE_INLINE],
+        "img-src": [_CSP.SELF, "data:", "blob:"],
+        "font-src": [_CSP.SELF, "data:"],
+        "connect-src": [_CSP.SELF],
+        "frame-src": [_CSP.SELF, "https://challenges.cloudflare.com"],
+        "object-src": [_CSP.NONE],
+        "base-uri": [_CSP.SELF],
+        "form-action": [_CSP.SELF],
+        "frame-ancestors": [_CSP.SELF],
+        "upgrade-insecure-requests": True,
+    }
+    if CSP_REPORT_URI:
+        _csp_policy["report-uri"] = CSP_REPORT_URI
+
+    # Expose on the correct setting key depending on the chosen mode.
+    if CSP_MODE == "enforce":
+        SECURE_CSP = _csp_policy
+        SECURE_CSP_REPORT_ONLY = {}
+    else:
+        SECURE_CSP = {}
+        SECURE_CSP_REPORT_ONLY = _csp_policy
+else:
+    SECURE_CSP = {}
+    SECURE_CSP_REPORT_ONLY = {}
 
 
 def _default_dramatiq_workers() -> str:
@@ -935,6 +970,17 @@ else:
         INSTALLED_APPS.remove("auditlog")
     if "auditlog.middleware.AuditlogMiddleware" in MIDDLEWARE:
         MIDDLEWARE.remove("auditlog.middleware.AuditlogMiddleware")
+
+# Conditionally enable Django 6 CSP middleware (toggled via CSP_ENABLED env var).
+if CSP_ENABLED:
+    _csp_mw = "django.middleware.csp.ContentSecurityPolicyMiddleware"
+    if _csp_mw not in MIDDLEWARE:
+        # Insert right after SecurityMiddleware so CSP headers are set early.
+        try:
+            _sec_idx = MIDDLEWARE.index("django.middleware.security.SecurityMiddleware")
+            MIDDLEWARE.insert(_sec_idx + 1, _csp_mw)
+        except ValueError:
+            MIDDLEWARE.insert(0, _csp_mw)
 
 # Determine if we are running as backend, task worker, or scheduler.
 COMPONENT = os.getenv("COMPONENT")

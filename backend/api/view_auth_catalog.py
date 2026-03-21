@@ -1,4 +1,5 @@
-from api.utils.idempotency import resolve_request_idempotent_job, store_request_idempotent_job
+from api.utils.idempotency import build_request_idempotency_fingerprint, resolve_request_idempotent_job, store_request_idempotent_job
+from api.utils.ai_model_pricing import price_to_display
 from api.utils.stream_payloads import build_async_job_links, build_async_job_start_payload
 from rest_framework.renderers import JSONRenderer
 from rest_framework_simplejwt.views import TokenRefreshView as SimpleJWTTokenRefreshView
@@ -252,7 +253,7 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="catalog")
     def catalog(self, request):
-        return Response(AIRuntimeSettingsService.get_model_catalog())
+        return Response(build_success_payload(AIRuntimeSettingsService.get_model_catalog(), request=request))
 
     @extend_schema(
         parameters=[
@@ -274,7 +275,13 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         ).rstrip("/")
 
         if not api_key:
-            return Response({"results": [], "message": "OPENROUTER_API_KEY is not configured."}, status=200)
+            return Response(
+                build_success_payload(
+                    {"results": [], "message": "OPENROUTER_API_KEY is not configured."},
+                    request=request,
+                ),
+                status=200,
+            )
 
         headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
         try:
@@ -344,6 +351,12 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     "completion_price_per_token": completion_price,
                     "image_price": image_price,
                     "request_price": request_price,
+                    "pricing_display": {
+                        "prompt_price_per_million_tokens": price_to_display(prompt_price),
+                        "completion_price_per_million_tokens": price_to_display(completion_price),
+                        "image_price_per_million_tokens": price_to_display(image_price),
+                        "request_price_per_million_tokens": price_to_display(request_price),
+                    },
                     "top_provider_id": top_provider_id,
                     "provider_name": provider_name,
                     "supported_parameters": supported_parameters,
@@ -355,7 +368,7 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if len(results) >= limit:
                 break
 
-        return Response({"results": results})
+        return Response(build_success_payload({"results": results}, request=request))
 
 
 class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
@@ -519,14 +532,17 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         for product in products:
             if not product.deprecated:
                 return Response(
-                    {
-                        "canDelete": False,
-                        "message": f"Cannot delete '{document_type.name}' because it is used in one or more products.",
-                        "warning": None,
-                    }
+                    build_success_payload(
+                        {
+                            "canDelete": False,
+                            "message": f"Cannot delete '{document_type.name}' because it is used in one or more products.",
+                            "warning": None,
+                        },
+                        request=request,
+                    )
                 )
 
-        return Response({"canDelete": True, "message": None, "warning": None})
+        return Response(build_success_payload({"canDelete": True, "message": None, "warning": None}, request=request))
 
     @action(detail=True, methods=["get"], url_path="deprecation-impact")
     def deprecation_impact(self, request, pk=None):
@@ -610,6 +626,7 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
 class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
+    throttle_cache_fail_open_actions = {"check_passport": False}
 
     @staticmethod
     def _with_case_insensitive_name_sorting(queryset):
@@ -694,7 +711,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         customer.active = not customer.active
         customer.save(update_fields=["active"])
-        return Response({"id": customer.id, "active": customer.active})
+        return Response(build_success_payload({"id": customer.id, "active": customer.active}, request=request))
 
     @extend_schema(responses=CustomerUninvoicedApplicationSerializer(many=True))
     @action(detail=True, methods=["get"], url_path="uninvoiced-applications")
@@ -763,12 +780,14 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         # use .get() to keep mypy/analysis happy
         file_obj = serializer.validated_data.get("file")  # type: ignore[assignment]
         method = serializer.validated_data.get("method")  # type: ignore[assignment]
+        request_fingerprint = build_request_idempotency_fingerprint(request)
 
         idempotency_cache_key, cached_job = resolve_request_idempotent_job(
             request=request,
             namespace="check_passport_uploadability",
             user_id=request.user.id,
             queryset=AsyncJob.objects.filter(task_name="check_passport_uploadability", created_by=request.user),
+            fingerprint=request_fingerprint,
         )
         if cached_job is not None:
             return Response(
@@ -794,7 +813,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         # Enqueue task
         check_passport_uploadability_task.delay(str(job.id), saved_path, method)
-        store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
+        store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id, fingerprint=request_fingerprint)
 
         return Response(
             build_async_job_start_payload(
@@ -827,6 +846,11 @@ class ProductOrderingFilter(filters.OrderingFilter):
 class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     throttle_scope = None
+    throttle_cache_fail_open_actions = {
+        "export_start": False,
+        "price_list_print_start": False,
+        "import_start": False,
+    }
     queryset = Product.objects.select_related("product_category").prefetch_related("tasks").all()
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, ProductOrderingFilter]
@@ -1015,12 +1039,15 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         preview = build_product_delete_preview(product, limit=1)
         return Response(
-            {
-                "canDelete": preview["canDelete"],
-                "message": preview["message"],
-                "requiresForceDelete": preview["requiresForceDelete"],
-                "relatedCounts": preview["relatedCounts"],
-            }
+            build_success_payload(
+                {
+                    "canDelete": preview["canDelete"],
+                    "message": preview["message"],
+                    "requiresForceDelete": preview["requiresForceDelete"],
+                    "relatedCounts": preview["relatedCounts"],
+                },
+                request=request,
+            )
         )
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
@@ -1033,7 +1060,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         product = self.get_object()
         preview = build_product_delete_preview(product)
-        return Response(preview)
+        return Response(build_success_payload(preview, request=request))
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["post"], url_path="force-delete")
@@ -1103,7 +1130,8 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 "requiredDocuments": serialzed_document_types.data,
                 "optionalDocuments": serialzed_optional_document_types.data,
                 "calendarTask": serialized_calendar_task,
-            }
+            },
+            status=status.HTTP_200_OK,
         )
 
     @extend_schema(
@@ -1141,6 +1169,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         from products.tasks import run_product_export_job
 
         namespace = "products_export_excel"
+        request_fingerprint = build_request_idempotency_fingerprint(request)
         query = (
             request.data.get("search_query") or request.data.get("searchQuery") or request.data.get("query") or ""
         ).strip()
@@ -1150,6 +1179,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             namespace=namespace,
             user_id=request.user.id,
             queryset=AsyncJob.objects.filter(task_name=namespace, created_by=request.user),
+            fingerprint=request_fingerprint,
         )
         if cached_job is not None:
             return Response(
@@ -1196,7 +1226,11 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
 
             run_product_export_job(str(job.id), request.user.id if request.user else None, query)
-            store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
+            store_request_idempotent_job(
+                cache_key=idempotency_cache_key,
+                job_id=job.id,
+                fingerprint=request_fingerprint,
+            )
         finally:
             if lock_key and lock_token:
                 release_enqueue_guard(lock_key, lock_token)
@@ -1227,12 +1261,14 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         from products.tasks import run_product_price_list_print_job
 
         namespace = "products_price_list_print"
+        request_fingerprint = build_request_idempotency_fingerprint(request)
 
         idempotency_cache_key, cached_job = resolve_request_idempotent_job(
             request=request,
             namespace=namespace,
             user_id=request.user.id,
             queryset=AsyncJob.objects.filter(task_name=namespace, created_by=request.user),
+            fingerprint=request_fingerprint,
         )
         if cached_job is not None:
             return Response(
@@ -1279,7 +1315,11 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
 
             run_product_price_list_print_job(str(job.id), request.user.id if request.user else None)
-            store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
+            store_request_idempotent_job(
+                cache_key=idempotency_cache_key,
+                job_id=job.id,
+                fingerprint=request_fingerprint,
+            )
         finally:
             if lock_key and lock_token:
                 release_enqueue_guard(lock_key, lock_token)
@@ -1369,6 +1409,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         from products.tasks import run_product_import_job
 
         namespace = "products_import_excel"
+        request_fingerprint = build_request_idempotency_fingerprint(request)
         uploaded = request.FILES.get("file")
         if not uploaded:
             return self.error_response("No file uploaded", status.HTTP_400_BAD_REQUEST)
@@ -1383,6 +1424,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             namespace=namespace,
             user_id=request.user.id,
             queryset=AsyncJob.objects.filter(task_name=namespace, created_by=request.user),
+            fingerprint=request_fingerprint,
         )
         if cached_job is not None:
             return Response(
@@ -1433,7 +1475,11 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             saved_path = default_storage.save(input_path, uploaded)
 
             run_product_import_job(str(job.id), request.user.id if request.user else None, saved_path)
-            store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
+            store_request_idempotent_job(
+                cache_key=idempotency_cache_key,
+                job_id=job.id,
+                fingerprint=request_fingerprint,
+            )
         finally:
             if lock_key and lock_token:
                 release_enqueue_guard(lock_key, lock_token)

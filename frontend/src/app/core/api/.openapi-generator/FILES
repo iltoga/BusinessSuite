@@ -41,6 +41,7 @@ model/admin-push-notification-send.ts
 model/admin-whatsapp-test-send.ts
 model/ai-model-architecture.ts
 model/ai-model-capabilities.ts
+model/ai-model-pricing-display.ts
 model/ai-model-pricing.ts
 model/ai-model.ts
 model/async-job.ts

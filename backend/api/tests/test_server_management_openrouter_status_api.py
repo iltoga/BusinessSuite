@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.cache import cache
 from django.db.utils import ProgrammingError
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -29,6 +30,7 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
     def setUp(self):
         AppSetting.objects.all().delete()
         AppSettingService.invalidate_cache()
+        cache.clear()
         self.client = APIClient()
         user_model = get_user_model()
         self.user = user_model.objects.create_superuser(

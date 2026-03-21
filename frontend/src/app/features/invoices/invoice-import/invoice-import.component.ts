@@ -13,7 +13,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
 import { InvoicesService } from '@/core/api';
+import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  createAsyncRequestMetadata,
+  requestMetadataHeaders,
+} from '@/core/utils/request-metadata';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -115,6 +120,7 @@ interface SSECompleteMessage {
 export class InvoiceImportComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private invoicesApi = inject(InvoicesService);
+  private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private router = inject(Router);
 
@@ -331,10 +337,17 @@ export class InvoiceImportComponent implements OnInit {
   private startSSEImport(formData: FormData): void {
     const apiBaseUrl = '/api';
     const url = `${apiBaseUrl}/invoices/import/batch/`;
+    const metadata = createAsyncRequestMetadata();
+    const headers = new Headers(requestMetadataHeaders(metadata));
+    const token = this.authService.getToken();
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
 
     fetch(url, {
       method: 'POST',
       body: formData,
+      headers,
       credentials: 'include',
     })
       .then(async (response) => {

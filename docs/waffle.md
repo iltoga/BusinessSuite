@@ -4,13 +4,14 @@ This project uses `django-waffle` for runtime feature toggles.
 
 ## Active usage in current codebase
 
-Primary flag in use:
-- `disable_django_views`
-  - Used by `business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware`
-  - If active, non-admin and non-API legacy Django template views are blocked.
+The `disable_django_views` flag and its associated middleware (`DisableDjangoViewsMiddleware`) have been **removed**.
+Legacy Django template views were removed from the codebase entirely.
 
 Related environment fallback:
-- `DISABLE_DJANGO_VIEWS=True` (setting-based override)
+
+- `DISABLE_DJANGO_VIEWS` setting is no longer referenced in middleware.
+
+Status: **No waffle flags are actively used in middleware.** Waffle remains available for future runtime feature toggles via Django Admin.
 
 ## When to use a flag vs env var
 

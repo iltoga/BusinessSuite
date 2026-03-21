@@ -714,7 +714,7 @@ class ProductApiTestCase(TestCase):
         url = reverse("invoices-propose") + f"?invoice_date={year}-01-01"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = response.json()["data"]
         # Accept camelCase or snake_case
         self.assertTrue("invoice_no" in data or "invoiceNo" in data)
         value = data.get("invoice_no") or data.get("invoiceNo")
@@ -826,7 +826,7 @@ class ProductApiTestCase(TestCase):
         url = f"/api/invoices/from_application_prefill/{application.id}/"
         pending_response = self.client.get(url)
         self.assertEqual(pending_response.status_code, 200)
-        payload = pending_response.json()
+        payload = pending_response.json()["data"]
         self.assertEqual(payload["customer"]["id"], customer.id)
         self.assertIn("sourceApplication", payload)
         self.assertIn("invoiceApplication", payload)
@@ -883,7 +883,7 @@ class ProductApiTestCase(TestCase):
 
         response = self.client.get(f"/api/invoices/get_invoice_application_due_amount/{invoice_application.id}/")
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertEqual(payload["dueAmount"], str(invoice_application.due_amount))
         self.assertEqual(payload["amount"], str(invoice_application.amount))
         self.assertEqual(payload["paidAmount"], str(invoice_application.paid_amount))
@@ -1096,7 +1096,7 @@ class ProductApiTestCase(TestCase):
         url = reverse("products-can-delete", kwargs={"pk": product.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
+        payload = response.json()["data"]
         self.assertIn("canDelete", payload)
         self.assertNotIn("can_delete", payload)
 
@@ -1138,7 +1138,7 @@ class ProductApiTestCase(TestCase):
         response = self.client.get(reverse("products-delete-preview", kwargs={"pk": product.id}))
         self.assertEqual(response.status_code, 200)
 
-        payload = response.json()
+        payload = response.json()["data"]
         can_delete = payload["canDelete"]
         requires_force = payload["requiresForceDelete"]
         related_counts = payload["relatedCounts"]

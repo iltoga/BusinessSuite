@@ -35,6 +35,7 @@ import type {
   Product,
 } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 
 export type CustomerApplicationPaymentStatus = 'uninvoiced' | 'pending_payment' | 'paid';
 
@@ -99,23 +100,37 @@ export class CustomersService {
   toggleActive(customerId: number): Observable<{ id: number; active: boolean }> {
     const token = this.authService.getToken();
     const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
-    return this.http.post<{ id: number; active: boolean }>(
-      `${this.apiUrl}${customerId}/toggle-active/`,
-      {},
-      { headers },
-    );
+    return this.http
+      .post<{ id: number; active: boolean }>(`${this.apiUrl}${customerId}/toggle-active/`, {}, { headers })
+      .pipe(
+        map((response) => {
+          const payload = unwrapApiRecord(response) as
+            | {
+                id?: number;
+                active?: boolean;
+              }
+            | null;
+
+          return {
+            id: Number(payload?.id ?? customerId),
+            active: Boolean(payload?.active),
+          };
+        }),
+      );
   }
 
   getCustomer(customerId: number): Observable<Customer> {
     const headers = this.buildHeaders();
     return this.http
       .get<any>(`${this.apiUrl}${customerId}/`, { headers })
-      .pipe(map(this.mapCustomer));
+      .pipe(map((response) => this.mapCustomer(unwrapApiRecord(response) ?? response)));
   }
 
   createCustomer(payload: Record<string, unknown> | FormData): Observable<Customer> {
     const headers = this.buildHeaders();
-    return this.http.post<any>(this.apiUrl, payload, { headers }).pipe(map(this.mapCustomer));
+    return this.http
+      .post<any>(this.apiUrl, payload, { headers })
+      .pipe(map((response) => this.mapCustomer(unwrapApiRecord(response) ?? response)));
   }
 
   updateCustomer(
@@ -125,7 +140,7 @@ export class CustomersService {
     const headers = this.buildHeaders();
     return this.http
       .patch<any>(`${this.apiUrl}${customerId}/`, payload, { headers })
-      .pipe(map(this.mapCustomer));
+      .pipe(map((response) => this.mapCustomer(unwrapApiRecord(response) ?? response)));
   }
 
   deleteCustomer(customerId: number): Observable<void> {
@@ -142,9 +157,12 @@ export class CustomersService {
     return this.http
       .post<{ deletedCount?: number }>(`${this.apiUrl}bulk-delete/`, payload, { headers })
       .pipe(
-        map((response) => ({
-          deletedCount: response.deletedCount ?? 0,
-        })),
+        map((response) => {
+          const payload = unwrapApiRecord(response) as { deletedCount?: number; deleted_count?: number } | null;
+          return {
+            deletedCount: payload?.deletedCount ?? payload?.deleted_count ?? 0,
+          };
+        }),
       );
   }
 

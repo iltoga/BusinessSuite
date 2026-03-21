@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from django.http import StreamingHttpResponse
 
 
+from api.utils.contracts import get_request_id
 from api.utils.redis_sse import iter_replay_and_live_events_async
 from api.utils.sse_auth import sse_token_auth_required
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_user_key
@@ -25,7 +26,12 @@ async def realtime_stream_sse(request):
     user_id = request.user.id
     stream_key = stream_user_key(user_id)
     replay_cursor = resolve_last_event_id(request)
-    logger.info("realtime_stream_sse connect user_id=%s replay_cursor=%s", user_id, replay_cursor)
+    logger.info(
+        "realtime_stream_sse connect user_id=%s request_id=%s replay_cursor=%s",
+        user_id,
+        get_request_id(request),
+        replay_cursor,
+    )
 
     async def event_stream() -> AsyncGenerator[str, None]:
         deadline = time.monotonic() + _SSE_MAX_DURATION_SECONDS
@@ -64,7 +70,12 @@ async def realtime_stream_sse(request):
             except GeneratorExit:
                 return
             except Exception as exc:
-                logger.exception("realtime_stream_sse failure user_id=%s error=%s", user_id, exc)
+                logger.exception(
+                    "realtime_stream_sse failure user_id=%s request_id=%s error=%s",
+                    user_id,
+                    get_request_id(request),
+                    exc,
+                )
                 yield format_sse_event(data={"event": "realtime_error", "error": str(exc)})
                 return
 

@@ -3,6 +3,11 @@ import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
 import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
+import {
+  createAsyncRequestMetadata,
+  requestMetadataContext,
+  type RequestMetadata,
+} from '@/core/utils/request-metadata';
 
 export interface OcrQueuedResponse {
   jobId: string;
@@ -57,6 +62,7 @@ export interface PassportOcrOptions {
   useAi?: boolean;
   saveSession?: boolean;
   previewWidth?: number;
+  requestMetadata?: RequestMetadata | null;
 }
 
 @Injectable({
@@ -67,7 +73,7 @@ export class OcrService {
 
   startPassportOcr(
     file: File,
-    options: PassportOcrOptions,
+    options: PassportOcrOptions = {},
   ): Observable<OcrQueuedResponse | OcrStatusResponse> {
     const formData = new FormData();
     formData.append('file', file);
@@ -82,9 +88,12 @@ export class OcrService {
       formData.append('use_ai', 'true');
     }
 
-    return this.http.post<OcrQueuedResponse | OcrStatusResponse>('/api/ocr/check/', formData).pipe(
-      map((response) => normalizeJobEnvelope(response)),
-    );
+    const metadata = options.requestMetadata ?? createAsyncRequestMetadata();
+    return this.http
+      .post<OcrQueuedResponse | OcrStatusResponse>('/api/ocr/check/', formData, {
+        context: requestMetadataContext(metadata),
+      })
+      .pipe(map((response) => normalizeJobEnvelope(response)));
   }
 
   getOcrStatus(statusUrl: string): Observable<OcrStatusResponse> {
@@ -102,7 +111,7 @@ export class OcrService {
 
   startDocumentOcr(
     file: File,
-    options?: { documentId?: number; docTypeId?: number },
+    options?: { documentId?: number; docTypeId?: number; requestMetadata?: RequestMetadata | null },
   ): Observable<OcrQueuedResponse | DocumentOcrStatusResponse> {
     const formData = new FormData();
     formData.append('file', file);
@@ -113,9 +122,13 @@ export class OcrService {
       formData.append('doc_type_id', String(options.docTypeId));
     }
 
+    const metadata = options?.requestMetadata ?? createAsyncRequestMetadata();
     return this.http.post<OcrQueuedResponse | DocumentOcrStatusResponse>(
       '/api/document-ocr/check/',
       formData,
+      {
+        context: requestMetadataContext(metadata),
+      },
     ).pipe(map((response) => normalizeJobEnvelope(response)));
   }
 

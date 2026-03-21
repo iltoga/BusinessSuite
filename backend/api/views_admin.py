@@ -19,7 +19,8 @@ from api.permissions import (
 )
 from api.serializers.local_resilience_serializer import LocalResilienceSettingsSerializer
 from api.serializers.ui_settings_serializer import UiSettingsSerializer
-from api.utils.contracts import build_error_payload, build_success_payload
+from api.utils.contracts import build_error_payload, build_success_payload, get_request_id
+from api.utils.idempotency import build_request_idempotency_fingerprint, claim_request_idempotency
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
@@ -153,6 +154,40 @@ def _stream_admin_events(
     return _build_sse_response(_sync_stream())
 
 
+def _start_admin_stream(
+    request,
+    *,
+    namespace: str,
+    replay_mode: bool,
+    accepted_events: set[str],
+    enqueue_callback,
+):
+    request_fingerprint = build_request_idempotency_fingerprint(request)
+    _, deduplicated = claim_request_idempotency(
+        request=request,
+        namespace=namespace,
+        user_id=request.user.id,
+        fingerprint=request_fingerprint,
+    )
+    replay_cursor = resolve_last_event_id(request) if replay_mode else None
+    logger.info(
+        "%s connect user_id=%s request_id=%s replay_cursor=%s deduplicated=%s replay_mode=%s",
+        namespace,
+        request.user.id,
+        get_request_id(request),
+        replay_cursor,
+        deduplicated,
+        replay_mode,
+    )
+    return _stream_admin_events(
+        user_id=request.user.id,
+        replay_cursor=replay_cursor,
+        start_new=not replay_mode and not deduplicated,
+        accepted_events=accepted_events,
+        enqueue_callback=enqueue_callback,
+    )
+
+
 # ============================================================================
 # Plain Django views for SSE endpoints (bypass DRF content negotiation)
 # ============================================================================
@@ -167,17 +202,16 @@ def backup_start_sse(request):
                 code="forbidden",
                 message=SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
                 request=request,
-            ),
-            status=403,
-        )
+        ),
+        status=403,
+    )
 
     include_users = _as_bool(_query_param(request, "include_users", "0"))
     replay_mode = _as_bool(_query_param(request, "replay", "0"))
-    replay_cursor = resolve_last_event_id(request) if replay_mode else None
-    return _stream_admin_events(
-        user_id=request.user.id,
-        replay_cursor=replay_cursor,
-        start_new=not replay_mode,
+    return _start_admin_stream(
+        request,
+        namespace="backup_start_sse",
+        replay_mode=replay_mode,
         accepted_events={"backup_started", "backup_message", "backup_finished", "backup_failed"},
         enqueue_callback=lambda: admin_tasks.run_backup_stream.delay(
             user_id=request.user.id,
@@ -208,11 +242,10 @@ def backup_restore_sse(request):
 
     include_users = _as_bool(_query_param(request, "include_users", "0"))
     replay_mode = _as_bool(_query_param(request, "replay", "0"))
-    replay_cursor = resolve_last_event_id(request) if replay_mode else None
-    return _stream_admin_events(
-        user_id=request.user.id,
-        replay_cursor=replay_cursor,
-        start_new=not replay_mode,
+    return _start_admin_stream(
+        request,
+        namespace="backup_restore_sse",
+        replay_mode=replay_mode,
         accepted_events={
             "restore_started",
             "restore_progress",
@@ -239,15 +272,14 @@ def media_cleanup_start_sse(request):
                 request=request,
             ),
             status=403,
-        )
+    )
 
     dry_run = _as_bool(_query_param(request, "dry_run", "1"))
     replay_mode = _as_bool(_query_param(request, "replay", "0"))
-    replay_cursor = resolve_last_event_id(request) if replay_mode else None
-    return _stream_admin_events(
-        user_id=request.user.id,
-        replay_cursor=replay_cursor,
-        start_new=not replay_mode,
+    return _start_admin_stream(
+        request,
+        namespace="media_cleanup_start_sse",
+        replay_mode=replay_mode,
         accepted_events={
             "media_cleanup_started",
             "media_cleanup_progress",
@@ -587,6 +619,10 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     serializer_class = ServerManagementPlaceholderSerializer
     permission_classes = [IsAuthenticated, IsSuperuserOrAdminGroup]
     throttle_scope = None
+    throttle_cache_fail_open_actions = {
+        "media_repair": False,
+        "media_cleanup": False,
+    }
 
     def get_throttles(self):
         action_scopes = {
@@ -596,10 +632,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             "openrouter_status": "server_management_openrouter_status",
         }
         action = getattr(self, "action", None)
-        if action == "openrouter_status":
-            self.throttle_scope = None
-        else:
-            self.throttle_scope = action_scopes.get(action)
+        self.throttle_scope = action_scopes.get(action)
         return super().get_throttles()
 
     @extend_schema(

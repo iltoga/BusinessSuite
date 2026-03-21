@@ -123,6 +123,6 @@ class ApplicationDocDateSyncApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        body = response.json()
+        body = response.json()["data"]
         self.assertEqual(body["dueDate"], "2026-03-11")
         self.assertNotIn("due_date", body)

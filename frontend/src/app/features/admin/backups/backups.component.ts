@@ -21,6 +21,7 @@ import {
   type PaginatedResponse,
 } from '@/shared/core/base-list.component';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { createAsyncRequestMetadata } from '@/core/utils/request-metadata';
 import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -205,7 +206,10 @@ export class BackupsComponent extends BaseListComponent<Backup> {
       .connect<{
         message?: string;
         progress?: number;
-      }>(`/api/backups/start/?include_users=${this.includeUsers()}`, { useReplayCursor: false })
+      }>(`/api/backups/start/?include_users=${this.includeUsers()}`, {
+        useReplayCursor: false,
+        requestMetadata: createAsyncRequestMetadata(),
+      })
       .subscribe({
         next: (data) => {
           const message = data.message;
@@ -262,6 +266,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
         progress?: string | number;
       }>(`/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}`, {
         useReplayCursor: false,
+        requestMetadata: createAsyncRequestMetadata(),
       })
       .subscribe({
         next: (data) => {

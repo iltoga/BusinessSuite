@@ -25,6 +25,7 @@ import { HelpService } from '../../../shared/services/help.service';
 import { buildLocalFilePreview } from '../../../shared/utils/document-preview-source';
 import { extractServerErrorMessage } from '../../../shared/utils/form-errors';
 import { extractJobId } from '@/core/utils/async-job-contract';
+import { createAsyncRequestMetadata, requestMetadataContext } from '@/core/utils/request-metadata';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -371,6 +372,7 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
 
       const response = await firstValueFrom(
         this.http.post<unknown>(`${environment.apiUrl}/api/customers/check-passport/`, formData, {
+          context: requestMetadataContext(createAsyncRequestMetadata()),
           withCredentials: true,
         }),
       );

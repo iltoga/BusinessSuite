@@ -53,8 +53,8 @@ from api.utils.stream_payloads import (
     normalize_ocr_job_payload,
     normalize_ocr_result_payload,
 )
-from api.utils.contracts import build_error_payload, build_success_payload
-from api.utils.idempotency import resolve_request_idempotent_job, store_request_idempotent_job
+from api.utils.contracts import build_error_payload, build_success_payload, get_request_id
+from api.utils.idempotency import build_request_idempotency_fingerprint, resolve_request_idempotent_job, store_request_idempotent_job
 
 from .views_imports import *
 
@@ -855,6 +855,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
     permission_classes = [IsAuthenticated]
     throttle_scope = "ocr"
+    throttle_cache_fail_open_actions = {"check": False}
     throttle_classes = [ScopedRateThrottle]
 
     def get_throttles(self):
@@ -869,6 +870,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         from django.utils.text import get_valid_filename
 
         namespace = "passport_ocr_check"
+        request_fingerprint = build_request_idempotency_fingerprint(request)
         file = request.data.get("file")
         if not file or file == "undefined":
             return self.error_response("No file provided!", status.HTTP_400_BAD_REQUEST)
@@ -898,6 +900,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             namespace=namespace,
             user_id=request.user.id,
             queryset=OCRJob.objects.filter(created_by=request.user),
+            fingerprint=request_fingerprint,
         )
         if cached_job is not None:
             return Response(
@@ -970,7 +973,11 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 },
             )
             run_ocr_job(str(job.id))
-            store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
+            store_request_idempotent_job(
+                cache_key=idempotency_cache_key,
+                job_id=job.id,
+                fingerprint=request_fingerprint,
+            )
 
             return Response(
                 build_async_job_start_payload(
@@ -1027,7 +1034,12 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             last_progress = initial_payload["progress"]
             last_status = initial_payload["status"]
 
-            logger.info("ocr_stream_connect job_id=%s replay_cursor=%s", job.id, last_event_id)
+            logger.info(
+                "ocr_stream_connect job_id=%s request_id=%s replay_cursor=%s",
+                job.id,
+                get_request_id(request),
+                last_event_id,
+            )
             yield format_sse_event(data=initial_payload)
             if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
                 return
@@ -1059,11 +1071,21 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
                         return
                 except OCRJob.DoesNotExist:
-                    logger.warning("ocr_stream_job_not_found job_id=%s replay_cursor=%s", job.id, last_event_id)
+                    logger.warning(
+                        "ocr_stream_job_not_found job_id=%s request_id=%s replay_cursor=%s",
+                        job.id,
+                        get_request_id(request),
+                        last_event_id,
+                    )
                     yield format_sse_event(data={"errorMessage": "OCR job not found"})
                     return
                 except Exception as exc:
-                    logger.exception("ocr_stream_failure job_id=%s error=%s", job.id, exc)
+                    logger.exception(
+                        "ocr_stream_failure job_id=%s request_id=%s error=%s",
+                        job.id,
+                        get_request_id(request),
+                        exc,
+                    )
                     yield format_sse_event(data={"errorMessage": str(exc)})
                     return
 
@@ -1084,6 +1106,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
     permission_classes = [IsAuthenticated]
     throttle_scope = "document_ocr"
+    throttle_cache_fail_open_actions = {"check": False}
     throttle_classes = [ScopedRateThrottle]
 
     def get_throttles(self):
@@ -1098,6 +1121,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         from django.utils.text import get_valid_filename
 
         namespace = "document_ocr_check"
+        request_fingerprint = build_request_idempotency_fingerprint(request)
         file = request.data.get("file")
         if not file or file == "undefined":
             return self.error_response("No file provided!", status.HTTP_400_BAD_REQUEST)
@@ -1160,6 +1184,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             namespace=namespace,
             user_id=request.user.id,
             queryset=DocumentOCRJob.objects.filter(created_by=request.user),
+            fingerprint=request_fingerprint,
         )
         if cached_job is not None:
             return Response(
@@ -1233,7 +1258,11 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 },
             )
             run_document_ocr_job(str(job.id))
-            store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
+            store_request_idempotent_job(
+                cache_key=idempotency_cache_key,
+                job_id=job.id,
+                fingerprint=request_fingerprint,
+            )
             return Response(
                 build_async_job_start_payload(
                     job_id=job.id,
@@ -1273,14 +1302,26 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             return self.error_response("Document OCR job not found", status.HTTP_404_NOT_FOUND)
 
         response = StreamingHttpResponse(
-            self._stream_document_ocr_job(job_queryset, job, last_event_id=resolve_last_event_id(request)),
+            self._stream_document_ocr_job(
+                request,
+                job_queryset,
+                job,
+                last_event_id=resolve_last_event_id(request),
+            ),
             content_type="text/event-stream",
         )
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
 
-    def _stream_document_ocr_job(self, job_queryset, job: DocumentOCRJob, *, last_event_id: str | None = None):
+    def _stream_document_ocr_job(
+        self,
+        request,
+        job_queryset,
+        job: DocumentOCRJob,
+        *,
+        last_event_id: str | None = None,
+    ):
 
         def _sync_stream():
             stream_key = stream_job_key(job.id)
@@ -1289,7 +1330,12 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             last_progress = initial_payload["progress"]
             last_status = initial_payload["status"]
 
-            logger.info("document_ocr_stream_connect job_id=%s replay_cursor=%s", job.id, last_event_id)
+            logger.info(
+                "document_ocr_stream_connect job_id=%s request_id=%s replay_cursor=%s",
+                job.id,
+                get_request_id(request),
+                last_event_id,
+            )
             yield format_sse_event(data=initial_payload)
             if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
                 return
@@ -1325,14 +1371,20 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                         return
                 except DocumentOCRJob.DoesNotExist:
                     logger.warning(
-                        "document_ocr_stream_job_not_found job_id=%s replay_cursor=%s",
+                        "document_ocr_stream_job_not_found job_id=%s request_id=%s replay_cursor=%s",
                         job.id,
+                        get_request_id(request),
                         last_event_id,
                     )
                     yield format_sse_event(data={"errorMessage": "Document OCR job not found"})
                     return
                 except Exception as exc:
-                    logger.exception("document_ocr_stream_failure job_id=%s error=%s", job.id, exc)
+                    logger.exception(
+                        "document_ocr_stream_failure job_id=%s request_id=%s error=%s",
+                        job.id,
+                        get_request_id(request),
+                        exc,
+                    )
                     yield format_sse_event(data={"errorMessage": str(exc)})
                     return
 
@@ -1369,7 +1421,7 @@ class ComputeViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 task = Task.objects.get(id=task_id)
                 due_date = calculate_due_date(start_date, task.duration, task.duration_is_business_days)
                 due_date = due_date.strftime("%Y-%m-%d")
-                return Response({"dueDate": due_date})
+                return Response(build_success_payload({"dueDate": due_date}, request=request))
             except Task.DoesNotExist:
                 return self.error_response("Task does not exist", status.HTTP_404_NOT_FOUND)
         else:
@@ -1394,7 +1446,7 @@ class DashboardStatsView(ApiErrorHandlingMixin, viewsets.ViewSet):
             ).count(),
             "invoices": InvoiceApplication.objects.not_fully_paid().count(),
         }
-        return Response(stats)
+        return Response(build_success_payload(stats, request=request))
 
 
 @api_view(["GET", "POST"])
@@ -1414,11 +1466,14 @@ def exec_cron_jobs(request):
     else:
         status_label = "already_queued"
     return Response(
-        {
-            "status": status_label,
-            "fullBackupQueued": full_backup_queued,
-            "clearCacheQueued": clear_cache_queued,
-        },
+        build_success_payload(
+            {
+                "status": status_label,
+                "fullBackupQueued": full_backup_queued,
+                "clearCacheQueued": clear_cache_queued,
+            },
+            request=request,
+        ),
         status=status.HTTP_202_ACCEPTED,
     )
 

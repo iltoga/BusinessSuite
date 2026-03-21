@@ -17,6 +17,7 @@ describe('AuthService logout', () => {
   beforeEach(() => {
     // Minimal localStorage mock for the test environment
     (globalThis as any).localStorage = {
+      clear: vi.fn(),
       getItem: vi.fn().mockReturnValue(null),
       setItem: vi.fn(),
       removeItem: vi.fn(),
@@ -132,6 +133,7 @@ describe('AuthService auth flow', () => {
 
   beforeEach(() => {
     (globalThis as any).localStorage = {
+      clear: vi.fn(),
       getItem: vi.fn().mockReturnValue(null),
       setItem: vi.fn(),
       removeItem: vi.fn(),
@@ -233,5 +235,85 @@ describe('AuthService auth flow', () => {
     await expect(firstValueFrom(service.restoreSession())).resolves.toBe(false);
 
     expect(httpClientMock.post).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthService mock auth', () => {
+  let service: AuthService;
+  let httpClientMock: { post: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
+  let routerMock: { navigate: ReturnType<typeof vi.fn> };
+  let configServiceMock: { config: () => { MOCK_AUTH_ENABLED: boolean } };
+  let desktopBridgeMock: { publishAuthToken: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    (globalThis as any).localStorage = {
+      clear: vi.fn(),
+      getItem: vi.fn().mockReturnValue(null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    };
+    document.cookie = 'bs_refresh_session_hint=; Max-Age=0; path=/';
+
+    httpClientMock = {
+      post: vi.fn(),
+      get: vi.fn(),
+    };
+    routerMock = { navigate: vi.fn() };
+    configServiceMock = {
+      config: () => ({ MOCK_AUTH_ENABLED: true }),
+    };
+    desktopBridgeMock = { publishAuthToken: vi.fn() };
+
+    service = new AuthService(
+      httpClientMock as unknown as HttpClient,
+      routerMock as unknown as Router,
+      configServiceMock as unknown as ConfigService,
+      desktopBridgeMock as unknown as DesktopBridgeService,
+      'browser',
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('short-circuits login to the mock session and hydrates mock claims', async () => {
+    httpClientMock.get.mockReturnValueOnce(
+      of({
+        data: {
+          sub: 'mock-remote',
+          email: 'remote@example.com',
+          roles: ['manager'],
+          groups: ['manager'],
+          is_superuser: false,
+          is_staff: true,
+        },
+      }),
+    );
+
+    const response = await firstValueFrom(service.login({ username: 'anything', password: 'secret' }));
+
+    expect(response.access_token).toBe('mock-token');
+    expect(service.getToken()).toBe('mock-token');
+    expect(service.isMockEnabled()).toBe(true);
+    expect(httpClientMock.post).not.toHaveBeenCalled();
+    expect(httpClientMock.get).toHaveBeenCalledWith('/api/mock-auth-config/');
+    expect(service.claims()?.sub).toBe('mock-remote');
+    expect(service.claims()?.email).toBe('remote@example.com');
+  });
+
+  it('refreshes to the synthetic mock token without hitting the backend', async () => {
+    const token = await firstValueFrom(service.refreshToken());
+
+    expect(token).toBe('mock-token');
+    expect(service.getToken()).toBe('mock-token');
+    expect(httpClientMock.post).not.toHaveBeenCalled();
+  });
+
+  it('restores no session in mock mode', async () => {
+    await expect(firstValueFrom(service.restoreSession())).resolves.toBe(false);
+
+    expect(httpClientMock.post).not.toHaveBeenCalled();
+    expect(httpClientMock.get).not.toHaveBeenCalled();
   });
 });

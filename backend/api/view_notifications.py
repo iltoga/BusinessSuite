@@ -1,5 +1,6 @@
 import logging
 
+from api.utils.contracts import get_request_id
 from api.utils.contracts import build_error_payload
 from api.utils.stream_payloads import normalize_async_job_payload, serialize_async_job_payload
 
@@ -1209,7 +1210,12 @@ def async_job_status_sse(request, job_id):
     def event_stream():
         deadline = time.monotonic() + _SSE_MAX_DURATION_SECONDS
         replay_cursor = resolve_last_event_id(request)
-        logger.info("async_job_status_sse connect job_id=%s replay_cursor=%s", job_id, replay_cursor)
+        logger.info(
+            "async_job_status_sse connect job_id=%s request_id=%s replay_cursor=%s",
+            job_id,
+            get_request_id(request),
+            replay_cursor,
+        )
         stream_key = stream_job_key(job_id)
         last_progress = None
         last_status = None
@@ -1224,7 +1230,11 @@ def async_job_status_sse(request, job_id):
         try:
             job = _get_job()
         except AsyncJob.DoesNotExist:
-            logger.warning("async_job_status_sse job_not_found job_id=%s", job_id)
+            logger.warning(
+                "async_job_status_sse job_not_found job_id=%s request_id=%s",
+                job_id,
+                get_request_id(request),
+            )
             yield format_sse_event(data=build_error_payload(code="not_found", message="Job not found", request=request))
             return
 
@@ -1260,11 +1270,21 @@ def async_job_status_sse(request, job_id):
                 if data["status"] in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
                     return
             except AsyncJob.DoesNotExist:
-                logger.warning("async_job_status_sse job_disappeared job_id=%s replay_cursor=%s", job_id, replay_cursor)
+                logger.warning(
+                    "async_job_status_sse job_disappeared job_id=%s request_id=%s replay_cursor=%s",
+                    job_id,
+                    get_request_id(request),
+                    replay_cursor,
+                )
                 yield format_sse_event(data={"errorMessage": "Job not found"})
                 break
             except Exception as e:
-                logger.exception("async_job_status_sse failure job_id=%s error=%s", job_id, e)
+                logger.exception(
+                    "async_job_status_sse failure job_id=%s request_id=%s error=%s",
+                    job_id,
+                    get_request_id(request),
+                    e,
+                )
                 yield format_sse_event(data={"errorMessage": str(e)})
                 break
 

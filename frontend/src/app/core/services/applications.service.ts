@@ -45,6 +45,7 @@ import {
   type DocumentOcrStatusResponse,
   type OcrQueuedResponse as ServiceOcrQueuedResponse,
 } from '@/core/services/ocr.service';
+import type { RequestMetadata } from '@/core/utils/request-metadata';
 
 export interface ApplicationCustomer {
   id: number;
@@ -314,7 +315,7 @@ export class ApplicationsService {
 
   startDocumentOcr(
     file: File,
-    options?: { documentId?: number; docTypeId?: number },
+    options?: { documentId?: number; docTypeId?: number; requestMetadata?: RequestMetadata | null },
   ): Observable<ServiceOcrQueuedResponse | DocumentOcrStatusResponse> {
     return this.ocrService.startDocumentOcr(file, options);
   }

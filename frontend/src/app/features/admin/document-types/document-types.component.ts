@@ -14,6 +14,7 @@ import { catchError, EMPTY, finalize, map, type Observable } from 'rxjs';
 
 import { DocumentTypesService } from '@/core/api';
 import { DocumentType } from '@/core/api/model/document-type';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
@@ -26,8 +27,14 @@ import {
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
 import { JsonFieldMappingEditorComponent } from '@/shared/components/json-field-mapping-editor';
+import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
-import { BaseListComponent, BaseListConfig, type ListRequestParams, type PaginatedResponse } from '@/shared/core/base-list.component';
+import {
+  BaseListComponent,
+  BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
+} from '@/shared/core/base-list.component';
 
 /**
  * Document Types component
@@ -53,6 +60,7 @@ import { BaseListComponent, BaseListConfig, type ListRequestParams, type Paginat
     SearchToolbarComponent,
     ConfirmDialogComponent,
     JsonFieldMappingEditorComponent,
+    PaginationControlsComponent,
   ],
   templateUrl: './document-types.component.html',
   styleUrls: ['./document-types.component.css'],
@@ -61,6 +69,8 @@ import { BaseListComponent, BaseListConfig, type ListRequestParams, type Paginat
 export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
   @ViewChild('documentTypeModalTemplate', { static: true })
   documentTypeModalTemplate!: TemplateRef<any>;
+  @ViewChild('descriptionTemplate', { static: true })
+  descriptionTemplate!: TemplateRef<{ $implicit: DocumentType; value: unknown; row: DocumentType }>;
   @ViewChild('dataTable') localDataTable?: DataTableComponent<DocumentType>;
 
   private readonly fb = inject(FormBuilder);
@@ -84,7 +94,12 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
   // Columns configuration
   readonly columns = computed<ColumnConfig<DocumentType>[]>(() => [
     { key: 'name', header: 'Name', sortable: true },
-    { key: 'description', header: 'Description', sortable: false },
+    {
+      key: 'description',
+      header: 'Description',
+      sortable: false,
+      template: this.descriptionTemplate,
+    },
     { key: 'autoGeneration', header: 'Auto', sortable: false },
     { key: 'aiValidation', header: 'AI Validation', sortable: false },
     { key: 'deprecated', header: 'Deprecated', sortable: false },
@@ -150,6 +165,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
     this.config = {
       entityType: 'admin/document-types',
       entityLabel: 'Document Types',
+      defaultPageSize: 12,
     } as BaseListConfig<DocumentType>;
   }
 
@@ -161,15 +177,22 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
     params: ListRequestParams,
   ): Observable<PaginatedResponse<DocumentType>> {
     const query = params.query?.trim();
+    const page = params.page || 1;
+    const pageSize = params.pageSize || this.pageSize();
 
     return this.documentTypesApi
-      .documentTypesList(undefined, !this.includeDeprecated(), undefined, query || undefined)
+      .documentTypesList(undefined, !this.includeDeprecated(), params.ordering, query || undefined)
       .pipe(
         map((data) => {
           const items = data || [];
           this.openPendingEditIfRequested(items);
+
+          // Client-side pagination for non-paginated endpoint
+          const start = (page - 1) * pageSize;
+          const results = items.slice(start, start + pageSize);
+
           return {
-            results: items,
+            results,
             count: items.length,
           };
         }),
@@ -182,6 +205,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
   override onSortChange(event: SortEvent): void {
     const ordering = event.direction === 'desc' ? `-${event.column}` : event.column;
     this.ordering.set(ordering);
+    this.page.set(1);
     this.reload();
   }
 
@@ -406,7 +430,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
               ? error.error.details.relatedProducts
               : Array.isArray(error?.error?.relatedProducts)
                 ? error.error.relatedProducts
-              : [];
+                : [];
             const relatedNames = relatedProducts
               .map((product: any) => `${product.code} - ${product.name}`)
               .join('\n• ');
@@ -472,13 +496,19 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
         }),
       )
       .subscribe((result: any) => {
-        if (!result.canDelete) {
-          this.toast.error(result.message);
+        const payload = unwrapApiRecord(result) as {
+          canDelete?: boolean;
+          message?: string | null;
+          warning?: string | null;
+        } | null;
+
+        if (!payload?.canDelete) {
+          this.toast.error(payload?.message || 'This document type cannot be deleted');
           return;
         }
 
         this.confirmDeleteMessage.set(
-          result.warning ||
+          payload?.warning ||
             `Are you sure you want to delete "${documentType.name}"? This action cannot be undone.`,
         );
         this.editingDocumentType.set(documentType);
