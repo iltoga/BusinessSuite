@@ -44,11 +44,11 @@ class CspMiddlewareReportOnlyTests(SimpleTestCase):
 
     REPORT_ONLY_POLICY = {
         "default-src": [CSP.SELF],
-        "script-src": [CSP.SELF, CSP.NONCE],
+        "script-src": [CSP.SELF, CSP.NONCE, "https://static.cloudflareinsights.com"],
         "style-src": [CSP.SELF, CSP.NONCE, CSP.UNSAFE_INLINE],
         "img-src": [CSP.SELF, "data:", "blob:"],
         "font-src": [CSP.SELF, "data:"],
-        "connect-src": [CSP.SELF],
+        "connect-src": [CSP.SELF, "https://cloudflareinsights.com"],
         "frame-src": [CSP.SELF, "https://challenges.cloudflare.com"],
         "object-src": [CSP.NONE],
         "base-uri": [CSP.SELF],
@@ -93,6 +93,15 @@ class CspMiddlewareReportOnlyTests(SimpleTestCase):
         self.assertIn("https://challenges.cloudflare.com", header)
 
     @override_settings(SECURE_CSP={}, SECURE_CSP_REPORT_ONLY=REPORT_ONLY_POLICY)
+    def test_cloudflare_web_analytics_sources_allowed(self):
+        request = RequestFactory().get("/")
+        mw = ContentSecurityPolicyMiddleware(_get_response)
+        response = mw(request)
+        header = response["Content-Security-Policy-Report-Only"]
+        self.assertIn("https://static.cloudflareinsights.com", header)
+        self.assertIn("https://cloudflareinsights.com", header)
+
+    @override_settings(SECURE_CSP={}, SECURE_CSP_REPORT_ONLY=REPORT_ONLY_POLICY)
     def test_self_in_default_src(self):
         request = RequestFactory().get("/")
         mw = ContentSecurityPolicyMiddleware(_get_response)
@@ -114,11 +123,11 @@ class CspMiddlewareEnforceTests(SimpleTestCase):
 
     ENFORCE_POLICY = {
         "default-src": [CSP.SELF],
-        "script-src": [CSP.SELF, CSP.NONCE],
+        "script-src": [CSP.SELF, CSP.NONCE, "https://static.cloudflareinsights.com"],
         "style-src": [CSP.SELF, CSP.NONCE, CSP.UNSAFE_INLINE],
         "img-src": [CSP.SELF, "data:", "blob:"],
         "font-src": [CSP.SELF, "data:"],
-        "connect-src": [CSP.SELF],
+        "connect-src": [CSP.SELF, "https://cloudflareinsights.com"],
         "frame-src": [CSP.SELF, "https://challenges.cloudflare.com"],
         "object-src": [CSP.NONE],
         "base-uri": [CSP.SELF],

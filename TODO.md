@@ -18,6 +18,7 @@
 
 ## DONE
 
+- Backend/Infra: updated admin-domain security config for `crmadmin.revisbali.com`, made cookie scoping safe for sibling admin domains, and allowed Cloudflare Web Analytics in CSP.
 - Frontend: fixed dashboard stat cards by unwrapping API success envelopes and added regression tests.
 - Frontend: preserved authenticated sessions on reload by restoring from the secure refresh-cookie flow before redirecting to login.
 - Frontend: showed a visible passport-image skeleton placeholder while customer detail media is loading.

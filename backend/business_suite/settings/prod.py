@@ -15,16 +15,20 @@ from .base import _parse_bool, _resolved_db_host
 from .cache_backends import build_prod_redis_caches
 
 SERVER_IP_ADDR = os.getenv("SERVER_IP_ADDR", "127.0.0.1")
-ADMIN_DOMAIN: str = os.getenv("ADMIN_DOMAIN", f"admin.{APP_DOMAIN}")
 
-ALLOWED_HOSTS = [
-    f"www.{APP_DOMAIN}",
-    f"{APP_DOMAIN}",
-    "bs-cron",
-    "bs-core",
-    f"{SERVER_IP_ADDR}",
-    f"{ADMIN_DOMAIN}",
-]
+ALLOWED_HOSTS = list(
+    dict.fromkeys(
+        [
+            f"www.{APP_DOMAIN}",
+            f"{APP_DOMAIN}",
+            "bs-cron",
+            "bs-core",
+            f"{SERVER_IP_ADDR}",
+            f"{ADMIN_DOMAIN}",
+            *([f"www.{ADMIN_DOMAIN}"] if ADMIN_DOMAIN and not ADMIN_DOMAIN.startswith("www.") else []),
+        ]
+    )
+)
 
 from django.core.exceptions import ImproperlyConfigured
 

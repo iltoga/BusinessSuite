@@ -255,17 +255,61 @@ def _resolve_jwt_signing_key(secret_key: str | None) -> str:
 
 
 JWT_SIGNING_KEY = _resolve_jwt_signing_key(SECRET_KEY)
-APP_DOMAIN = os.getenv("APP_DOMAIN")
+
+
+def _normalize_host(value: str | None) -> str:
+    raw = str(value or "").strip().strip('"').strip("'")
+    if raw.lower() in {"", "none", "null"}:
+        return ""
+
+    parsed = urlparse(raw if "://" in raw else f"https://{raw}")
+    return (parsed.hostname or "").strip().lower()
+
+
+def _unique_non_empty(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    items: list[str] = []
+    for value in values:
+        normalized = str(value or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        items.append(normalized)
+    return items
+
+
+def _build_host_variants(*hosts: str | None) -> list[str]:
+    variants: list[str] = []
+    for host in hosts:
+        normalized = _normalize_host(host)
+        if not normalized:
+            continue
+
+        variants.append(normalized)
+        if not normalized.startswith("www."):
+            variants.append(f"www.{normalized}")
+
+    return _unique_non_empty(variants)
+
+
+def _build_https_origins(*hosts: str | None) -> list[str]:
+    return [f"https://{host}" for host in _build_host_variants(*hosts)]
+
+
+APP_DOMAIN = _normalize_host(os.getenv("APP_DOMAIN"))
+ADMIN_DOMAIN = _normalize_host(os.getenv("ADMIN_DOMAIN", f"admin.{APP_DOMAIN}" if APP_DOMAIN else ""))
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = _parse_bool(os.getenv("DJANGO_DEBUG", "False"))
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "[::1]",
-    os.getenv("APP_DOMAIN", ""),
-]
+ALLOWED_HOSTS = _unique_non_empty(
+    [
+        "localhost",
+        "127.0.0.1",
+        "[::1]",
+        *_build_host_variants(APP_DOMAIN, ADMIN_DOMAIN),
+    ]
+)
 
 
 # Application definition
@@ -522,17 +566,33 @@ def _normalize_cookie_domain(value):
     return normalized
 
 
-CSRF_COOKIE_DOMAIN = _normalize_cookie_domain(os.getenv("CSRF_COOKIE_DOMAIN", APP_DOMAIN))
-SESSION_COOKIE_DOMAIN = _normalize_cookie_domain(os.getenv("SESSION_COOKIE_DOMAIN", APP_DOMAIN))
-CSRF_TRUSTED_ORIGINS = [
-    f"https://www.admin.{APP_DOMAIN}",
-    f"https://admin.{APP_DOMAIN}",
-    f"https://www.{APP_DOMAIN}",
-    f"https://{APP_DOMAIN}",
-    "https://localhost",
-    "http://localhost",
-    "http://localhost:4200",
-]
+def _default_cookie_domain(app_domain: str, admin_domain: str) -> str | None:
+    explicit_cookie_domain = _normalize_cookie_domain(os.getenv("COOKIE_DOMAIN"))
+    if explicit_cookie_domain is not None:
+        return explicit_cookie_domain
+
+    if not app_domain:
+        return None
+
+    if not admin_domain or admin_domain == app_domain or admin_domain.endswith(f".{app_domain}"):
+        return app_domain
+
+    return None
+
+
+DEFAULT_COOKIE_DOMAIN = _default_cookie_domain(APP_DOMAIN, ADMIN_DOMAIN)
+
+CSRF_COOKIE_DOMAIN = _normalize_cookie_domain(os.getenv("CSRF_COOKIE_DOMAIN", DEFAULT_COOKIE_DOMAIN))
+SESSION_COOKIE_DOMAIN = _normalize_cookie_domain(os.getenv("SESSION_COOKIE_DOMAIN", DEFAULT_COOKIE_DOMAIN))
+CSRF_TRUSTED_ORIGINS = _unique_non_empty(
+    [
+        *_build_https_origins(APP_DOMAIN, ADMIN_DOMAIN),
+        *_parse_list(os.getenv("EXTRA_CSRF_TRUSTED_ORIGINS")),
+        "https://localhost",
+        "http://localhost",
+        "http://localhost:4200",
+    ]
+)
 SESSION_COOKIE_SAMESITE = "Lax"  # Changed from "None" - use Lax for same-site Django apps
 CSRF_COOKIE_SAMESITE = "Lax"  # Changed from "None"
 
@@ -647,7 +707,7 @@ SIMPLE_JWT = {
 
 JWT_REFRESH_COOKIE_NAME = os.getenv("JWT_REFRESH_COOKIE_NAME", "bs_refresh_token").strip() or "bs_refresh_token"
 JWT_REFRESH_COOKIE_PATH = os.getenv("JWT_REFRESH_COOKIE_PATH", "/api/token/refresh/").strip() or "/api/token/refresh/"
-JWT_REFRESH_COOKIE_DOMAIN = _normalize_cookie_domain(os.getenv("JWT_REFRESH_COOKIE_DOMAIN", APP_DOMAIN))
+JWT_REFRESH_COOKIE_DOMAIN = _normalize_cookie_domain(os.getenv("JWT_REFRESH_COOKIE_DOMAIN", DEFAULT_COOKIE_DOMAIN))
 JWT_REFRESH_COOKIE_SECURE = _parse_bool(
     os.getenv("JWT_REFRESH_COOKIE_SECURE", "True" if _IS_PROD_SETTINGS else "False")
 )
@@ -660,8 +720,7 @@ _default_cors_origins = [
     "http://localhost:3000",
     "http://localhost:4200",
 ]
-if APP_DOMAIN:
-    _default_cors_origins += [f"https://{APP_DOMAIN}", f"https://admin.{APP_DOMAIN}", f"https://www.{APP_DOMAIN}"]
+_default_cors_origins += _build_https_origins(APP_DOMAIN, ADMIN_DOMAIN)
 
 CORS_ALLOWED_ORIGINS = _parse_list(os.getenv("CORS_ALLOWED_ORIGINS", ",".join(_default_cors_origins)))
 # Allow credentials (cookies) only when explicitly enabled in env var (default False for safety)
@@ -791,11 +850,11 @@ if CSP_ENABLED:
 
     _csp_policy: dict = {
         "default-src": [_CSP.SELF],
-        "script-src": [_CSP.SELF, _CSP.NONCE],
+        "script-src": [_CSP.SELF, _CSP.NONCE, "https://static.cloudflareinsights.com"],
         "style-src": [_CSP.SELF, _CSP.NONCE, _CSP.UNSAFE_INLINE],
         "img-src": [_CSP.SELF, "data:", "blob:"],
         "font-src": [_CSP.SELF, "data:"],
-        "connect-src": [_CSP.SELF],
+        "connect-src": [_CSP.SELF, "https://cloudflareinsights.com"],
         "frame-src": [_CSP.SELF, "https://challenges.cloudflare.com"],
         "object-src": [_CSP.NONE],
         "base-uri": [_CSP.SELF],
