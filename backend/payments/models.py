@@ -40,13 +40,6 @@ class PaymentManager(models.Manager):
             last_name_similarity=TrigramSimilarity("from_customer__last_name", query),
         ).filter(Q(search=query) | Q(first_name_similarity__gt=0.3) | Q(last_name_similarity__gt=0.3))
 
-        # return self.filter(
-        #     models.Q(from_customer__first_name__icontains=query)
-        #     | models.Q(from_customer__last_name__icontains=query)
-        #     | models.Q(invoice_application__invoice_no__icontains=query)
-        #     | models.Q(payment_date__icontains=query)
-        # )
-
 
 class Payment(models.Model):
     CASH = "cash"
@@ -93,9 +86,12 @@ class Payment(models.Model):
 @receiver(post_save, sender=Payment)
 def update_invoice_status(sender, instance, **kwargs):
     try:
-        invoice_application = InvoiceApplication.objects.select_related("invoice").get(
-            pk=instance.invoice_application_id
-        )
+        with transaction.atomic():
+            invoice_application = (
+                InvoiceApplication.objects.select_related("invoice")
+                .select_for_update()
+                .get(pk=instance.invoice_application_id)
+            )
     except InvoiceApplication.DoesNotExist:
         # Can happen during cascaded deletes when invoice_application is already gone.
         return

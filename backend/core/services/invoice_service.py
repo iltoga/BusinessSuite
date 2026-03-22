@@ -104,6 +104,10 @@ def _is_invoice_no_unique_conflict(exc: Exception) -> bool:
 def sync_paid_invoice_applications(*, invoice: Invoice, user=None) -> int:
     """Mark linked customer applications as completed when invoice is fully paid.
 
+    Only marks applications whose document collection is actually complete.
+    Applications with incomplete documents are left in their current status
+    to avoid masking missing data.
+
     Kept as an explicit service-layer side effect so it can be invoked from
     transactional write flows (invoice/payment operations) without embedding
     cross-model mutations in ``Invoice.save()``.
@@ -118,6 +122,8 @@ def sync_paid_invoice_applications(*, invoice: Invoice, user=None) -> int:
         .distinct()
     )
     for application in linked_applications:
+        if not application.is_document_collection_completed:
+            continue
         application.status = DocApplication.STATUS_COMPLETED
         if user and getattr(user, "is_authenticated", False):
             application.updated_by = user

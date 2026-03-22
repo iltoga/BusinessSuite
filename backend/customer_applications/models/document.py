@@ -143,23 +143,22 @@ class Document(models.Model):
         is_details_filled = self.details != ""
         is_doc_number_filled = self.doc_type.has_doc_number and self.doc_number != ""
         is_expiration_date_filled = self.doc_type.has_expiration_date and self.expiration_date is not None
-        # if file and details are required and one of them is filled
-        is_file_or_details_filled = (
-            self.doc_type.has_file and self.doc_type.has_details and (is_file_filled or is_details_filled)
-        )
-        # Check the overall condition for completed
-        self.completed = any(
-            [
-                is_file_filled,  # if file is required and filled
-                not self.doc_type.has_file
-                and not self.doc_type.has_doc_number
-                and not self.doc_type.has_expiration_date
-                and is_details_filled,  # if only details are required and filled
-                is_doc_number_filled,  # if document number is required and filled
-                is_expiration_date_filled,  # if expiration date is required and filled
-                is_file_or_details_filled,  # if file and details are required and one of them is filled
-            ]
-        )
+
+        # Determine completion: each required field must be filled.
+        # When no fields are required, a document with details counts as complete.
+        required_checks = [
+            (self.doc_type.has_file, is_file_filled),
+            (self.doc_type.has_doc_number, is_doc_number_filled),
+            (self.doc_type.has_expiration_date, is_expiration_date_filled),
+            (self.doc_type.has_details, is_details_filled),
+        ]
+        has_any_requirement = any(req for req, _ in required_checks)
+        if has_any_requirement:
+            # All required fields must be filled for completion.
+            self.completed = all(filled for required, filled in required_checks if required)
+        else:
+            # No explicit requirements: treat details as sufficient.
+            self.completed = is_details_filled
 
         old_file_name = ""
         old_thumbnail_name = ""

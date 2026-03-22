@@ -187,7 +187,7 @@ class Invoice(models.Model):
     def total_paid_amount(self):
         # Use annotated field if available, otherwise calculate
         if hasattr(self, "total_paid"):
-            return self.total_paid or 0
+            return self.total_paid or Decimal("0")
 
         prefetched_objects = getattr(self, "_prefetched_objects_cache", {})
         prefetched_invoice_applications = prefetched_objects.get("invoice_applications")
@@ -198,19 +198,18 @@ class Invoice(models.Model):
             )
 
         if self.pk:  # Check if the Invoice instance has been saved
-            return (
-                self.invoice_applications.annotate(total_payment=Sum("payments__amount")).aggregate(
-                    total_paid=Sum("total_payment")
-                )["total_paid"]
-                or 0
+            return self.invoice_applications.annotate(
+                total_payment=Sum("payments__amount", output_field=models.DecimalField())
+            ).aggregate(total_paid=Sum("total_payment", output_field=models.DecimalField()))["total_paid"] or Decimal(
+                "0"
             )
-        return 0
+        return Decimal("0")
 
     @property
     def total_due_amount(self):
         # Use annotated field if available, otherwise calculate
         if hasattr(self, "total_due"):
-            return self.total_due or 0
+            return self.total_due or Decimal("0")
 
         tot = self.total_amount - self.total_paid_amount
         return tot
@@ -503,20 +502,20 @@ class InvoiceApplication(models.Model):
     def paid_amount(self):
         # Use annotated field if available (from optimized querysets)
         if hasattr(self, "annotated_paid_amount"):
-            return self.annotated_paid_amount or 0
+            return self.annotated_paid_amount or Decimal("0")
 
         try:
             # Check if payments are prefetched to avoid extra queries
             if hasattr(self, "_prefetched_objects_cache") and "payments" in self._prefetched_objects_cache:
                 # Use prefetched payments
-                return sum(payment.amount for payment in self.payments.all()) or 0
+                return sum((payment.amount for payment in self.payments.all()), start=Decimal("0"))
 
             if self.payments.exists():
-                return self.payments.aggregate(models.Sum("amount"))["amount__sum"] or 0
+                return self.payments.aggregate(models.Sum("amount"))["amount__sum"] or Decimal("0")
         except ValueError:
             # InvoiceApplication hasn't been saved yet, so it can't have any Payments
             pass
-        return 0
+        return Decimal("0")
 
     @property
     def due_amount(self):
