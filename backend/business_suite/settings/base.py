@@ -906,11 +906,7 @@ STREAM_TTL_SECONDS = int(os.getenv("STREAM_TTL_SECONDS", str(7 * 24 * 60 * 60)))
 # select2
 SELECT2_CACHE_BACKEND = "select2"
 
-# SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-# # SESSION_COOKIE_AGE = 60 * 60 * 24  # One day
-# SESSION_COOKIE_AGE = 60 * 5 # 5 minutes
-
-TESSERACT_CMD = "/opt/homebrew/bin/tesseract"
+TESSERACT_CMD = os.getenv("TESSERACT_CMD", "tesseract")
 
 
 # Settings for Django static and media files

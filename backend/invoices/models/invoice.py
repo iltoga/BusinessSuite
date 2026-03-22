@@ -113,6 +113,7 @@ class Invoice(models.Model):
     PARTIALLY_REFUNDED = "partially_refunded"
     REFUNDED = "refunded"
     WRITE_OFF = "write_off"
+    OVERPAID = "overpaid"
 
     INVOICE_STATUS_CHOICES = [
         (CREATED, "Created"),
@@ -125,6 +126,7 @@ class Invoice(models.Model):
         (PARTIALLY_REFUNDED, "Partially Refunded"),
         (REFUNDED, "Refunded"),
         (WRITE_OFF, "Write Off"),
+        (OVERPAID, "Overpaid"),
     ]
 
     customer: models.ForeignKey[Customer] = models.ForeignKey(
@@ -339,17 +341,42 @@ class Invoice(models.Model):
     def get_next_invoice_no_for_year(cls, year: int) -> int:
         cache_key = cls._get_invoice_seq_cache_key(year)
 
+        # Fast path: atomic increment in cache
         try:
             next_sequence = cache.incr(cache_key)
             return cls._build_year_invoice_no(year, next_sequence)
+        except ValueError:
+            # Key missing — prime from DB and retry
+            pass
         except Exception:
-            last_sequence = cls._prime_invoice_sequence_cache(year)
+            # Cache unavailable — fall through to DB path
+            pass
 
+        # Prime cache from DB and retry increment
+        last_sequence = cls._prime_invoice_sequence_cache(year)
         try:
             next_sequence = cache.incr(cache_key)
             return cls._build_year_invoice_no(year, next_sequence)
         except Exception:
-            next_sequence = last_sequence + 1
+            pass
+
+        # Final fallback: derive directly from DB with row-level lock to prevent
+        # concurrent requests from computing the same next sequence.
+        from django.db import transaction
+
+        with transaction.atomic():
+            year_str = str(year)
+            locked_last = (
+                cls.objects.select_for_update()
+                .annotate(invoice_no_str=Cast("invoice_no", models.CharField()))
+                .filter(invoice_no_str__startswith=year_str)
+                .order_by("-invoice_no")
+                .first()
+            )
+            if locked_last:
+                next_sequence = cls._extract_sequence(locked_last.invoice_no, year) + 1
+            else:
+                next_sequence = 1
             return cls._build_year_invoice_no(year, next_sequence)
 
     def get_invoice_year(self) -> int:
@@ -360,7 +387,7 @@ class Invoice(models.Model):
 
     def get_invoice_status(self):
         if self.total_due_amount < 0:
-            raise ValueError("Overpayment detected on invoice")
+            return Invoice.OVERPAID
 
         if self.total_due_amount == 0:
             return Invoice.PAID
@@ -376,7 +403,7 @@ class Invoice(models.Model):
         if self.total_due_amount < self.total_amount:
             return Invoice.PARTIAL_PAYMENT
 
-        raise ValueError("Unable to determine invoice status")
+        return Invoice.CREATED
 
 
 class InvoiceApplicationQuerySet(models.QuerySet):

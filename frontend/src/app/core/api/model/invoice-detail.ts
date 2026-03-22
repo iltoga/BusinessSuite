@@ -18,7 +18,7 @@ export interface InvoiceDetail {
   invoiceDate: string;
   dueDate: string;
   /**
-   * * `created` - Created * `pending_payment` - Pending Payment * `partial_payment` - Partial Payment * `paid` - Paid * `overdue` - Overdue * `disputed` - Disputed * `cancelled` - Cancelled * `partially_refunded` - Partially Refunded * `refunded` - Refunded * `write_off` - Write Off
+   * * `created` - Created * `pending_payment` - Pending Payment * `partial_payment` - Partial Payment * `paid` - Paid * `overdue` - Overdue * `disputed` - Disputed * `cancelled` - Cancelled * `partially_refunded` - Partially Refunded * `refunded` - Refunded * `write_off` - Write Off * `overpaid` - Overpaid
    */
   status?: InvoiceDetail.StatusEnum;
   notes?: string;
@@ -55,6 +55,7 @@ export namespace InvoiceDetail {
     PartiallyRefunded: 'partially_refunded',
     Refunded: 'refunded',
     WriteOff: 'write_off',
+    Overpaid: 'overpaid',
   } as const;
   export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
 }

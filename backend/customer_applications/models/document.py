@@ -164,9 +164,11 @@ class Document(models.Model):
         old_file_name = ""
         old_thumbnail_name = ""
 
-        # In case of an update operation, handle file replacement or removal
+        # In case of an update operation, handle file replacement or removal.
+        # Use select_for_update to prevent concurrent saves from racing on
+        # the same old file reference.
         if self.pk is not None:
-            orig = Document.objects.get(pk=self.pk)
+            orig = Document.objects.select_for_update().get(pk=self.pk)
             old_file_name = getattr(orig.file, "name", "") or ""
             old_thumbnail_name = getattr(orig.thumbnail, "name", "") or ""
             new_file_name = getattr(self.file, "name", "") or ""
