@@ -104,7 +104,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
     { key: 'aiValidation', header: 'AI Validation', sortable: false },
     { key: 'deprecated', header: 'Deprecated', sortable: false },
     { key: 'hasExpirationDate', header: 'Expiration', sortable: false },
-    { key: 'actions', header: 'Actions' },
+    { key: 'actions', header: 'Actions', width: '4%' },
   ]);
 
   // Actions configuration

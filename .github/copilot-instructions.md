@@ -1,286 +1,162 @@
-# GitHub Copilot Instructions — BusinessSuite
+# GitHub Copilot Instructions - BusinessSuite
 
-## Purpose
+## Overview / Purpose
+BusinessSuite is a Django 6 + DRF backend and Angular 21 frontend for visa/document-service workflows.
+Use the dominant pattern in the file you are editing. If the repo has a legacy exception, keep it local and do not normalize it away unless the task explicitly asks for a refactor.
+If codebase patterns conflict, prefer the most common implementation and match the surrounding file.
 
-Django 6 + Angular 21 ERP/CRM for visa/document-service agencies. Manages customer onboarding → document collection (OCR) → workflow progression → invoicing → payments.
+Current stack:
+- Backend: Django 6, DRF, SimpleJWT, `djangorestframework-camel-case`, Dramatiq, Redis, PostgreSQL, `django-cacheops`, `django-auditlog`, and `django-waffle`.
+- Frontend: Angular 21 standalone components, signals, SSR, Bun, and an OpenAPI-generated client.
+- Data/cache: PostgreSQL is the source of truth, Redis is used for broker/cache, and browser IndexedDB is only used where an existing service already uses it.
 
-## Stack
+Cross-check against `README.md`, `docs/architecture.md`, `docs/backend.md`, `docs/frontend.md`, `docs/coding-standards.md`, `docs/shared_components.md`, and `docs/API_ENDPOINTS.md`.
 
-| Layer      | Technology                                                                                     |
-| ---------- | ---------------------------------------------------------------------------------------------- |
-| Backend    | Django 6, DRF, Python 3.12+, SimpleJWT (`Authorization: Bearer`)                               |
-| Async      | Dramatiq 2 + Redis broker; queues: `realtime`, `default`, `scheduled`, `low`, `doc_conversion` |
-| Frontend   | Angular 21, standalone+OnPush, signals, ZardUI (Tailwind v4), Bun                              |
-| DB         | PostgreSQL (source of truth) + Redis (broker/cache/results)                                    |
-| API schema | drf-spectacular → `backend/schema.yaml` → generated TS client                                  |
+## Backend Guidelines
+- DO keep DRF views thin. Standard CRUD lives in `ModelViewSet` classes with `get_queryset()`, `get_serializer_class()`, `perform_create()`, and `perform_update()`.
+- DO keep real controller code in the split modules under `backend/api/` such as `view_billing.py`, `view_applications.py`, `view_auth_catalog.py`, `view_notifications.py`, and `view_realtime.py`.
+- DO treat `backend/api/views.py` as a compatibility facade only. Add new controller logic in the split module for the domain.
+- DO use `backend/api/views_imports.py` and `backend/api/views_shared.py` for shared controller imports, base mixins, pagination, throttles, and helper functions.
+- DO keep backend wiring direct. There is no repository layer or DI container in this codebase; services are imported and called directly.
+- DO put multi-model orchestration, retries, and IO-heavy work in services. Match the local style: function-based transactional services are common in `backend/core/services/invoice_service.py`, while class-based generators fit places like `backend/products/services/price_list_service.py`.
+- DO keep single-model invariants in model methods or `clean()`/`save()` when the codebase already does that. Examples: `backend/customer_applications/models/document.py` and `backend/invoices/models/invoice.py`.
+- DO add reusable query logic to `QuerySet` or manager methods when the same filter/search/prefetch shape is reused.
+- DO shape querysets with `select_related()` and `prefetch_related()` so serializer fields and computed properties do not trigger extra queries.
+- DO use `default_storage` for persisted uploads and generated files. Use direct filesystem calls only for bundled static/template assets or when the existing module already does that for a local asset.
+- DO use `ApiErrorHandlingMixin` for API viewsets that need the canonical error payload and cache-throttle resilience. Use `StandardResultsSetPagination` unless the endpoint is a small lookup list.
+- DO use the existing search/order pattern on list endpoints: `filters.SearchFilter`, `filters.OrderingFilter`, `search_fields`, and `ordering`.
+- DO keep JSON camelCase on the wire. Python stays snake_case, but serializers may intentionally expose aliases such as `updatedBy`, `fullName`, or `jobId`.
+- DO enforce access with `IsAuthenticated`, `DjangoModelPermissions`, or the explicit group helpers from `backend/api/permissions.py`: `IsStaffOrAdminGroup`, `IsSuperuserOrAdminGroup`, and `IsAdminOrManagerGroup`. The group names are `admin` and `manager`.
+- DO prefer `JwtOrMockAuthentication` for authenticated API endpoints. Mock auth is dev-only and must stay behind `MOCK_AUTH_ENABLED`.
+- DO keep the auth token flow consistent with `backend/api/view_auth_catalog.py`: access token in the response body, refresh token in the HttpOnly `bs_refresh_token` cookie, session hint in `bs_refresh_session_hint`, and logout clears both.
+- DO keep public/plain Django views for the endpoints that need them: health checks, `public_app_config`, webhooks, SSE streams, and file responses.
+- DO annotate custom actions and non-standard payloads with `extend_schema` or `extend_schema_view` so `backend/schema.yaml` stays accurate.
+- DO use `build_success_payload()` and `build_error_payload()` when that endpoint family already uses the canonical `{data, meta}` or `{error, meta}` envelope.
+- DO use `sse_token_auth_required` plus `StreamingHttpResponse` for SSE endpoints. Use the Redis stream helpers and payload normalizers under `api/utils/stream_payloads.py` and `core/services/redis_streams.py`.
+- DO apply the existing throttle scopes and classes on heavy or enqueue-heavy endpoints instead of inventing new ones.
+- DON'T move cross-model transactions, file cleanup, or async job orchestration into view methods when an existing service or task already owns that behavior.
+- DON'T assume every endpoint returns the same shape. Standard CRUD often returns raw serializer output, custom actions often use the envelope helpers, and streams/file/plain JSON endpoints are separate again.
+- DON'T invent new ad hoc error shapes. Use `ValidationError`, `ApiErrorHandlingMixin.error_response()`, or `api.utils.exception_handler.custom_exception_handler`.
+- DON'T bypass `default_storage` for upload paths or generated artifacts.
+- DON'T force one service style globally. Use the style that matches the module you are editing.
 
----
+Example backend controller pattern:
+```python
+class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+    def perform_create(self, serializer):
+        from core.services.invoice_service import create_invoice
 
-## Architecture Overview
-
-```
-Angular 21 SPA  →[JWT Bearer]→  DRF APIViews/ViewSets  →  Service layer  →  PostgreSQL
-                                         ↓ enqueue actors
-                                  Dramatiq + Redis (5 queues)
-                                         ↓ workers
-                              External APIs (Google, AI/OCR)
-```
-
-- **Auth:** `JwtOrMockAuthentication`; interceptor refreshes on 401; mock auth available via env flag.
-- **Caching:** `cache.middleware.CacheMiddleware` (per-user namespace) + django-cacheops + Angular `cache.interceptor` (IndexedDB).
-- **Realtime:** SSE per-job at `/api/async-jobs/status/{job_id}/` + global Redis Streams multiplexer (`RealtimeEventDispatcherService`).
-- **Observability:** Structured logs → `logs/`; optional Alloy/Promtail → Grafana/Loki; auditlog on key models.
-
----
-
-## Repository Map
-
-```
-backend/
-  api/              # DRF views + serializers (thin controllers only)
-    serializers/    # camelCase ↔ snake_case — one file per domain
-    view_billing.py / view_applications.py / view_realtime.py / …
-  core/
-    services/       # ALL business logic (invoice_service, ai_client, sync_service, …)
-    models/         # Base models, CalendarReminder, AsyncJob, etc.
-    tasks/          # Dramatiq task actors
-  customers/ products/ customer_applications/ invoices/ payments/ letters/ reports/
-    # Each app: models.py, admin.py, services/ (domain logic), tests/
-
-frontend/src/app/
-  core/
-    api/            # AUTO-GENERATED OpenAPI client — DO NOT EDIT MANUALLY
-    services/       # Singleton services (auth, sse, job, realtime-notification, …)
-    guards/ interceptors/ handlers/
-  shared/
-    components/     # Reusable UI — see docs/shared_components.md for registry
-    layouts/        # MainLayoutComponent, AuthLayoutComponent
-    utils/          # form-errors.ts, file-download.ts
-  features/         # One folder per domain (customers, applications, invoices, …)
-  config/           # app.routes.ts, environment files
+        invoice = create_invoice(data=serializer.validated_data, user=self.request.user)
+        serializer.instance = invoice
 ```
 
----
+## Frontend Guidelines
+- DO build new UI as standalone components with `ChangeDetectionStrategy.OnPush`. NgModules are not used for new code.
+- DO use signals for local mutable state, `computed()` for derived state, `effect()` for side effects, and `rxResource()` for reactive list loading and reloading.
+- DO extend `BaseListComponent`, `BaseFormComponent`, or `BaseDetailComponent` for new list/form/detail screens instead of reimplementing navigation, keyboard shortcuts, loading, and delete behavior.
+- DO keep app bootstrapping in `frontend/src/app/app.config.ts`. Runtime config, theme initialization, and auth restore belong there or in root services, not in feature components.
+- DO use `ConfigService` for runtime config and any bootstrap request that must bypass interceptors. It uses `HttpBackend` on purpose.
+- DO use the generated client in `frontend/src/app/core/api/`. Add wrappers in `frontend/src/app/core/services/` only when you need normalization, state, browser-specific behavior, or a nonstandard wire-level flow.
+- DO use `AuthService` as the source of truth for auth state. Access tokens stay in memory, refresh tokens come from the HttpOnly cookie, and mock auth stays dev-only.
+- DO use `SseService` for SSE. It uses `fetch`, sends auth headers and `Last-Event-ID`, and handles replay and rotation. Do not use `EventSource` directly.
+- DO guard browser-only code with `isPlatformBrowser()` or `typeof window !== 'undefined'` because SSR is enabled.
+- DO keep routes in `frontend/src/app/app.routes.ts` and follow the existing `list/new/edit/detail` layout. `MainLayoutComponent` is protected by `authGuard`, and products/reports/admin areas use `adminOrManagerGuard`.
+- DO update `MenuService` and `HelpService` when adding a screen that appears in navigation or needs contextual help.
+- DO reuse shared components from `frontend/src/app/shared/components/`. If you add or change a reusable shared component, update `docs/shared_components.md` in the same change.
+- DO use `unwrapApiEnvelope()` and `unwrapApiRecord()` when an endpoint may return raw serializer data or the `{ data, meta }` envelope. Use `extractServerErrorMessage()` and `applyServerErrorsToForm()` for backend validation errors.
+- DON'T add NgRx, `BehaviorSubject`, or a new global store for new screens that can be handled with signals and services.
+- DON'T edit `frontend/src/app/core/api/**` by hand.
+- DON'T add new `localStorage` or `sessionStorage` persistence for general app state. Existing dedicated persistence flows are exceptions, not the default.
+- DON'T touch `window`, `document`, `localStorage`, `indexedDB`, or DOM APIs without a browser guard.
 
-## Code Style & Patterns
+Example frontend state pattern:
+```ts
+protected readonly listResource = rxResource({
+  params: () => ({
+    query: this.query(),
+    page: this.page(),
+    pageSize: this.pageSize(),
+    ordering: this.ordering(),
+    reloadToken: this.reloadToken(),
+  }),
+  stream: ({ params }) => this.createListLoader(params),
+});
+```
 
-### General (Both Stacks)
+## Shared Conventions
+- Python modules use snake_case. Classes use PascalCase. Legacy CamelCase modules exist (`backend/invoices/services/InvoiceService.py`, `backend/letters/services/LetterService.py`); do not introduce new ones.
+- Angular filenames use kebab-case. Selectors follow the existing split: `app-...` for app/shared screens and `z-...` for low-level wrappers and primitives.
+- Shared UI components live under `frontend/src/app/shared/components/`. Use `index.ts` barrels and `*.variants.ts` when the component already follows that pattern. Do not edit Zard primitives directly; compose wrappers around them.
+- Backend feature logic stays in its Django app. Cross-cutting business logic stays in `core/services`. Frontend feature UI stays in `features/`; reusable UI, services, and state live in `shared/` and `core/`.
+- Keep API changes contract-first: update the backend serializer/view, regenerate `backend/schema.yaml`, then regenerate the Angular client with `cd frontend && bun run generate:api`.
+- Match the existing API shape for the endpoint family you are editing. Some responses are raw serializer output, some use `{ data, meta }`, and some are streams, files, or plain JSON.
+- When adding a navigable screen, update the route, menu, and help registry together if the screen belongs in navigation.
+- Keep backend and frontend permissions aligned. Backend group helpers use `admin` and `manager`; frontend guards and menu visibility should mirror those roles.
+- `docs/shared_components.md` is the canonical registry for reusable UI. Check it before creating a new component and update it in the same change.
+- Use `docs/API_ENDPOINTS.md` to verify exact endpoint names before inventing a new route or action.
 
-- **DRY first:** Search for existing implementations before creating anything new.
-- **Plan before coding:** When planning a task, write an implementation plan to `TODO.md`, then follow and update it as you complete the work.
-- **Cleanup is automatic:** After any task, remove unused imports, dead code, debug logs. Report what was removed.
-- **No hardcoded credentials:** All secrets via `.env`.
+## Testing Expectations
+- Backend tests use `uv run pytest` as the normal runner.
+- Backend test files use the `test_*.py` naming convention and live under `backend/<app>/tests/` or `backend/api/tests/`.
+- Use `TestCase` for DB-backed integration tests, `SimpleTestCase` for pure logic, `APIClient` and `APIRequestFactory` for view tests, and `patch()` for external IO, AI, storage, or subprocess calls.
+- Keep backend tests isolated from real infrastructure. Use `override_settings`, mocked storage, or request factories when the code path touches the network, Redis, or the filesystem.
+- Frontend unit tests use Vitest assertions in `*.spec.ts` files and run through Angular's unit-test builder (`bun run test` / `bun run test:unit`).
+- Use `TestBed` when DI, templates, or lifecycle matter. For pure class logic, lightweight harnesses or `Object.create(SomeClass.prototype)` are normal in this repo.
+- Use Playwright for end-to-end tests (`bun run test:e2e`).
+- Keep browser-specific tests aligned with `frontend/src/test-setup.ts`.
+- When changing API contracts, add or update both backend tests and the frontend test that consumes the changed response shape.
 
-### Backend (Django/Python)
-
-- **Thin views:** Views handle request/response only. All logic in `core/services/` or domain `services/`.
-- **Layer rules:** Single-model logic → `model.save()` or model method; cross-model → `core/services/`; query logic → custom managers.
-- **Auth:** `DjangoModelPermissions` on ViewSets; `JwtOrMockAuthentication` handles both JWT and dev mock mode.
-- **API error format:**
-  ```python
-  {
-    "error": {
-      "code": "validation_error",
-      "message": "Validation error",
-      "details": {"field": ["message"]}   # optional
-    },
-    "errors": {"field": ["message"]}       # backward-compat alias
-  }
-  ```
-- **File I/O:** Always `default_storage` (supports S3 + local); `get_upload_to()` for paths.
-- **N+1 prevention:** `select_related()` / `prefetch_related()` in every list query.
-- **Data integrity rules (MUST PRESERVE):**
-  - `Document.completed` is auto-calculated in `Document.save()` from DocumentType's `has_file`, `has_doc_number`, `has_expiration_date`, and `has_details` flags.
-  - `DocWorkflow` uses `calculate_due_date()` for scheduling.
-  - Applications linked to invoices **cannot be deleted** — validate in service layer.
-- **Migrations:** Every model change requires `makemigrations`. Update admin, serializers, tests together.
-- **PEP 8 + type hints** on all new code.
-
-### Frontend (Angular/TypeScript)
-
-- **Components:** Always `standalone: true` + `ChangeDetectionStrategy.OnPush`. No `NgModules`.
-- **State:** `signal()` for local state, `computed()` for derived values, service-level signals for shared state. **Never `BehaviorSubject`**.
-- **File naming:** kebab-case — `customer-list.component.ts`, `auth.service.ts`, `auth.guard.ts`.
-- **Template/style extraction:** Extract to `.html`/`.css` only for non-trivial app-specific views. Keep ZardUI wrappers and small components inline.
-- **No `localStorage`/`sessionStorage`** — use signals.
-- **Notifications:** Inject `GlobalToastService` from `core/services/toast.service.ts`.
-- **Error mapping:** `applyServerErrorsToForm(form, error)` + `extractServerErrorMessage(error)` from `shared/utils/form-errors.ts`.
-
----
-
-## API Integration (Frontend — MANDATORY)
-
-| Rule                                              | Detail                                                                                          |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Generated client is law**                       | `frontend/src/app/core/api/` is the single source of truth for types and methods                |
-| **Never duplicate**                               | Do not create hand-written services that mirror generated endpoints                             |
-| **Never hand-write backend fetching**             | Do not manually add fetch/HttpClient logic for backend data in Angular; always use generated `core/api/` clients |
-| **Never hand-write interfaces**                   | Run `bun run generate:api` after backend changes; import from `core/api/`                       |
-| **Need a different UI shape?**                    | Adapter/wrapper around generated client — do not bypass it                                      |
-| **Manual `fetch`/`HttpClient` allowed only for:** | SSE streams, browser bootstrap before DI, third-party proxies, multipart/progress gaps          |
-| **When exception needed:**                        | Isolate in dedicated service + add a comment explaining why the generated client cannot be used |
-
----
-
-## Testing
-
-### Important Notes on Running Tests
-
-#### For Backend:
-
-- Always use DJANGO_TESTING=1 env var to prevent running tests on the production database. Use `uv run pytest` for all test runs.
-- (For Codex) never run tests in the sandbox. always run in the local environment where you can see the full output and debug if needed.
-
-### Backend (Django/pytest)
-
+Common commands:
 ```bash
-cd backend && python manage.py test                                # full Django suite
-cd backend && uv run pytest                                        # pytest runner
-cd backend && python manage.py test core.tests.test_async_job      # single module
+cd backend && uv run pytest
+cd frontend && bun run test:unit
+cd frontend && bun run test:e2e
+cd frontend && bun run dev:mock
 ```
 
-- Tests in `backend/<app>/tests/` as proper Django test modules.
-- **Never** execute `django.setup()`, DB queries, or network calls at import time in `test_*.py` files — wrap in `if __name__ == "__main__":`.
-- Mock AI/OCR/Google APIs. Use Django test base classes for DB-backed tests.
+## Example Files to Follow
+### Backend
+- `backend/api/view_billing.py` - CRUD viewset with custom actions, service delegation, and canonical envelopes.
+- `backend/api/view_applications.py` - queryset shaping, nested prefetching, serializer switching, and OCR/SSE flows.
+- `backend/api/view_auth_catalog.py` - token/cookie auth flow, profile actions, and bootstrap endpoints.
+- `backend/api/view_realtime.py` - SSE auth and streaming response pattern.
+- `backend/api/view_notifications.py` - webhook handling and direct Django/DRF response mix.
+- `backend/api/views_shared.py` - `ApiErrorHandlingMixin`, pagination, throttles, and async guard helpers.
+- `backend/api/utils/contracts.py` - canonical success/error payload helpers.
+- `backend/core/services/invoice_service.py` - transactional multi-model business logic.
+- `backend/products/services/price_list_service.py` - class-based document generation service.
+- `backend/customer_applications/models/document.py` - model save invariants, storage cleanup, and thumbnail sync.
+- `backend/invoices/models/invoice.py` - custom queryset/manager, totals, and document-generation prefetching.
+- `backend/core/views.py` - public app-config bootstrap JSON.
+- `backend/api/views.py` - compatibility facade only.
 
-### Frontend (Angular/Vitest)
+### Frontend
+- `frontend/src/app/app.config.ts` - bootstrap flow, runtime config, theme initialization, auth restore, and hydration.
+- `frontend/src/app/core/services/auth.service.ts` - in-memory JWT auth, refresh-cookie restore, and mock mode.
+- `frontend/src/app/core/services/config.service.ts` - bootstrap config fetch via `HttpBackend`.
+- `frontend/src/app/core/services/sse.service.ts` - fetch-based SSE with auth headers and replay cursors.
+- `frontend/src/app/core/utils/api-envelope.ts` - helpers for raw and enveloped API responses.
+- `frontend/src/app/shared/core/base-list.component.ts` - list-page resource and state backbone.
+- `frontend/src/app/shared/core/base-form.component.ts` - form lifecycle, validation, keyboard shortcuts, and error mapping.
+- `frontend/src/app/shared/core/base-detail.component.ts` - detail lifecycle and guarded delete flow.
+- `frontend/src/app/features/customers/customer-list/customer-list.component.ts` - real list screen built on the base list class.
+- `frontend/src/app/features/applications/application-list/application-list.component.ts` - more complex list actions, filters, and navigation state.
+- `frontend/src/app/shared/components/data-table/data-table.component.ts` - shared table primitive with shortcuts and focus management.
+- `frontend/src/app/shared/components/button/button.component.ts` - primitive wrapper and variant pattern.
+- `frontend/src/app/shared/components/select/select.component.ts` - CVA select primitive.
+- `frontend/src/app/shared/services/menu.service.ts` - role-aware navigation structure.
+- `frontend/src/app/shared/services/help.service.ts` - route-driven contextual help registry.
+- `docs/shared_components.md` - canonical registry for reusable UI.
 
-```bash
-cd frontend && bun run test                                                       # ng test (Karma)
-cd frontend && bun run vitest run                                                  # vitest runner
-cd frontend && bun run vitest run src/app/core/services/job.service.spec.ts       # single spec
-cd frontend && bun run test:e2e                                                    # Playwright E2E
-```
-
-- Unit specs alongside source files (`*.spec.ts`). Mock SSE, API clients, dialogs.
-- E2E: Playwright + Prism mock server (`bun run dev:mock`). See `docs/playwright-mock-e2e.md`.
-- Minimum 80% frontend unit coverage.
-
-### Before marking complete
-
-1. Run narrowest tests first, then full suite.
-2. Fix failing tests — do not skip unless explicitly instructed.
-3. Remove debug code and stale fixtures.
-
----
-
-## New Feature Workflow
-
-1. **Search** existing code (`grep -r`, IDE, `docs/shared_components.md`). Reuse before creating.
-2. **Backend:** model → migration → serializer → view → URL → permissions → admin → tests.
-3. **Frontend:** service (`core/services/`) → component (`features/<domain>/`) → route (`app.routes.ts`) → help entry (`HelpService`).
-4. **API change:** update serializer → regenerate schema → `bun run generate:api` → import from `core/api/`. Never manually sync TS types.
-5. **Document:** new shared component → `docs/shared_components.md`; lessons → `docs/implementation_feedback.md`.
-6. **Clean up** automatically: unused imports, dead code, debug logs.
-
-### Route pattern (inside `MainLayoutComponent` with `authGuard`)
-
-```typescript
-{ path: 'my-feature',          component: MyFeatureListComponent   },
-{ path: 'my-feature/new',      component: MyFeatureFormComponent   },
-{ path: 'my-feature/:id/edit', component: MyFeatureFormComponent   },
-{ path: 'my-feature/:id',      component: MyFeatureDetailComponent },
-```
-
-### Service pattern
-
-```typescript
-@Injectable({ providedIn: "root" })
-export class MyFeatureService {
-  private readonly api = inject(MyFeatureApi); // from core/api/
-  readonly items = signal<MyFeatureItem[]>([]);
-  readonly loading = signal(false);
-  async load() {
-    this.loading.set(true);
-    try {
-      this.items.set(
-        (await firstValueFrom(this.api.myFeatureList())).results ?? [],
-      );
-    } finally {
-      this.loading.set(false);
-    }
-  }
-}
-```
-
-### Component pattern
-
-```typescript
-@Component({
-  selector: "app-my-feature-list",
-  standalone: true,
-  templateUrl: "…",
-  changeDetection: ChangeDetectionStrategy.OnPush,
-})
-export class MyFeatureListComponent implements OnInit {
-  private readonly svc = inject(MyFeatureService);
-  readonly items = this.svc.items;
-  readonly loading = this.svc.loading;
-  ngOnInit() {
-    this.svc.load();
-  }
-}
-```
-
----
-
-## Shared Components Catalogue
-
-> Full registry: `docs/shared_components.md` — base path: `frontend/src/app/shared/components/`
-
-| Component                                                      | Selector                                     | Purpose                       |
-| -------------------------------------------------------------- | -------------------------------------------- | ----------------------------- |
-| `DataTableComponent`                                           | `app-data-table`                             | Sortable, paginated table     |
-| `SearchToolbarComponent`                                       | `app-search-toolbar`                         | Search + filter bar           |
-| `PaginationControlsComponent`                                  | `app-pagination-controls`                    | Page navigation               |
-| `ConfirmDialogComponent`                                       | `app-confirm-dialog`                         | Generic confirmation modal    |
-| `BulkDeleteDialogComponent`                                    | `app-bulk-delete-dialog`                     | Bulk delete modal             |
-| `FormErrorSummaryComponent`                                    | `app-form-error-summary`                     | Per-form server error list    |
-| `JobProgressDialogComponent`                                   | `app-job-progress-dialog`                    | Async job progress modal      |
-| `FileUpload` / `MultiFileUpload`                               | `app-file-upload` / `app-multi-file-upload`  | Upload with progress          |
-| `CustomerSelect` / `ProductSelect`                             | `app-customer-select` / `app-product-select` | Async search/select           |
-| `CalendarIntegration`                                          | `app-calendar-integration`                   | Calendar sync panel           |
-| `DetailField` / `DetailGrid` / `CardSection` / `SectionHeader` | various                                      | Detail page layout primitives |
-
-> **Do not edit** ZardUI source files in `shared/components/ui/` — create wrapper components instead.
-
----
-
-## Dev Commands Reference
-
-```bash
-# Infra
-docker compose -f docker-compose-local.yml up -d db redis
-
-# Backend
-cd backend && uv run python manage.py migrate
-cd backend && uv run python manage.py runserver 0.0.0.0:8000
-cd backend && uv run dramatiq business_suite.dramatiq --queues realtime,default,scheduled,low,doc_conversion
-cd backend && uv run python manage.py run_dramatiq_scheduler
-
-# Frontend
-cd frontend && bun install
-cd frontend && bun run start          # dev server (proxy to :8000)
-cd frontend && bun run start:lan      # dev server (LAN / host 0.0.0.0)
-cd frontend && bun run build          # production build
-cd frontend && bun run dev:mock       # Prism mock + Angular mock config
-
-# Schema regeneration (preferred)
-./refresh-schema-and-api.sh
-# or manually:
-cd backend && uv run python manage.py spectacular --file schema.yaml
-cd frontend && bun run generate:api
-```
-
----
-
-## References
-
-- Shared UI registry: `docs/shared_components.md`
-- Lessons learned: `docs/implementation_feedback.md`
-- API endpoint list: `docs/API_ENDPOINTS.md`
-- Architecture detail: `docs/architecture.md`
-- Theme guide: `copilot/specs/django-angular/THEME_GUIDE.md`
-- Playwright E2E: `docs/playwright-mock-e2e.md`
-- Web push: `docs/web-push-notifications.md`
-- Document hooks: `.github/copilot/prompts/create-document-hook.md`
+## Anti-patterns to Avoid
+- Don't add new controller code to `backend/api/views.py` when a split `view_*.py` module is the established home.
+- Don't wrap standard CRUD endpoints in a success envelope just for consistency.
+- Don't move shared query logic out of managers/querysets into serializers or UI code.
+- Don't invent a repository layer or a new global state store; the codebase does not use them.
+- Don't bypass `default_storage` for uploads or generated files.
+- Don't edit generated `frontend/src/app/core/api/**` by hand.
+- Don't use `EventSource` directly for SSE.
+- Don't add general app-state persistence to browser storage.
+- Don't create a reusable shared UI component without updating `docs/shared_components.md`.
+- Don't touch browser globals in SSR paths without a guard.
+- Don't assume one response envelope across the whole API; inspect the surrounding endpoint family first.

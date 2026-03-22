@@ -524,7 +524,9 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.document.refresh_from_db()
         self.assertTrue(bool(self.document.file))
-        self.assertTrue(self.document.completed)
+        # doc_type requires file + doc_number + expiration_date; only file is
+        # provided so the document is not yet complete.
+        self.assertFalse(self.document.completed)
         self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_INVALID)
 
     def test_document_update_valid_override_clears_ai_result_payload(self):

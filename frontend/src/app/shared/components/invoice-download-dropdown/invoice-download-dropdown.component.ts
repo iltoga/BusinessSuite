@@ -34,6 +34,7 @@ import { extractJobId } from '@/core/utils/async-job-contract';
     PdfViewerHostComponent,
   ],
   templateUrl: './invoice-download-dropdown.component.html',
+  styleUrls: ['./invoice-download-dropdown.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InvoiceDownloadDropdownComponent {

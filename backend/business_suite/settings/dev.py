@@ -17,6 +17,9 @@ DEFAULT_DOCUMENT_LANGUAGE_CODE = os.getenv("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id
 
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-dev-only-not-for-production")
 
+# macOS Homebrew tesseract path for local development
+TESSERACT_CMD = os.getenv("TESSERACT_CMD", "/opt/homebrew/bin/tesseract")
+
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_DOMAIN = None

@@ -113,6 +113,7 @@ class Invoice(models.Model):
     PARTIALLY_REFUNDED = "partially_refunded"
     REFUNDED = "refunded"
     WRITE_OFF = "write_off"
+    OVERPAID = "overpaid"
 
     INVOICE_STATUS_CHOICES = [
         (CREATED, "Created"),
@@ -125,6 +126,7 @@ class Invoice(models.Model):
         (PARTIALLY_REFUNDED, "Partially Refunded"),
         (REFUNDED, "Refunded"),
         (WRITE_OFF, "Write Off"),
+        (OVERPAID, "Overpaid"),
     ]
 
     customer: models.ForeignKey[Customer] = models.ForeignKey(
@@ -185,7 +187,7 @@ class Invoice(models.Model):
     def total_paid_amount(self):
         # Use annotated field if available, otherwise calculate
         if hasattr(self, "total_paid"):
-            return self.total_paid or 0
+            return self.total_paid or Decimal("0")
 
         prefetched_objects = getattr(self, "_prefetched_objects_cache", {})
         prefetched_invoice_applications = prefetched_objects.get("invoice_applications")
@@ -196,19 +198,18 @@ class Invoice(models.Model):
             )
 
         if self.pk:  # Check if the Invoice instance has been saved
-            return (
-                self.invoice_applications.annotate(total_payment=Sum("payments__amount")).aggregate(
-                    total_paid=Sum("total_payment")
-                )["total_paid"]
-                or 0
+            return self.invoice_applications.annotate(
+                total_payment=Sum("payments__amount", output_field=models.DecimalField())
+            ).aggregate(total_paid=Sum("total_payment", output_field=models.DecimalField()))["total_paid"] or Decimal(
+                "0"
             )
-        return 0
+        return Decimal("0")
 
     @property
     def total_due_amount(self):
         # Use annotated field if available, otherwise calculate
         if hasattr(self, "total_due"):
-            return self.total_due or 0
+            return self.total_due or Decimal("0")
 
         tot = self.total_amount - self.total_paid_amount
         return tot
@@ -339,17 +340,42 @@ class Invoice(models.Model):
     def get_next_invoice_no_for_year(cls, year: int) -> int:
         cache_key = cls._get_invoice_seq_cache_key(year)
 
+        # Fast path: atomic increment in cache
         try:
             next_sequence = cache.incr(cache_key)
             return cls._build_year_invoice_no(year, next_sequence)
+        except ValueError:
+            # Key missing — prime from DB and retry
+            pass
         except Exception:
-            last_sequence = cls._prime_invoice_sequence_cache(year)
+            # Cache unavailable — fall through to DB path
+            pass
 
+        # Prime cache from DB and retry increment
+        last_sequence = cls._prime_invoice_sequence_cache(year)
         try:
             next_sequence = cache.incr(cache_key)
             return cls._build_year_invoice_no(year, next_sequence)
         except Exception:
-            next_sequence = last_sequence + 1
+            pass
+
+        # Final fallback: derive directly from DB with row-level lock to prevent
+        # concurrent requests from computing the same next sequence.
+        from django.db import transaction
+
+        with transaction.atomic():
+            year_str = str(year)
+            locked_last = (
+                cls.objects.select_for_update()
+                .annotate(invoice_no_str=Cast("invoice_no", models.CharField()))
+                .filter(invoice_no_str__startswith=year_str)
+                .order_by("-invoice_no")
+                .first()
+            )
+            if locked_last:
+                next_sequence = cls._extract_sequence(locked_last.invoice_no, year) + 1
+            else:
+                next_sequence = 1
             return cls._build_year_invoice_no(year, next_sequence)
 
     def get_invoice_year(self) -> int:
@@ -360,7 +386,7 @@ class Invoice(models.Model):
 
     def get_invoice_status(self):
         if self.total_due_amount < 0:
-            raise ValueError("Overpayment detected on invoice")
+            return Invoice.OVERPAID
 
         if self.total_due_amount == 0:
             return Invoice.PAID
@@ -376,7 +402,7 @@ class Invoice(models.Model):
         if self.total_due_amount < self.total_amount:
             return Invoice.PARTIAL_PAYMENT
 
-        raise ValueError("Unable to determine invoice status")
+        return Invoice.CREATED
 
 
 class InvoiceApplicationQuerySet(models.QuerySet):
@@ -476,20 +502,20 @@ class InvoiceApplication(models.Model):
     def paid_amount(self):
         # Use annotated field if available (from optimized querysets)
         if hasattr(self, "annotated_paid_amount"):
-            return self.annotated_paid_amount or 0
+            return self.annotated_paid_amount or Decimal("0")
 
         try:
             # Check if payments are prefetched to avoid extra queries
             if hasattr(self, "_prefetched_objects_cache") and "payments" in self._prefetched_objects_cache:
                 # Use prefetched payments
-                return sum(payment.amount for payment in self.payments.all()) or 0
+                return sum((payment.amount for payment in self.payments.all()), start=Decimal("0"))
 
             if self.payments.exists():
-                return self.payments.aggregate(models.Sum("amount"))["amount__sum"] or 0
+                return self.payments.aggregate(models.Sum("amount"))["amount__sum"] or Decimal("0")
         except ValueError:
             # InvoiceApplication hasn't been saved yet, so it can't have any Payments
             pass
-        return 0
+        return Decimal("0")
 
     @property
     def due_amount(self):

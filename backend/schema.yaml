@@ -13467,6 +13467,7 @@ components:
           - partially_refunded
           - refunded
           - write_off
+          - overpaid
           type: string
           description: |-
             * `created` - Created
@@ -13479,7 +13480,8 @@ components:
             * `partially_refunded` - Partially Refunded
             * `refunded` - Refunded
             * `write_off` - Write Off
-          x-spec-enum-id: 7a5b4d3746b0e224
+            * `overpaid` - Overpaid
+          x-spec-enum-id: 84a686d4f539d4c7
         notes:
           type: string
         sent:
@@ -13586,6 +13588,7 @@ components:
           - partially_refunded
           - refunded
           - write_off
+          - overpaid
           type: string
           description: |-
             * `created` - Created
@@ -13598,7 +13601,8 @@ components:
             * `partially_refunded` - Partially Refunded
             * `refunded` - Refunded
             * `write_off` - Write Off
-          x-spec-enum-id: 7a5b4d3746b0e224
+            * `overpaid` - Overpaid
+          x-spec-enum-id: 84a686d4f539d4c7
         total_amount:
           type: string
           format: decimal

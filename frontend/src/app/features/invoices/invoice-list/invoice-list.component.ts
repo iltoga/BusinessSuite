@@ -170,7 +170,7 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
       width: '10%',
       template: this.createdAtTemplate(),
     },
-    { key: 'actions', header: 'Actions', width: '4%', template: this.actionsTemplate() },
+    { key: 'actions', header: 'Actions', width: '8%', template: this.actionsTemplate() },
   ]);
 
   // Actions configuration

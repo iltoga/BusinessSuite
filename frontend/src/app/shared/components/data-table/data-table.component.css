@@ -72,6 +72,13 @@ tr.row-danger-soft:not(.selected) {
   padding-left: 1rem;
 }
 
+/* Visually separate the actions/download column from Added\/Updated */
+.data-table-scroll th.col-actions,
+.data-table-scroll td.col-actions {
+  padding-left: 1rem;
+  border-left: 1px solid var(--border);
+}
+
 .data-table-scroll [class^='col-created'] span {
   display: block;
 }
@@ -185,7 +192,9 @@ tr.row-danger-soft:not(.selected) {
   .data-table-scroll tbody[z-table-body] > tr[z-table-row] > td.col-actions {
     grid-template-columns: 1fr;
     margin-top: 0.125rem;
+    /* Override desktop separator: use full themed border, uniform padding */
     padding: 0.5rem;
+    padding-left: 0.5rem;
     border: 1px solid color-mix(in oklab, var(--primary) 22%, transparent);
     border-radius: 0.625rem;
     background: linear-gradient(

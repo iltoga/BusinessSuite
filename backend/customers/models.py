@@ -335,13 +335,16 @@ class Customer(models.Model):
         Args:
             force: If True, bypass can_be_deleted check (for superuser cascade delete).
         """
+        from django.db import transaction
+
         if not force:
             can_delete, msg = self.can_be_deleted()
             if not can_delete:
                 from django.db.models import ProtectedError
 
                 raise ProtectedError(msg, self)
-        super().delete(*args, **kwargs)
+        with transaction.atomic():
+            super().delete(*args, **kwargs)
 
 
 @receiver(pre_delete, sender=Customer)

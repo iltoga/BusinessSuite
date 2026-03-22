@@ -10,9 +10,17 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *
 from .base import _parse_bool, _resolved_db_host
 from .cache_backends import build_prod_redis_caches
+
+# Safety: never allow DEBUG=True in production
+if _parse_bool(os.getenv("DJANGO_DEBUG", "False")):
+    raise ImproperlyConfigured("DEBUG must be False in production. Set DJANGO_DEBUG=False in .env")
+
+DEBUG = False
 
 SERVER_IP_ADDR = os.getenv("SERVER_IP_ADDR", "127.0.0.1")
 
@@ -29,8 +37,6 @@ ALLOWED_HOSTS = list(
         ]
     )
 )
-
-from django.core.exceptions import ImproperlyConfigured
 
 MEDIA_ROOT = os.getenv("MEDIA_ROOT")
 BACKUPS_ROOT = os.getenv("BACKUPS_ROOT")
@@ -155,6 +161,7 @@ DATABASES = {
         # Validate each reused connection before use (catches stale connections)
         "CONN_HEALTH_CHECKS": True,
         "OPTIONS": {
+            "connect_timeout": 5,
             "keepalives": 1,
             "keepalives_idle": 300,
             "keepalives_interval": 60,
@@ -180,6 +187,11 @@ USE_X_FORWARDED_HOST = True
 SECURE_SSL_REDIRECT = _parse_bool(os.getenv("SECURE_SSL_REDIRECT", "True"))
 # Exempt Docker health probe from SSL redirect (internal loopback only)
 SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
+
+# HTTP Strict Transport Security — instruct browsers to only use HTTPS
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
 
 # OpenRouter / OpenAI API Configuration
 # Timeout settings for LLM API calls (vision models can take 60-120 seconds)

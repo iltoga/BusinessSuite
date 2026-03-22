@@ -1,0 +1,47 @@
+:host {
+  display: contents;
+}
+
+.download-dropdown-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Floating progress popup — appears below the button, never affects table cell size */
+.download-progress-popup {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  width: 9rem;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  white-space: nowrap;
+}
+
+.download-progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: var(--muted-foreground);
+  margin-bottom: 0.25rem;
+}
+
+.download-progress-track {
+  height: 0.375rem;
+  width: 100%;
+  border-radius: 9999px;
+  background-color: var(--muted);
+  overflow: hidden;
+}
+
+.download-progress-bar {
+  height: 100%;
+  border-radius: 9999px;
+  background-color: var(--primary);
+  transition: width 0.3s ease;
+}

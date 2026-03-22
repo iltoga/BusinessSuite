@@ -114,7 +114,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
     { key: 'type', header: 'Type', sortable: true },
     { key: 'size', header: 'Size', sortable: true, template: this.sizeTemplate },
     { key: 'status', header: 'Status', sortable: false, template: this.statusTemplate },
-    { key: 'actions', header: '', template: this.actionsTemplate },
+    { key: 'actions', header: '', width: '4%', template: this.actionsTemplate },
   ]);
 
   // bridge property for ngModel two-way binding on <z-checkbox>
