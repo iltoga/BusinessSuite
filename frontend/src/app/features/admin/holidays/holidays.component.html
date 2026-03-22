@@ -117,6 +117,7 @@
     <app-data-table
       [data]="filteredHolidays()"
       [columns]="columns()"
+      [actions]="actions()"
       [isLoading]="isLoading()"
       (sortChange)="onSortChange($event)"
     />
@@ -134,11 +135,4 @@
 
 <ng-template #dateTemplate let-value="value">
   {{ value | appDate }}
-</ng-template>
-
-<ng-template #actionsTemplate let-item>
-  <div class="flex flex-wrap items-center gap-2 whitespace-nowrap sm:flex-nowrap">
-    <z-button zType="warning" zSize="sm" (click)="editHoliday(item)">Edit</z-button>
-    <z-button zType="destructive" zSize="sm" (click)="deleteHoliday(item)">Delete</z-button>
-  </div>
 </ng-template>

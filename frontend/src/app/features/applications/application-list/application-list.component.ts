@@ -171,7 +171,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       width: '16%',
       template: this.createdAtTemplate(),
     },
-    { key: 'actions', header: 'Actions', width: '9%' },
+    { key: 'actions', header: 'Actions', width: '4%' },
   ]);
 
   // Actions configuration

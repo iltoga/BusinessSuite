@@ -69,7 +69,7 @@ export class AiModelListComponent extends BaseListComponent<AiModelItem> {
     { key: 'name', header: 'Name', sortable: true, sortKey: 'name', width: '20%' },
     { key: 'model_id', header: 'Model ID', sortable: true, sortKey: 'model_id', width: '25%' },
     { key: 'description', header: 'Description', width: '35%' },
-    { key: 'actions', header: 'Actions', width: '8%' },
+    { key: 'actions', header: 'Actions', width: '4%' },
   ]);
 
   // Actions configuration

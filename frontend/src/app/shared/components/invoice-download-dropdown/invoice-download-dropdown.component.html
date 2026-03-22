@@ -1,15 +1,29 @@
-<button
-  z-dropdown
-  [zDropdownMenu]="menu"
-  z-button
-  [zType]="zType()"
-  [zSize]="zSize()"
-  [zLoading]="loading()"
-  aria-label="Download options"
-  type="button"
->
-  <z-icon zType="download" />
-</button>
+<div class="download-dropdown-wrap">
+  <button
+    z-dropdown
+    [zDropdownMenu]="menu"
+    z-button
+    [zType]="zType()"
+    [zSize]="zSize()"
+    [zLoading]="loading()"
+    aria-label="Download options"
+    type="button"
+  >
+    <z-icon zType="download" />
+  </button>
+
+  @if (progress() !== null) {
+    <div class="download-progress-popup">
+      <div class="download-progress-label">
+        <span>Preparing PDF</span>
+        <span>{{ progress() }}%</span>
+      </div>
+      <div class="download-progress-track">
+        <div class="download-progress-bar" [style.width.%]="progress()"></div>
+      </div>
+    </div>
+  }
+</div>
 
 <z-dropdown-menu-content #menu>
   <button z-dropdown-menu-item (click)="download('docx')">
@@ -25,18 +39,6 @@
     <span><span class="font-semibold">P</span>rint Preview</span>
   </button>
 </z-dropdown-menu-content>
-
-@if (progress() !== null) {
-  <div class="mt-2 space-y-1">
-    <div class="flex items-center justify-between text-xs text-muted-foreground">
-      <span>Preparing PDF</span>
-      <span>{{ progress() }}%</span>
-    </div>
-    <div class="h-2 w-full rounded-full bg-muted">
-      <div class="h-2 rounded-full bg-primary" [style.width.%]="progress()"></div>
-    </div>
-  </div>
-}
 
 @if (printPreviewOpen()) {
   <app-pdf-viewer-host

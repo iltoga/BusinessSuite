@@ -207,6 +207,7 @@ export class RemindersComponent implements OnInit, OnDestroy {
     {
       key: 'actions',
       header: 'Actions',
+      width: '4%',
     },
   ]);
 

@@ -159,7 +159,7 @@ export class CustomerListComponent extends BaseListComponent<Customer> {
     {
       key: 'actions',
       header: 'Actions',
-      width: '8%',
+      width: '4%',
     },
   ]);
 

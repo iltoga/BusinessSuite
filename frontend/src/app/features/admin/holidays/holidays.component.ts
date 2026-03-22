@@ -28,6 +28,7 @@ import {
   ColumnConfig,
   DataTableComponent,
   type SortEvent,
+  type DataTableAction,
 } from '@/shared/components/data-table/data-table.component';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
@@ -63,7 +64,6 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HolidaysComponent extends BaseListComponent<Holiday> {
-  @ViewChild('actionsTemplate', { static: true }) actionsTemplate!: TemplateRef<any>;
   @ViewChild('dateTemplate', { static: true }) dateTemplate!: TemplateRef<any>;
   @ViewChild('holidayModalTemplate', { static: true }) holidayModalTemplate!: TemplateRef<any>;
 
@@ -128,7 +128,24 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
     { key: 'name', header: 'Name', sortable: true },
     { key: 'country', header: 'Country', sortable: true },
     { key: 'description', header: 'Description', sortable: false },
-    { key: 'actions', header: '', template: this.actionsTemplate },
+    { key: 'actions', header: '', width: '4%' },
+  ]);
+
+  // Actions configuration
+  override readonly actions = computed<DataTableAction<Holiday>[]>(() => [
+    {
+      label: 'Edit',
+      icon: 'settings',
+      variant: 'warning',
+      action: (item) => this.editHoliday(item),
+    },
+    {
+      label: 'Delete',
+      icon: 'trash',
+      variant: 'destructive',
+      isDestructive: true,
+      action: (item) => this.deleteHoliday(item),
+    },
   ]);
 
   // Holiday form
@@ -204,7 +221,6 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
 
     // Set column templates
     this.columns()[0].template = this.dateTemplate;
-    this.columns()[this.columns().length - 1].template = this.actionsTemplate;
 
     // Setup filter form subscriptions
     this.filterForm.controls.country.valueChanges.subscribe((value) => {
