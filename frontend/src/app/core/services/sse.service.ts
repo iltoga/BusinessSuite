@@ -100,6 +100,7 @@ export class SseService {
       let shouldCompleteAfterAbort = false;
       let rotationTimeoutId: ReturnType<typeof setTimeout> | null = null;
       let isSettled = false;
+      let streamOpened = false;
       const lastEventIdAtOpen = useReplayCursor ? this.lastEventIds.get(url) ?? null : null;
 
       if (lastEventIdAtOpen) {
@@ -186,6 +187,7 @@ export class SseService {
             throw new Error('SSE stream body is unavailable');
           }
 
+          streamOpened = true;
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
           let buffer = '';
@@ -230,10 +232,20 @@ export class SseService {
             return;
           }
 
+          if (streamOpened) {
+            console.info('[SseService] SSE stream disconnected', {
+              url,
+              requestId: requestMetadata.requestId,
+              error: this.describeError(error),
+            });
+            completeSubscriber();
+            return;
+          }
+
           console.error('[SseService] SSE stream error', {
             url,
             requestId: requestMetadata.requestId,
-            error,
+            error: this.describeError(error),
           });
           errorSubscriber(error);
         }
@@ -301,5 +313,18 @@ export class SseService {
         subscriber.error(error);
       }
     });
+  }
+
+  private describeError(error: unknown): { name?: string; message?: string } {
+    if (error instanceof Error) {
+      return {
+        name: error.name,
+        message: error.message,
+      };
+    }
+
+    return {
+      message: String(error ?? 'Unknown SSE error'),
+    };
   }
 }

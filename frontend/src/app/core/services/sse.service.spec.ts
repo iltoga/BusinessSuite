@@ -190,4 +190,44 @@ describe('SseService', () => {
       void vi.advanceTimersByTimeAsync(1_000);
     });
   });
+
+  it('completes instead of erroring when an opened stream disconnects unexpectedly', async () => {
+    const encoder = new TextEncoder();
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: {
+        getReader: () => {
+          let readCount = 0;
+          return {
+            read: vi.fn(async () => {
+              if (readCount === 0) {
+                readCount += 1;
+                return {
+                  done: false,
+                  value: encoder.encode('data: {"message":"one"}\n\n'),
+                };
+              }
+
+              throw new Error('socket closed');
+            }),
+          };
+        },
+      },
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      const received: any[] = [];
+      sse.connect('/sse').subscribe({
+        next: (value) => {
+          received.push(value);
+        },
+        error: reject,
+        complete: () => {
+          expect(received).toEqual([{ message: 'one' }]);
+          resolve();
+        },
+      });
+    });
+  });
 });

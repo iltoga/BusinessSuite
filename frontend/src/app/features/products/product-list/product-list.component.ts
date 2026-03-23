@@ -226,28 +226,48 @@ export class ProductListComponent extends BaseListComponent<Product> {
   ]);
 
   // Actions configuration
-  override readonly actions = computed<DataTableAction<Product>[]>(() => [
-    {
-      label: 'View',
-      icon: 'eye',
-      variant: 'default',
-      action: (item) => this.navigateToDetail(item.id),
-    },
-    {
-      label: 'Edit',
-      icon: 'settings',
-      variant: 'warning',
-      action: (item) => this.navigateToEdit(item.id),
-    },
-    {
-      label: 'Delete',
-      icon: 'trash',
-      variant: 'destructive',
-      isDestructive: true,
-      isVisible: () => this.isSuperuser(),
-      action: (item) => this.requestDelete(item),
-    },
-  ]);
+  override readonly actions = computed<DataTableAction<Product>[]>(() => {
+    const actions: DataTableAction<Product>[] = [
+      {
+        label: 'View',
+        icon: 'eye',
+        variant: 'default',
+        action: (item) => this.navigateToDetail(item.id),
+      },
+      {
+        label: 'Edit',
+        icon: 'settings',
+        variant: 'warning',
+        action: (item) => this.navigateToEdit(item.id, { returnToList: true }),
+      },
+      {
+        label: 'Deprecate',
+        icon: 'ban',
+        variant: 'warning',
+        shortcut: 'P',
+        isVisible: (item) => !item.deprecated,
+        action: (item) => this.updateDeprecatedStatus(item, true),
+      },
+      {
+        label: 'Activate',
+        icon: 'circle-check',
+        variant: 'success',
+        shortcut: 'A',
+        isVisible: (item) => !!item.deprecated,
+        action: (item) => this.updateDeprecatedStatus(item, false),
+      },
+      {
+        label: 'Delete',
+        icon: 'trash',
+        variant: 'destructive',
+        isDestructive: true,
+        isVisible: () => this.isSuperuser(),
+        action: (item) => this.requestDelete(item),
+      },
+    ];
+
+    return actions;
+  });
 
   // Row class for deprecated products
   readonly rowClassFn = (row: Product): string => (row.deprecated ? 'opacity-60' : '');
@@ -333,6 +353,27 @@ export class ProductListComponent extends BaseListComponent<Product> {
           message ? `Failed to load delete preview: ${message}` : 'Failed to load delete preview',
         );
         this.pendingDelete.set(null);
+      },
+    });
+  }
+
+  /**
+   * Update the deprecated flag for a product
+   */
+  private updateDeprecatedStatus(product: Product, deprecated: boolean): void {
+    this.productsApi.productsPartialUpdate(product.id, { deprecated } as any).subscribe({
+      next: () => {
+        this.toast.success(deprecated ? 'Product deprecated' : 'Product activated');
+        this.reload();
+      },
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        const actionLabel = deprecated ? 'deprecate' : 'activate';
+        this.toast.error(
+          message
+            ? `Failed to ${actionLabel} product: ${message}`
+            : `Failed to ${actionLabel} product`,
+        );
       },
     });
   }

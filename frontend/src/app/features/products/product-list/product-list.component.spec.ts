@@ -1,6 +1,6 @@
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
 
 import { ProductsService } from '@/core/api';
@@ -16,6 +16,7 @@ describe('ProductListComponent', () => {
   let component: ProductListComponent;
   let mockToastService: any;
   let mockProductsService: any;
+  let mockRouter: any;
   let productImportExportService: any;
   const loadCurrentPage = () =>
     (component as any)
@@ -63,6 +64,7 @@ describe('ProductListComponent', () => {
       productsDeletePreviewRetrieve: vi.fn(),
       productsForceDeleteCreate: vi.fn(),
       productsDestroy: vi.fn(),
+      productsPartialUpdate: vi.fn().mockReturnValue(of({})),
       productsPriceListPrintStartCreate: vi.fn().mockReturnValue(
         of({
           jobId: 'print-job-1',
@@ -83,10 +85,16 @@ describe('ProductListComponent', () => {
         .mockReturnValue(of(new Blob(['pdf'], { type: 'application/pdf' }))),
     };
 
+    mockRouter = {
+      navigate: vi.fn(),
+      getCurrentNavigation: vi.fn().mockReturnValue(null),
+    };
+
     TestBed.configureTestingModule({
       providers: [
         { provide: PLATFORM_ID, useValue: 'browser' },
-        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: Router, useValue: mockRouter },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParams: {} } } },
         { provide: ProductsService, useValue: mockProductsService },
         { provide: ProductImportExportService, useValue: productImportExportService },
         {
@@ -178,6 +186,61 @@ describe('ProductListComponent', () => {
       { value: 'Visa Category', label: 'Visa Category' },
       { value: 'Zeta Category', label: 'Zeta Category' },
     ]);
+  });
+
+  it('marks list-origin edits so save can return to the list', () => {
+    component.query.set('visa');
+    component.page.set(3);
+
+    const editAction = component.actions().find((action) => action.label === 'Edit');
+    expect(editAction).toBeTruthy();
+
+    editAction!.action({ id: 12, deprecated: false } as any);
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/products/12/edit'], {
+      state: {
+        from: 'products',
+        focusId: 12,
+        searchQuery: 'visa',
+        page: 3,
+        returnToList: true,
+      },
+    });
+  });
+
+  it('offers deprecate and activate actions for the correct row states', () => {
+    const actions = component.actions();
+    const deprecateAction = actions.find((action) => action.label === 'Deprecate');
+    const activateAction = actions.find((action) => action.label === 'Activate');
+
+    expect(deprecateAction).toBeTruthy();
+    expect(activateAction).toBeTruthy();
+    expect(deprecateAction?.shortcut).toBe('P');
+    expect(activateAction?.shortcut).toBe('A');
+
+    const reloadSpy = vi.spyOn(component, 'reload').mockImplementation(() => undefined);
+    const activeRow = { id: 1, deprecated: false } as any;
+    const deprecatedRow = { id: 2, deprecated: true } as any;
+
+    expect(deprecateAction?.isVisible?.(activeRow)).toBe(true);
+    expect(activateAction?.isVisible?.(activeRow)).toBe(false);
+    deprecateAction?.action(activeRow);
+
+    expect(mockProductsService.productsPartialUpdate).toHaveBeenCalledWith(1, {
+      deprecated: true,
+    });
+    expect(mockToastService.success).toHaveBeenCalledWith('Product deprecated');
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
+
+    expect(deprecateAction?.isVisible?.(deprecatedRow)).toBe(false);
+    expect(activateAction?.isVisible?.(deprecatedRow)).toBe(true);
+    activateAction?.action(deprecatedRow);
+
+    expect(mockProductsService.productsPartialUpdate).toHaveBeenLastCalledWith(2, {
+      deprecated: false,
+    });
+    expect(mockToastService.success).toHaveBeenLastCalledWith('Product activated');
+    expect(reloadSpy).toHaveBeenCalledTimes(2);
   });
 
   it('starts the printable price list flow and opens print preview on success', async () => {

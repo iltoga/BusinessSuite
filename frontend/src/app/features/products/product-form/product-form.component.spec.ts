@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
@@ -14,24 +15,27 @@ describe('ProductFormComponent', () => {
 
     component.fb = new FormBuilder();
     component.configService = { settings: { baseCurrency: 'IDR' } };
-    component.documentTypes = vi.fn();
+    component.config = { entityType: 'products', entityLabel: 'Product' };
+    component.router = {
+      navigate: vi.fn(),
+      getCurrentNavigation: vi.fn().mockReturnValue(null),
+    };
+    component.toast = {
+      success: vi.fn(),
+      error: vi.fn(),
+    };
+    component.documentTypes = signal([]);
+    component.hasMultipleLastSteps = signal(false);
+    component.isEditMode = signal(false);
+    component.isLoading = signal(false);
+    component.isSaving = signal(false);
+    component.item = signal(null);
+    component.product = signal(null);
     component.productsApi = {
+      productsCreate: vi.fn().mockReturnValue(of({ id: 19 })),
       productsPartialUpdate: vi.fn().mockReturnValue(of({})),
       productsRetrieve: vi.fn().mockReturnValue(of({ tasks: [] })),
       productsUpdate: vi.fn(),
-    };
-    component.item = {
-      value: null,
-      set(value: ProductDetail | null) {
-        this.value = value;
-      },
-    };
-    component.product = {
-      value: null,
-      set(value: ProductDetail | null) {
-        this.value = value;
-      },
-      update: vi.fn(),
     };
     component.itemId = 3;
 
@@ -88,7 +92,7 @@ describe('ProductFormComponent', () => {
     expect(component.tasksArray.at(0).get('id')?.value).toBe(7);
     expect(component.tasksArray.at(0).get('name')?.value).toBe('Collect docs');
     expect(component.form.get('currency')?.value).toBe('usd');
-    expect(component.product.value).toBe(item);
+    expect(component.product()).toBe(item);
   });
 
   it('uses PATCH for product updates', () => {
@@ -149,7 +153,123 @@ describe('ProductFormComponent', () => {
 
     expect(component.tasksArray.length).toBe(2);
     expect(component.tasksArray.at(1).get('id')?.value).toBe(11);
-    expect(component.item.value).toBe(refreshedItem);
-    expect(component.product.value).toBe(refreshedItem);
+    expect(component.item()).toBe(refreshedItem);
+    expect(component.product()).toBe(refreshedItem);
+  });
+
+  it('returns create saves to the list with the new row focused', () => {
+    const component = createHarness();
+    component.itemId = null;
+    component.form.patchValue({
+      name: 'KITAS',
+      code: 'KITAS-1',
+    });
+    component.router.getCurrentNavigation.mockReturnValue(null);
+    history.replaceState({ searchQuery: 'visa', page: 2 }, '');
+
+    component.onSubmit();
+
+    expect(component.productsApi.productsCreate).toHaveBeenCalled();
+    expect(component.itemId).toBe(19);
+    expect(component.router.navigate).toHaveBeenCalledWith(['/products'], {
+      state: {
+        focusTable: true,
+        focusId: 19,
+        searchQuery: 'visa',
+        page: 2,
+      },
+    });
+  });
+
+  it('returns list-origin edits back to the list after save', () => {
+    const component = createHarness();
+    component.itemId = 3;
+    component.isEditMode.set(true);
+    component.product.set({
+      id: 3,
+      name: 'KITAS',
+      code: 'KITAS-1',
+    } as ProductDetail);
+    component.form.patchValue({
+      name: 'KITAS Updated',
+      code: 'KITAS-1',
+    });
+    component.productsApi.productsRetrieve.mockReturnValue(
+      of({
+        id: 3,
+        tasks: [],
+      } as unknown as ProductDetail),
+    );
+    component.router.getCurrentNavigation.mockReturnValue({
+      extras: {
+        state: {
+          returnToList: true,
+        },
+      },
+    });
+    history.replaceState({ searchQuery: 'visa', page: 4 }, '');
+
+    component.onSubmit();
+
+    expect(component.router.navigate).toHaveBeenCalledWith(['/products'], {
+      state: {
+        focusTable: true,
+        focusId: 3,
+        searchQuery: 'visa',
+        page: 4,
+      },
+    });
+  });
+
+  it('keeps direct or detail-origin edits on the edit route after save', () => {
+    const component = createHarness();
+    component.itemId = 3;
+    component.isEditMode.set(true);
+    component.product.set({
+      id: 3,
+      name: 'KITAS',
+      code: 'KITAS-1',
+    } as ProductDetail);
+    component.form.patchValue({
+      name: 'KITAS Updated',
+      code: 'KITAS-1',
+    });
+    component.productsApi.productsRetrieve.mockReturnValue(
+      of({
+        id: 3,
+        tasks: [],
+      } as unknown as ProductDetail),
+    );
+    component.router.getCurrentNavigation.mockReturnValue(null);
+    history.replaceState({ searchQuery: 'visa', page: 4 }, '');
+
+    component.onSubmit();
+
+    expect(component.router.navigate).toHaveBeenCalledWith(['/products/3/edit'], {
+      state: {
+        from: 'products',
+        searchQuery: 'visa',
+        page: 4,
+      },
+    });
+  });
+
+  it('falls back to the route focus id when no saved item id is available', () => {
+    const component = createHarness();
+    component.itemId = null;
+    component.product.set(null);
+    component.router.getCurrentNavigation.mockReturnValue(null);
+    history.replaceState({ focusId: 41, searchQuery: 'visa', page: 2 }, '');
+
+    component.goBack();
+
+    expect(component.router.navigate).toHaveBeenCalledWith(['/products'], {
+      state: {
+        focusTable: true,
+        focusId: 41,
+        searchQuery: 'visa',
+        page: 2,
+      },
+    });
   });
 });

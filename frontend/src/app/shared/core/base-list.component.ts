@@ -16,17 +16,17 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, type Params } from '@angular/router';
 import { catchError, of, type Observable } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import {
   DataTableComponent,
   type ColumnConfig,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
-import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 /**
@@ -117,6 +117,7 @@ export abstract class BaseListComponent<T> implements OnInit {
   protected readonly authService = inject(AuthService);
   protected readonly toast = inject(GlobalToastService);
   protected readonly router = inject(Router);
+  protected readonly route = inject(ActivatedRoute);
   protected readonly platformId = inject(PLATFORM_ID);
   protected readonly destroyRef = inject(DestroyRef);
   protected readonly isBrowser = isPlatformBrowser(this.platformId);
@@ -357,6 +358,7 @@ export abstract class BaseListComponent<T> implements OnInit {
    */
   protected goBack(): void {
     this.router.navigate([this.getListRoute()], {
+      queryParams: this.buildUrlParams(),
       state: {
         focusTable: true,
         searchQuery: this.query(),
@@ -375,6 +377,7 @@ export abstract class BaseListComponent<T> implements OnInit {
     if (this.query() === trimmed) return;
     this.query.set(trimmed);
     this.page.set(1);
+    this.updateUrl();
     // rxResource re-fetches automatically because query() changed
   }
 
@@ -383,6 +386,7 @@ export abstract class BaseListComponent<T> implements OnInit {
    */
   onPageChange(page: number): void {
     this.page.set(page);
+    this.updateUrl();
     // rxResource re-fetches automatically because page() changed
   }
 
@@ -393,6 +397,7 @@ export abstract class BaseListComponent<T> implements OnInit {
     const ordering = sort.direction === 'desc' ? `-${sort.column}` : sort.column;
     this.ordering.set(ordering);
     this.page.set(1);
+    this.updateUrl();
     // rxResource re-fetches automatically because ordering() changed
   }
 
@@ -487,14 +492,108 @@ export abstract class BaseListComponent<T> implements OnInit {
   // ── Navigation state restoration ───────────────────────────────────
 
   /**
+   * Build URL query params from current signal state.
+   * Returns only non-default values to keep URLs clean.
+   */
+  protected buildUrlParams(): Record<string, string | null> {
+    const params: Record<string, string | null> = {};
+
+    // Query — omit when empty
+    const q = this.query();
+    params['q'] = q || null;
+
+    // Page — omit when 1 (default)
+    const page = this.page();
+    params['page'] = page > 1 ? String(page) : null;
+
+    // Sort — omit when matching the config default
+    const sort = this.ordering();
+    params['sort'] = sort && sort !== this.config?.defaultOrdering ? sort : null;
+
+    // Merge with child-specific params
+    return { ...params, ...this.getExtraUrlParams() };
+  }
+
+  /**
+   * Hook for child classes to add extra URL query params
+   * (e.g., column filters, status filter).
+   * Return `null` for a key to omit it from the URL.
+   */
+  protected getExtraUrlParams(): Record<string, string | null> {
+    return {};
+  }
+
+  /**
+   * Hook for child classes to restore extra URL query params.
+   * Called during init when URL params are present.
+   */
+  protected restoreExtraUrlParams(_params: Params): void {
+    // No-op by default — children override this.
+  }
+
+  /**
+   * Sync current signal state to URL query params.
+   * Uses `replaceUrl` to avoid polluting browser history on every change.
+   */
+  protected updateUrl(): void {
+    if (!this.isBrowser) return;
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: this.buildUrlParams(),
+      replaceUrl: true,
+    });
+  }
+
+  /**
+   * Restore state from URL query params.
+   * Returns true if any relevant params were found.
+   */
+  private restoreFromUrl(): boolean {
+    if (!this.isBrowser) return false;
+
+    const params = this.route.snapshot.queryParams;
+    let found = false;
+
+    const q = params['q'];
+    if (q) {
+      this.query.set(String(q));
+      found = true;
+    }
+
+    const page = params['page'];
+    if (page) {
+      const n = Number(page);
+      if (Number.isFinite(n) && n > 0) {
+        this.page.set(Math.floor(n));
+        found = true;
+      }
+    }
+
+    const sort = params['sort'];
+    if (sort) {
+      this.ordering.set(String(sort));
+      found = true;
+    }
+
+    // Let children restore their own params
+    this.restoreExtraUrlParams(params);
+
+    return found;
+  }
+
+  /**
    * Restore navigation state from window.history
    */
-  protected restoreNavigationState(): void {
+  protected restoreNavigationState(skipSearchAndPage = false): void {
     if (!this.isBrowser) return;
 
     const state = window.history.state || {};
     this.focusTableOnInit.set(Boolean(state.focusTable));
     this.focusIdOnInit.set(state.focusId ? Number(state.focusId) : null);
+
+    // When URL params already restored search/page, skip history.state fallback
+    if (skipSearchAndPage) return;
 
     const restoredPage = Number(state.page);
     if (Number.isFinite(restoredPage) && restoredPage > 0) {
@@ -546,7 +645,16 @@ export abstract class BaseListComponent<T> implements OnInit {
       }
     }
 
-    this.restoreNavigationState();
+    // URL query params are the primary source of truth (survives page refresh)
+    const hasUrlState = this.restoreFromUrl();
+
+    // Fall back to history.state for focus hints,
+    // and for search/page when no URL params are present
+    this.restoreNavigationState(hasUrlState);
+
+    // Ensure URL reflects the current state (e.g., when restored from history.state)
+    this.updateUrl();
+
     // The rxResource will automatically start fetching because it was
     // created in the constructor and its signal dependencies are now set.
   }

@@ -117,11 +117,12 @@ export class PushNotificationsService {
 
       // Scope googleapis proxy interception to the token flow only.
       const fetchToken = async (): Promise<string> => {
-        const nextToken = await this.pushProxyFetch.runWithGoogleApisProxy<string>(() =>
-          messaging.getToken({
-            vapidKey,
-            serviceWorkerRegistration: activeRegistration,
-          }) as Promise<string>,
+        const nextToken = await this.pushProxyFetch.runWithGoogleApisProxy<string>(
+          () =>
+            messaging.getToken({
+              vapidKey,
+              serviceWorkerRegistration: activeRegistration,
+            }) as Promise<string>,
         );
         return nextToken || '';
       };
@@ -134,6 +135,21 @@ export class PushNotificationsService {
         if (message.includes('pushManager')) {
           // Fallback for compat code paths that only work when registration is bound via useServiceWorker.
           token = await fetchToken();
+        } else if (this.isRecoverableInstallationsError(error)) {
+          console.warn(
+            '[PushNotificationsService] Resetting stale Firebase installation state before retry.',
+            this.describeError(error),
+          );
+          try {
+            await this.resetFirebaseClientState();
+            token = await fetchToken();
+          } catch (retryError) {
+            console.warn(
+              '[PushNotificationsService] Push notifications unavailable: Firebase initialization failed after reset.',
+              this.describeError(retryError),
+            );
+            return;
+          }
         } else {
           throw error;
         }
@@ -431,5 +447,71 @@ export class PushNotificationsService {
     const parsed = Number(rawValue);
     if (!Number.isFinite(parsed) || parsed <= 0) return null;
     return Math.floor(parsed);
+  }
+
+  private isRecoverableInstallationsError(error: unknown): boolean {
+    const message = String((error as any)?.message || error || '').toLowerCase();
+    return (
+      message.includes('installations/request-failed') &&
+      (message.includes('token_not_valid') || message.includes('given token not valid'))
+    );
+  }
+
+  private async resetFirebaseClientState(): Promise<void> {
+    await this.deleteFirebaseApps();
+    await Promise.all([
+      this.deleteIndexedDbIfPresent('firebase-installations-database'),
+      this.deleteIndexedDbIfPresent('firebase-messaging-database'),
+    ]);
+  }
+
+  private async deleteFirebaseApps(): Promise<void> {
+    const firebase = window.firebase;
+    const apps = Array.isArray(firebase?.apps) ? firebase.apps : [];
+    await Promise.all(
+      apps.map(async (app: any) => {
+        if (typeof app?.delete !== 'function') {
+          return;
+        }
+        try {
+          await app.delete();
+        } catch (error) {
+          console.warn(
+            '[PushNotificationsService] Failed to delete Firebase app during reset',
+            error,
+          );
+        }
+      }),
+    );
+  }
+
+  private deleteIndexedDbIfPresent(name: string): Promise<void> {
+    if (typeof indexedDB === 'undefined') {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      try {
+        const request = indexedDB.deleteDatabase(name);
+        request.onsuccess = () => resolve();
+        request.onerror = () => resolve();
+        request.onblocked = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  private describeError(error: unknown): { name?: string; message?: string } {
+    if (error instanceof Error) {
+      return {
+        name: error.name,
+        message: error.message,
+      };
+    }
+
+    return {
+      message: String(error ?? 'Unknown push notification error'),
+    };
   }
 }

@@ -32,6 +32,12 @@ import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { BaseFormComponent, BaseFormConfig } from '@/shared/core/base-form.component';
 
 type ProductTask = NonNullable<ProductDetail['tasks']>[number];
+type ProductNavigationState = {
+  searchQuery: string | null;
+  page: number | null;
+  focusId: number | null;
+  returnToList: boolean;
+};
 
 /**
  * Product form component
@@ -139,7 +145,8 @@ export class ProductFormComponent
     taskNotifyDaysBefore: 'How many days before due date customer reminders are sent.',
     taskDurationIsBusinessDays: 'Use business days instead of calendar days for task duration.',
     taskLastStep: 'Marks the final workflow step. Only one task can be the last step.',
-    deprecated: 'When enabled, this product is marked as deprecated and hidden from selection in new records.',
+    deprecated:
+      'When enabled, this product is marked as deprecated and hidden from selection in new records.',
   };
 
   constructor() {
@@ -209,7 +216,14 @@ export class ProductFormComponent
    * Save new product
    */
   protected override saveCreate(dto: ProductCreateUpdate): Observable<any> {
-    return this.productsApi.productsCreate(dto);
+    return this.productsApi.productsCreate(dto).pipe(
+      tap((item) => {
+        const createdId = this.parsePositiveInteger(item?.id);
+        if (createdId !== null) {
+          this.itemId = createdId;
+        }
+      }),
+    );
   }
 
   /**
@@ -248,8 +262,37 @@ export class ProductFormComponent
   /**
    * Go back to list - override to preserve navigation state
    */
+  protected override goBack(): void {
+    const navigationState = this.getNavigationState();
+    const focusState: Record<string, unknown> = { focusTable: true };
+    const focusId = this.resolveFocusId();
+
+    if (focusId !== null) {
+      focusState['focusId'] = focusId;
+    }
+
+    if (navigationState.searchQuery !== null) {
+      focusState['searchQuery'] = navigationState.searchQuery;
+    }
+
+    if (navigationState.page !== null) {
+      focusState['page'] = navigationState.page;
+    }
+
+    this.router.navigate([this.getListRoute()], { state: focusState });
+  }
+
+  protected override navigateToEdit(id: number): void {
+    if (this.getNavigationState().returnToList) {
+      this.goBack();
+      return;
+    }
+
+    super.navigateToEdit(id);
+  }
+
   override onCancel(): void {
-    this.navigateBack();
+    this.goBack();
   }
 
   protected override patchForm(item: ProductDetail): void {
@@ -407,16 +450,6 @@ export class ProductFormComponent
 
   private buildPayload(): ProductCreateUpdate {
     const rawValue = this.form.getRawValue();
-    const sourceState = (history.state as any) || {};
-    const detailNavigationState: Record<string, unknown> = {
-      from: sourceState.from ?? 'products',
-      searchQuery: sourceState.searchQuery ?? null,
-    };
-    const sourcePage = Number(sourceState.page);
-    if (Number.isFinite(sourcePage) && sourcePage > 0) {
-      detailNavigationState['page'] = Math.floor(sourcePage);
-    }
-
     return {
       id: this.product()?.id ?? 0,
       name: rawValue.name ?? '',
@@ -518,24 +551,42 @@ export class ProductFormComponent
     return null;
   }
 
-  private navigateBack(): void {
-    const nav = this.router.getCurrentNavigation();
-    const st = (nav && nav.extras && (nav.extras.state as any)) || (history.state as any);
+  protected override getNavigationState(): ProductNavigationState {
+    const currentState = this.router.getCurrentNavigation()?.extras.state as
+      | Record<string, unknown>
+      | undefined;
+    const historyState =
+      typeof window !== 'undefined'
+        ? (window.history.state as Record<string, unknown> | undefined)
+        : undefined;
+    const mergedState = {
+      ...(historyState ?? {}),
+      ...(currentState ?? {}),
+    };
 
-    const focusState: Record<string, unknown> = { focusTable: true };
-    if (st?.focusId) {
-      focusState['focusId'] = st.focusId;
-    } else if (this.product()?.id) {
-      focusState['focusId'] = this.product()?.id;
-    }
-    if (st?.searchQuery) {
-      focusState['searchQuery'] = st.searchQuery;
-    }
-    const page = Number(st?.page);
-    if (Number.isFinite(page) && page > 0) {
-      focusState['page'] = Math.floor(page);
-    }
+    return {
+      searchQuery:
+        typeof mergedState['searchQuery'] === 'string' ? mergedState['searchQuery'] : null,
+      page: this.parsePositiveInteger(mergedState['page']),
+      focusId: this.parsePositiveInteger(mergedState['focusId']),
+      returnToList: mergedState['returnToList'] === true,
+    };
+  }
 
-    this.router.navigate(['/products'], { state: focusState });
+  private resolveFocusId(): number | null {
+    const navigationState = this.getNavigationState();
+    return (
+      this.parsePositiveInteger(this.itemId) ??
+      this.parsePositiveInteger(this.product()?.id) ??
+      navigationState.focusId
+    );
+  }
+
+  private parsePositiveInteger(value: unknown): number | null {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+    return Math.floor(parsed);
   }
 }

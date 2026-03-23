@@ -795,3 +795,10 @@
   [text]="ocrExtractedDataDialogText()"
   (closed)="dismissOcrExtractedDataDialog()"
 />
+
+<app-application-delete-dialog
+  [isOpen]="deleteWithInvoiceOpen()"
+  [data]="deleteWithInvoiceData()"
+  (confirmed)="confirmDeleteWithInvoiceAction()"
+  (cancelled)="cancelDeleteWithInvoiceAction()"
+/>

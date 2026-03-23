@@ -129,6 +129,7 @@ class Document(models.Model):
             + self.doc_application.doc_date.strftime("%d/%m/%Y")
         )
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
         skip_thumbnail_sync = bool(kwargs.pop("skip_thumbnail_sync", False))
         update_fields = kwargs.get("update_fields")
