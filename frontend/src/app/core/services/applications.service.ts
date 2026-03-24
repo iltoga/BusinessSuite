@@ -267,11 +267,8 @@ export class ApplicationsService {
     );
   }
 
-  forceClose(applicationId: number, payload: any): Observable<any> {
-    return this.customerApplicationsService.customerApplicationsForceCloseCreate(
-      applicationId,
-      payload as any,
-    );
+  forceClose(applicationId: number): Observable<any> {
+    return this.customerApplicationsService.customerApplicationsForceCloseCreate(applicationId);
   }
 
   updateDocument(

@@ -305,6 +305,30 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
   }
 
   /**
+   * Persist column filters in URL as comma-separated values.
+   */
+  protected override getExtraUrlParams(): Record<string, string | null> {
+    const filters = this.columnFilters();
+    const product = filters['product']?.length ? filters['product'].join(',') : null;
+    const status = filters['status']?.length ? filters['status'].join(',') : null;
+    return { fp: product, fs: status };
+  }
+
+  /**
+   * Restore column filters from URL query params.
+   */
+  protected override restoreExtraUrlParams(params: Record<string, string | undefined>): void {
+    const fp = params['fp'];
+    const fs = params['fs'];
+    if (fp || fs) {
+      this.columnFilters.set({
+        product: fp ? fp.split(',') : [],
+        status: fs ? fs.split(',') : [],
+      });
+    }
+  }
+
+  /**
    * Handle column filter change
    */
   onColumnFilterChange(event: ColumnFilterChangeEvent): void {
@@ -312,6 +336,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       ...current,
       [event.column]: event.values,
     }));
+    this.updateUrl();
   }
 
   /**

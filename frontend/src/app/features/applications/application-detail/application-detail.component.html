@@ -378,16 +378,27 @@
                         <button z-button zType="warning" zSize="default" (click)="openUpload(doc)">
                           Update
                         </button>
-                        <app-document-preview
-                          [documentId]="doc.id"
-                          [fileLink]="doc.fileLink"
-                          [thumbnailLink]="doc.thumbnailLink"
-                          [centerInViewport]="true"
-                          zType="default"
-                          zSize="default"
-                          label="View"
-                          (viewFull)="viewDocument(doc)"
-                        />
+                        @if (isFileOnlyDocument(doc)) {
+                          <app-document-preview
+                            [documentId]="doc.id"
+                            [fileLink]="doc.fileLink"
+                            [thumbnailLink]="doc.thumbnailLink"
+                            [centerInViewport]="true"
+                            zType="default"
+                            zSize="default"
+                            label="View"
+                            (viewFull)="viewDocument(doc)"
+                          />
+                        } @else if (hasViewableContent(doc)) {
+                          <button
+                            z-button
+                            zType="default"
+                            zSize="default"
+                            (click)="openDocumentViewDialog(doc)"
+                          >
+                            View
+                          </button>
+                        }
                       </div>
                     </td>
                   </tr>
@@ -544,8 +555,17 @@
     <div class="app-upload-dialog rounded-lg bg-card p-6 shadow-lg">
       <div class="flex items-start justify-between">
         <div>
-          <h3 class="text-lg font-semibold">Upload {{ selectedDocument()!.docType.name }}</h3>
-          <p class="text-sm text-muted-foreground">Attach file and update document details.</p>
+          <h3 class="text-lg font-semibold">
+            {{ selectedDocument()!.docType.hasFile ? 'Upload' : 'Update' }}
+            {{ selectedDocument()!.docType.name }}
+          </h3>
+          <p class="text-sm text-muted-foreground">
+            {{
+              selectedDocument()!.docType.hasFile
+                ? 'Attach file and update document details.'
+                : 'Update document details.'
+            }}
+          </p>
         </div>
         <button
           z-button
@@ -560,21 +580,23 @@
       </div>
 
       <form class="app-upload-dialog-form mt-6 space-y-4" [formGroup]="uploadForm">
-        <app-file-upload
-          [label]="'Drop file here'"
-          [accept]="selectedDocument()!.docType.hasFile ? '*/*' : ''"
-          [fileName]="selectedFile()?.name || selectedDocument()!.fileLink || null"
-          [progress]="uploadProgress()"
-          [disabled]="isSaving()"
-          [previewUrl]="inlinePreviewUrl()"
-          [previewType]="inlinePreviewType()"
-          [previewLoading]="inlinePreviewLoading()"
-          [previewHeight]="'18rem'"
-          [previewWidth]="'min(30rem, 100%)'"
-          [showMagnifierToggle]="false"
-          (fileSelected)="onFileSelected($event)"
-          (cleared)="onFileCleared()"
-        />
+        @if (selectedDocument()!.docType.hasFile) {
+          <app-file-upload
+            [label]="'Drop file here'"
+            [accept]="'*/*'"
+            [fileName]="selectedFile()?.name || selectedDocument()!.fileLink || null"
+            [progress]="uploadProgress()"
+            [disabled]="isSaving()"
+            [previewUrl]="inlinePreviewUrl()"
+            [previewType]="inlinePreviewType()"
+            [previewLoading]="inlinePreviewLoading()"
+            [previewHeight]="'18rem'"
+            [previewWidth]="'min(30rem, 100%)'"
+            [showMagnifierToggle]="false"
+            (fileSelected)="onFileSelected($event)"
+            (cleared)="onFileCleared()"
+          />
+        }
 
         @if (selectedDocument()!.extraActions && selectedDocument()!.extraActions!.length > 0) {
           <div class="flex flex-wrap gap-2">
@@ -794,4 +816,11 @@
   [isOpen]="ocrExtractedDataDialogOpen()"
   [text]="ocrExtractedDataDialogText()"
   (closed)="dismissOcrExtractedDataDialog()"
+/>
+
+<app-application-delete-dialog
+  [isOpen]="deleteWithInvoiceOpen()"
+  [data]="deleteWithInvoiceData()"
+  (confirmed)="confirmDeleteWithInvoiceAction()"
+  (cancelled)="cancelDeleteWithInvoiceAction()"
 />

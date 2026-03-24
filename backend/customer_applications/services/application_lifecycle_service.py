@@ -66,6 +66,8 @@ class ApplicationLifecycleService:
 
         invoice_ids = list(application.invoice_applications.values_list("invoice_id", flat=True).distinct())
         with transaction.atomic():
+            if delete_invoices:
+                application.invoice_applications.all().delete()
             application.delete(force_delete_invoices=delete_invoices, user=user)
             for invoice_id in invoice_ids:
                 invoice = Invoice.objects.filter(pk=invoice_id).first()

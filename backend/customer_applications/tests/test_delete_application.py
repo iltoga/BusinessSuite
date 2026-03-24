@@ -45,20 +45,18 @@ class ApplicationDeletionTests(TestCase):
         self.assertTrue(DocApplication.objects.filter(pk=app.pk).exists())
         self.assertTrue(Invoice.objects.filter(pk=invoice.pk).exists())
 
-    def test_superuser_can_delete_application_and_keep_invoice_lines_via_api(self):
+    def test_superuser_can_delete_application_and_cascade_invoice_via_api(self):
         app, invoice = self._create_application_with_invoice()
         self.client.force_authenticate(self.superuser)
         url = f"/api/customer-applications/{app.id}/?deleteInvoices=true"
         resp = self.client.delete(url)
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(DocApplication.objects.filter(pk=app.pk).exists())
-        self.assertTrue(Invoice.objects.filter(pk=invoice.pk).exists())
-        invoice_line = InvoiceApplication.objects.get(invoice=invoice)
-        self.assertIsNone(invoice_line.customer_application)
-        self.assertEqual(invoice_line.product_id, self.product.id)
+        self.assertFalse(Invoice.objects.filter(pk=invoice.pk).exists())
+        self.assertEqual(InvoiceApplication.objects.filter(invoice=invoice).count(), 0)
 
-    def test_superuser_deleting_application_preserves_invoice_totals_for_product_lines(self):
-        # Invoice with two lines: deleting one linked application should keep invoice and totals.
+    def test_superuser_deleting_application_cascades_invoice_line_and_updates_totals(self):
+        # Invoice with two lines: deleting one linked application should delete that line and update invoice totals.
         app1, invoice = self._create_application_with_invoice()
         app2 = DocApplication.objects.create(
             customer=self.customer, product=self.product, doc_date="2026-01-02", created_by=self.superuser
@@ -75,8 +73,8 @@ class ApplicationDeletionTests(TestCase):
         resp = self.client.delete(url)
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(DocApplication.objects.filter(pk=app1.pk).exists())
-        # Invoice remains and keeps both product line amounts (one linked, one unlinked).
+        # Invoice remains but has only one line amount remaining.
         invoice.refresh_from_db()
-        self.assertEqual(invoice.total_amount, 150)
-        self.assertEqual(invoice.invoice_applications.filter(customer_application__isnull=True).count(), 1)
+        self.assertEqual(invoice.total_amount, 50)
+        self.assertEqual(invoice.invoice_applications.count(), 1)
         self.assertEqual(invoice.invoice_applications.filter(customer_application=app2).count(), 1)

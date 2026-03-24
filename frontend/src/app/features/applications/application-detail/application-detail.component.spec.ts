@@ -1,3 +1,4 @@
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { ApplicationDetailComponent } from './application-detail.component';
@@ -60,6 +61,66 @@ describe('ApplicationDetailComponent pending passport refresh', () => {
     });
 
     expect(component.pendingPassportRefreshEnabled).toBe(false);
+    expect(component.loadApplication).not.toHaveBeenCalled();
+  });
+});
+
+describe('ApplicationDetailComponent pending due date refresh', () => {
+  type ApplicationDetailHarness = any;
+
+  const createHarness = (): ApplicationDetailHarness => {
+    const component = Object.create(
+      ApplicationDetailComponent.prototype,
+    ) as ApplicationDetailHarness;
+
+    component.isBrowser = true;
+    component.pendingDueDateRefreshEnabled = true;
+    component.pendingDueDateRefreshAttempts = 0;
+    component.pendingDueDateRefreshTimer = null;
+    component.pendingDueDateRefreshMaxAttempts = 8;
+    component.pendingDueDateRefreshIntervalMs = 25;
+    component.loadApplication = vi.fn();
+
+    component.clearPendingDueDateRefresh =
+      ApplicationDetailComponent.prototype['clearPendingDueDateRefresh'].bind(component);
+    component.shouldAwaitDueDateRefresh =
+      ApplicationDetailComponent.prototype['shouldAwaitDueDateRefresh'].bind(component);
+    component.schedulePendingDueDateRefresh =
+      ApplicationDetailComponent.prototype['schedulePendingDueDateRefresh'].bind(component);
+    component.handlePendingDueDateRefresh =
+      ApplicationDetailComponent.prototype['handlePendingDueDateRefresh'].bind(component);
+
+    return component;
+  };
+
+  it('schedules a silent reload when the submission date changed but the deadline is still missing', () => {
+    vi.useFakeTimers();
+    const component = createHarness();
+
+    component.handlePendingDueDateRefresh(42, {
+      dueDate: null,
+      addDeadlinesToCalendar: true,
+      hasNextTask: true,
+      nextTask: { id: 15 },
+    });
+
+    vi.advanceTimersByTime(25);
+
+    expect(component.loadApplication).toHaveBeenCalledWith(42, { silent: true });
+    vi.useRealTimers();
+  });
+
+  it('stops refreshing once the due date is present', () => {
+    const component = createHarness();
+
+    component.handlePendingDueDateRefresh(42, {
+      dueDate: '2026-03-31',
+      addDeadlinesToCalendar: true,
+      hasNextTask: true,
+      nextTask: { id: 15 },
+    });
+
+    expect(component.pendingDueDateRefreshEnabled).toBe(false);
     expect(component.loadApplication).not.toHaveBeenCalled();
   });
 });
@@ -149,6 +210,143 @@ describe('ApplicationDetailComponent inline application date editing', () => {
   });
 });
 
+describe('ApplicationDetailComponent application partial updates', () => {
+  it('applies the server response directly when a partial update succeeds', () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    component.application = Object.assign(
+      vi.fn(() => ({ id: 321 })),
+      {
+        set: vi.fn(),
+      },
+    );
+    component.isSavingMeta = Object.assign(
+      vi.fn(() => false),
+      {
+        set: vi.fn(),
+      },
+    );
+    component.editableNotes = { set: vi.fn() };
+    component.toast = { success: vi.fn(), error: vi.fn() };
+    component.loadApplication = vi.fn();
+    component.applyApplicationFromActionResponse =
+      ApplicationDetailComponent.prototype['applyApplicationFromActionResponse'].bind(component);
+    component.normalizeApplicationPayload =
+      ApplicationDetailComponent.prototype['normalizeApplicationPayload'].bind(component);
+    component.updateApplicationPartial =
+      ApplicationDetailComponent.prototype['updateApplicationPartial'].bind(component);
+    component.applicationsService = {
+      updateApplicationPartial: vi.fn(() =>
+        of({
+          id: 321,
+          docDate: '2026-03-28',
+          dueDate: '2026-03-31',
+          documents: [],
+          workflows: [],
+          notes: 'Saved',
+        }),
+      ),
+    };
+
+    component.updateApplicationPartial({ docDate: '2026-03-28' }, 'Application updated');
+
+    expect(component.toast.success).toHaveBeenCalledWith('Application updated');
+    expect(component.application.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 321,
+        docDate: '2026-03-28',
+        dueDate: '2026-03-31',
+        documents: [],
+        workflows: [],
+        notes: 'Saved',
+      }),
+    );
+    expect(component.loadApplication).not.toHaveBeenCalled();
+    expect(component.isSavingMeta.set).toHaveBeenCalledWith(true);
+    expect(component.isSavingMeta.set).toHaveBeenCalledWith(false);
+  });
+
+  it('keeps the submission and deadline dates when the API payload uses snake_case keys', () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    component.normalizeApplicationPayload =
+      ApplicationDetailComponent.prototype['normalizeApplicationPayload'].bind(component);
+
+    const normalized = component.normalizeApplicationPayload({
+      id: 321,
+      doc_date: '2026-03-28',
+      due_date: '2026-03-31',
+      documents: [],
+      workflows: [],
+    });
+
+    expect(normalized.docDate).toBe('2026-03-28');
+    expect(normalized.dueDate).toBe('2026-03-31');
+  });
+
+  it('retries a silent reload when the patch response is missing the next deadline', () => {
+    vi.useFakeTimers();
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    let currentApplication: any = { id: 321 };
+    component.application = Object.assign(
+      vi.fn(() => currentApplication),
+      {
+        set: vi.fn((value: unknown) => {
+          currentApplication = value;
+        }),
+      },
+    );
+    component.isBrowser = true;
+    component.pendingDueDateRefreshEnabled = false;
+    component.pendingDueDateRefreshAttempts = 0;
+    component.pendingDueDateRefreshTimer = null;
+    component.pendingDueDateRefreshMaxAttempts = 8;
+    component.pendingDueDateRefreshIntervalMs = 25;
+    component.isSavingMeta = Object.assign(
+      vi.fn(() => false),
+      {
+        set: vi.fn(),
+      },
+    );
+    component.editableNotes = { set: vi.fn() };
+    component.toast = { success: vi.fn(), error: vi.fn() };
+    component.loadApplication = vi.fn();
+    component.clearPendingDueDateRefresh =
+      ApplicationDetailComponent.prototype['clearPendingDueDateRefresh'].bind(component);
+    component.shouldAwaitDueDateRefresh =
+      ApplicationDetailComponent.prototype['shouldAwaitDueDateRefresh'].bind(component);
+    component.schedulePendingDueDateRefresh =
+      ApplicationDetailComponent.prototype['schedulePendingDueDateRefresh'].bind(component);
+    component.handlePendingDueDateRefresh =
+      ApplicationDetailComponent.prototype['handlePendingDueDateRefresh'].bind(component);
+    component.applyApplicationFromActionResponse =
+      ApplicationDetailComponent.prototype['applyApplicationFromActionResponse'].bind(component);
+    component.normalizeApplicationPayload =
+      ApplicationDetailComponent.prototype['normalizeApplicationPayload'].bind(component);
+    component.updateApplicationPartial =
+      ApplicationDetailComponent.prototype['updateApplicationPartial'].bind(component);
+    component.applicationsService = {
+      updateApplicationPartial: vi.fn(() =>
+        of({
+          id: 321,
+          docDate: '2026-03-28',
+          dueDate: null,
+          addDeadlinesToCalendar: true,
+          hasNextTask: true,
+          nextTask: { id: 15, name: 'biometrics' },
+          documents: [],
+          workflows: [],
+          notes: 'Saved',
+        }),
+      ),
+    };
+
+    component.updateApplicationPartial({ docDate: '2026-03-28' }, 'Application updated');
+    vi.advanceTimersByTime(25);
+
+    expect(component.loadApplication).toHaveBeenCalledWith(321, { silent: true });
+    vi.useRealTimers();
+  });
+});
+
 describe('ApplicationDetailComponent validation extraction merge', () => {
   it('prefers freshly extracted doc number and expiration date over stale form values', () => {
     const component = Object.create(ApplicationDetailComponent.prototype) as any;
@@ -212,5 +410,76 @@ describe('ApplicationDetailComponent categorization progress messaging', () => {
   // as the logic now lives in ApplicationCategorizationHandler service.
   it('delegates categorization to catHandler', () => {
     expect(true).toBe(true);
+  });
+});
+
+describe('ApplicationDetailComponent confirmForceClose', () => {
+  /**
+   * Regression: forceClose was called with (id, app) — the app object was passed
+   * as the second positional argument which the generated API client interprets as
+   * the `observe` option, causing NG02809 "unhandled observe type [object Object]".
+   * The fix removes the spurious second argument so the call is forceClose(id) only.
+   */
+  const createHarness = () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+
+    component.application = vi.fn(() => ({ id: 327, status: 'pending', canForceClose: true }));
+    component.canForceClose = vi.fn(() => true);
+    component.workflowAction = { set: vi.fn() };
+    component.toast = { success: vi.fn(), error: vi.fn() };
+    component.loadApplication = vi.fn();
+    component.applyApplicationFromActionResponse = vi.fn(() => true);
+    component.patchForceCloseLocally = vi.fn(() => false);
+    component.applicationsService = {
+      forceClose: vi.fn(() => of({ id: 327, status: 'completed' })),
+    };
+
+    // Suppress the browser confirm dialog — auto-confirm
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true),
+    );
+
+    component.confirmForceClose =
+      ApplicationDetailComponent.prototype['confirmForceClose'].bind(component);
+
+    return component;
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('calls forceClose with only the application id — no second argument', () => {
+    const component = createHarness();
+
+    component.confirmForceClose();
+
+    expect(component.applicationsService.forceClose).toHaveBeenCalledTimes(1);
+    // Must be called with exactly one argument (the id). A second argument (e.g. the
+    // application object) would be interpreted as the `observe` option and trigger
+    // NG02809 "unhandled observe type [object Object]".
+    expect(component.applicationsService.forceClose).toHaveBeenCalledWith(327);
+    const callArgs: unknown[] = component.applicationsService.forceClose.mock.calls[0];
+    expect(callArgs).toHaveLength(1);
+  });
+
+  it('shows a success toast and clears the workflow action after a successful force close', () => {
+    const component = createHarness();
+
+    component.confirmForceClose();
+
+    expect(component.toast.success).toHaveBeenCalledWith('Application force closed');
+    expect(component.workflowAction.set).toHaveBeenCalledWith(null);
+  });
+
+  it('does nothing when the application is not force-closeable', () => {
+    const component = createHarness();
+    component.canForceClose = vi.fn(() => false);
+
+    component.confirmForceClose();
+
+    expect(component.applicationsService.forceClose).not.toHaveBeenCalled();
+    expect(component.toast.error).toHaveBeenCalledWith('You cannot force close this application');
   });
 });

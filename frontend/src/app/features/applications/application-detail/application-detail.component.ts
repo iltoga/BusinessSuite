@@ -36,11 +36,11 @@ import {
 } from '@/core/services/document-categorization.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { extractJobId } from '@/core/utils/async-job-contract';
 import {
   getDocumentAiValidationBadge,
   type PipelineBadgeState,
 } from '@/core/utils/document-categorization-pipeline';
-import { extractJobId } from '@/core/utils/async-job-contract';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -69,6 +69,16 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { catchError, forkJoin, of, Subscription } from 'rxjs';
 
 import { JobService } from '@/core/services/job.service';
+import {
+  ApplicationDeleteDialogComponent,
+  type ApplicationDeleteDialogData,
+} from '@/shared/components/application-delete-dialog';
+import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
+import { ZardDialogService } from '@/shared/components/dialog';
+import {
+  DocumentViewDialogContentComponent,
+  type DocumentViewDialogData,
+} from '@/shared/components/document-view-dialog';
 import { MultiFileUploadComponent } from '@/shared/components/multi-file-upload/multi-file-upload.component';
 import { AddDocumentDialogComponent } from './add-document-dialog.component';
 import { ApplicationWorkflowTimelineComponent } from './application-workflow-timeline.component';
@@ -134,6 +144,8 @@ interface PreUploadValidationOutcome {
     CategorizationProgressComponent,
     ApplicationWorkflowTimelineComponent,
     AddDocumentDialogComponent,
+    ApplicationDeleteDialogComponent,
+    ConfirmDialogComponent,
     OcrReviewDialogComponent,
     OcrDataDialogComponent,
   ],
@@ -159,6 +171,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly isDevelopmentMode = isDevMode();
   private jobService = inject(JobService);
   private categorizationService = inject(DocumentCategorizationService);
+  private dialogService = inject(ZardDialogService);
 
   // Categorization handler (extracted service — provides all categorization state & logic)
   readonly catHandler = inject(ApplicationCategorizationHandler);
@@ -209,6 +222,10 @@ export class ApplicationDetailComponent implements OnInit {
   readonly isAddDocumentDialogOpen = signal(false);
   readonly actionLoading = signal<string | null>(null);
   readonly workflowAction = signal<string | null>(null);
+
+  readonly deleteWithInvoiceOpen = signal(false);
+  readonly deleteWithInvoiceData = signal<ApplicationDeleteDialogData | null>(null);
+
   readonly isAutoGeneratingAll = signal(false);
   readonly canAutoGenerateAnyDocuments = computed(() => {
     const docs = [...this.requiredDocuments(), ...this.optionalDocuments()];
@@ -469,6 +486,11 @@ export class ApplicationDetailComponent implements OnInit {
   private pendingPassportRefreshAttempts = 0;
   private readonly pendingPassportRefreshMaxAttempts = 10;
   private readonly pendingPassportRefreshIntervalMs = 1200;
+  private pendingDueDateRefreshTimer: number | null = null;
+  private pendingDueDateRefreshEnabled = false;
+  private pendingDueDateRefreshAttempts = 0;
+  private readonly pendingDueDateRefreshMaxAttempts = 8;
+  private readonly pendingDueDateRefreshIntervalMs = 400;
   private readonly ocrNoDataText = 'No OCR extracted data yet.';
 
   @HostListener('window:keydown', ['$event'])
@@ -654,6 +676,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.destroyRef.onDestroy(() => {
       this.pollSub?.unsubscribe();
       this.clearPendingPassportRefresh();
+      this.clearPendingDueDateRefresh();
       this.clearUploadPreview();
       this.clearExistingPreview();
       this.catHandler.destroy();
@@ -1297,9 +1320,7 @@ export class ApplicationDetailComponent implements OnInit {
       return null;
     }
 
-    const directStructured =
-      status.structuredData ??
-      null;
+    const directStructured = status.structuredData ?? null;
     if (directStructured && typeof directStructured === 'object') {
       return directStructured;
     }
@@ -1535,6 +1556,37 @@ export class ApplicationDetailComponent implements OnInit {
     });
   }
 
+  /** True when the document has a file but no non-empty text fields. */
+  isFileOnlyDocument(doc: ApplicationDocument): boolean {
+    return !!doc.fileLink && !this.hasDocumentTextFields(doc);
+  }
+
+  /** True when the document has at least one non-empty text field. */
+  hasDocumentTextFields(doc: ApplicationDocument): boolean {
+    return !!doc.docNumber || !!doc.expirationDate || !!doc.details;
+  }
+
+  /** True when the document has any viewable content (file or text fields). */
+  hasViewableContent(doc: ApplicationDocument): boolean {
+    return !!doc.fileLink || this.hasDocumentTextFields(doc);
+  }
+
+  openDocumentViewDialog(doc: ApplicationDocument): void {
+    const data: DocumentViewDialogData = { document: doc };
+    const hasFile = !!doc.fileLink;
+    const width = hasFile ? '720px' : '500px';
+    const maxW = hasFile ? 'max-w-[720px] sm:max-w-[720px]' : 'max-w-[500px] sm:max-w-[500px]';
+    this.dialogService.create({
+      zTitle: doc.docType.name,
+      zContent: DocumentViewDialogContentComponent,
+      zData: data,
+      zHideFooter: true,
+      zClosable: true,
+      zWidth: width,
+      zCustomClasses: maxW,
+    });
+  }
+
   toggleDocumentSelection(id: number): void {
     const selected = new Set(this.selectedDocumentIds());
     if (selected.has(id)) {
@@ -1622,6 +1674,15 @@ export class ApplicationDetailComponent implements OnInit {
     const app = this.application();
     if (!app || !this.isSuperuser()) return;
 
+    if (app.hasInvoice) {
+      this.deleteWithInvoiceData.set({
+        applicationId: app.id,
+        invoiceId: app.invoiceId,
+      });
+      this.deleteWithInvoiceOpen.set(true);
+      return;
+    }
+
     if (confirm(`Are you sure you want to delete application #${app.id}?`)) {
       this.workflowAction.set('delete');
       this.applicationsService.deleteApplication(app.id).subscribe({
@@ -1636,6 +1697,33 @@ export class ApplicationDetailComponent implements OnInit {
         },
       });
     }
+  }
+
+  confirmDeleteWithInvoiceAction(): void {
+    const app = this.application();
+    if (!app) return;
+
+    this.workflowAction.set('delete');
+    this.applicationsService.deleteApplication(app.id, true).subscribe({
+      next: () => {
+        this.toast.success('Application deleted');
+        this.deleteWithInvoiceOpen.set(false);
+        this.deleteWithInvoiceData.set(null);
+        this.goBack();
+        this.workflowAction.set(null);
+      },
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to delete application');
+        this.deleteWithInvoiceOpen.set(false);
+        this.deleteWithInvoiceData.set(null);
+        this.workflowAction.set(null);
+      },
+    });
+  }
+
+  cancelDeleteWithInvoiceAction(): void {
+    this.deleteWithInvoiceOpen.set(false);
+    this.deleteWithInvoiceData.set(null);
   }
 
   updateWorkflowStatus(workflowId: number, status: string | null): void {
@@ -1774,7 +1862,7 @@ export class ApplicationDetailComponent implements OnInit {
 
     if (confirm(`Force close application #${app.id}? This will mark it as completed.`)) {
       this.workflowAction.set('force-close');
-      this.applicationsService.forceClose(app.id, app as any).subscribe({
+      this.applicationsService.forceClose(app.id).subscribe({
         next: (response) => {
           const applied = this.applyApplicationFromActionResponse(response);
           if (!applied) {
@@ -2165,13 +2253,30 @@ export class ApplicationDetailComponent implements OnInit {
   private updateApplicationPartial(payload: Record<string, unknown>, successMessage: string): void {
     const app = this.application();
     if (!app || this.isSavingMeta()) return;
+    const isDocDateUpdate = Object.prototype.hasOwnProperty.call(payload, 'docDate');
+    if (isDocDateUpdate) {
+      this.pendingDueDateRefreshEnabled = true;
+      this.pendingDueDateRefreshAttempts = 0;
+    }
     this.isSavingMeta.set(true);
     this.applicationsService.updateApplicationPartial(app.id, payload).subscribe({
-      next: () => {
+      next: (response) => {
+        const applied = this.applyApplicationFromActionResponse(response);
         this.toast.success(successMessage);
+        if (applied) {
+          const current = this.application();
+          if (isDocDateUpdate && current) {
+            this.handlePendingDueDateRefresh(app.id, current);
+          }
+          this.isSavingMeta.set(false);
+          return;
+        }
         this.loadApplication(app.id);
       },
       error: (error) => {
+        if (isDocDateUpdate) {
+          this.clearPendingDueDateRefresh();
+        }
         this.toast.error(extractServerErrorMessage(error) || 'Failed to update application');
         this.isSavingMeta.set(false);
       },
@@ -2191,11 +2296,16 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   private normalizeApplicationPayload(raw: any): ApplicationDetail {
+    const docDate = raw?.docDate ?? raw?.doc_date;
+    const dueDate = raw?.dueDate ?? raw?.due_date ?? null;
     return {
       ...raw,
+      docDate: docDate ?? '',
+      dueDate,
+      addDeadlinesToCalendar: raw?.addDeadlinesToCalendar ?? raw?.add_deadlines_to_calendar,
       notifyCustomer: raw?.notifyCustomer ?? raw?.notifyCustomerToo ?? false,
-      notifyCustomerChannel: raw?.notifyCustomerChannel ?? null,
-      readyForInvoice: raw?.readyForInvoice ?? undefined,
+      notifyCustomerChannel: raw?.notifyCustomerChannel ?? raw?.notify_customer_channel ?? null,
+      readyForInvoice: raw?.readyForInvoice ?? raw?.ready_for_invoice ?? undefined,
     };
   }
 
@@ -2400,15 +2510,23 @@ export class ApplicationDetailComponent implements OnInit {
         this.application.set(normalized);
         this.editableNotes.set(normalized?.notes ?? '');
         this.handlePendingPassportRefresh(id, normalized);
+        this.handlePendingDueDateRefresh(id, normalized);
         if (!options?.silent) {
           this.isLoading.set(false);
         }
         this.isSavingMeta.set(false);
       },
       error: (error) => {
-        if (options?.silent && this.pendingPassportRefreshEnabled) {
-          this.schedulePendingPassportRefresh(id);
-          return;
+        if (options?.silent) {
+          if (this.pendingPassportRefreshEnabled) {
+            this.schedulePendingPassportRefresh(id);
+          }
+          if (this.pendingDueDateRefreshEnabled) {
+            this.schedulePendingDueDateRefresh(id);
+          }
+          if (this.pendingPassportRefreshEnabled || this.pendingDueDateRefreshEnabled) {
+            return;
+          }
         }
         this.toast.error(extractServerErrorMessage(error) || 'Failed to load application');
         this.isLoading.set(false);
@@ -2435,6 +2553,37 @@ export class ApplicationDetailComponent implements OnInit {
     this.schedulePendingPassportRefresh(id);
   }
 
+  private handlePendingDueDateRefresh(id: number, application: ApplicationDetail): void {
+    if (!this.pendingDueDateRefreshEnabled) {
+      return;
+    }
+
+    if (!this.shouldAwaitDueDateRefresh(application)) {
+      this.clearPendingDueDateRefresh();
+      return;
+    }
+
+    if (this.pendingDueDateRefreshAttempts >= this.pendingDueDateRefreshMaxAttempts) {
+      this.clearPendingDueDateRefresh();
+      return;
+    }
+
+    this.schedulePendingDueDateRefresh(id);
+  }
+
+  private shouldAwaitDueDateRefresh(application: ApplicationDetail): boolean {
+    const dueDate = typeof application.dueDate === 'string' ? application.dueDate.trim() : '';
+    if (dueDate) {
+      return false;
+    }
+
+    if (application.addDeadlinesToCalendar === false) {
+      return false;
+    }
+
+    return Boolean(application.hasNextTask || application.nextTask);
+  }
+
   private schedulePendingPassportRefresh(id: number): void {
     if (!this.isBrowser || !this.pendingPassportRefreshEnabled) {
       this.clearPendingPassportRefresh();
@@ -2452,6 +2601,23 @@ export class ApplicationDetailComponent implements OnInit {
     }, this.pendingPassportRefreshIntervalMs);
   }
 
+  private schedulePendingDueDateRefresh(id: number): void {
+    if (!this.isBrowser || !this.pendingDueDateRefreshEnabled) {
+      this.clearPendingDueDateRefresh();
+      return;
+    }
+
+    if (this.pendingDueDateRefreshTimer) {
+      window.clearTimeout(this.pendingDueDateRefreshTimer);
+    }
+
+    this.pendingDueDateRefreshTimer = window.setTimeout(() => {
+      this.pendingDueDateRefreshTimer = null;
+      this.pendingDueDateRefreshAttempts += 1;
+      this.loadApplication(id, { silent: true });
+    }, this.pendingDueDateRefreshIntervalMs);
+  }
+
   private clearPendingPassportRefresh(): void {
     this.pendingPassportRefreshEnabled = false;
     this.pendingPassportRefreshAttempts = 0;
@@ -2459,6 +2625,15 @@ export class ApplicationDetailComponent implements OnInit {
       window.clearTimeout(this.pendingPassportRefreshTimer);
     }
     this.pendingPassportRefreshTimer = null;
+  }
+
+  private clearPendingDueDateRefresh(): void {
+    this.pendingDueDateRefreshEnabled = false;
+    this.pendingDueDateRefreshAttempts = 0;
+    if (this.pendingDueDateRefreshTimer && this.isBrowser) {
+      window.clearTimeout(this.pendingDueDateRefreshTimer);
+    }
+    this.pendingDueDateRefreshTimer = null;
   }
 
   private isPassportConfigured(application: ApplicationDetail): boolean {
@@ -2621,8 +2796,7 @@ export class ApplicationDetailComponent implements OnInit {
     if (!status) {
       return null;
     }
-    const textValue =
-      typeof status.resultText === 'string' ? status.resultText : null;
+    const textValue = typeof status.resultText === 'string' ? status.resultText : null;
     if (!textValue) {
       return null;
     }

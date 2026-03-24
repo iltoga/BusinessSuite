@@ -129,9 +129,7 @@ class Invoice(models.Model):
         (OVERPAID, "Overpaid"),
     ]
 
-    customer: models.ForeignKey[Customer] = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, related_name="invoices"
-    )
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="invoices")
     invoice_no = models.PositiveIntegerField(unique=True, db_index=True)
     invoice_date = models.DateField(db_index=True)
     due_date = models.DateField(db_index=True)

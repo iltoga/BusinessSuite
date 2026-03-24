@@ -237,12 +237,31 @@ export class CustomerListComponent extends BaseListComponent<Customer> {
   }
 
   /**
+   * Persist status filter in URL (omit when default 'active').
+   */
+  protected override getExtraUrlParams(): Record<string, string | null> {
+    const status = this.statusFilter();
+    return { status: status !== 'active' ? status : null };
+  }
+
+  /**
+   * Restore status filter from URL query params.
+   */
+  protected override restoreExtraUrlParams(params: Record<string, string | undefined>): void {
+    const status = params['status'];
+    if (status === 'all' || status === 'active' || status === 'disabled') {
+      this.statusFilter.set(status);
+    }
+  }
+
+  /**
    * Handle status filter change
    */
   onStatusChange(value: string | string[]): void {
     if (typeof value === 'string') {
       this.statusFilter.set(value as 'all' | 'active' | 'disabled');
       this.page.set(1);
+      this.updateUrl();
       this.reload();
     }
   }
