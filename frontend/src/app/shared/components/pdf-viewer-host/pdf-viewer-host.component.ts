@@ -39,6 +39,7 @@ export class PdfViewerHostComponent implements OnChanges, OnInit, OnDestroy {
   @Input() errorMessage: string | null = null;
   @Input() showDownloadButton = false;
   @Input() downloadFileName = 'document.pdf';
+  @Input() appendToBody = true;
   @Output() closed = new EventEmitter<void>();
   @Output() downloadRequested = new EventEmitter<void>();
 
@@ -50,7 +51,7 @@ export class PdfViewerHostComponent implements OnChanges, OnInit, OnDestroy {
   private renderer = inject(Renderer2);
 
   ngOnInit(): void {
-    if (typeof document !== 'undefined') {
+    if (this.appendToBody && typeof document !== 'undefined') {
       this.renderer.appendChild(document.body, this.el.nativeElement);
     }
   }
@@ -95,6 +96,11 @@ export class PdfViewerHostComponent implements OnChanges, OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape', ['$event'])
   onEscape(event: Event): void {
+    if (typeof event.stopImmediatePropagation === 'function') {
+      event.stopImmediatePropagation();
+    } else {
+      event.stopPropagation();
+    }
     event.preventDefault();
     this.close();
   }

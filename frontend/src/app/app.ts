@@ -63,7 +63,8 @@ export class App implements OnDestroy {
       });
 
     effect(() => {
-      if (this.hydrationSettled() && this.authService.isAuthenticated()) {
+      const token = this.authService.token();
+      if (this.hydrationSettled() && token && this.authService.isAuthenticated()) {
         // Keep SW/FCM bootstrap outside Angular stability accounting.
         this.zone.runOutsideAngular(() => {
           void this.pushNotifications.initialize();
