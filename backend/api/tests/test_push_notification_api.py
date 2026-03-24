@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from customer_applications.models import DocApplication, WorkflowNotification
 from customers.models import Customer
@@ -101,6 +101,32 @@ class PushNotificationApiTests(TestCase):
         if current:
             self.assertEqual(current["active_push_subscriptions"], 1)
             self.assertEqual(current["total_push_subscriptions"], 1)
+
+    @patch("api.view_notifications.requests.post")
+    def test_firebase_install_proxy_forwards_browser_context_headers(self, post_mock):
+        response_mock = Mock()
+        response_mock.status_code = 200
+        response_mock.json.return_value = {"name": "projects/demo/installations/fid"}
+        post_mock.return_value = response_mock
+
+        response = self.client.post(
+            "/api/push-notifications/firebase-install-proxy/",
+            {"fid": "ctdGwAOhloH-bs6NjGRKda", "authVersion": "FIS_v2"},
+            format="json",
+            HTTP_X_GOOG_API_KEY="web-api-key",
+            HTTP_X_FIREBASE_PATH="installations",
+            HTTP_REFERER="http://localhost:4200/applications/328",
+            HTTP_ORIGIN="http://localhost:4200",
+            HTTP_USER_AGENT="Mozilla/5.0",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        headers = post_mock.call_args.kwargs["headers"]
+        self.assertEqual(headers["referer"], "http://localhost:4200/applications/328")
+        self.assertEqual(headers["origin"], "http://localhost:4200")
+        self.assertEqual(headers["user-agent"], "Mozilla/5.0")
+        self.assertEqual(headers["x-goog-api-key"], "web-api-key")
+        self.assertNotIn("x-goog-firebase-installations-auth", headers)
 
     def test_test_endpoint_returns_409_when_no_active_subscription(self):
         response = self.client.post(

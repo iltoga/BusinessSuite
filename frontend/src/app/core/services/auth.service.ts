@@ -101,6 +101,7 @@ export class AuthService {
   private _mockClaims = signal<AuthClaims | null>(null);
   private _isLoading = signal(false);
   private _error = signal<string | null>(null);
+  readonly token = this._token.asReadonly();
 
   // Holds an in-flight refresh observable so concurrent requests wait for the same refresh
   private refreshRequest$: import('rxjs').Observable<string> | null = null;

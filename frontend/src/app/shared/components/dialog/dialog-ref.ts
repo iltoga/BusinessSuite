@@ -15,6 +15,7 @@ export class ZardDialogRef<T = any, R = any, U = any> {
   private destroy$ = new Subject<void>();
   private closed$ = new Subject<R | undefined>();
   private isClosing = false;
+  private maskClosable = true;
   protected result?: R;
   componentInstance: T | null = null;
 
@@ -27,11 +28,17 @@ export class ZardDialogRef<T = any, R = any, U = any> {
     this.containerInstance.cancelTriggered.subscribe(() => this.trigger(eTriggerAction.CANCEL));
     this.containerInstance.okTriggered.subscribe(() => this.trigger(eTriggerAction.OK));
 
-    if ((this.config.zMaskClosable ?? true) && isPlatformBrowser(this.platformId)) {
+    this.maskClosable = this.config.zMaskClosable ?? true;
+
+    if (isPlatformBrowser(this.platformId)) {
       this.overlayRef
         .outsidePointerEvents()
         .pipe(takeUntil(this.destroy$))
-        .subscribe(() => this.trigger(eTriggerAction.CANCEL));
+        .subscribe(() => {
+          if (this.maskClosable) {
+            this.trigger(eTriggerAction.CANCEL);
+          }
+        });
     }
 
     if (isPlatformBrowser(this.platformId)) {
@@ -78,6 +85,14 @@ export class ZardDialogRef<T = any, R = any, U = any> {
 
   afterClosed() {
     return this.closed$.asObservable();
+  }
+
+  setMaskClosable(maskClosable: boolean): void {
+    this.maskClosable = maskClosable;
+  }
+
+  isMaskClosable(): boolean {
+    return this.maskClosable;
   }
 
   private trigger(action: eTriggerAction) {

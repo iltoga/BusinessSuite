@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Inject, Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { Subject, firstValueFrom } from 'rxjs';
 
+import { AuthService } from '@/core/services/auth.service';
 import { ConfigService } from '@/core/services/config.service';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { PushProxyFetchService } from '@/core/services/push-proxy-fetch.service';
@@ -31,6 +32,7 @@ declare global {
 export class PushNotificationsService {
   private readonly TOKEN_STORAGE_KEY = 'fcm_push_token';
   private readonly http = inject(HttpClient);
+  private readonly authService = inject(AuthService);
   private readonly configService = inject(ConfigService);
   private readonly desktopBridge = inject(DesktopBridgeService);
   private readonly pushProxyFetch = inject(PushProxyFetchService);
@@ -50,8 +52,6 @@ export class PushNotificationsService {
     if (!isPlatformBrowser(this.platformId)) return;
     if (this.initialized) return;
     if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
-
-    this.initialized = true;
 
     const firebaseConfig = this.buildFirebaseConfig();
     const vapidKey = this.configService.settings.fcmVapidPublicKey?.trim();
@@ -157,6 +157,8 @@ export class PushNotificationsService {
       if (token) {
         await this.registerToken(token);
       }
+
+      this.initialized = true;
     } catch (error) {
       console.error('[PushNotificationsService] Initialization failed', error);
     }
@@ -251,7 +253,7 @@ export class PushNotificationsService {
   }
 
   private postAuthTokenToServiceWorker(registration: ServiceWorkerRegistration): void {
-    const token = localStorage.getItem('auth_token') || '';
+    const token = this.resolveAuthToken();
     const workers = [registration.active, registration.waiting, registration.installing].filter(
       (worker): worker is ServiceWorker => !!worker,
     );
@@ -340,6 +342,10 @@ export class PushNotificationsService {
     }
 
     return false;
+  }
+
+  private resolveAuthToken(): string {
+    return this.authService.getToken()?.trim() || '';
   }
 
   private parseBooleanFlag(value: string): boolean {

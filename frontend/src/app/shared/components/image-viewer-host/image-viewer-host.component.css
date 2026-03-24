@@ -1,0 +1,15 @@
+:host {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2147483647;
+  display: block;
+  pointer-events: auto;
+  isolation: isolate;
+}
+
+.image-viewer-container img {
+  /* Allow the image to scale nicely within the container */
+  transition: opacity 150ms ease-in-out;
+}

@@ -13,10 +13,11 @@ import type { ApplicationDocument } from '@/core/services/applications.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
-import { Z_MODAL_DATA } from '@/shared/components/dialog';
+import { Z_MODAL_DATA, ZardDialogRef } from '@/shared/components/dialog';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import { DocumentViewerOverlayService } from '@/shared/services/document-viewer-overlay.service';
 import { inferPreviewTypeFromUrl } from '@/shared/utils/document-preview-source';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
@@ -40,10 +41,12 @@ export interface DocumentViewDialogData {
 })
 export class DocumentViewDialogContentComponent implements OnInit {
   readonly data = inject<DocumentViewDialogData>(Z_MODAL_DATA);
+  private dialogRef = inject(ZardDialogRef, { optional: true });
   private destroyRef = inject(DestroyRef);
   private documentsService = inject(DocumentsService);
   private toast = inject(GlobalToastService);
   private sanitizer = inject(DomSanitizer);
+  private viewerService = inject(DocumentViewerOverlayService);
 
   readonly isLoadingPreview = signal(false);
   readonly isLoadingFullFile = signal(false);
@@ -84,7 +87,10 @@ export class DocumentViewDialogContentComponent implements OnInit {
   }
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.revokePreview());
+    this.destroyRef.onDestroy(() => {
+      this.revokePreview();
+      this.viewerService.closeCurrent();
+    });
   }
 
   ngOnInit(): void {
@@ -98,12 +104,20 @@ export class DocumentViewDialogContentComponent implements OnInit {
     this.documentsService.downloadDocumentFile(this.doc.id).subscribe({
       next: (blob) => {
         this.isLoadingFullFile.set(false);
-        const url = URL.createObjectURL(blob);
-        const popup = window.open(url, '_blank');
-        if (!popup) {
-          this.toast.error('Popup blocked. Please allow popups for this site.');
+        const mime = (blob.type ?? '').toLowerCase();
+        if (mime.startsWith('image/') || this.previewType() === 'image') {
+          this.openImageViewer(blob);
+        } else if (mime === 'application/pdf' || this.previewType() === 'pdf') {
+          this.openPdfViewer(blob);
+        } else {
+          // Fallback: open in new tab for unknown types
+          const url = URL.createObjectURL(blob);
+          const popup = window.open(url, '_blank');
+          if (!popup) {
+            this.toast.error('Popup blocked. Please allow popups for this site.');
+          }
+          window.setTimeout(() => URL.revokeObjectURL(url), 60000);
         }
-        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
       },
       error: (error) => {
         this.isLoadingFullFile.set(false);
@@ -114,6 +128,14 @@ export class DocumentViewDialogContentComponent implements OnInit {
         this.toast.error(extractServerErrorMessage(error) || 'Failed to open document');
       },
     });
+  }
+
+  private openImageViewer(blob: Blob): void {
+    this.viewerService.openImageViewer(blob, { dialogRef: this.dialogRef ?? undefined });
+  }
+
+  private openPdfViewer(blob: Blob): void {
+    this.viewerService.openPdfViewer(blob, { dialogRef: this.dialogRef ?? undefined });
   }
 
   private loadPreview(): void {

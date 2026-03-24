@@ -540,6 +540,24 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = WebPushSubscriptionSerializer
 
+    @staticmethod
+    def _copy_browser_context_headers(request, headers: dict[str, str]) -> None:
+        """
+        Preserve browser context headers when proxying Google/Firebase requests.
+
+        Firebase Installations and FCM web API keys can be origin-restricted, so the
+        server-side proxy needs to forward the browser's referer/origin context instead
+        of stripping it out during the hop to googleapis.com.
+        """
+        for meta_key, header_key in (
+            ("HTTP_REFERER", "referer"),
+            ("HTTP_ORIGIN", "origin"),
+            ("HTTP_USER_AGENT", "user-agent"),
+        ):
+            value = request.META.get(meta_key, "").strip()
+            if value:
+                headers[header_key] = value
+
     def get_serializer_class(self):
         action = str(getattr(self, "action", ""))
         action_map = {
@@ -846,6 +864,7 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
 
         url = f"https://fcmregistrations.googleapis.com/v1/projects/{project_id}/registrations"
         fwd_headers: dict = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+        self._copy_browser_context_headers(request, fwd_headers)
         if fcm_auth:
             fwd_headers["x-goog-firebase-installations-auth"] = fcm_auth
         try:
@@ -865,6 +884,12 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
             body = resp.json()
         except ValueError:
             body = {"raw": resp.text}
+        if resp.status_code in {401, 403}:
+            logger.warning(
+                "[fcm_register_proxy] Upstream %s from Firebase registrations: %s",
+                resp.status_code,
+                resp.text[:1000],
+            )
 
         return Response(body, status=resp.status_code)
 
@@ -897,6 +922,7 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
         url = f"{base}/{path_suffix}" if path_suffix else base
 
         headers: dict = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+        self._copy_browser_context_headers(request, headers)
         if firebase_auth:
             headers["x-goog-firebase-installations-auth"] = firebase_auth
 
@@ -912,6 +938,12 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
             body = resp.json()
         except ValueError:
             body = {"raw": resp.text}
+        if resp.status_code in {401, 403}:
+            logger.warning(
+                "[firebase_install_proxy] Upstream %s from Firebase Installations: %s",
+                resp.status_code,
+                resp.text[:1000],
+            )
 
         return Response(body, status=resp.status_code)
 

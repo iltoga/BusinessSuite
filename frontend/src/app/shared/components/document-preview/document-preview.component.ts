@@ -9,7 +9,6 @@ import {
   output,
   signal,
   ViewChild,
-  ViewContainerRef,
 } from '@angular/core';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 
@@ -21,7 +20,9 @@ import type {
 } from '@/shared/components/button/button.variants';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
+import { ZardDialogRef } from '@/shared/components/dialog';
 import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
+import { DocumentViewerOverlayService } from '@/shared/services/document-viewer-overlay.service';
 import { inferPreviewTypeFromUrl } from '@/shared/utils/document-preview-source';
 import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
 
@@ -44,6 +45,8 @@ export class DocumentPreviewComponent {
   private documentsService = inject(DocumentsService);
   private destroyRef = inject(DestroyRef);
   private sanitizer = inject(DomSanitizer);
+  private dialogRef = inject(ZardDialogRef, { optional: true });
+  private viewerService = inject(DocumentViewerOverlayService);
 
   documentId = input.required<number>();
   fileLink = input<string | null | undefined>(null);
@@ -63,14 +66,8 @@ export class DocumentPreviewComponent {
   sanitizedPreview = signal<SafeResourceUrl | null>(null);
   previewMime = signal<string | null>(null);
 
-  @ViewChild('overlayContainer', { read: ViewContainerRef, static: false })
-  protected overlayContainer?: ViewContainerRef;
-
   @ViewChild('popover', { read: ZardPopoverDirective, static: false })
   protected popover?: ZardPopoverDirective;
-
-  private viewerCompRef: any | null = null;
-  private viewerUrl: string | null = null;
 
   protected readonly fileName = computed(() => this.extractFileName(this.fileLink()));
   protected readonly resolvedFileType = computed<'image' | 'pdf' | 'unknown'>(() => {
@@ -149,7 +146,7 @@ export class DocumentPreviewComponent {
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.cleanup();
-      this.destroyViewer();
+      this.viewerService.closeCurrent();
     });
   }
 
@@ -175,7 +172,17 @@ export class DocumentPreviewComponent {
       return;
     }
 
-    // Non-PDFs: fallback to previous behavior and inform the parent
+    // For images, open the inline image viewer overlay
+    if (this.isImage()) {
+      if (this.previewBlob() || this.previewUrl()) {
+        this.openImageViewer();
+      } else if (!this.isLoading()) {
+        this.loadPreviewAndOpenImage();
+      }
+      return;
+    }
+
+    // Other file types: fallback to previous behavior and inform the parent
     this.viewFull.emit();
   }
 
@@ -290,59 +297,46 @@ export class DocumentPreviewComponent {
     return true;
   }
 
-  private async openViewer(): Promise<void> {
-    if (!this.overlayContainer) return;
-
-    // Clear any existing viewer
-    this.destroyViewer();
-
-    // Lazy import the host component — this keeps the PDF viewer bundle out of the main chunk
-    const module = await import('@/shared/components/pdf-viewer-host/pdf-viewer-host.component');
-    const comp = this.overlayContainer.createComponent(module.PdfViewerHostComponent as any, {
-      index: 0,
-    });
-
-    // Support both setInput API and assignment for various Angular versions
+  private openViewer(): void {
     let passedSrc: any = this.previewBlob();
     // Prefer passing the Blob directly to ngx-extended-pdf-viewer when available
     if (this.previewBlob() instanceof Blob) {
       passedSrc = this.previewBlob() as Blob;
     }
 
-    if ((comp as any).setInput) {
-      (comp as any).setInput('src', passedSrc);
-    } else {
-      (comp as any).instance.src = passedSrc;
-    }
-
-    // Subscribe to closed event so we can cleanup
-    const compInstance: any = (comp as any).instance;
-    const sub = compInstance.closed?.subscribe?.(() => {
-      sub?.unsubscribe?.();
-      this.destroyViewer();
-    });
-
-    this.viewerCompRef = comp;
+    this.viewerService.openPdfViewer(passedSrc, { dialogRef: this.dialogRef ?? undefined });
   }
 
-  private destroyViewer(): void {
-    if (this.viewerCompRef) {
-      try {
-        this.viewerCompRef.destroy();
-      } catch (e) {
-        // ignore
-      }
-      this.viewerCompRef = null;
-    }
+  private openImageViewer(): void {
+    // Determine the source: prefer blob, fall back to URL
+    const passedSrc: any = this.previewBlob() ?? this.previewUrl();
+    this.viewerService.openImageViewer(passedSrc, { dialogRef: this.dialogRef ?? undefined });
+  }
 
-    if (this.viewerUrl) {
-      try {
-        URL.revokeObjectURL(this.viewerUrl);
-      } catch (e) {
-        // ignore
-      }
-      this.viewerUrl = null;
-    }
+  private loadPreviewAndOpenImage(): void {
+    this.isLoading.set(true);
+    this.documentsService.downloadDocumentFile(this.documentId()).subscribe({
+      next: (blob) => {
+        this.cleanup();
+        this.previewBlob.set(blob);
+        this.previewMime.set(blob.type ?? null);
+
+        const url = URL.createObjectURL(blob);
+        if (!this.setPreviewResourceUrl(url)) {
+          URL.revokeObjectURL(url);
+          this.previewUrl.set(null);
+        }
+
+        this.isLoading.set(false);
+        this.openImageViewer();
+      },
+      error: () => {
+        this.isLoading.set(false);
+        this.previewUrl.set(null);
+        this.previewBlob.set(null);
+        this.previewMime.set(null);
+      },
+    });
   }
 
   private cleanup(): void {
