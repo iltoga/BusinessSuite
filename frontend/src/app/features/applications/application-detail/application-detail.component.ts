@@ -74,6 +74,11 @@ import {
   type ApplicationDeleteDialogData,
 } from '@/shared/components/application-delete-dialog';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
+import { ZardDialogService } from '@/shared/components/dialog';
+import {
+  DocumentViewDialogContentComponent,
+  type DocumentViewDialogData,
+} from '@/shared/components/document-view-dialog';
 import { MultiFileUploadComponent } from '@/shared/components/multi-file-upload/multi-file-upload.component';
 import { AddDocumentDialogComponent } from './add-document-dialog.component';
 import { ApplicationWorkflowTimelineComponent } from './application-workflow-timeline.component';
@@ -166,6 +171,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly isDevelopmentMode = isDevMode();
   private jobService = inject(JobService);
   private categorizationService = inject(DocumentCategorizationService);
+  private dialogService = inject(ZardDialogService);
 
   // Categorization handler (extracted service — provides all categorization state & logic)
   readonly catHandler = inject(ApplicationCategorizationHandler);
@@ -1547,6 +1553,37 @@ export class ApplicationDetailComponent implements OnInit {
         }
         this.toast.error(extractServerErrorMessage(error) || 'Failed to open document');
       },
+    });
+  }
+
+  /** True when the document has a file but no non-empty text fields. */
+  isFileOnlyDocument(doc: ApplicationDocument): boolean {
+    return !!doc.fileLink && !this.hasDocumentTextFields(doc);
+  }
+
+  /** True when the document has at least one non-empty text field. */
+  hasDocumentTextFields(doc: ApplicationDocument): boolean {
+    return !!doc.docNumber || !!doc.expirationDate || !!doc.details;
+  }
+
+  /** True when the document has any viewable content (file or text fields). */
+  hasViewableContent(doc: ApplicationDocument): boolean {
+    return !!doc.fileLink || this.hasDocumentTextFields(doc);
+  }
+
+  openDocumentViewDialog(doc: ApplicationDocument): void {
+    const data: DocumentViewDialogData = { document: doc };
+    const hasFile = !!doc.fileLink;
+    const width = hasFile ? '720px' : '500px';
+    const maxW = hasFile ? 'max-w-[720px] sm:max-w-[720px]' : 'max-w-[500px] sm:max-w-[500px]';
+    this.dialogService.create({
+      zTitle: doc.docType.name,
+      zContent: DocumentViewDialogContentComponent,
+      zData: data,
+      zHideFooter: true,
+      zClosable: true,
+      zWidth: width,
+      zCustomClasses: maxW,
     });
   }
 

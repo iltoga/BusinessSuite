@@ -7,9 +7,8 @@ before being saved to the document.
 
 from typing import TYPE_CHECKING, Any, Dict, List
 
-from django.core.files.base import ContentFile
-
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
+from django.core.files.base import ContentFile
 
 from .base import BaseDocumentTypeHook, DocumentAction
 
@@ -31,6 +30,7 @@ class SuratPermohonanHook(BaseDocumentTypeHook):
     """
 
     document_type_name = "Surat Permohonan dan Jaminan"
+    address_document_type_name = "Address"
 
     @staticmethod
     def _safe_file_path_for_logging(document: "Document") -> str:
@@ -69,6 +69,33 @@ class SuratPermohonanHook(BaseDocumentTypeHook):
             return self._generate_surat(document, request)
         return {"success": False, "error": "Unknown action"}
 
+    def _get_application_document_details(self, document: "Document", doc_type_name: str) -> str:
+        """Return the latest non-empty details value for a document type on the same application."""
+        application = getattr(document, "doc_application", None)
+        if not application:
+            return ""
+
+        document_entry = (
+            application.documents.filter(doc_type__name=doc_type_name)
+            .exclude(details__isnull=True)
+            .exclude(details="")
+            .order_by("-updated_at", "-pk")
+            .first()
+        )
+        return (document_entry.details or "").strip() if document_entry else ""
+
+    def _get_letter_overrides(self, document: "Document") -> Dict[str, Any]:
+        """Build per-application letter overrides, preferring uploaded document details."""
+        customer = document.doc_application.customer
+
+        effective_address = self._get_application_document_details(document, self.address_document_type_name)
+        if not effective_address:
+            effective_address = (customer.address_bali or "").strip()
+
+        return {
+            "address_bali": effective_address,
+        }
+
     def _generate_surat(self, document: "Document", request: "HttpRequest") -> Dict[str, Any]:
         """Generate the Surat Permohonan document as PDF.
 
@@ -87,11 +114,13 @@ class SuratPermohonanHook(BaseDocumentTypeHook):
             from letters.services.LetterService import LetterService
 
             customer = document.doc_application.customer
+            letter_overrides = self._get_letter_overrides(document)
+            effective_address = letter_overrides.get("address_bali", "")
 
             # Check if customer has Bali address populated
-            if not customer.address_bali or not customer.address_bali.strip():
+            if not effective_address:
                 logger.warning(
-                    "Cannot generate Surat Permohonan: customer %s has no Bali address",
+                    "Cannot generate Surat Permohonan: customer %s has no Bali address in customer or application documents",
                     customer.pk,
                 )
                 return {
@@ -101,7 +130,7 @@ class SuratPermohonanHook(BaseDocumentTypeHook):
 
             # Generate the DOCX document
             service = LetterService(customer)
-            data = service.generate_letter_data()
+            data = service.generate_letter_data(letter_overrides)
             doc_buffer = service.generate_letter_document(data)
 
             # Convert DOCX to PDF

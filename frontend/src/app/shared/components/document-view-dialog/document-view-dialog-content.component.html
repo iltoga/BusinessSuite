@@ -1,0 +1,117 @@
+<div class="space-y-5 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
+  <!-- File preview section -->
+  @if (hasFile) {
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h5 class="text-sm font-semibold">File Preview</h5>
+        <button
+          z-button
+          zType="outline"
+          zSize="sm"
+          type="button"
+          (click)="viewFullFile()"
+          [disabled]="isLoadingFullFile()"
+        >
+          @if (isLoadingFullFile()) {
+            <z-icon zType="loader-circle" class="mr-1.5 h-3.5 w-3.5 app-circle-spinner" />
+          } @else {
+            <z-icon zType="arrow-up-right" class="mr-1.5 h-3.5 w-3.5" />
+          }
+          Open File
+        </button>
+      </div>
+      <div
+        class="mx-auto flex h-[18rem] w-full max-w-[30rem] items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/10"
+      >
+        @if (isLoadingPreview()) {
+          <div class="flex flex-col items-center justify-center py-16 gap-2">
+            <z-icon
+              zType="loader-circle"
+              class="h-6 w-6 text-muted-foreground app-circle-spinner"
+            />
+            <span class="text-xs text-muted-foreground">Loading preview…</span>
+          </div>
+        } @else if (previewUrl()) {
+          @if (isImage) {
+            <app-image-magnifier
+              class="h-full w-full"
+              [src]="previewUrl()"
+              alt="Document Preview"
+              imageClass="h-full w-full object-contain"
+              wrapperClass="h-full w-full"
+              [showToggle]="true"
+              [enabledByDefault]="false"
+            />
+          } @else if (isPdf) {
+            <iframe
+              [src]="sanitizedPreviewUrl()"
+              class="h-full w-full border-0"
+              title="PDF Preview"
+            ></iframe>
+          } @else {
+            <div
+              class="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2"
+            >
+              <z-icon zType="file" class="h-10 w-10 opacity-40" />
+              <span class="text-xs">Preview not available for this file type</span>
+            </div>
+          }
+        } @else {
+          <div class="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+            <z-icon zType="file" class="h-10 w-10 opacity-40" />
+            <span class="text-xs">Preview not available</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- Document fields section -->
+  @if (hasTextFields) {
+    <section>
+      @if (hasFile) {
+        <h5 class="text-sm font-semibold mb-3">Document Details</h5>
+      }
+      <div class="grid gap-3 rounded-lg border border-border bg-muted/10 p-4">
+        @if (hasDocNumber) {
+          <div class="grid grid-cols-[8rem_1fr] items-baseline gap-x-3">
+            <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Doc Number
+            </span>
+            <span class="text-sm font-medium">{{ doc.docNumber }}</span>
+          </div>
+        }
+
+        @if (hasExpirationDate) {
+          <div class="grid grid-cols-[8rem_1fr] items-baseline gap-x-3">
+            <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Expiration
+            </span>
+            <span class="text-sm font-medium">{{ doc.expirationDate | appDate }}</span>
+          </div>
+        }
+
+        @if (hasDetails) {
+          <div>
+            <span
+              class="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1"
+            >
+              Details
+            </span>
+            <p class="text-sm whitespace-pre-wrap wrap-break-word leading-relaxed">
+              {{ doc.details }}
+            </p>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- Empty state -->
+  @if (!hasFile && !hasTextFields) {
+    <div class="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+      <z-icon zType="file-text" class="h-10 w-10 opacity-40" />
+      <span class="text-sm">No document data available.</span>
+    </div>
+  }
+</div>

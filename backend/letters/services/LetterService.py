@@ -3,15 +3,14 @@ from datetime import date, datetime
 from io import BytesIO
 from uuid import uuid4
 
+import core.utils.formatutils as formatutils
+from core.models import CountryCode
 from core.services.app_setting_service import AppSettingService
+from customers.models import Customer
 from django.conf import settings
 from django.utils.timezone import now as datetime_now
 from django.utils.translation import activate, get_language, gettext
 from mailmerge import MailMerge
-
-import core.utils.formatutils as formatutils
-from core.models import CountryCode
-from customers.models import Customer
 
 
 class LetterService:
@@ -164,8 +163,12 @@ class LetterService:
             except Exception:
                 pass
 
-        # Split address lines into explicit merge fields so the template can render them on separate lines
-        address_lines = (self.customer.address_bali or "").splitlines()
+        # Split address lines into explicit merge fields so the template can render them on separate lines.
+        # IMPORTANT: respect any explicit override provided via extra_data before falling back to Customer.
+        address_source = data.get("address_bali")
+        if not isinstance(address_source, str):
+            address_source = self.customer.address_bali or ""
+        address_lines = address_source.splitlines()
         # Normalize address_bali to use explicit newline separators and trim whitespace
         data["address_bali"] = "\n".join([ln.strip() for ln in address_lines if ln.strip()])
         for i in range(4):
