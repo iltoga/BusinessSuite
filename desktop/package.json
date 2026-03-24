@@ -13,13 +13,14 @@
     "doctor:local": "node ./scripts/doctor-local-stack.js",
     "dist": "electron-builder --config electron-builder.yml --publish never",
     "dist:mac": "electron-builder --config electron-builder.yml --mac dmg zip --publish never",
-    "dist:win": "electron-builder --config electron-builder.yml --win nsis --publish never"
+    "dist:win": "electron-builder --config electron-builder.yml --win nsis --publish never",
+    "update-deps": "bash ../scripts/update-bun-dependencies.sh desktop"
   },
   "dependencies": {
-    "electron-updater": "^6.6.2"
+    "electron-updater": "^6.8.3"
   },
   "devDependencies": {
-    "electron": "^36.4.0",
-    "electron-builder": "^26.0.12"
+    "electron": "^36.9.5",
+    "electron-builder": "^26.8.1"
   }
 }

@@ -201,8 +201,10 @@
                     <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                       Payment
                     </th>
-                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                      Actions
+                    <th class="text-right py-3 px-4 text-sm font-medium text-muted-foreground w-12">
+                      <div class="flex items-center justify-end">
+                        <z-icon zType="circle-ellipsis" class="h-4 w-4 text-foreground/70" />
+                      </div>
                     </th>
                   </tr>
                 </thead>
@@ -260,40 +262,57 @@
                         </z-badge>
                       </td>
                       <td class="py-3 px-4 text-sm app-history-actions-cell" data-label="Actions">
-                        <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex items-center justify-end">
                           <button
-                            type="button"
+                            #actionTrigger
+                            z-dropdown
+                            [zDropdownMenu]="rowActionsMenu"
                             z-button
-                            zType="outline"
+                            zType="ghost"
                             zSize="sm"
-                            (click)="$event.stopPropagation(); openApplicationDetails(app.id)"
+                            type="button"
+                            class="h-8 w-8 p-0"
+                            tabindex="-1"
+                            (click)="$event.stopPropagation()"
+                            aria-label="Row actions"
+                            aria-haspopup="menu"
                           >
-                            View Application
+                            <z-icon zType="ellipsis-vertical" />
                           </button>
-                          @if (app.hasInvoice && app.invoiceId) {
-                            <a
-                              z-button
-                              zType="outline"
-                              zSize="sm"
-                              [routerLink]="['/invoices', app.invoiceId]"
-                              [state]="invoiceNavigationState()"
-                              (click)="$event.stopPropagation()"
-                            >
-                              View Invoice
-                            </a>
-                          } @else if (canCreateInvoice(app)) {
-                            <button
-                              type="button"
-                              z-button
-                              zType="success"
-                              zSize="sm"
-                              (click)="$event.stopPropagation(); onCreateInvoice(app.id)"
-                            >
-                              Create Invoice
-                            </button>
-                          } @else {
-                            <z-badge zType="warning">Not Ready</z-badge>
-                          }
+                          <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
+                            @defer (on interaction(actionTrigger)) {
+                              <button
+                                z-dropdown-menu-item
+                                type="button"
+                                variant="default"
+                                (click)="openApplicationDetails(app.id); $event.stopPropagation()"
+                              >
+                                <z-icon zType="eye" class="mr-2 h-4 w-4 stroke-current" />
+                                <span>View Application</span>
+                              </button>
+                              @if (app.hasInvoice && app.invoiceId) {
+                                <a
+                                  z-dropdown-menu-item
+                                  [routerLink]="['/invoices', app.invoiceId]"
+                                  [state]="invoiceNavigationState()"
+                                  (click)="$event.stopPropagation()"
+                                >
+                                  <z-icon zType="eye" class="mr-2 h-4 w-4 stroke-current" />
+                                  <span>View Invoice</span>
+                                </a>
+                              } @else if (canCreateInvoice(app)) {
+                                <button
+                                  z-dropdown-menu-item
+                                  type="button"
+                                  variant="success"
+                                  (click)="onCreateInvoice(app.id); $event.stopPropagation()"
+                                >
+                                  <z-icon zType="plus" class="mr-2 h-4 w-4 stroke-current" />
+                                  <span>Create Invoice</span>
+                                </button>
+                              }
+                            }
+                          </z-dropdown-menu-content>
                         </div>
                       </td>
                     </tr>
