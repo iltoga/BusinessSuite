@@ -13,7 +13,7 @@ import { FormErrorSummaryComponent } from '@/shared/components/form-error-summar
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -32,7 +32,6 @@ import { finalize } from 'rxjs';
   selector: 'app-surat-permohonan',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     RouterLink,
     ZardButtonComponent,
@@ -42,8 +41,8 @@ import { finalize } from 'rxjs';
     CustomerSelectComponent,
     ZardDateInputComponent,
     ZardIconComponent,
-    FormErrorSummaryComponent,
-  ],
+    FormErrorSummaryComponent
+],
   templateUrl: './surat-permohonan.component.html',
   styleUrls: ['./surat-permohonan.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

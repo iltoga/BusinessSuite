@@ -15,7 +15,9 @@
       <app-search-toolbar
         [query]="query()"
         [placeholder]="'Search Products...'"
+        [hasActiveFilters]="hasActiveColumnFilters()"
         (queryChange)="onQueryChange($event)"
+        (clearFilters)="clearAllFilters()"
         (tabOut)="dataTable.focusFirstRowIfNone()"
         [contextHelp]="'/products/search'"
       >
@@ -26,33 +28,35 @@
           [zDisabled]="printInProgress() || exportInProgress() || importInProgress()"
           (click)="startPrint()"
         >
-          Print
+          Download Catalog
         </z-button>
-        <z-button
-          zType="default"
-          zSize="sm"
-          [zLoading]="exportInProgress()"
-          [zDisabled]="printInProgress() || exportInProgress() || importInProgress()"
-          (click)="startExport()"
-        >
-          Export
-          @if (exportInProgress() && exportProgress() !== null) {
-            ({{ exportProgress() }}%)
-          }
-        </z-button>
-        <z-button
-          zType="default"
-          zSize="sm"
-          [zLoading]="importInProgress()"
-          [zDisabled]="printInProgress() || importInProgress() || exportInProgress()"
-          (click)="openImportPicker()"
-        >
-          Import
-          @if (importInProgress() && importProgress() !== null) {
-            ({{ importProgress() }}%)
-          }
-        </z-button>
-        @if (isSuperuser() && totalItems() > 0) {
+        @if (isInAdminGroup()) {
+          <z-button
+            zType="default"
+            zSize="sm"
+            [zLoading]="exportInProgress()"
+            [zDisabled]="printInProgress() || exportInProgress() || importInProgress()"
+            (click)="startExport()"
+          >
+            Export
+            @if (exportInProgress() && exportProgress() !== null) {
+              ({{ exportProgress() }}%)
+            }
+          </z-button>
+          <z-button
+            zType="default"
+            zSize="sm"
+            [zLoading]="importInProgress()"
+            [zDisabled]="printInProgress() || importInProgress() || exportInProgress()"
+            (click)="openImportPicker()"
+          >
+            Import
+            @if (importInProgress() && importProgress() !== null) {
+              ({{ importProgress() }}%)
+            }
+          </z-button>
+        }
+        @if (isInAdminGroup() && totalItems() > 0) {
           <z-button
             zType="destructive"
             zSize="sm"

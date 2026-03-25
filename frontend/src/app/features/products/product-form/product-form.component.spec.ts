@@ -38,6 +38,7 @@ describe('ProductFormComponent', () => {
       productsUpdate: vi.fn(),
     };
     component.itemId = 3;
+    component.destroyRef = { onDestroy: vi.fn().mockReturnValue(() => {}) };
 
     component.form = (ProductFormComponent.prototype as any).buildForm.call(component);
     component.addTask = (ProductFormComponent.prototype as any).addTask.bind(component);
@@ -165,7 +166,12 @@ describe('ProductFormComponent', () => {
       code: 'KITAS-1',
     });
     component.router.getCurrentNavigation.mockReturnValue(null);
-    history.replaceState({ searchQuery: 'visa', page: 2 }, '');
+    vi.spyOn(component as any, 'getNavigationState').mockReturnValue({
+      searchQuery: 'visa',
+      page: 2,
+      focusId: null,
+      returnToList: false,
+    });
 
     component.onSubmit();
 
@@ -200,14 +206,12 @@ describe('ProductFormComponent', () => {
         tasks: [],
       } as unknown as ProductDetail),
     );
-    component.router.getCurrentNavigation.mockReturnValue({
-      extras: {
-        state: {
-          returnToList: true,
-        },
-      },
+    vi.spyOn(component as any, 'getNavigationState').mockReturnValue({
+      searchQuery: 'visa',
+      page: 4,
+      focusId: null,
+      returnToList: true,
     });
-    history.replaceState({ searchQuery: 'visa', page: 4 }, '');
 
     component.onSubmit();
 
@@ -241,7 +245,12 @@ describe('ProductFormComponent', () => {
       } as unknown as ProductDetail),
     );
     component.router.getCurrentNavigation.mockReturnValue(null);
-    history.replaceState({ searchQuery: 'visa', page: 4 }, '');
+    vi.spyOn(component as any, 'getNavigationState').mockReturnValue({
+      searchQuery: 'visa',
+      page: 4,
+      focusId: null,
+      returnToList: false,
+    });
 
     component.onSubmit();
 
@@ -259,7 +268,12 @@ describe('ProductFormComponent', () => {
     component.itemId = null;
     component.product.set(null);
     component.router.getCurrentNavigation.mockReturnValue(null);
-    history.replaceState({ focusId: 41, searchQuery: 'visa', page: 2 }, '');
+    vi.spyOn(component as any, 'getNavigationState').mockReturnValue({
+      searchQuery: 'visa',
+      page: 2,
+      focusId: 41,
+      returnToList: false,
+    });
 
     component.goBack();
 
@@ -271,5 +285,37 @@ describe('ProductFormComponent', () => {
         page: 2,
       },
     });
+  });
+
+  it('task calendar toggle stops syncing notify after destroyRef fires', () => {
+    const component = createHarness();
+    const teardownCallbacks: Array<() => void> = [];
+    component.destroyRef = {
+      onDestroy(cb: () => void) {
+        teardownCallbacks.push(cb);
+        return () => {};
+      },
+    };
+    // Re-initialize form with the updated destroyRef
+    component.form = (ProductFormComponent.prototype as any).buildForm.call(component);
+
+    component.addTask();
+    const taskGroup = component.tasksArray.at(0);
+    const calendarControl = taskGroup.get('addTaskToCalendar');
+    const notifyControl = taskGroup.get('notifyCustomer');
+
+    // Before destroy: toggling calendar enables/disables notify
+    calendarControl.setValue(true);
+    expect(notifyControl.enabled).toBe(true);
+
+    calendarControl.setValue(false);
+    expect(notifyControl.disabled).toBe(true);
+
+    // Fire destroy
+    teardownCallbacks.forEach((cb) => cb());
+
+    // After destroy: toggling calendar should NOT affect notify
+    calendarControl.setValue(true);
+    expect(notifyControl.disabled).toBe(true);
   });
 });

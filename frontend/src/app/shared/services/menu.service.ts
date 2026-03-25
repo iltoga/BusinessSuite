@@ -97,7 +97,7 @@ export class MenuService {
           id: 'admin-ai-models',
           label: 'AI Models',
           route: '/admin/ai-models',
-          visible: () => this.canAccessStaffAdminItems(),
+          visible: () => this.authService.isSuperuser(),
         },
         {
           id: 'admin-holidays',

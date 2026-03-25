@@ -750,7 +750,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
-        if not is_superuser(request.user):
+        if not is_superuser_or_admin_group(request.user):
             return self.error_response("You do not have permission to perform this action.", status.HTTP_403_FORBIDDEN)
 
         from core.services.bulk_delete import bulk_delete_customers
@@ -1053,7 +1053,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["get"], url_path="delete-preview")
     def delete_preview(self, request, pk=None):
-        if not is_superuser(request.user):
+        if not is_superuser_or_admin_group(request.user):
             return self.error_response("Only superusers can delete products.", status.HTTP_403_FORBIDDEN)
 
         from products.services import build_product_delete_preview
@@ -1065,7 +1065,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["post"], url_path="force-delete")
     def force_delete(self, request, pk=None):
-        if not is_superuser(request.user):
+        if not is_superuser_or_admin_group(request.user):
             return self.error_response("Only superusers can delete products.", status.HTTP_403_FORBIDDEN)
 
         force_confirmed = parse_bool(
@@ -1084,7 +1084,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
-        if not is_superuser(request.user):
+        if not is_superuser_or_admin_group(request.user):
             return self.error_response("You do not have permission to perform this action.", status.HTTP_403_FORBIDDEN)
 
         from core.services.bulk_delete import bulk_delete_products

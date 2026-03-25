@@ -9,7 +9,7 @@ import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.impor
 import { ZardIconComponent } from '@/shared/components/icon/icon.component';
 import { PdfViewerHostComponent } from '@/shared/components/pdf-viewer-host/pdf-viewer-host.component';
 import { downloadBlob } from '@/shared/utils/file-download';
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -27,12 +27,11 @@ import { extractJobId } from '@/core/utils/async-job-contract';
   selector: 'app-invoice-download-dropdown',
   standalone: true,
   imports: [
-    CommonModule,
     ...ZardDropdownImports,
     ZardButtonComponent,
     ZardIconComponent,
-    PdfViewerHostComponent,
-  ],
+    PdfViewerHostComponent
+],
   templateUrl: './invoice-download-dropdown.component.html',
   styleUrls: ['./invoice-download-dropdown.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

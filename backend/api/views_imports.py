@@ -16,6 +16,7 @@ from api.permissions import (
     IsStaffOrAdminGroup,
     is_staff_or_admin_group,
     is_superuser,
+    is_superuser_or_admin_group,
 )
 from api.serializers import (
     AdminPushNotificationSendSerializer,

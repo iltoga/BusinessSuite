@@ -11,7 +11,7 @@ import type { ZardDialogRef } from '@/shared/components/dialog/dialog-ref';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardSkeletonComponent } from '@/shared/components/skeleton/skeleton.component';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -68,13 +68,12 @@ type WeekCalendarDay = {
   selector: 'app-calendar-integration',
   standalone: true,
   imports: [
-    CommonModule,
     DashboardWidgetComponent,
     ZardButtonComponent,
     ZardIconComponent,
     ZardSkeletonComponent,
-    AppDatePipe,
-  ],
+    AppDatePipe
+],
   templateUrl: './calendar-integration.component.html',
   styleUrl: './calendar-integration.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

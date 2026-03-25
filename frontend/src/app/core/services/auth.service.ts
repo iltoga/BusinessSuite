@@ -130,11 +130,16 @@ export class AuthService {
   isStaff = computed(() => this._claims()?.isStaff ?? false);
   isInAdminGroup = computed(() => {
     const groups = this._claims()?.groups ?? [];
-    return groups.some((group) => String(group).toLowerCase() === 'admin');
+    const adminName = (this.configService.config().rbac?.adminGroupName ?? 'admin').toLowerCase();
+    return groups.some((group) => String(group).toLowerCase() === adminName);
   });
+  isAdmin = computed(() => this.isSuperuser() || this.isInAdminGroup());
   isInManagerGroup = computed(() => {
     const groups = this._claims()?.groups ?? [];
-    return groups.some((group) => String(group).toLowerCase() === 'manager');
+    const managerName = (
+      this.configService.config().rbac?.managerGroupName ?? 'manager'
+    ).toLowerCase();
+    return groups.some((group) => String(group).toLowerCase() === managerName);
   });
   isAdminOrManager = computed(
     () => this.isSuperuser() || this.isInAdminGroup() || this.isInManagerGroup(),
@@ -245,7 +250,9 @@ export class AuthService {
 
     // Attempt to record logout event in backend (best-effort).
     // Treat 401 (already logged out / unauthorized) as success and swallow it.
-    const headers = tokenAtLogout ? new HttpHeaders({ Authorization: `Bearer ${tokenAtLogout}` }) : undefined;
+    const headers = tokenAtLogout
+      ? new HttpHeaders({ Authorization: `Bearer ${tokenAtLogout}` })
+      : undefined;
     this.http
       .post(`${this.API_URL}/user-profile/logout/`, {}, { headers, withCredentials: true })
       .pipe(
@@ -323,29 +330,35 @@ export class AuthService {
       return of(mockToken);
     }
 
-    const obs$ = this.http.post<AuthToken>(`${this.API_URL}/token/refresh/`, {}, {
-      withCredentials: true,
-    }).pipe(
-      tap((response) => {
-        this.applyAuthSession(response);
-      }),
-      map((resp) => {
-        const normalized = this.normalizeAuthSessionResponse(resp);
-        const access = normalized.access_token ?? normalized.access ?? normalized.token ?? null;
-        if (!access) {
-          throw new Error('No access token in refresh response');
-        }
-        return access;
-      }),
-      finalize(() => {
-        this.refreshRequest$ = null;
-      }),
-      shareReplay(1),
-      catchError((err) => {
-        this.clearToken();
-        return throwError(() => err);
-      }),
-    );
+    const obs$ = this.http
+      .post<AuthToken>(
+        `${this.API_URL}/token/refresh/`,
+        {},
+        {
+          withCredentials: true,
+        },
+      )
+      .pipe(
+        tap((response) => {
+          this.applyAuthSession(response);
+        }),
+        map((resp) => {
+          const normalized = this.normalizeAuthSessionResponse(resp);
+          const access = normalized.access_token ?? normalized.access ?? normalized.token ?? null;
+          if (!access) {
+            throw new Error('No access token in refresh response');
+          }
+          return access;
+        }),
+        finalize(() => {
+          this.refreshRequest$ = null;
+        }),
+        shareReplay(1),
+        catchError((err) => {
+          this.clearToken();
+          return throwError(() => err);
+        }),
+      );
 
     this.refreshRequest$ = obs$;
     return this.refreshRequest$;
@@ -386,7 +399,9 @@ export class AuthService {
     }
 
     const responseData = (response as { data?: AuthSessionPayload }).data;
-    const session = (responseData && typeof responseData === 'object' ? responseData : response) as AuthSessionPayload;
+    const session = (
+      responseData && typeof responseData === 'object' ? responseData : response
+    ) as AuthSessionPayload;
     return {
       access_token: session.access_token ?? session.access ?? session.token ?? undefined,
       refresh_token: session.refresh_token ?? session.refresh ?? undefined,
@@ -421,7 +436,10 @@ export class AuthService {
     const cookieString = globalThis.document?.cookie ?? '';
     return cookieString.split(';').some((part) => {
       const trimmed = part.trim();
-      return trimmed === `${REFRESH_SESSION_HINT_COOKIE_NAME}=1` || trimmed.startsWith(`${REFRESH_SESSION_HINT_COOKIE_NAME}=`);
+      return (
+        trimmed === `${REFRESH_SESSION_HINT_COOKIE_NAME}=1` ||
+        trimmed.startsWith(`${REFRESH_SESSION_HINT_COOKIE_NAME}=`)
+      );
     });
   }
 

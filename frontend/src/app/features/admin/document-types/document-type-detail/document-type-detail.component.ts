@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -22,13 +22,12 @@ import { CardSkeletonComponent, ZardSkeletonComponent } from '@/shared/component
   selector: 'app-document-type-detail',
   standalone: true,
   imports: [
-    CommonModule,
     ZardButtonComponent,
     ZardCardComponent,
     ZardBadgeComponent,
     CardSkeletonComponent,
-    ZardSkeletonComponent,
-  ],
+    ZardSkeletonComponent
+],
   templateUrl: './document-type-detail.component.html',
   styleUrls: ['./document-type-detail.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

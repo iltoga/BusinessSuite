@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -8,48 +7,47 @@ import {
   TemplateRef,
   ViewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { EMPTY, catchError, finalize, map, type Observable } from 'rxjs';
+import { catchError, EMPTY, finalize, map, type Observable } from 'rxjs';
 
 import { HolidaysService } from '@/core/api/api/holidays.service';
 import { Holiday } from '@/core/api/model/holiday';
+import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardCardComponent } from '@/shared/components/card';
+import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
+import {
+  ColumnConfig,
+  DataTableComponent,
+  type DataTableAction,
+  type SortEvent,
+} from '@/shared/components/data-table/data-table.component';
+import { ZardDateInputComponent } from '@/shared/components/date-input';
+import { ZardDialogService } from '@/shared/components/dialog';
+import { ZardInputDirective } from '@/shared/components/input';
 import {
   BaseListComponent,
   BaseListConfig,
   type ListRequestParams,
   type PaginatedResponse,
 } from '@/shared/core/base-list.component';
-import { GlobalToastService } from '@/core/services/toast.service';
-import { ZardButtonComponent } from '@/shared/components/button';
-import { ZardCardComponent } from '@/shared/components/card';
-import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
-import { ZardDateInputComponent } from '@/shared/components/date-input';
-import {
-  ColumnConfig,
-  DataTableComponent,
-  type SortEvent,
-  type DataTableAction,
-} from '@/shared/components/data-table/data-table.component';
-import { ZardDialogService } from '@/shared/components/dialog';
-import { ZardInputDirective } from '@/shared/components/input';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
 /**
  * Holidays component
- * 
+ *
  * Extends BaseListComponent to inherit common list patterns:
  * - Keyboard shortcuts (N for new, B/Left for back)
  * - Navigation state restoration
  * - Pagination, sorting, search
  * - Focus management
- * 
+ *
  * Note: This component has complex client-side filtering that is component-specific
  */
 @Component({
   selector: 'app-holidays',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardCardComponent,
     ZardButtonComponent,
@@ -180,17 +178,15 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
   protected override createListLoader(
     params: ListRequestParams,
   ): Observable<PaginatedResponse<Holiday>> {
-    return this.holidaysApi
-      .holidaysList(params.ordering)
-      .pipe(
-        map((data) => {
-          const items = data ?? [];
-          return {
-            results: items,
-            count: items.length,
-          };
-        }),
-      );
+    return this.holidaysApi.holidaysList(params.ordering).pipe(
+      map((data) => {
+        const items = data ?? [];
+        return {
+          results: items,
+          count: items.length,
+        };
+      }),
+    );
   }
 
   /**
@@ -223,28 +219,36 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
     this.columns()[0].template = this.dateTemplate;
 
     // Setup filter form subscriptions
-    this.filterForm.controls.country.valueChanges.subscribe((value) => {
-      const normalized = this.normalizeCountryCode(value) || 'ID';
-      this.selectedCountryFilter.set(normalized);
-    });
+    this.filterForm.controls.country.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        const normalized = this.normalizeCountryCode(value) || 'ID';
+        this.selectedCountryFilter.set(normalized);
+      });
 
-    this.filterForm.controls.date.valueChanges.subscribe((value) => this.applyDateFilter(value));
+    this.filterForm.controls.date.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.applyDateFilter(value));
 
-    this.filterForm.controls.year.valueChanges.subscribe((value) => {
-      const normalized = this.normalizeYear(value);
-      this.selectedYearFilter.set(normalized);
-      if (normalized !== value) {
-        this.filterForm.controls.year.setValue(normalized, { emitEvent: false });
-      }
-    });
+    this.filterForm.controls.year.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        const normalized = this.normalizeYear(value);
+        this.selectedYearFilter.set(normalized);
+        if (normalized !== value) {
+          this.filterForm.controls.year.setValue(normalized, { emitEvent: false });
+        }
+      });
 
-    this.filterForm.controls.month.valueChanges.subscribe((value) => {
-      const normalized = this.normalizeMonth(value);
-      this.selectedMonthFilter.set(normalized);
-      if (normalized !== value) {
-        this.filterForm.controls.month.setValue(normalized, { emitEvent: false });
-      }
-    });
+    this.filterForm.controls.month.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        const normalized = this.normalizeMonth(value);
+        this.selectedMonthFilter.set(normalized);
+        if (normalized !== value) {
+          this.filterForm.controls.month.setValue(normalized, { emitEvent: false });
+        }
+      });
   }
 
   /**
@@ -457,7 +461,11 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
 
     const dayFirstMatch = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
     if (dayFirstMatch) {
-      return this.buildDate(Number(dayFirstMatch[3]), Number(dayFirstMatch[2]), Number(dayFirstMatch[1]));
+      return this.buildDate(
+        Number(dayFirstMatch[3]),
+        Number(dayFirstMatch[2]),
+        Number(dayFirstMatch[1]),
+      );
     }
 
     const parsed = new Date(raw);

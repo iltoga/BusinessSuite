@@ -15,11 +15,13 @@
       <app-search-toolbar
         [query]="query()"
         [placeholder]="'Search Applications...'"
+        [hasActiveFilters]="hasActiveColumnFilters()"
         (queryChange)="onQueryChange($event)"
+        (clearFilters)="clearAllFilters()"
         (tabOut)="dataTable.focusFirstRowIfNone()"
         [contextHelp]="'/applications/search'"
       >
-        @if (isSuperuser() && totalItems() > 0) {
+        @if (isInAdminGroup() && totalItems() > 0) {
           <z-button
             zType="destructive"
             zSize="sm"

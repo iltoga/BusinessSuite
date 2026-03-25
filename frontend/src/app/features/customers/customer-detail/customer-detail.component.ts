@@ -30,6 +30,8 @@ import {
 } from '@/shared/components/skeleton';
 import { BaseDetailComponent, BaseDetailConfig } from '@/shared/core/base-detail.component';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
+import { ZardIconComponent } from '@/shared/components/icon';
 
 /**
  * Customer detail component
@@ -57,6 +59,8 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
     CardSkeletonComponent,
     TableSkeletonComponent,
     ZardSkeletonComponent,
+    ZardDropdownImports,
+    ZardIconComponent,
     AppDatePipe,
   ],
   templateUrl: './customer-detail.component.html',

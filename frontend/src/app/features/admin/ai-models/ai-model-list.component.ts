@@ -1,6 +1,4 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { map, type Observable } from 'rxjs';
 
 import { AiModelsService } from '@/core/api/api/ai-models.service';
@@ -44,8 +42,6 @@ interface AiModelItem {
   selector: 'app-ai-model-list',
   standalone: true,
   imports: [
-    CommonModule,
-    RouterLink,
     SearchToolbarComponent,
     ZardButtonComponent,
     ZardCardComponent,

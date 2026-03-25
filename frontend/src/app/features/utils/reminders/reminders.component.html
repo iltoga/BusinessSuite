@@ -23,7 +23,9 @@
         [query]="query()"
         [placeholder]="'Search reminders...'"
         [isLoading]="isLoading()"
+        [hasActiveFilters]="hasActiveColumnFilters()"
         (queryChange)="onQueryChange($event)"
+        (clearFilters)="clearAllFilters()"
         (tabOut)="onEnterSearch()"
       >
         <button z-button zType="secondary" zSize="sm" class="w-full sm:w-auto" (click)="refresh()">

@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
@@ -13,7 +13,7 @@ import { PwaOverlayService } from '@/shared/services/pwa-overlay.service';
 @Component({
   selector: 'app-menu-container',
   standalone: true,
-  imports: [CommonModule, SidebarMenuComponent, OverlayMenuComponent],
+  imports: [SidebarMenuComponent, OverlayMenuComponent],
   templateUrl: './menu-container.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

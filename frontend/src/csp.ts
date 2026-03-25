@@ -32,5 +32,5 @@ export function generateNonce(bytes = 16): string {
 }
 
 export function injectNonceToHtml(html: string, nonce: string): string {
-  return html.replace(/<app(\s|>)/, `<app ngCspNonce="${nonce}"$1`);
+  return html.replace(/<app-root(\s|>)/, `<app-root ngCspNonce="${nonce}"$1`);
 }

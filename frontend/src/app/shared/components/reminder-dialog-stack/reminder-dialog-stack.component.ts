@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { ReminderDialogService } from '@/core/services/reminder-dialog.service';
@@ -7,7 +7,7 @@ import { ZardIconComponent } from '@/shared/components/icon';
 @Component({
   selector: 'app-reminder-dialog-stack',
   standalone: true,
-  imports: [CommonModule, ZardIconComponent],
+  imports: [ZardIconComponent],
   templateUrl: './reminder-dialog-stack.component.html',
   styleUrls: ['./reminder-dialog-stack.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

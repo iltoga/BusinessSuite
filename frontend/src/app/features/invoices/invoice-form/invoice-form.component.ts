@@ -1,8 +1,9 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  DestroyRef,
   HostListener,
   PLATFORM_ID,
   computed,
@@ -10,6 +11,7 @@ import {
   signal,
   type OnInit,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
@@ -22,15 +24,15 @@ import {
   type Product,
 } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { FormNavigationFacadeService } from '@/features/shared/services/form-navigation-facade.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
-import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
+import type { ZardComboboxOption } from '@/shared/components/combobox';
 import { CustomerSelectComponent } from '@/shared/components/customer-select/customer-select.component';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
-import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { InvoiceLineItemsSectionComponent } from './invoice-line-items-section.component';
 
@@ -53,12 +55,10 @@ interface InvoiceLineInitial {
   selector: 'app-invoice-form',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardInputDirective,
     ZardButtonComponent,
     ZardCardComponent,
-    ZardComboboxComponent,
     ZardDateInputComponent,
     CustomerSelectComponent,
     FormErrorSummaryComponent,
@@ -77,6 +77,7 @@ export class InvoiceFormComponent implements OnInit {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly formNavigationFacade = inject(FormNavigationFacadeService);
+  private readonly destroyRef = inject(DestroyRef);
 
   private nextLineKey = 1;
 
@@ -183,29 +184,35 @@ export class InvoiceFormComponent implements OnInit {
     }
 
     this.proposeInvoiceNo(this.form.get('invoiceDate')?.value);
-    this.form.get('invoiceDate')?.valueChanges.subscribe((value) => {
-      if (this.isEditMode()) return;
-      const invoiceNoCtrl = this.form.get('invoiceNo');
-      if (invoiceNoCtrl && !invoiceNoCtrl.dirty) {
-        this.proposeInvoiceNo(value);
-      }
-    });
+    this.form
+      .get('invoiceDate')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        if (this.isEditMode()) return;
+        const invoiceNoCtrl = this.form.get('invoiceNo');
+        if (invoiceNoCtrl && !invoiceNoCtrl.dirty) {
+          this.proposeInvoiceNo(value);
+        }
+      });
 
-    this.form.get('customer')?.valueChanges.subscribe((value) => {
-      if (this.isEditMode() || this.lockCustomerFromSource()) {
-        return;
-      }
-      if (!value) {
-        this.billableProducts.set([]);
+    this.form
+      .get('customer')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        if (this.isEditMode() || this.lockCustomerFromSource()) {
+          return;
+        }
+        if (!value) {
+          this.billableProducts.set([]);
+          this.invoiceApplications.clear();
+          this.addLineItem({}, { manual: false, skipAutoExpand: true });
+          return;
+        }
+
         this.invoiceApplications.clear();
         this.addLineItem({}, { manual: false, skipAutoExpand: true });
-        return;
-      }
-
-      this.invoiceApplications.clear();
-      this.addLineItem({}, { manual: false, skipAutoExpand: true });
-      this.loadBillableProducts(value);
-    });
+        this.loadBillableProducts(value);
+      });
   }
 
   goBack(): void {
@@ -236,13 +243,19 @@ export class InvoiceFormComponent implements OnInit {
       amount: [initial.amount ?? 0, [Validators.required, Validators.min(0)]],
     });
 
-    group.get('product')?.valueChanges.subscribe((value) => {
-      this.onLineProductChanged(group, value, !(options.skipAutoExpand ?? false));
-    });
+    group
+      .get('product')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        this.onLineProductChanged(group, value, !(options.skipAutoExpand ?? false));
+      });
 
-    group.get('customerApplication')?.valueChanges.subscribe((value) => {
-      this.onLineApplicationChanged(group, value);
-    });
+    group
+      .get('customerApplication')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        this.onLineApplicationChanged(group, value);
+      });
 
     this.invoiceApplications.push(group);
 
@@ -306,6 +319,11 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   save(): void {
+    if (this.invoiceApplications.length === 0) {
+      this.toast.error('An invoice must have at least one line item.');
+      return;
+    }
+
     if (this.form.invalid) {
       this.toast.error('Please fix validation errors before saving.');
       return;

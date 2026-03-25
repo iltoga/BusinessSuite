@@ -13,8 +13,8 @@ it('generates unique nonces and reasonable length', () => {
 });
 
 it('injects nonce into root app element', () => {
-  const sample = '<!doctype html><html><head></head><body><app></app></body></html>';
+  const sample = '<!doctype html><html><head></head><body><app-root></app-root></body></html>';
   const nonce = 'abc123';
   const result = injectNonceToHtml(sample, nonce);
-  expect(result).toContain('<app ngCspNonce="abc123">');
+  expect(result).toContain('<app-root ngCspNonce="abc123">');
 });

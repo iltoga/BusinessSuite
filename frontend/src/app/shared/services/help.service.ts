@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
@@ -32,6 +33,7 @@ type HelpAnalyticsWindow = Window & {
 export class HelpService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly _visible = signal(false);
   readonly visible = this._visible.asReadonly();
 
@@ -112,10 +114,15 @@ export class HelpService {
 
   constructor() {
     // Update help context automatically on navigation
-    this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe((e) => {
-      const nav = e as NavigationEnd;
-      this.setContextForPath(nav.urlAfterRedirects);
-    });
+    this.router.events
+      .pipe(
+        filter((e) => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((e) => {
+        const nav = e as NavigationEnd;
+        this.setContextForPath(nav.urlAfterRedirects);
+      });
   }
 
   open() {

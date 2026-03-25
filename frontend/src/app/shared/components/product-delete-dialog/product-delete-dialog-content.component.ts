@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 
 import { ZardCardComponent } from '@/shared/components/card';
@@ -77,7 +77,7 @@ export interface ProductDeleteDialogResult {
 @Component({
   selector: 'app-product-delete-dialog-content',
   standalone: true,
-  imports: [CommonModule, ZardCardComponent, ZardIconComponent, AppDatePipe],
+  imports: [ZardCardComponent, ZardIconComponent, AppDatePipe],
   templateUrl: './product-delete-dialog-content.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

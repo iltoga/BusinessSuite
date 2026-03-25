@@ -252,17 +252,20 @@ describe('ProductListComponent', () => {
           body: { replaceChildren: vi.fn(), innerHTML: '' },
           documentElement: { insertBefore: vi.fn(), appendChild: vi.fn() },
           createElement: vi.fn(() => ({
-            tagName: 'embed',
+            tagName: 'meta',
             textContent: '',
             setAttribute: vi.fn(),
           })),
-          querySelector: vi.fn(() => ({ addEventListener: vi.fn() })),
         },
         addEventListener: vi.fn(),
         focus: vi.fn(),
         print: vi.fn(),
         close: vi.fn(),
         closed: false,
+        location: {
+          href: '',
+          replace: vi.fn(),
+        },
       })),
     );
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:print-preview');

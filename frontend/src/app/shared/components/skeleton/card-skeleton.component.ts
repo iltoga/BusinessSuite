@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { ZardSkeletonComponent } from './skeleton.component';
@@ -8,7 +8,7 @@ import { ZardCardComponent } from '../card/card.component';
 @Component({
   selector: 'app-card-skeleton',
   standalone: true,
-  imports: [CommonModule, ZardCardComponent, ZardSkeletonComponent],
+  imports: [ZardCardComponent, ZardSkeletonComponent],
   template: `
     <z-card class="p-6">
       <div class="space-y-4">

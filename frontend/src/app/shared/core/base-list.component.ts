@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -45,6 +45,7 @@ export interface ListRequestParams {
   page: number;
   pageSize: number;
   ordering: string | undefined;
+  filters: Record<string, string[]>;
   /** Monotonically increasing counter — change triggers a reload */
   reloadToken: number;
 }
@@ -109,7 +110,7 @@ export interface BaseListConfig<T> {
 @Component({
   selector: 'app-base-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: '',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -128,6 +129,8 @@ export abstract class BaseListComponent<T> implements OnInit {
   readonly page = signal(1);
   readonly totalItems = signal(0);
   readonly isSuperuser = this.authService.isSuperuser;
+  readonly isAdmin = this.authService.isAdmin;
+  readonly isInAdminGroup = this.authService.isInAdminGroup;
 
   // State signals that need config-based initialization (set in constructor)
   readonly pageSize: WritableSignal<number>;
@@ -139,16 +142,60 @@ export abstract class BaseListComponent<T> implements OnInit {
    */
   protected readonly reloadToken = signal(0);
 
-  // ── Bulk delete signals ────────────────────────────────────────────
   readonly bulkDeleteOpen = signal(false);
   readonly bulkDeleteData = signal<any | null>(null);
   protected readonly bulkDeleteQuery = signal<string>('');
+
+  // ── Column Filters ─────────────────────────────────────────────────
+  readonly columnFilters = signal<Record<string, string[]>>({});
+
+  /**
+   * Computed signal to check if any column filters are currently active
+   */
+  readonly hasActiveColumnFilters = computed(() => {
+    const filters = this.columnFilters();
+    return Object.values(filters).some((values) => values && values.length > 0);
+  });
+
+  /**
+   * Computed signal to check if either query or column filters are active
+   */
+  readonly hasAnyFilter = computed(() => {
+    return this.query().trim() !== '' || this.hasActiveColumnFilters();
+  });
+
+  /**
+   * Clear all active filters (search query and column filters)
+   */
+  clearAllFilters(): void {
+    let changed = false;
+    
+    if (this.query() !== '') {
+      this.query.set('');
+      changed = true;
+    }
+    
+    const filters = this.columnFilters();
+    if (Object.keys(filters).length > 0) {
+      const clearedFilters: Record<string, string[]> = {};
+      for (const key of Object.keys(filters)) {
+        clearedFilters[key] = [];
+      }
+      this.columnFilters.set(clearedFilters);
+      changed = true;
+    }
+    
+    if (changed) {
+      this.page.set(1);
+      this.updateUrl();
+    }
+  }
 
   /**
    * Bulk delete label - can be overridden by child class
    */
   readonly bulkDeleteLabel = computed(() =>
-    this.query().trim()
+    this.hasAnyFilter()
       ? `Delete Selected ${this.getEntityTypeLabel()}`
       : `Delete All ${this.getEntityTypeLabel()}`,
   );
@@ -207,6 +254,7 @@ export abstract class BaseListComponent<T> implements OnInit {
         page: this.page(),
         pageSize: this.pageSize(),
         ordering: this.ordering(),
+        filters: this.columnFilters(),
         reloadToken: this.reloadToken(),
       }),
       stream: ({ params }) => {
@@ -318,6 +366,7 @@ export abstract class BaseListComponent<T> implements OnInit {
         from: this.config.entityType,
         searchQuery: this.query(),
         page: this.page(),
+        filters: this.columnFilters(),
         ...state,
       },
     });
@@ -333,6 +382,7 @@ export abstract class BaseListComponent<T> implements OnInit {
         focusId: id,
         searchQuery: this.query(),
         page: this.page(),
+        filters: this.columnFilters(),
         ...state,
       },
     });
@@ -348,6 +398,7 @@ export abstract class BaseListComponent<T> implements OnInit {
         focusId: id,
         searchQuery: this.query(),
         page: this.page(),
+        filters: this.columnFilters(),
         ...state,
       },
     });
@@ -363,6 +414,7 @@ export abstract class BaseListComponent<T> implements OnInit {
         focusTable: true,
         searchQuery: this.query(),
         page: this.page(),
+        filters: this.columnFilters(),
       },
     });
   }
@@ -402,6 +454,24 @@ export abstract class BaseListComponent<T> implements OnInit {
   }
 
   /**
+   * Handle column filter change
+   */
+  onColumnFilterChange(event: { column: string; values: string[] }): void {
+    this.columnFilters.update((current) => {
+      const updated = { ...current };
+      if (!event.values || event.values.length === 0) {
+        delete updated[event.column];
+      } else {
+        updated[event.column] = event.values;
+      }
+      return updated;
+    });
+    this.page.set(1);
+    this.updateUrl();
+    // rxResource re-fetches automatically because columnFilters() changed
+  }
+
+  /**
    * Handle keyboard shortcuts
    */
   @HostListener('window:keydown', ['$event'])
@@ -436,7 +506,7 @@ export abstract class BaseListComponent<T> implements OnInit {
    */
   openBulkDeleteDialog(entityLabel: string, detailsText: string): void {
     const query = this.query().trim();
-    const mode = query ? 'selected' : 'all';
+    const mode = this.hasAnyFilter() ? 'selected' : 'all';
 
     this.bulkDeleteQuery.set(query);
     this.bulkDeleteData.set({
@@ -510,6 +580,12 @@ export abstract class BaseListComponent<T> implements OnInit {
     const sort = this.ordering();
     params['sort'] = sort && sort !== this.config?.defaultOrdering ? sort : null;
 
+    // Filters — prefix with f_
+    const filters = this.columnFilters();
+    for (const [key, values] of Object.entries(filters)) {
+      params[`f_${key}`] = values && values.length ? values.join(',') : null;
+    }
+
     // Merge with child-specific params
     return { ...params, ...this.getExtraUrlParams() };
   }
@@ -528,6 +604,22 @@ export abstract class BaseListComponent<T> implements OnInit {
    * Called during init when URL params are present.
    */
   protected restoreExtraUrlParams(_params: Params): void {
+    // No-op by default — children override this.
+  }
+
+  /**
+   * Hook for child classes to add extra state to sessionStorage persistence.
+   * Return a JSON-serialisable object; it will be merged into the stored state.
+   */
+  protected getExtraSessionState(): Record<string, unknown> {
+    return {};
+  }
+
+  /**
+   * Hook for child classes to restore extra state from sessionStorage.
+   * Called during init when sessionStorage state is present.
+   */
+  protected restoreExtraSessionState(_state: Record<string, unknown>): void {
     // No-op by default — children override this.
   }
 
@@ -576,10 +668,100 @@ export abstract class BaseListComponent<T> implements OnInit {
       found = true;
     }
 
+    // Restore filters
+    const filterState: Record<string, string[]> = {};
+    for (const key of Object.keys(params)) {
+      if (key.startsWith('f_')) {
+        const filterKey = key.substring(2);
+        const val = params[key];
+        if (val) {
+          filterState[filterKey] = String(val).split(',');
+          found = true;
+        }
+      }
+    }
+    if (Object.keys(filterState).length > 0) {
+      this.columnFilters.set(filterState);
+    }
+
     // Let children restore their own params
     this.restoreExtraUrlParams(params);
 
     return found;
+  }
+
+  // ── Session storage persistence ─────────────────────────────────────
+
+  /**
+   * Storage key scoped to this list's entity type.
+   */
+  private get _storageKey(): string {
+    return `list-state:${this.config?.entityType ?? 'unknown'}`;
+  }
+
+  /**
+   * Persist current list state to sessionStorage so it survives
+   * navigation to other routes (e.g. clicking nav links).
+   */
+  private saveStateToSessionStorage(): void {
+    if (!this.isBrowser || !this.config) return;
+
+    try {
+      const state = {
+        query: this.query(),
+        page: this.page(),
+        ordering: this.ordering(),
+        filters: this.columnFilters(),
+        ...this.getExtraSessionState(),
+      };
+      sessionStorage.setItem(this._storageKey, JSON.stringify(state));
+    } catch {
+      // sessionStorage unavailable (e.g. SSR, private browsing)
+    }
+  }
+
+  /**
+   * Restore list state from sessionStorage.
+   * Returns true if any relevant state was found.
+   */
+  private restoreFromSessionStorage(): boolean {
+    if (!this.isBrowser || !this.config) return false;
+
+    try {
+      const raw = sessionStorage.getItem(this._storageKey);
+      if (!raw) return false;
+
+      const state = JSON.parse(raw);
+      let found = false;
+
+      if (state.query) {
+        this.query.set(String(state.query));
+        found = true;
+      }
+
+      const p = Number(state.page);
+      if (Number.isFinite(p) && p > 0) {
+        this.page.set(Math.floor(p));
+        found = true;
+      }
+
+      if (state.ordering !== undefined && state.ordering !== null) {
+        this.ordering.set(state.ordering);
+        found = true;
+      }
+
+      if (state.filters && typeof state.filters === 'object') {
+        this.columnFilters.set(state.filters);
+        found = true;
+      }
+
+      // Let children restore their own extra state
+      this.restoreExtraSessionState(state);
+
+      return found;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -648,12 +830,20 @@ export abstract class BaseListComponent<T> implements OnInit {
     // URL query params are the primary source of truth (survives page refresh)
     const hasUrlState = this.restoreFromUrl();
 
+    // If no URL state, fall back to sessionStorage (survives navigation)
+    if (!hasUrlState) {
+      this.restoreFromSessionStorage();
+    }
+
     // Fall back to history.state for focus hints,
     // and for search/page when no URL params are present
     this.restoreNavigationState(hasUrlState);
 
     // Ensure URL reflects the current state (e.g., when restored from history.state)
     this.updateUrl();
+
+    // Save state when component is destroyed (for navigation restoration)
+    this.destroyRef.onDestroy(() => this.saveStateToSessionStorage());
 
     // The rxResource will automatically start fetching because it was
     // created in the constructor and its signal dependencies are now set.

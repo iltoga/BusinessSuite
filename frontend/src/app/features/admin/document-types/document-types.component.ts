@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -9,6 +8,7 @@ import {
   TemplateRef,
   ViewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, EMPTY, finalize, map, type Observable } from 'rxjs';
 
@@ -51,7 +51,6 @@ import {
   selector: 'app-document-types',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardCardComponent,
     ZardButtonComponent,
@@ -563,9 +562,11 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
     }
 
     this.syncStayPermitExpirationState(Boolean(isStayPermitControl.value));
-    isStayPermitControl.valueChanges.subscribe((isStayPermit) => {
-      this.syncStayPermitExpirationState(Boolean(isStayPermit));
-    });
+    isStayPermitControl.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((isStayPermit) => {
+        this.syncStayPermitExpirationState(Boolean(isStayPermit));
+      });
   }
 
   /**
@@ -578,9 +579,11 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
     }
 
     this.syncExpirationThresholdState(Boolean(hasExpirationDateControl.value));
-    hasExpirationDateControl.valueChanges.subscribe((hasExpirationDate) => {
-      this.syncExpirationThresholdState(Boolean(hasExpirationDate));
-    });
+    hasExpirationDateControl.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((hasExpirationDate) => {
+        this.syncExpirationThresholdState(Boolean(hasExpirationDate));
+      });
   }
 
   /**

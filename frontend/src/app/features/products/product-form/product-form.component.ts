@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,6 +6,7 @@ import {
   signal,
   type OnInit,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, switchMap, tap } from 'rxjs';
 
@@ -52,7 +52,6 @@ type ProductNavigationState = {
   selector: 'app-product-form',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardInputDirective,
     ZardButtonComponent,
@@ -520,7 +519,9 @@ export class ProductFormComponent
     };
 
     applyState(Boolean(addToCalendarControl.value));
-    addToCalendarControl.valueChanges.subscribe((enabled) => applyState(Boolean(enabled)));
+    addToCalendarControl.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((enabled) => applyState(Boolean(enabled)));
   }
 
   private taskDurationValidator(group: FormGroup) {

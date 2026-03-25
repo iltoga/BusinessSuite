@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -106,13 +106,12 @@ interface SSECompleteMessage {
   selector: 'app-invoice-import',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     ZardButtonComponent,
     ZardCardComponent,
     ZardBadgeComponent,
-    ZardIconComponent,
-  ],
+    ZardIconComponent
+],
   templateUrl: './invoice-import.component.html',
   styleUrls: ['./invoice-import.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

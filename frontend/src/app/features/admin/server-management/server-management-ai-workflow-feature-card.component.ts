@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 
 import { ZardBadgeComponent } from '@/shared/components/badge';
@@ -15,7 +15,7 @@ import {
 @Component({
   selector: 'app-server-management-ai-workflow-feature-card',
   standalone: true,
-  imports: [CommonModule, ZardBadgeComponent, ZardButtonComponent, TypeaheadComboboxComponent],
+  imports: [ZardBadgeComponent, ZardButtonComponent, TypeaheadComboboxComponent],
   template: `
     @if (feature(); as featureDef) {
       <div class="rounded border border-border/70 bg-muted/20 p-4">

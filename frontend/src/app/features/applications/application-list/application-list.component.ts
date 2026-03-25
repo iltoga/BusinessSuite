@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -56,7 +55,6 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   selector: 'app-application-list',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     DataTableComponent,
     SearchToolbarComponent,
@@ -76,14 +74,9 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 })
 export class ApplicationListComponent extends BaseListComponent<DocApplicationList> {
   private readonly service = inject(CustomerApplicationsService);
+  readonly isAdminOrManager = this.authService.isAdminOrManager;
 
   // Application-specific state
-  readonly columnFilters = signal<Record<string, string[]>>({
-    product: [],
-    status: [],
-  });
-
-  // Delete confirmation dialogs
   readonly confirmOpen = signal(false);
   readonly confirmMessage = signal('');
   readonly pendingDelete = signal<DocApplicationList | null>(null);
@@ -229,7 +222,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       icon: 'trash',
       variant: 'destructive',
       isDestructive: true,
-      isVisible: () => this.isSuperuser(),
+      isVisible: () => this.isAdminOrManager(),
       action: (item) =>
         item.hasInvoice ? this.confirmDeleteWithInvoice(item) : this.confirmDelete(item),
     },
@@ -279,6 +272,10 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
 
   constructor() {
     super();
+    this.columnFilters.set({
+      product: [],
+      status: [],
+    });
     // Setup base config
     this.config = {
       entityType: 'applications',
@@ -305,45 +302,10 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
   }
 
   /**
-   * Persist column filters in URL as comma-separated values.
-   */
-  protected override getExtraUrlParams(): Record<string, string | null> {
-    const filters = this.columnFilters();
-    const product = filters['product']?.length ? filters['product'].join(',') : null;
-    const status = filters['status']?.length ? filters['status'].join(',') : null;
-    return { fp: product, fs: status };
-  }
-
-  /**
-   * Restore column filters from URL query params.
-   */
-  protected override restoreExtraUrlParams(params: Record<string, string | undefined>): void {
-    const fp = params['fp'];
-    const fs = params['fs'];
-    if (fp || fs) {
-      this.columnFilters.set({
-        product: fp ? fp.split(',') : [],
-        status: fs ? fs.split(',') : [],
-      });
-    }
-  }
-
-  /**
-   * Handle column filter change
-   */
-  onColumnFilterChange(event: ColumnFilterChangeEvent): void {
-    this.columnFilters.update((current) => ({
-      ...current,
-      [event.column]: event.values,
-    }));
-    this.updateUrl();
-  }
-
-  /**
    * Confirm delete for an application
    */
   confirmDelete(row: DocApplicationList) {
-    if (!this.isSuperuser()) {
+    if (!this.isAdminOrManager()) {
       return;
     }
     this.pendingDelete.set(row);
@@ -355,7 +317,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
    * Confirm delete with invoice
    */
   confirmDeleteWithInvoice(row: DocApplicationList): void {
-    if (!this.isSuperuser()) {
+    if (!this.isAdminOrManager()) {
       return;
     }
     this.pendingDelete.set(row);
@@ -511,8 +473,8 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
    */
   override openBulkDeleteDialog(): void {
     const query = this.query().trim();
-    const mode = query ? 'selected' : 'all';
-    const detailsText = query
+    const mode = this.hasAnyFilter() ? 'selected' : 'all';
+    const detailsText = this.hasAnyFilter()
       ? 'This will permanently remove all matching customer application records and their associated documents and workflows from the database.'
       : 'This will permanently remove all customer application records and their associated documents and workflows from the database.';
 

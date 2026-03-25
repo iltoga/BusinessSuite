@@ -1,5 +1,6 @@
 import logging
 
+from api.permissions import ADMIN_GROUP_NAME, MANAGER_GROUP_NAME
 from core.services.app_setting_service import AppSettingScope, AppSettingService
 from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 from core.services.ui_settings_service import UiSettingsService
@@ -54,6 +55,10 @@ def public_app_config(request):
         "fcmWebAuthDomain": global_settings.get("FCM_WEB_AUTH_DOMAIN", settings.FCM_WEB_AUTH_DOMAIN),
         "fcmWebStorageBucket": global_settings.get("FCM_WEB_STORAGE_BUCKET", settings.FCM_WEB_STORAGE_BUCKET),
         "fcmWebMeasurementId": global_settings.get("FCM_WEB_MEASUREMENT_ID", settings.FCM_WEB_MEASUREMENT_ID),
+    }
+    payload["rbac"] = {
+        "adminGroupName": ADMIN_GROUP_NAME,
+        "managerGroupName": MANAGER_GROUP_NAME,
     }
     payload.update(frontend_setting_overrides)
 

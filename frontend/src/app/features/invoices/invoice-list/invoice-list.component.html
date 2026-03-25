@@ -9,7 +9,7 @@
         routerLink="/invoices/new"
         [state]="{ from: 'invoices', searchQuery: query(), page: page() }"
         [contextHelp]="'/invoices/new'"
-      >
+        >
         <z-button zType="default" zSize="default">New Invoice</z-button>
       </a>
     </div>
@@ -23,7 +23,7 @@
         (queryChange)="onQueryChange($event)"
         (tabOut)="dataTable.focusFirstRowIfNone()"
         [contextHelp]="'/invoices/search'"
-      >
+        >
         <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <div class="flex items-center gap-2">
             <input
@@ -32,21 +32,21 @@
               [checked]="hidePaid()"
               (change)="onToggleHidePaid($event)"
               class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-            />
+              />
             <label
               for="hidePaid"
               class="text-sm font-medium leading-none cursor-pointer select-none"
-            >
+              >
               Hide Paid
             </label>
           </div>
-          @if (isSuperuser() && totalItems() > 0) {
+          @if (isInAdminGroup() && totalItems() > 0) {
             <z-button
               zType="destructive"
               zSize="sm"
               (click)="openBulkDeleteDialog()"
               [contextHelp]="'/invoices/bulk-delete'"
-            >
+              >
               {{ bulkDeleteLabel() }}
             </z-button>
           }
@@ -65,7 +65,7 @@
         [totalPages]="totalPages()"
         (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
-      />
+        />
     </div>
 
     <div class="border-t bg-muted/20 p-3 sm:p-4">
@@ -74,7 +74,7 @@
         [totalPages]="totalPages()"
         [totalItems]="totalItems()"
         (pageChange)="onPageChange($event)"
-      />
+        />
     </div>
   </z-card>
 </div>
@@ -84,7 +84,7 @@
     [routerLink]="['/invoices', row.id]"
     [state]="{ from: 'invoices', focusId: row.id, searchQuery: query(), page: page() }"
     class="font-medium hover:underline"
-  >
+    >
     {{ row.invoiceNoDisplay || row.invoiceNo || '—' }}
   </a>
 </ng-template>
@@ -104,9 +104,9 @@
       <li>
         {{ item.product?.code || item.customerApplication?.product?.code || '—' }} -
         {{
-          item.customerApplication?.notes ||
-            item.customerApplication?.customer?.fullName ||
-            'Unlinked line item'
+        item.customerApplication?.notes ||
+        item.customerApplication?.customer?.fullName ||
+        'Unlinked line item'
         }}
       </li>
     }
@@ -126,14 +126,13 @@
 
 <ng-template #amountsTemplate let-row>
   <div class="flex flex-col text-sm">
-    <ng-container *ngIf="isFullyPaid(row); else partialTpl">
+    @if (isFullyPaid(row)) {
       <span class="font-medium">{{ formatCurrency(row.totalPaidAmount) }}</span>
-    </ng-container>
-    <ng-template #partialTpl>
+    } @else {
       <span>Total: {{ formatCurrency(row.totalAmount) }}</span>
       <span>Paid: {{ formatCurrency(row.totalPaidAmount) }}</span>
       <span>Due: {{ formatCurrency(row.totalDueAmount) }}</span>
-    </ng-template>
+    }
   </div>
 </ng-template>
 
@@ -159,7 +158,7 @@
         [customerName]="row.customer?.fullNameWithCompany || row.customer?.fullName || '—'"
         zType="secondary"
         zSize="sm"
-      />
+        />
     }
 
     <div class="flex items-center justify-end">
@@ -175,7 +174,7 @@
         (click)="$event.stopPropagation()"
         aria-label="Row actions"
         aria-haspopup="menu"
-      >
+        >
         <z-icon zType="ellipsis-vertical" />
       </button>
 
@@ -187,7 +186,7 @@
               type="button"
               [variant]="action.variant ?? (action.isDestructive ? 'destructive' : 'default')"
               (click)="action.action(row); $event.stopPropagation()"
-            >
+              >
               <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
               <span [innerHTML]="action.label | shortcutHighlight: action.shortcut"></span>
             </button>
@@ -203,11 +202,11 @@
   [data]="bulkDeleteData()"
   (confirmed)="onBulkDeleteConfirmed($event)"
   (cancelled)="onBulkDeleteCancelled()"
-/>
+  />
 
 <app-invoice-delete-dialog
   [isOpen]="invoiceDeleteOpen()"
   [data]="invoiceDeleteData()"
   (confirmed)="onInvoiceDeleteConfirmed($event)"
   (cancelled)="onInvoiceDeleteCancelled()"
-/>
+  />

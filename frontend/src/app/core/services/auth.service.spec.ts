@@ -7,6 +7,19 @@ import { AuthService } from './auth.service';
 import { ConfigService } from './config.service';
 import { DesktopBridgeService } from './desktop-bridge.service';
 
+const originalLocalStorage = window.localStorage;
+
+const installLocalStorageMock = (mock: Storage) => {
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: mock,
+  });
+};
+
+const restoreLocalStorage = () => {
+  installLocalStorageMock(originalLocalStorage);
+};
+
 describe('AuthService logout', () => {
   let service: AuthService;
   let httpClientMock: { post: ReturnType<typeof vi.fn> };
@@ -16,12 +29,12 @@ describe('AuthService logout', () => {
 
   beforeEach(() => {
     // Minimal localStorage mock for the test environment
-    (globalThis as any).localStorage = {
+    installLocalStorageMock({
       clear: vi.fn(),
       getItem: vi.fn().mockReturnValue(null),
       setItem: vi.fn(),
       removeItem: vi.fn(),
-    };
+    } as unknown as Storage);
     document.cookie = 'bs_refresh_session_hint=; Max-Age=0; path=/';
 
     httpClientMock = {
@@ -45,6 +58,7 @@ describe('AuthService logout', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     routerMock.navigate.mockClear();
+    restoreLocalStorage();
   });
 
   it('clears tokens and ignores 401 from backend logout', () => {
@@ -132,12 +146,12 @@ describe('AuthService auth flow', () => {
   let desktopBridgeMock: { publishAuthToken: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    (globalThis as any).localStorage = {
+    installLocalStorageMock({
       clear: vi.fn(),
       getItem: vi.fn().mockReturnValue(null),
       setItem: vi.fn(),
       removeItem: vi.fn(),
-    };
+    } as unknown as Storage);
     document.cookie = 'bs_refresh_session_hint=; Max-Age=0; path=/';
 
     httpClientMock = {
@@ -160,6 +174,7 @@ describe('AuthService auth flow', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    restoreLocalStorage();
   });
 
   it('normalizes canonical login envelopes and stores the access token in memory', async () => {
@@ -246,12 +261,12 @@ describe('AuthService mock auth', () => {
   let desktopBridgeMock: { publishAuthToken: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    (globalThis as any).localStorage = {
+    installLocalStorageMock({
       clear: vi.fn(),
       getItem: vi.fn().mockReturnValue(null),
       setItem: vi.fn(),
       removeItem: vi.fn(),
-    };
+    } as unknown as Storage);
     document.cookie = 'bs_refresh_session_hint=; Max-Age=0; path=/';
 
     httpClientMock = {
@@ -275,6 +290,7 @@ describe('AuthService mock auth', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    restoreLocalStorage();
   });
 
   it('short-circuits login to the mock session and hydrates mock claims', async () => {
@@ -291,7 +307,9 @@ describe('AuthService mock auth', () => {
       }),
     );
 
-    const response = await firstValueFrom(service.login({ username: 'anything', password: 'secret' }));
+    const response = await firstValueFrom(
+      service.login({ username: 'anything', password: 'secret' }),
+    );
 
     expect(response.access_token).toBe('mock-token');
     expect(service.getToken()).toBe('mock-token');

@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -14,14 +14,14 @@ import {
   type OnDestroy,
 } from '@angular/core';
 
-import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
+import { ZardButtonComponent } from '@/shared/components/button';
 
 @Component({
   selector: 'app-search-toolbar',
   standalone: true,
-  imports: [CommonModule, ZardButtonComponent, ZardIconComponent, ZardInputDirective],
+  imports: [ZardIconComponent, ZardInputDirective, ZardButtonComponent],
   templateUrl: './search-toolbar.component.html',
   styleUrls: ['./search-toolbar.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,6 +39,9 @@ export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
   queryChange = output<string>();
   submitted = output<string>();
   tabOut = output<void>();
+
+  hasActiveFilters = input<boolean>(false);
+  clearFilters = output<void>();
 
   protected readonly searchValue = linkedSignal(() => this.query());
   private debounceHandle?: ReturnType<typeof setTimeout>;

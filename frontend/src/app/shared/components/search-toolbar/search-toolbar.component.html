@@ -22,7 +22,12 @@
     }
   </div>
 
-  <div class="search-toolbar-actions">
+  <div class="search-toolbar-actions flex items-center gap-2">
+    @if (hasActiveFilters()) {
+      <z-button zType="secondary" zSize="sm" (click)="clearFilters.emit()">
+        Clear All Filters
+      </z-button>
+    }
     <ng-content />
   </div>
 </div>

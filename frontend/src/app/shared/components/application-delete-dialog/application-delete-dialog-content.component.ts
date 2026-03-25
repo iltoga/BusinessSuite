@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 
 import { Z_MODAL_DATA } from '@/shared/components/dialog';
@@ -15,7 +15,7 @@ export interface ApplicationDeleteDialogResult {
 @Component({
   selector: 'app-application-delete-dialog-content',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './application-delete-dialog-content.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

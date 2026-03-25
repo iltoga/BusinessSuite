@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -64,14 +64,13 @@ export interface CategorizationApplyMapping {
   selector: 'app-categorization-progress',
   standalone: true,
   imports: [
-    CommonModule,
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
     ZardIconComponent,
     ZardTableComponent,
-    ...ZardTooltipImports,
-  ],
+    ...ZardTooltipImports
+],
   templateUrl: './categorization-progress.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

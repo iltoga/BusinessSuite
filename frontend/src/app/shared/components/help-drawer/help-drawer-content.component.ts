@@ -2,7 +2,7 @@ import { ZardButtonComponent } from '@/shared/components/button/button.component
 import { ZardIconComponent } from '@/shared/components/icon/icon.component';
 import { ZardSkeletonComponent } from '@/shared/components/skeleton/skeleton.component';
 import { HelpService } from '@/shared/services/help.service';
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -17,7 +17,7 @@ import { sanitizeUntrustedHtml } from '@/shared/utils/html-content-sanitizer';
 @Component({
   selector: 'z-help-drawer-content',
   standalone: true,
-  imports: [CommonModule, ZardButtonComponent, ZardIconComponent, ZardSkeletonComponent],
+  imports: [ZardButtonComponent, ZardIconComponent, ZardSkeletonComponent],
   template: `
     <div class="p-4 h-full flex flex-col">
       <div class="flex items-start justify-between shrink-0 mb-4">
@@ -30,51 +30,59 @@ import { sanitizeUntrustedHtml } from '@/shared/utils/html-content-sanitizer';
           </button>
         </div>
       </div>
-
+    
       <div class="flex-1 overflow-y-auto pr-2 hide-scrollbar">
         <!-- Loading State -->
-        <div *ngIf="help.isLoading()" class="space-y-4 animate-pulse">
-          <z-skeleton class="h-8 w-3/4 mb-4"></z-skeleton>
-          <z-skeleton class="h-4 w-full"></z-skeleton>
-          <z-skeleton class="h-4 w-full"></z-skeleton>
-          <z-skeleton class="h-4 w-5/6"></z-skeleton>
-          <div class="mt-6">
-            <z-skeleton class="h-6 w-1/2 mb-2"></z-skeleton>
+        @if (help.isLoading()) {
+          <div class="space-y-4 animate-pulse">
+            <z-skeleton class="h-8 w-3/4 mb-4"></z-skeleton>
             <z-skeleton class="h-4 w-full"></z-skeleton>
             <z-skeleton class="h-4 w-full"></z-skeleton>
+            <z-skeleton class="h-4 w-5/6"></z-skeleton>
+            <div class="mt-6">
+              <z-skeleton class="h-6 w-1/2 mb-2"></z-skeleton>
+              <z-skeleton class="h-4 w-full"></z-skeleton>
+              <z-skeleton class="h-4 w-full"></z-skeleton>
+            </div>
           </div>
-        </div>
-
+        }
+    
         <!-- Markdown Content -->
-        <div
-          *ngIf="contentHtml(); else fallback"
-          [innerHTML]="contentHtml()"
-          class="markdown-content text-sm text-slate-700 space-y-3"
-        ></div>
-
+        @if (contentHtml()) {
+          <div
+            [innerHTML]="contentHtml()"
+            class="markdown-content text-sm text-slate-700 space-y-3"
+          ></div>
+        } @else {
+          @if (!help.isLoading()) {
+            <div class="space-y-4">
+              @if (context()?.briefExplanation) {
+                <div>
+                  <h3 class="text-sm font-medium text-slate-700">Brief Explanation</h3>
+                  <p class="text-sm text-slate-600 mt-1">{{ context()?.briefExplanation }}</p>
+                </div>
+              }
+              @if (context()?.details) {
+                <div>
+                  <h3 class="text-sm font-medium text-slate-700">Details</h3>
+                  <p class="text-sm text-slate-600 mt-1">{{ context()?.details }}</p>
+                </div>
+              }
+              @if (!context()?.briefExplanation && !context()?.details) {
+                <div>
+                  <p class="text-sm text-slate-600">
+                    More detailed help will appear here for the current view.
+                  </p>
+                </div>
+              }
+            </div>
+          }
+        }
+    
         <!-- Fallback (Old Behavior) -->
-        <ng-template #fallback>
-          <div *ngIf="!help.isLoading()" class="space-y-4">
-            <div *ngIf="context()?.briefExplanation">
-              <h3 class="text-sm font-medium text-slate-700">Brief Explanation</h3>
-              <p class="text-sm text-slate-600 mt-1">{{ context()?.briefExplanation }}</p>
-            </div>
-
-            <div *ngIf="context()?.details">
-              <h3 class="text-sm font-medium text-slate-700">Details</h3>
-              <p class="text-sm text-slate-600 mt-1">{{ context()?.details }}</p>
-            </div>
-
-            <div *ngIf="!context()?.briefExplanation && !context()?.details">
-              <p class="text-sm text-slate-600">
-                More detailed help will appear here for the current view.
-              </p>
-            </div>
-          </div>
-        </ng-template>
       </div>
     </div>
-  `,
+    `,
   styles: [
     `
       .hide-scrollbar {

@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import type { AbstractControl } from '@angular/forms';
 
@@ -7,7 +7,7 @@ import { collectServerErrors } from '@/shared/utils/form-errors';
 @Component({
   selector: 'app-form-error-summary',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     @if (errors().length > 0) {
       <div

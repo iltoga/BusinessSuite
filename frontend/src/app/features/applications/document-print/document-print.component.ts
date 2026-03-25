@@ -1,4 +1,4 @@
-import { CommonModule, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -13,7 +13,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { DocumentsService } from '@/core/api/api/documents.service';
 import type { Document } from '@/core/api/model/document';
-import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardIconComponent } from '@/shared/components/icon';
@@ -46,14 +45,7 @@ interface DocumentPrintData {
 @Component({
   selector: 'app-document-print',
   standalone: true,
-  imports: [
-    CommonModule,
-    ZardBadgeComponent,
-    ZardButtonComponent,
-    ZardCardComponent,
-    ZardIconComponent,
-    AppDatePipe,
-  ],
+  imports: [ZardButtonComponent, ZardCardComponent, ZardIconComponent, AppDatePipe],
   templateUrl: './document-print.component.html',
   styleUrls: ['./document-print.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

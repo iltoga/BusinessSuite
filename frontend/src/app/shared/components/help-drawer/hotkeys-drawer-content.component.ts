@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 interface HotkeySection {
@@ -9,7 +9,7 @@ interface HotkeySection {
 @Component({
   selector: 'z-hotkeys-drawer-content',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="p-4">
       <div class="flex items-start justify-between">
@@ -23,23 +23,25 @@ interface HotkeySection {
           <!-- The close button is provided by the sheet footer/hide controls; keep header minimal -->
         </div>
       </div>
-
+    
       <div class="mt-4 space-y-4">
-        <ng-container *ngFor="let s of sections">
+        @for (s of sections; track s) {
           <div>
             <h3 class="text-sm font-medium text-slate-700">{{ s.title }}</h3>
             <ul class="text-sm text-slate-600 mt-2 space-y-1">
-              <li *ngFor="let i of s.items">{{ i }}</li>
+              @for (i of s.items; track i) {
+                <li>{{ i }}</li>
+              }
             </ul>
           </div>
-        </ng-container>
+        }
       </div>
-
+    
       <div class="mt-6 text-xs text-muted-foreground">
         Tip: Press <strong>Shift+K</strong> to open this cheatsheet at any time.
       </div>
     </div>
-  `,
+    `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HotkeysDrawerContentComponent {

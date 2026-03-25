@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -28,13 +28,12 @@ import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/uti
   selector: 'app-payment-modal',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardButtonComponent,
     ZardDateInputComponent,
     ZardInputDirective,
-    FormErrorSummaryComponent,
-  ],
+    FormErrorSummaryComponent
+],
   templateUrl: './payment-modal.component.html',
   styleUrls: ['./payment-modal.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

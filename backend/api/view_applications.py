@@ -325,7 +325,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
-        if not is_superuser(request.user):
+        if not is_superuser_or_admin_group(request.user):
             return self.error_response("You do not have permission to perform this action.", status.HTTP_403_FORBIDDEN)
 
         from core.services.bulk_delete import bulk_delete_applications

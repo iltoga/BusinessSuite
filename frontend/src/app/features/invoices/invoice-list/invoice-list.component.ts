@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -57,7 +57,6 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   selector: 'app-invoice-list',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     DataTableComponent,
     SearchToolbarComponent,
@@ -72,8 +71,8 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ShortcutHighlightPipe,
     ...ZardDropdownImports,
     ContextHelpDirective,
-    AppDatePipe,
-  ],
+    AppDatePipe
+],
   templateUrl: './invoice-list.component.html',
   styleUrls: ['./invoice-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -225,6 +224,22 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
   }
 
   /**
+   * Persist hidePaid in session storage.
+   */
+  protected override getExtraSessionState(): Record<string, unknown> {
+    return { hidePaid: this.hidePaid() };
+  }
+
+  /**
+   * Restore hidePaid from session storage.
+   */
+  protected override restoreExtraSessionState(state: Record<string, unknown>): void {
+    if (typeof state['hidePaid'] === 'boolean') {
+      this.hidePaid.set(state['hidePaid']);
+    }
+  }
+
+  /**
    * Handle toggle hide paid
    */
   onToggleHidePaid(event: Event): void {
@@ -331,8 +346,8 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
    */
   override openBulkDeleteDialog(): void {
     const query = this.query().trim();
-    const mode = query ? 'selected' : 'all';
-    const detailsText = query
+    const mode = this.hasAnyFilter() ? 'selected' : 'all';
+    const detailsText = this.hasAnyFilter()
       ? 'This will permanently remove all matching invoice records from the database.'
       : 'This will permanently remove all invoice records from the database.';
 

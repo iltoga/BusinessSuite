@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 
 import { Z_MODAL_DATA } from '@/shared/components/dialog';
@@ -21,7 +21,7 @@ export interface BulkDeleteDialogResult {
 @Component({
   selector: 'app-bulk-delete-dialog-content',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './bulk-delete-dialog-content.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 
 import type { ClassValue } from 'clsx';
@@ -10,7 +10,7 @@ import { mergeClasses } from '@/shared/utils/merge-classes';
 @Component({
   selector: 'app-image-magnifier',
   standalone: true,
-  imports: [CommonModule, ZardButtonComponent, ZardIconComponent],
+  imports: [ZardButtonComponent, ZardIconComponent],
   templateUrl: './image-magnifier.component.html',
   styleUrls: ['./image-magnifier.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

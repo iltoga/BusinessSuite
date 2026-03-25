@@ -1,0 +1,423 @@
+- generic [ref=e5]:
+  - generic [ref=e7]:
+    - menubar [ref=e8]:
+      - menuitem "Dashboard" [ref=e10] [cursor=pointer]:
+        - img [ref=e13]
+        - generic [ref=e18]: Dashboard
+      - menuitem "Customers" [ref=e20] [cursor=pointer]:
+        - img [ref=e23]
+        - generic [ref=e28]: Customers
+      - menuitem "Applications" [ref=e30] [cursor=pointer]:
+        - img [ref=e33]
+        - generic [ref=e35]: Applications
+      - menuitem "Invoices" [ref=e37] [cursor=pointer]:
+        - img [ref=e40]
+        - generic [ref=e43]: Invoices
+      - menuitem "Products" [ref=e45] [cursor=pointer]:
+        - img [ref=e48]
+        - generic [ref=e50]: Products
+      - menuitem "Letters" [ref=e52] [cursor=pointer]:
+        - img [ref=e55]
+        - generic [ref=e58]: Letters
+        - img [ref=e61]
+      - menuitem "Utils" [ref=e64] [cursor=pointer]:
+        - img [ref=e67]
+        - generic [ref=e70]: Utils
+        - img [ref=e73]
+      - menuitem "Reports" [ref=e76] [cursor=pointer]:
+        - img [ref=e79]
+        - generic [ref=e82]: Reports
+        - img [ref=e85]
+      - menuitem "Admin" [ref=e88] [cursor=pointer]:
+        - img [ref=e91]
+        - generic [ref=e94]: Admin
+        - img [ref=e97]
+    - generic [ref=e100]:
+      - button "Toggle theme" [pressed] [ref=e103] [cursor=pointer]:
+        - generic [ref=e104]: 🌙
+        - generic [ref=e105]: Switch to light theme
+        - generic [ref=e106]: Dark
+      - button "Open user menu" [ref=e107] [cursor=pointer]:
+        - generic [ref=e109]: R
+  - main [ref=e110]:
+    - generic [ref=e112]:
+      - generic [ref=e113]:
+        - heading "Invoices" [level=1] [ref=e114]
+        - generic [ref=e115]:
+          - link "Import Invoice" [ref=e116] [cursor=pointer]:
+            - /url: /invoices/import
+            - generic [ref=e117]: Import Invoice
+          - link "New Invoice" [ref=e118] [cursor=pointer]:
+            - /url: /invoices/new
+            - generic [ref=e119]: New Invoice
+      - generic [ref=e121]:
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - generic:
+              - generic:
+                - generic:
+                  - img
+            - textbox "Search" [ref=e126]:
+              - /placeholder: Search invoices...
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - checkbox "Hide Paid" [ref=e130] [cursor=pointer]
+              - generic [ref=e131] [cursor=pointer]: Hide Paid
+            - button "Delete All Invoices" [ref=e132] [cursor=pointer]
+        - generic "Data table" [ref=e135]:
+          - table [ref=e138]:
+            - rowgroup [ref=e148]:
+              - row "Invoice Customer Items Due Date Status Totals Added/Updated" [ref=e149]:
+                - columnheader "Invoice" [ref=e150]:
+                  - button "Invoice" [ref=e152] [cursor=pointer]:
+                    - generic [ref=e154]: Invoice
+                    - img [ref=e157]
+                - columnheader "Customer" [ref=e160]:
+                  - button "Customer" [ref=e162]:
+                    - generic [ref=e164]: Customer
+                - columnheader "Items" [ref=e165]:
+                  - button "Items" [ref=e167]:
+                    - generic [ref=e169]: Items
+                - columnheader "Due Date" [ref=e170]:
+                  - button "Due Date" [ref=e172] [cursor=pointer]:
+                    - generic [ref=e174]: Due Date
+                    - img [ref=e177]
+                - columnheader "Status" [ref=e180]:
+                  - button "Status" [ref=e182] [cursor=pointer]:
+                    - generic [ref=e184]: Status
+                    - img [ref=e187]
+                - columnheader "Totals" [ref=e190]:
+                  - button "Totals" [ref=e192]:
+                    - generic [ref=e194]: Totals
+                - columnheader "Added/Updated" [ref=e195]:
+                  - button "Added/Updated" [ref=e197] [cursor=pointer]:
+                    - generic [ref=e199]: Added/Updated
+                    - img [ref=e202]
+                - columnheader [ref=e205]:
+                  - button [ref=e207]:
+                    - img [ref=e212]
+            - rowgroup [ref=e214]:
+              - row "20260088 STEFANO GALASSI galaxy73.it@gmail.com XVOA - STEFANO GALASSI 24-03-2026 paid Rp 950.000 24-03-2026 19:11:23 24-03-2026 19:11:23 Download options Row actions" [ref=e215]:
+                - cell "20260088" [ref=e216]:
+                  - link "20260088" [ref=e217] [cursor=pointer]:
+                    - /url: /invoices/221
+                - cell "STEFANO GALASSI galaxy73.it@gmail.com" [ref=e218]:
+                  - generic [ref=e219]:
+                    - generic [ref=e220]: STEFANO GALASSI
+                    - generic [ref=e221]: galaxy73.it@gmail.com
+                - cell "XVOA - STEFANO GALASSI" [ref=e222]:
+                  - list [ref=e223]:
+                    - listitem [ref=e224]: XVOA - STEFANO GALASSI
+                - cell "24-03-2026" [ref=e225]
+                - cell "paid" [ref=e226]:
+                  - generic [ref=e227]: paid
+                - cell "Rp 950.000" [ref=e228]:
+                  - generic [ref=e230]: Rp 950.000
+                - cell "24-03-2026 19:11:23 24-03-2026 19:11:23" [ref=e231]:
+                  - generic [ref=e232]:
+                    - generic [ref=e233]: 24-03-2026 19:11:23
+                    - generic [ref=e234]: 24-03-2026 19:11:23
+                - cell "Download options Row actions" [ref=e235]:
+                  - generic [ref=e236]:
+                    - button "Download options" [ref=e239] [cursor=pointer]:
+                      - generic [ref=e241]:
+                        - img
+                    - button "Row actions" [ref=e243] [cursor=pointer]:
+                      - generic [ref=e245]:
+                        - img
+              - row "20260086 STEFANO GALASSI galaxy73.it@gmail.com — 14-03-2026 paid Rp 0 14-03-2026 11:28:37 14-03-2026 11:28:37 Download options Row actions" [ref=e246]:
+                - cell "20260086" [ref=e247]:
+                  - link "20260086" [ref=e248] [cursor=pointer]:
+                    - /url: /invoices/219
+                - cell "STEFANO GALASSI galaxy73.it@gmail.com" [ref=e249]:
+                  - generic [ref=e250]:
+                    - generic [ref=e251]: STEFANO GALASSI
+                    - generic [ref=e252]: galaxy73.it@gmail.com
+                - cell "—" [ref=e253]:
+                  - list [ref=e254]:
+                    - listitem [ref=e255]: —
+                - cell "14-03-2026" [ref=e256]
+                - cell "paid" [ref=e257]:
+                  - generic [ref=e258]: paid
+                - cell "Rp 0" [ref=e259]:
+                  - generic [ref=e261]: Rp 0
+                - cell "14-03-2026 11:28:37 14-03-2026 11:28:37" [ref=e262]:
+                  - generic [ref=e263]:
+                    - generic [ref=e264]: 14-03-2026 11:28:37
+                    - generic [ref=e265]: 14-03-2026 11:28:37
+                - cell "Download options Row actions" [ref=e266]:
+                  - generic [ref=e267]:
+                    - button "Download options" [ref=e270] [cursor=pointer]:
+                      - generic [ref=e272]:
+                        - img
+                    - button "Row actions" [ref=e274] [cursor=pointer]:
+                      - generic [ref=e276]:
+                        - img
+              - row "20260069 Chiara Pompili balishankarakonsultan@gmail.com XVOA - Chiara Pompili 28-01-2026 paid Rp 750.000 28-01-2026 15:43:18 22-02-2026 08:47:36 Download options Row actions" [ref=e277]:
+                - cell "20260069" [ref=e278]:
+                  - link "20260069" [ref=e279] [cursor=pointer]:
+                    - /url: /invoices/215
+                - cell "Chiara Pompili balishankarakonsultan@gmail.com" [ref=e280]:
+                  - generic [ref=e281]:
+                    - generic [ref=e282]: Chiara Pompili
+                    - generic [ref=e283]: balishankarakonsultan@gmail.com
+                - cell "XVOA - Chiara Pompili" [ref=e284]:
+                  - list [ref=e285]:
+                    - listitem [ref=e286]: XVOA - Chiara Pompili
+                - cell "28-01-2026" [ref=e287]
+                - cell "paid" [ref=e288]:
+                  - generic [ref=e289]: paid
+                - cell "Rp 750.000" [ref=e290]:
+                  - generic [ref=e292]: Rp 750.000
+                - cell "28-01-2026 15:43:18 22-02-2026 08:47:36" [ref=e293]:
+                  - generic [ref=e294]:
+                    - generic [ref=e295]: 28-01-2026 15:43:18
+                    - generic [ref=e296]: 22-02-2026 08:47:36
+                - cell "Download options Row actions" [ref=e297]:
+                  - generic [ref=e298]:
+                    - button "Download options" [ref=e301] [cursor=pointer]:
+                      - generic [ref=e303]:
+                        - img
+                    - button "Row actions" [ref=e305] [cursor=pointer]:
+                      - generic [ref=e307]:
+                        - img
+              - row "20260068 Lorenzo Caponigri balishankarakonsultan@gmail.com XVOA - Lorenzo Caponigri 28-01-2026 paid Rp 750.000 28-01-2026 15:41:54 22-02-2026 08:47:36 Download options Row actions" [ref=e308]:
+                - cell "20260068" [ref=e309]:
+                  - link "20260068" [ref=e310] [cursor=pointer]:
+                    - /url: /invoices/214
+                - cell "Lorenzo Caponigri balishankarakonsultan@gmail.com" [ref=e311]:
+                  - generic [ref=e312]:
+                    - generic [ref=e313]: Lorenzo Caponigri
+                    - generic [ref=e314]: balishankarakonsultan@gmail.com
+                - cell "XVOA - Lorenzo Caponigri" [ref=e315]:
+                  - list [ref=e316]:
+                    - listitem [ref=e317]: XVOA - Lorenzo Caponigri
+                - cell "28-01-2026" [ref=e318]
+                - cell "paid" [ref=e319]:
+                  - generic [ref=e320]: paid
+                - cell "Rp 750.000" [ref=e321]:
+                  - generic [ref=e323]: Rp 750.000
+                - cell "28-01-2026 15:41:54 22-02-2026 08:47:36" [ref=e324]:
+                  - generic [ref=e325]:
+                    - generic [ref=e326]: 28-01-2026 15:41:54
+                    - generic [ref=e327]: 22-02-2026 08:47:36
+                - cell "Download options Row actions" [ref=e328]:
+                  - generic [ref=e329]:
+                    - button "Download options" [ref=e332] [cursor=pointer]:
+                      - generic [ref=e334]:
+                        - img
+                    - button "Row actions" [ref=e336] [cursor=pointer]:
+                      - generic [ref=e338]:
+                        - img
+              - row "20260067 Jonathan Ebeyer — ALIK-24 - Jonathan Ebeyer N-PMA - Jonathan Ebeyer 20-01-2026 paid Rp 36.500.000 20-01-2026 18:03:32 22-02-2026 08:47:36 Download options Row actions" [ref=e339]:
+                - cell "20260067" [ref=e340]:
+                  - link "20260067" [ref=e341] [cursor=pointer]:
+                    - /url: /invoices/213
+                - cell "Jonathan Ebeyer —" [ref=e342]:
+                  - generic [ref=e343]:
+                    - generic [ref=e344]: Jonathan Ebeyer
+                    - generic [ref=e345]: —
+                - cell "ALIK-24 - Jonathan Ebeyer N-PMA - Jonathan Ebeyer" [ref=e346]:
+                  - list [ref=e347]:
+                    - listitem [ref=e348]: ALIK-24 - Jonathan Ebeyer
+                    - listitem [ref=e349]: N-PMA - Jonathan Ebeyer
+                - cell "20-01-2026" [ref=e350]
+                - cell "paid" [ref=e351]:
+                  - generic [ref=e352]: paid
+                - cell "Rp 36.500.000" [ref=e353]:
+                  - generic [ref=e355]: Rp 36.500.000
+                - cell "20-01-2026 18:03:32 22-02-2026 08:47:36" [ref=e356]:
+                  - generic [ref=e357]:
+                    - generic [ref=e358]: 20-01-2026 18:03:32
+                    - generic [ref=e359]: 22-02-2026 08:47:36
+                - cell "Download options Row actions" [ref=e360]:
+                  - generic [ref=e361]:
+                    - button "Download options" [ref=e364] [cursor=pointer]:
+                      - generic [ref=e366]:
+                        - img
+                    - button "Row actions" [ref=e368] [cursor=pointer]:
+                      - generic [ref=e370]:
+                        - img
+              - row "20260066 ANNA MARIA QUIDACCIOLU ANNA.QUIDACC@GMAIL.COM XVOA - ANNA MARIA QUIDACCIOLU 15-01-2026 paid Rp 900.000 16-01-2026 07:36:19 22-02-2026 08:47:36 Download options Row actions" [ref=e371]:
+                - cell "20260066" [ref=e372]:
+                  - link "20260066" [ref=e373] [cursor=pointer]:
+                    - /url: /invoices/212
+                - cell "ANNA MARIA QUIDACCIOLU ANNA.QUIDACC@GMAIL.COM" [ref=e374]:
+                  - generic [ref=e375]:
+                    - generic [ref=e376]: ANNA MARIA QUIDACCIOLU
+                    - generic [ref=e377]: ANNA.QUIDACC@GMAIL.COM
+                - cell "XVOA - ANNA MARIA QUIDACCIOLU" [ref=e378]:
+                  - list [ref=e379]:
+                    - listitem [ref=e380]: XVOA - ANNA MARIA QUIDACCIOLU
+                - cell "15-01-2026" [ref=e381]
+                - cell "paid" [ref=e382]:
+                  - generic [ref=e383]: paid
+                - cell "Rp 900.000" [ref=e384]:
+                  - generic [ref=e386]: Rp 900.000
+                - cell "16-01-2026 07:36:19 22-02-2026 08:47:36" [ref=e387]:
+                  - generic [ref=e388]:
+                    - generic [ref=e389]: 16-01-2026 07:36:19
+                    - generic [ref=e390]: 22-02-2026 08:47:36
+                - cell "Download options Row actions" [ref=e391]:
+                  - generic [ref=e392]:
+                    - button "Download options" [ref=e395] [cursor=pointer]:
+                      - generic [ref=e397]:
+                        - img
+                    - button "Row actions" [ref=e399] [cursor=pointer]:
+                      - generic [ref=e401]:
+                        - img
+              - row "20260065 Samer Alhabash balishankarakonsultan@gmail.com NVD12-24 - Samer Alhabash 13-01-2026 paid Rp 9.750.000 14-01-2026 12:13:09 22-02-2026 08:47:36 Download options Row actions" [ref=e402]:
+                - cell "20260065" [ref=e403]:
+                  - link "20260065" [ref=e404] [cursor=pointer]:
+                    - /url: /invoices/211
+                - cell "Samer Alhabash balishankarakonsultan@gmail.com" [ref=e405]:
+                  - generic [ref=e406]:
+                    - generic [ref=e407]: Samer Alhabash
+                    - generic [ref=e408]: balishankarakonsultan@gmail.com
+                - cell "NVD12-24 - Samer Alhabash" [ref=e409]:
+                  - list [ref=e410]:
+                    - listitem [ref=e411]: NVD12-24 - Samer Alhabash
+                - cell "13-01-2026" [ref=e412]
+                - cell "paid" [ref=e413]:
+                  - generic [ref=e414]: paid
+                - cell "Rp 9.750.000" [ref=e415]:
+                  - generic [ref=e417]: Rp 9.750.000
+                - cell "14-01-2026 12:13:09 22-02-2026 08:47:36" [ref=e418]:
+                  - generic [ref=e419]:
+                    - generic [ref=e420]: 14-01-2026 12:13:09
+                    - generic [ref=e421]: 22-02-2026 08:47:36
+                - cell "Download options Row actions" [ref=e422]:
+                  - generic [ref=e423]:
+                    - button "Download options" [ref=e426] [cursor=pointer]:
+                      - generic [ref=e428]:
+                        - img
+                    - button "Row actions" [ref=e430] [cursor=pointer]:
+                      - generic [ref=e432]:
+                        - img
+              - row "20260064 Dimitrios Stavropoulos stavmitchcat@gmail.com BRIDGE - Dimitrios Stavropoulos 13-01-2026 paid Rp 3.000.000 14-01-2026 07:56:35 22-02-2026 08:47:36 Download options Row actions" [ref=e433]:
+                - cell "20260064" [ref=e434]:
+                  - link "20260064" [ref=e435] [cursor=pointer]:
+                    - /url: /invoices/210
+                - cell "Dimitrios Stavropoulos stavmitchcat@gmail.com" [ref=e436]:
+                  - generic [ref=e437]:
+                    - generic [ref=e438]: Dimitrios Stavropoulos
+                    - generic [ref=e439]: stavmitchcat@gmail.com
+                - cell "BRIDGE - Dimitrios Stavropoulos" [ref=e440]:
+                  - list [ref=e441]:
+                    - listitem [ref=e442]: BRIDGE - Dimitrios Stavropoulos
+                - cell "13-01-2026" [ref=e443]
+                - cell "paid" [ref=e444]:
+                  - generic [ref=e445]: paid
+                - cell "Rp 3.000.000" [ref=e446]:
+                  - generic [ref=e448]: Rp 3.000.000
+                - cell "14-01-2026 07:56:35 22-02-2026 08:47:36" [ref=e449]:
+                  - generic [ref=e450]:
+                    - generic [ref=e451]: 14-01-2026 07:56:35
+                    - generic [ref=e452]: 22-02-2026 08:47:36
+                - cell "Download options Row actions" [ref=e453]:
+                  - generic [ref=e454]:
+                    - button "Download options" [ref=e457] [cursor=pointer]:
+                      - generic [ref=e459]:
+                        - img
+                    - button "Row actions" [ref=e461] [cursor=pointer]:
+                      - generic [ref=e463]:
+                        - img
+              - row "20260063 Gabriele Stampa balishankarakonsultan@gmail.com XVOA - Gabriele Stampa 12-01-2026 paid Rp 18.950.000 12-01-2026 17:41:03 22-02-2026 08:47:36 Download options Row actions" [ref=e464]:
+                - cell "20260063" [ref=e465]:
+                  - link "20260063" [ref=e466] [cursor=pointer]:
+                    - /url: /invoices/209
+                - cell "Gabriele Stampa balishankarakonsultan@gmail.com" [ref=e467]:
+                  - generic [ref=e468]:
+                    - generic [ref=e469]: Gabriele Stampa
+                    - generic [ref=e470]: balishankarakonsultan@gmail.com
+                - cell "XVOA - Gabriele Stampa" [ref=e471]:
+                  - list [ref=e472]:
+                    - listitem [ref=e473]: XVOA - Gabriele Stampa
+                - cell "12-01-2026" [ref=e474]
+                - cell "paid" [ref=e475]:
+                  - generic [ref=e476]: paid
+                - cell "Rp 18.950.000" [ref=e477]:
+                  - generic [ref=e479]: Rp 18.950.000
+                - cell "12-01-2026 17:41:03 22-02-2026 08:47:36" [ref=e480]:
+                  - generic [ref=e481]:
+                    - generic [ref=e482]: 12-01-2026 17:41:03
+                    - generic [ref=e483]: 22-02-2026 08:47:36
+                - cell "Download options Row actions" [ref=e484]:
+                  - generic [ref=e485]:
+                    - button "Download options" [ref=e488] [cursor=pointer]:
+                      - generic [ref=e490]:
+                        - img
+                    - button "Row actions" [ref=e492] [cursor=pointer]:
+                      - generic [ref=e494]:
+                        - img
+              - row "00002026 Ruben Zappi balishankarakonsultan@gmail.com BRIDGE - Ruben Zappi 12-01-2026 paid Rp 3.000.000 12-01-2026 13:12:26 22-02-2026 08:47:36 Download options Row actions" [ref=e495]:
+                - cell "00002026" [ref=e496]:
+                  - link "00002026" [ref=e497] [cursor=pointer]:
+                    - /url: /invoices/208
+                - cell "Ruben Zappi balishankarakonsultan@gmail.com" [ref=e498]:
+                  - generic [ref=e499]:
+                    - generic [ref=e500]: Ruben Zappi
+                    - generic [ref=e501]: balishankarakonsultan@gmail.com
+                - cell "BRIDGE - Ruben Zappi" [ref=e502]:
+                  - list [ref=e503]:
+                    - listitem [ref=e504]: BRIDGE - Ruben Zappi
+                - cell "12-01-2026" [ref=e505]
+                - cell "paid" [ref=e506]:
+                  - generic [ref=e507]: paid
+                - cell "Rp 3.000.000" [ref=e508]:
+                  - generic [ref=e510]: Rp 3.000.000
+                - cell "12-01-2026 13:12:26 22-02-2026 08:47:36" [ref=e511]:
+                  - generic [ref=e512]:
+                    - generic [ref=e513]: 12-01-2026 13:12:26
+                    - generic [ref=e514]: 22-02-2026 08:47:36
+                - cell "Download options Row actions" [ref=e515]:
+                  - generic [ref=e516]:
+                    - button "Download options" [ref=e519] [cursor=pointer]:
+                      - generic [ref=e521]:
+                        - img
+                    - button "Row actions" [ref=e523] [cursor=pointer]:
+                      - generic [ref=e525]:
+                        - img
+              - row "20260061 Lily Rankine balishankarakonsultan@gmail.com XVOA - Lily Rankine 04-01-2026 paid Rp 850.000 04-01-2026 11:31:19 22-02-2026 08:47:36 Download options Row actions" [ref=e526]:
+                - cell "20260061" [ref=e527]:
+                  - link "20260061" [ref=e528] [cursor=pointer]:
+                    - /url: /invoices/207
+                - cell "Lily Rankine balishankarakonsultan@gmail.com" [ref=e529]:
+                  - generic [ref=e530]:
+                    - generic [ref=e531]: Lily Rankine
+                    - generic [ref=e532]: balishankarakonsultan@gmail.com
+                - cell "XVOA - Lily Rankine" [ref=e533]:
+                  - list [ref=e534]:
+                    - listitem [ref=e535]: XVOA - Lily Rankine
+                - cell "04-01-2026" [ref=e536]
+                - cell "paid" [ref=e537]:
+                  - generic [ref=e538]: paid
+                - cell "Rp 850.000" [ref=e539]:
+                  - generic [ref=e541]: Rp 850.000
+                - cell "04-01-2026 11:31:19 22-02-2026 08:47:36" [ref=e542]:
+                  - generic [ref=e543]:
+                    - generic [ref=e544]: 04-01-2026 11:31:19
+                    - generic [ref=e545]: 22-02-2026 08:47:36
+                - cell "Download options Row actions" [ref=e546]:
+                  - generic [ref=e547]:
+                    - button "Download options" [ref=e550] [cursor=pointer]:
+                      - generic [ref=e552]:
+                        - img
+                    - button "Row actions" [ref=e554] [cursor=pointer]:
+                      - generic [ref=e556]:
+                        - img
+        - generic [ref=e560]:
+          - button "First" [disabled]:
+            - generic:
+              - generic:
+                - img
+            - generic: First
+          - button "Previous" [disabled]:
+            - generic: Previous
+          - generic [ref=e561]: Page 1 of 11 (115)
+          - button "Next" [ref=e562] [cursor=pointer]:
+            - generic [ref=e563]: Next
+          - button "Last" [ref=e564] [cursor=pointer]:
+            - generic [ref=e565]: Last
+            - generic [ref=e567]:
+              - img

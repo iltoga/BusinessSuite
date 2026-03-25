@@ -42,11 +42,6 @@ function writePreviewShell(targetWindow: Window, bodyMarkup: string): void {
       opacity: 0.8;
       margin: 0;
     }
-    embed {
-      width: 100%;
-      height: 100%;
-      border: 0;
-    }
   `;
 
   head.append(charset, title, style);
@@ -119,41 +114,13 @@ export async function openPdfPrintPreview(
     throw new Error('Popup blocked. Allow popups to open the print preview.');
   }
 
-  writePreviewShell(
-    popup,
-    `
-      <embed src="${blobUrl}" type="application/pdf" />
-    `,
-  );
-
-  let didPrint = false;
-  const triggerPrint = () => {
-    if (didPrint) {
-      return;
-    }
-    didPrint = true;
-    try {
-      popup.focus();
-      popup.print();
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const embed = popup.document.querySelector('embed');
-  if (embed) {
-    embed.addEventListener(
-      'load',
-      () => {
-        window.setTimeout(triggerPrint, 200);
-      },
-      { once: true },
-    );
-  }
-
-  window.setTimeout(triggerPrint, 700);
+  let cleanedUp = false;
 
   const cleanup = () => {
+    if (cleanedUp) {
+      return;
+    }
+    cleanedUp = true;
     try {
       URL.revokeObjectURL(blobUrl);
     } catch {
@@ -161,6 +128,36 @@ export async function openPdfPrintPreview(
     }
   };
 
-  popup.addEventListener('afterprint', cleanup, { once: true });
+  try {
+    if (!targetWindow || targetWindow.closed) {
+      writePreviewShell(
+        popup,
+        `
+          <div class="preview-loading">
+            <div>
+              <h1>Opening PDF preview…</h1>
+              <p>Your browser will switch to the generated PDF shortly.</p>
+            </div>
+          </div>
+        `,
+      );
+    }
+  } catch {
+    // Ignore shell setup failures and continue with the direct navigation path.
+  }
+
+  try {
+    popup.location.href = blobUrl;
+  } catch {
+    try {
+      popup.location.replace(blobUrl);
+    } catch (error) {
+      cleanup();
+      throw error;
+    }
+  }
+
+  // Revoke the blob URL after a generous timeout to free memory.
+  // The tab keeps the PDF in memory even after the URL is revoked.
   window.setTimeout(cleanup, 60_000);
 }

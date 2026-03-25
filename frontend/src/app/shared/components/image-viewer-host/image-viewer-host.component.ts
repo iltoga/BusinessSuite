@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -22,11 +22,10 @@ import { ZardSkeletonComponent } from '@/shared/components/skeleton';
   selector: 'app-image-viewer-host',
   standalone: true,
   imports: [
-    CommonModule,
     ZardButtonComponent,
     ZardIconComponent,
-    ZardSkeletonComponent,
-  ],
+    ZardSkeletonComponent
+],
   templateUrl: './image-viewer-host.component.html',
   styleUrls: ['./image-viewer-host.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

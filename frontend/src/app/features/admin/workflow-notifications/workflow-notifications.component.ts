@@ -8,7 +8,7 @@ import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/compone
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -32,13 +32,12 @@ import {
   selector: 'app-workflow-notifications',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardButtonComponent,
     ZardComboboxComponent,
     ZardInputDirective,
-    AppDatePipe,
-  ],
+    AppDatePipe
+],
   templateUrl: './workflow-notifications.component.html',
   styleUrls: ['./workflow-notifications.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

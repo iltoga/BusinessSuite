@@ -244,6 +244,8 @@ def _validate_application_availability(
 
 
 def create_invoice(*, data: dict, user) -> Invoice:
+    if not data.get("invoice_applications"):
+        raise ValidationError({"invoice_applications": ["An invoice must have at least one line item."]})
     payloads = _build_payloads(data.pop("invoice_applications", []))
     _validate_application_ids(payloads)
 
@@ -303,6 +305,8 @@ def create_invoice(*, data: dict, user) -> Invoice:
 
 
 def update_invoice(*, invoice: Invoice, data: dict, user) -> Invoice:
+    if not data.get("invoice_applications"):
+        raise ValidationError({"invoice_applications": ["An invoice must have at least one line item."]})
     payloads = _build_payloads(data.pop("invoice_applications", []))
     _validate_application_ids(payloads)
     _validate_application_availability(payloads=payloads, customer_id=invoice.customer_id, current_invoice=invoice)
