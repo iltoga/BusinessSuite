@@ -319,6 +319,11 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   save(): void {
+    if (this.invoiceApplications.length === 0) {
+      this.toast.error('An invoice must have at least one line item.');
+      return;
+    }
+
     if (this.form.invalid) {
       this.toast.error('Please fix validation errors before saving.');
       return;

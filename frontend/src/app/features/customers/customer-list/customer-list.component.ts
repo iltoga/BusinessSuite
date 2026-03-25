@@ -254,6 +254,23 @@ export class CustomerListComponent extends BaseListComponent<Customer> {
   }
 
   /**
+   * Persist status filter in session storage.
+   */
+  protected override getExtraSessionState(): Record<string, unknown> {
+    return { statusFilter: this.statusFilter() };
+  }
+
+  /**
+   * Restore status filter from session storage.
+   */
+  protected override restoreExtraSessionState(state: Record<string, unknown>): void {
+    const status = state['statusFilter'];
+    if (status === 'all' || status === 'active' || status === 'disabled') {
+      this.statusFilter.set(status);
+    }
+  }
+
+  /**
    * Handle status filter change
    */
   onStatusChange(value: string | string[]): void {
@@ -317,8 +334,8 @@ export class CustomerListComponent extends BaseListComponent<Customer> {
    */
   override openBulkDeleteDialog(): void {
     const query = this.query().trim();
-    const mode = query ? 'selected' : 'all';
-    const detailsText = query
+    const mode = this.hasAnyFilter() ? 'selected' : 'all';
+    const detailsText = this.hasAnyFilter()
       ? 'This will permanently remove all matching customer records, their applications, invoices, and associated data.'
       : 'This will permanently remove all customer records and their associated data from the database.';
 

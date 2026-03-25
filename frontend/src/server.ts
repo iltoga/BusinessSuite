@@ -522,7 +522,7 @@ function buildCspDirectives(nonce: string): string {
     `style-src 'self' 'unsafe-inline'`, // Tailwind/CSS-in-JS requires inline styles
     `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
-    `connect-src 'self' https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com`,
+    `connect-src 'self' https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://www.gstatic.com`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

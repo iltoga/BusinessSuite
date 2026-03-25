@@ -1,3 +1,4 @@
+from api.permissions import ADMIN_GROUP_NAME
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand, CommandError
@@ -39,8 +40,8 @@ class Command(BaseCommand):
         user.set_password(password)
         user.save()
 
-        admin_group, group_created = Group.objects.get_or_create(name="admin")
-        if not user.groups.filter(name="admin").exists():
+        admin_group, group_created = Group.objects.get_or_create(name=ADMIN_GROUP_NAME)
+        if not user.groups.filter(name=ADMIN_GROUP_NAME).exists():
             user.groups.add(admin_group)
 
         self.stdout.write(

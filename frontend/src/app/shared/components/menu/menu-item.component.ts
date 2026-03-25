@@ -1,5 +1,11 @@
-
-import { ChangeDetectionStrategy, Component, HostBinding, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  HostBinding,
+  inject,
+  input,
+  OnDestroy,
+} from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { ZardIconComponent } from '@/shared/components/icon';
@@ -14,12 +20,14 @@ import { MenuService } from '@/shared/services/menu.service';
   styleUrl: './menu-item.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MenuItemComponent {
+export class MenuItemComponent implements OnDestroy {
   readonly item = input.required<MenuItem>();
   readonly depth = input(0);
   readonly mode = input<'sidebar' | 'overlay'>('sidebar');
 
   readonly menuService = inject(MenuService);
+
+  private collapseTimer: ReturnType<typeof setTimeout> | null = null;
 
   @HostBinding('attr.role')
   role = 'none';
@@ -45,7 +53,28 @@ export class MenuItemComponent {
     this.menuService.toggleCollapse(this.item().id);
   }
 
+  onOverlayMouseEnter(): void {
+    if (this.collapseTimer) {
+      clearTimeout(this.collapseTimer);
+      this.collapseTimer = null;
+    }
+  }
+
+  onOverlayMouseLeave(): void {
+    if (this.mode() !== 'overlay') return;
+    this.collapseTimer = setTimeout(() => {
+      this.menuService.collapseOverlayRootMenus();
+      this.collapseTimer = null;
+    }, 150);
+  }
+
   runAction(): void {
     this.item().action?.();
+  }
+
+  ngOnDestroy(): void {
+    if (this.collapseTimer) {
+      clearTimeout(this.collapseTimer);
+    }
   }
 }

@@ -62,7 +62,7 @@
               Create Invoice
             </button>
           }
-          @if (isSuperuser()) {
+          @if (isAdminOrManager()) {
             <button
               z-button
               zType="destructive"

@@ -183,7 +183,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["get"], url_path="delete-preview")
     def delete_preview(self, request, pk=None):
-        if not is_superuser(request.user):
+        if not is_superuser_or_admin_group(request.user):
             return self.error_response("Only superusers can delete invoices.", status.HTTP_403_FORBIDDEN)
 
         invoice = self.get_object()
@@ -210,7 +210,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["post"], url_path="force-delete")
     def force_delete(self, request, pk=None):
-        if not is_superuser(request.user):
+        if not is_superuser_or_admin_group(request.user):
             return self.error_response("Only superusers can delete invoices.", status.HTTP_403_FORBIDDEN)
 
         force_confirmed = parse_bool(
@@ -235,7 +235,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
-        if not is_superuser(request.user):
+        if not is_superuser_or_admin_group(request.user):
             return self.error_response("Only superusers can delete invoices.", status.HTTP_403_FORBIDDEN)
 
         query = (

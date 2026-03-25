@@ -23,6 +23,10 @@ export interface AppConfig {
   fcmWebMeasurementId?: string;
   useOverlayMenu?: boolean;
   skeletonDebounceDurationMs?: number | string;
+  rbac?: {
+    adminGroupName: string;
+    managerGroupName: string;
+  };
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
@@ -46,4 +50,5 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   fcmWebMeasurementId: '',
   useOverlayMenu: false,
   skeletonDebounceDurationMs: 500,
+  rbac: { adminGroupName: 'admin', managerGroupName: 'manager' },
 };

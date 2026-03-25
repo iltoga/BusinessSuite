@@ -1,5 +1,6 @@
 import os
 
+from api.permissions import ADMIN_GROUP_NAME, MANAGER_GROUP_NAME
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand
@@ -10,7 +11,7 @@ load_dotenv()
 
 class Command(BaseCommand):
     help = "Create a Django superuser if one does not exist and ensure default auth groups"
-    REQUIRED_GROUPS = ("admin", "manager", "controller", "agent")
+    REQUIRED_GROUPS = (ADMIN_GROUP_NAME, MANAGER_GROUP_NAME, "controller", "agent")
 
     def _ensure_required_groups(self):
         for group_name in self.REQUIRED_GROUPS:
@@ -25,8 +26,8 @@ class Command(BaseCommand):
             print("User 'revisadmin' not found. Skipping default 'admin' group assignment.")
             return
 
-        admin_group = Group.objects.get(name="admin")
-        if revisadmin.groups.filter(name="admin").exists():
+        admin_group = Group.objects.get(name=ADMIN_GROUP_NAME)
+        if revisadmin.groups.filter(name=ADMIN_GROUP_NAME).exists():
             return
 
         revisadmin.groups.add(admin_group)

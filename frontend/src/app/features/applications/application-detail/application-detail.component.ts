@@ -266,6 +266,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly originSearchQuery = signal<string | null>(null);
   readonly originPage = signal<number | null>(null);
   readonly isSuperuser = this.authService.isSuperuser;
+  readonly isAdminOrManager = this.authService.isAdminOrManager;
   readonly isSavingMeta = signal(false);
   readonly editableNotes = signal('');
 
@@ -1671,7 +1672,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   deleteApplication(): void {
     const app = this.application();
-    if (!app || !this.isSuperuser()) return;
+    if (!app || !this.isAdminOrManager()) return;
 
     if (app.hasInvoice) {
       this.deleteWithInvoiceData.set({

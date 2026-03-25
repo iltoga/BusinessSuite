@@ -6,6 +6,8 @@
   [class.relative]="mode() === 'overlay'"
   [class.group]="mode() === 'overlay'"
   [class.is-expanded]="expanded"
+  (mouseenter)="mode() === 'overlay' && hasChildren ? onOverlayMouseEnter() : null"
+  (mouseleave)="mode() === 'overlay' && hasChildren ? onOverlayMouseLeave() : null"
 >
   @if (menuItem.route) {
     <a

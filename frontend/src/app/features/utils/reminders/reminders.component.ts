@@ -141,6 +141,29 @@ export class RemindersComponent implements OnInit, OnDestroy {
   readonly liveConnected = signal(false);
   readonly liveConnecting = signal(false);
 
+  readonly hasActiveColumnFilters = computed(() => {
+    return this.statusFilter().length > 0;
+  });
+
+  clearAllFilters(): void {
+    let changed = false;
+    
+    if (this.query() !== '') {
+      this.query.set('');
+      changed = true;
+    }
+    
+    if (this.statusFilter().length > 0) {
+      this.statusFilter.set([]);
+      changed = true;
+    }
+    
+    if (changed) {
+      this.page.set(1);
+      this.loadReminders();
+    }
+  }
+
   readonly totalPages = computed(() => {
     const total = this.totalItems();
     const size = this.pageSize();

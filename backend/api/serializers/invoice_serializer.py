@@ -1,5 +1,3 @@
-from rest_framework import serializers
-
 from api.serializers.customer_serializer import CustomerSerializer
 from api.serializers.doc_application_serializer import DocApplicationInvoiceSerializer
 from api.serializers.product_serializer import ProductSerializer
@@ -7,6 +5,7 @@ from customer_applications.models import DocApplication
 from invoices.models.invoice import Invoice, InvoiceApplication
 from payments.models import Payment
 from products.models import Product
+from rest_framework import serializers
 
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -185,6 +184,8 @@ class InvoiceCreateUpdateSerializer(serializers.ModelSerializer):
         extra_kwargs = {"invoice_no": {"required": False, "allow_null": True}}
 
     def validate_invoice_applications(self, value):
+        if not value:
+            raise serializers.ValidationError("An invoice must have at least one line item.")
         customer_ids = [item.get("customer_application") for item in value if item.get("customer_application")]
         if len(customer_ids) != len(set(customer_ids)):
             raise serializers.ValidationError("Each customer application can only appear once in an invoice.")

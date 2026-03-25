@@ -10,6 +10,7 @@ import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '@/core/services/auth.service';
+import { ConfigService } from '@/core/services/config.service';
 import { adminGroupGuard } from './admin-group.guard';
 import { adminOrManagerGuard } from './admin-or-manager.guard';
 import { authGuard } from './auth.guard';
@@ -46,6 +47,10 @@ const createRouterMock = () => ({
   createUrlTree: vi.fn((commands: unknown[], extras?: unknown) => ({ commands, extras })),
 });
 
+const createConfigMock = () => ({
+  config: vi.fn(() => ({ rbac: { adminGroupName: 'admin', managerGroupName: 'manager' } })),
+});
+
 describe('route guards', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
@@ -61,12 +66,14 @@ describe('route guards', () => {
   ) => {
     const router = createRouterMock();
     const auth = createAuthMock(options.auth);
+    const config = createConfigMock();
 
     TestBed.configureTestingModule({
       providers: [
         { provide: PLATFORM_ID, useValue: options.platformId ?? 'browser' },
         { provide: Router, useValue: router },
         { provide: AuthService, useValue: auth },
+        { provide: ConfigService, useValue: config },
       ],
     });
 

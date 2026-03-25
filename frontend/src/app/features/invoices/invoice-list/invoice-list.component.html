@@ -40,7 +40,7 @@
               Hide Paid
             </label>
           </div>
-          @if (isSuperuser() && totalItems() > 0) {
+          @if (isInAdminGroup() && totalItems() > 0) {
             <z-button
               zType="destructive"
               zSize="sm"

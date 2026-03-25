@@ -166,7 +166,12 @@ describe('ProductFormComponent', () => {
       code: 'KITAS-1',
     });
     component.router.getCurrentNavigation.mockReturnValue(null);
-    history.replaceState({ searchQuery: 'visa', page: 2 }, '');
+    vi.spyOn(component as any, 'getNavigationState').mockReturnValue({
+      searchQuery: 'visa',
+      page: 2,
+      focusId: null,
+      returnToList: false,
+    });
 
     component.onSubmit();
 
@@ -201,14 +206,12 @@ describe('ProductFormComponent', () => {
         tasks: [],
       } as unknown as ProductDetail),
     );
-    component.router.getCurrentNavigation.mockReturnValue({
-      extras: {
-        state: {
-          returnToList: true,
-        },
-      },
+    vi.spyOn(component as any, 'getNavigationState').mockReturnValue({
+      searchQuery: 'visa',
+      page: 4,
+      focusId: null,
+      returnToList: true,
     });
-    history.replaceState({ searchQuery: 'visa', page: 4 }, '');
 
     component.onSubmit();
 
@@ -242,7 +245,12 @@ describe('ProductFormComponent', () => {
       } as unknown as ProductDetail),
     );
     component.router.getCurrentNavigation.mockReturnValue(null);
-    history.replaceState({ searchQuery: 'visa', page: 4 }, '');
+    vi.spyOn(component as any, 'getNavigationState').mockReturnValue({
+      searchQuery: 'visa',
+      page: 4,
+      focusId: null,
+      returnToList: false,
+    });
 
     component.onSubmit();
 
@@ -260,7 +268,12 @@ describe('ProductFormComponent', () => {
     component.itemId = null;
     component.product.set(null);
     component.router.getCurrentNavigation.mockReturnValue(null);
-    history.replaceState({ focusId: 41, searchQuery: 'visa', page: 2 }, '');
+    vi.spyOn(component as any, 'getNavigationState').mockReturnValue({
+      searchQuery: 'visa',
+      page: 2,
+      focusId: 41,
+      returnToList: false,
+    });
 
     component.goBack();
 

@@ -9,13 +9,10 @@
   @if (!slug()) {
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       @for (report of reportList(); track report) {
-        <a
-          [routerLink]="['/reports', report.url.replace('report-', '')]"
-          class="group block"
-          >
+        <a [routerLink]="['/reports', report.url.replace('report-', '')]" class="group block">
           <z-card
-            class="rounded-lg border bg-card py-0 gap-0 transition group-hover:border-primary [&_[data-slot=card-content]]:p-4"
-            >
+            class="rounded-lg border bg-card py-0 gap-0 transition group-hover:border-primary **:data-[slot=card-content]:p-4"
+          >
             <div class="font-medium">{{ report.name }}</div>
             <p class="text-sm text-muted-foreground mt-1">{{ report.description }}</p>
           </z-card>
@@ -30,534 +27,532 @@
 
   @if (!loading() && data(); as d) {
     @if (slug() === 'revenue' || slug() === 'kpi-dashboard' || slug() === 'cash-flow') {
-      <div
-        class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
-        >
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @if (d.total_invoiced_formatted) {
           <z-card class="p-4"
             ><div class="text-sm">Invoiced</div>
             <div class="text-2xl font-semibold">{{ d.total_invoiced_formatted }}</div></z-card
-            >
-          }
-          @if (d.total_paid_formatted) {
-            <z-card class="p-4"
-              ><div class="text-sm">Paid</div>
-              <div class="text-2xl font-semibold">{{ d.total_paid_formatted }}</div></z-card
-              >
-            }
-            @if (d.total_outstanding_formatted) {
-              <z-card class="p-4"
-                ><div class="text-sm">Outstanding</div>
-                <div class="text-2xl font-semibold">{{ d.total_outstanding_formatted }}</div></z-card
-                >
-              }
-              @if (d.total_cashflow_formatted) {
-                <z-card class="p-4"
-                  ><div class="text-sm">Total Cashflow</div>
-                  <div class="text-2xl font-semibold">{{ d.total_cashflow_formatted }}</div></z-card
-                  >
-                }
+          >
+        }
+        @if (d.total_paid_formatted) {
+          <z-card class="p-4"
+            ><div class="text-sm">Paid</div>
+            <div class="text-2xl font-semibold">{{ d.total_paid_formatted }}</div></z-card
+          >
+        }
+        @if (d.total_outstanding_formatted) {
+          <z-card class="p-4"
+            ><div class="text-sm">Outstanding</div>
+            <div class="text-2xl font-semibold">{{ d.total_outstanding_formatted }}</div></z-card
+          >
+        }
+        @if (d.total_cashflow_formatted) {
+          <z-card class="p-4"
+            ><div class="text-sm">Total Cashflow</div>
+            <div class="text-2xl font-semibold">{{ d.total_cashflow_formatted }}</div></z-card
+          >
+        }
+      </div>
+    }
+    @if (slug() === 'ai-costing') {
+      <section class="space-y-6">
+        <div
+          class="rounded-xl border border-teal-200/60 bg-linear-to-r from-teal-50 via-cyan-50 to-sky-50 p-5 dark:border-teal-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800"
+        >
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div class="text-xs uppercase tracking-widest text-teal-700/90 dark:text-teal-300/90">
+                AI Spend Observatory
               </div>
-            }
-            @if (slug() === 'ai-costing') {
-              <section class="space-y-6">
-                <div
-                  class="rounded-xl border border-teal-200/60 bg-linear-to-r from-teal-50 via-cyan-50 to-sky-50 p-5 dark:border-teal-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800"
-                  >
-                  <div class="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <div class="text-xs uppercase tracking-widest text-teal-700/90 dark:text-teal-300/90">
-                        AI Spend Observatory
-                      </div>
-                      <h2 class="mt-1 text-xl font-semibold">
-                        Costing Intelligence for {{ d.selected_year }} · {{ d.selected_month_label }}
-                      </h2>
-                      <p class="mt-1 text-sm text-muted-foreground">
-                        Yearly trend, monthly cadence, and day-level usage for LLM requests.
-                      </p>
-                    </div>
-                    <button z-button zType="outline" (click)="refreshAiCosting()">Refresh</button>
-                  </div>
-                </div>
-                <div class="flex flex-wrap items-end gap-3">
-                  <label class="text-sm">
-                    <span class="text-muted-foreground">Year</span>
-                    <select
-                      class="mt-1 block rounded-md border bg-background px-3 py-2 text-sm"
-                      [value]="d.selected_year"
-                      (change)="onAiYearChange($event)"
-                      >
-                      @for (year of aiAvailableYears(); track year) {
-                        <option [value]="year">{{ year }}</option>
-                      }
-                    </select>
-                  </label>
-                  <label class="text-sm">
-                    <span class="text-muted-foreground">Month</span>
-                    <select
-                      class="mt-1 block rounded-md border bg-background px-3 py-2 text-sm"
-                      [value]="d.selected_month"
-                      (change)="onAiMonthChange($event)"
-                      >
-                      @for (option of monthOptions; track option) {
-                        <option [value]="option.value">
-                          {{ option.label }}
-                        </option>
-                      }
-                    </select>
-                  </label>
-                </div>
-                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <z-card class="p-4">
-                    <div class="text-xs uppercase tracking-wider text-muted-foreground">Year Cost</div>
-                    <div class="mt-1 text-2xl font-semibold">
-                      ${{ d.year_summary?.total_cost | number: '1.4-4' }}
-                    </div>
-                  </z-card>
-                  <z-card class="p-4">
-                    <div class="text-xs uppercase tracking-wider text-muted-foreground">Year Requests</div>
-                    <div class="mt-1 text-2xl font-semibold">{{ d.year_summary?.request_count }}</div>
-                  </z-card>
-                  <z-card class="p-4">
-                    <div class="text-xs uppercase tracking-wider text-muted-foreground">Month Cost</div>
-                    <div class="mt-1 text-2xl font-semibold">
-                      ${{ d.month_summary?.total_cost | number: '1.4-4' }}
-                    </div>
-                  </z-card>
-                  <z-card class="p-4">
-                    <div class="text-xs uppercase tracking-wider text-muted-foreground">Month Requests</div>
-                    <div class="mt-1 text-2xl font-semibold">{{ d.month_summary?.request_count }}</div>
-                  </z-card>
-                </div>
-                <div class="grid gap-6 md:grid-cols-2">
-                  <z-card class="p-4">
-                    <canvas
-                      baseChart
-                      [type]="'line'"
-                      [data]="chart('aiYearlyCost')"
-                      [options]="{ responsive: true }"
-                    ></canvas>
-                  </z-card>
-                  <z-card class="p-4">
-                    <canvas
-                      baseChart
-                      [type]="'line'"
-                      [data]="chart('aiMonthlyCost')"
-                      [options]="{ responsive: true }"
-                    ></canvas>
-                  </z-card>
-                </div>
-                <div class="grid gap-6 md:grid-cols-2">
-                  <z-card class="p-4">
-                    <canvas
-                      baseChart
-                      [type]="'bar'"
-                      [data]="chart('aiMonthlyRequests')"
-                      [options]="{ responsive: true }"
-                    ></canvas>
-                  </z-card>
-                  <z-card class="p-4">
-                    <canvas
-                      baseChart
-                      [type]="'doughnut'"
-                      [data]="chart('aiFeatureBreakdown')"
-                      [options]="{ responsive: true }"
-                    ></canvas>
-                  </z-card>
-                </div>
-                <div class="grid gap-6 md:grid-cols-2">
-                  <z-card class="p-4">
-                    <canvas
-                      baseChart
-                      [type]="'bar'"
-                      [data]="chart('aiModelBreakdownCost')"
-                      [options]="{ responsive: true }"
-                    ></canvas>
-                  </z-card>
-                  <z-card class="p-4">
-                    <canvas
-                      baseChart
-                      [type]="'bar'"
-                      [data]="chart('aiModelBreakdownRequests')"
-                      [options]="{ responsive: true }"
-                    ></canvas>
-                  </z-card>
-                </div>
-                <div class="grid gap-6 md:grid-cols-2">
-                  <z-card class="p-4">
-                    <canvas
-                      baseChart
-                      [type]="'line'"
-                      [data]="chart('aiDailyCost')"
-                      [options]="{ responsive: true }"
-                    ></canvas>
-                  </z-card>
-                  <z-card class="p-4">
-                    <canvas
-                      baseChart
-                      [type]="'line'"
-                      [data]="chart('aiDailyRequests')"
-                      [options]="{ responsive: true }"
-                    ></canvas>
-                  </z-card>
-                </div>
-                <z-card
-                  class="rounded-lg border bg-card overflow-auto py-0 gap-0 [&_[data-slot=card-content]]:px-0"
-                  >
-                  <table z-table class="w-full text-sm">
-                    <thead class="bg-muted/50">
-                      <tr>
-                        <th class="p-2 text-left">Feature</th>
-                        <th class="p-2 text-right">Requests</th>
-                        <th class="p-2 text-right">Success</th>
-                        <th class="p-2 text-right">Failed</th>
-                        <th class="p-2 text-right">Tokens</th>
-                        <th class="p-2 text-right">Cost (USD)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (row of d.feature_breakdown_month; track row) {
-                        <tr class="border-t">
-                          <td class="p-2">{{ row.feature }}</td>
-                          <td class="p-2 text-right">{{ row.request_count }}</td>
-                          <td class="p-2 text-right">{{ row.success_count }}</td>
-                          <td class="p-2 text-right">{{ row.failed_count }}</td>
-                          <td class="p-2 text-right">{{ row.total_tokens }}</td>
-                          <td class="p-2 text-right">${{ row.total_cost | number: '1.4-4' }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </z-card>
-                <z-card
-                  class="rounded-lg border bg-card overflow-auto py-0 gap-0 [&_[data-slot=card-content]]:px-0"
-                  >
-                  <table z-table class="w-full text-sm">
-                    <thead class="bg-muted/50">
-                      <tr>
-                        <th class="p-2 text-left">Model</th>
-                        <th class="p-2 text-right">Requests</th>
-                        <th class="p-2 text-right">Success</th>
-                        <th class="p-2 text-right">Failed</th>
-                        <th class="p-2 text-right">Tokens</th>
-                        <th class="p-2 text-right">Cost (USD)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (row of d.model_breakdown_month; track row) {
-                        <tr class="border-t">
-                          <td class="p-2">{{ row.model }}</td>
-                          <td class="p-2 text-right">{{ row.request_count }}</td>
-                          <td class="p-2 text-right">{{ row.success_count }}</td>
-                          <td class="p-2 text-right">{{ row.failed_count }}</td>
-                          <td class="p-2 text-right">{{ row.total_tokens }}</td>
-                          <td class="p-2 text-right">${{ row.total_cost | number: '1.4-4' }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </z-card>
-              </section>
-            }
-            @if (slug() === 'revenue') {
-              <div class="grid gap-6 md:grid-cols-2">
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('revenueMonthly')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'line'"
-                  [data]="chart('revenueMonthly')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-              </div>
-            }
-            @if (slug() === 'kpi-dashboard') {
-              <div class="grid gap-6 md:grid-cols-2">
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'line'"
-                  [data]="chart('kpiRevenue')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('kpiCustomers')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-              </div>
-            }
-            @if (slug() === 'invoice-status') {
-              <div class="grid gap-6 md:grid-cols-2">
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'doughnut'"
-                  [data]="chart('statusCounts')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('aging')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-              </div>
-            }
-            @if (slug() === 'customer-ltv') {
-              <div class="grid gap-6 md:grid-cols-2">
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('ltvTop')"
-                  [options]="{ responsive: true, indexAxis: 'y' }"
-                  ></canvas
-                ></z-card>
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'pie'"
-                  [data]="chart('ltvSegment')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-              </div>
-            }
-            @if (slug() === 'product-revenue') {
-              <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <z-card class="p-4">
-                  <div class="text-sm">Total Revenue</div>
-                  <div class="text-2xl font-semibold">{{ d.total_revenue_formatted }}</div>
-                </z-card>
-                <z-card class="p-4">
-                  <div class="text-sm">Total Profit</div>
-                  <div class="text-2xl font-semibold">{{ d.total_profit_formatted }}</div>
-                </z-card>
-                <z-card class="p-4">
-                  <div class="text-sm">Profit Margin</div>
-                  <div class="text-2xl font-semibold">{{ d.overall_profit_margin_percent }}%</div>
-                </z-card>
-                <z-card class="p-4">
-                  <div class="text-sm">Applications</div>
-                  <div class="text-2xl font-semibold">{{ d.total_applications }}</div>
-                </z-card>
-              </div>
-              <div class="grid gap-6 md:grid-cols-2">
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('productRevenue')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('productProfit')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-              </div>
-              <div class="grid gap-6 md:grid-cols-2">
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'line'"
-                  [data]="chart('profitMonthly')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('productMargin')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-              </div>
-              <div class="grid gap-6 md:grid-cols-2">
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('invoiceProfit')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'doughnut'"
-                  [data]="chart('typeRevenue')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-              </div>
-              <z-card
-                class="rounded-lg border bg-card overflow-auto py-0 gap-0 [&_[data-slot=card-content]]:px-0"
-                >
-                <table z-table class="w-full text-sm">
-                  <thead class="bg-muted/50">
-                    <tr>
-                      <th class="p-2 text-left">Product</th>
-                      <th class="p-2 text-right">Base</th>
-                      <th class="p-2 text-right">Retail</th>
-                      <th class="p-2 text-right">Unit Profit</th>
-                      <th class="p-2 text-right">Revenue</th>
-                      <th class="p-2 text-right">Total Profit</th>
-                      <th class="p-2 text-right">Margin %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (row of d.product_data; track row) {
-                      <tr class="border-t">
-                        <td class="p-2">{{ row.name }}</td>
-                        <td class="p-2 text-right">{{ row.base_price_formatted }}</td>
-                        <td class="p-2 text-right">{{ row.retail_price_formatted }}</td>
-                        <td class="p-2 text-right">{{ row.unit_profit_formatted }}</td>
-                        <td class="p-2 text-right">{{ row.total_revenue_formatted }}</td>
-                        <td class="p-2 text-right">{{ row.total_profit_formatted }}</td>
-                        <td class="p-2 text-right">{{ row.profit_margin_percent }}%</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </z-card>
-              <z-card
-                class="rounded-lg border bg-card overflow-auto py-0 gap-0 [&_[data-slot=card-content]]:px-0"
-                >
-                <table z-table class="w-full text-sm">
-                  <thead class="bg-muted/50">
-                    <tr>
-                      <th class="p-2 text-left">Invoice</th>
-                      <th class="p-2 text-left">Customer</th>
-                      <th class="p-2 text-left">Date</th>
-                      <th class="p-2 text-right">Amount</th>
-                      <th class="p-2 text-right">Profit</th>
-                      <th class="p-2 text-right">Margin %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (row of d.invoice_profit_data; track row) {
-                      <tr class="border-t">
-                        <td class="p-2">{{ row.invoice_number }}</td>
-                        <td class="p-2">{{ row.customer_name }}</td>
-                        <td class="p-2">{{ row.invoice_date | appDate }}</td>
-                        <td class="p-2 text-right">{{ row.total_amount_formatted }}</td>
-                        <td class="p-2 text-right">{{ row.profit_formatted }}</td>
-                        <td class="p-2 text-right">{{ row.profit_margin_percent }}%</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </z-card>
-            }
-            @if (slug() === 'cash-flow') {
-              <div class="grid gap-6 md:grid-cols-2">
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'line'"
-                  [data]="chart('cashflowMonthly')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('paymentTypes')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-              </div>
-            }
-            @if (slug() === 'application-pipeline') {
-              <div class="grid gap-6 md:grid-cols-2">
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'doughnut'"
-                  [data]="chart('statusCounts')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('processingTime')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-              </div>
-            }
-            @if (slug() === 'product-demand') {
-              <div class="grid gap-6 md:grid-cols-2">
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'line'"
-                  [data]="chart('demandTotal')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-                <z-card class="p-4"
-                  ><canvas
-                  baseChart
-                  [type]="'bar'"
-                  [data]="chart('demandGrowth')"
-                  [options]="{ responsive: true }"
-                  ></canvas
-                ></z-card>
-              </div>
-            }
-            @if (slug() === 'monthly-invoices') {
-              <z-card
-                class="rounded-lg border bg-card overflow-auto py-0 gap-0 [&_[data-slot=card-content]]:px-0"
-                >
-                <table z-table class="w-full text-sm">
-                  <thead class="bg-muted/50">
-                    <tr>
-                      <th class="p-2 text-left">Invoice</th>
-                      <th class="p-2 text-left">Customer</th>
-                      <th class="p-2 text-left">Date</th>
-                      <th class="p-2 text-right">Amount</th>
-                      <th class="p-2 text-right">Due</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (row of d.invoices; track row) {
-                      <tr class="border-t">
-                        <td class="p-2">{{ row.invoice_number }}</td>
-                        <td class="p-2">{{ row.customer_name }}</td>
-                        <td class="p-2">{{ row.invoice_date | appDate }}</td>
-                        <td class="p-2 text-right">{{ row.total_amount_formatted }}</td>
-                        <td class="p-2 text-right">{{ row.total_due_formatted }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </z-card>
-            }
-          }
+              <h2 class="mt-1 text-xl font-semibold">
+                Costing Intelligence for {{ d.selected_year }} · {{ d.selected_month_label }}
+              </h2>
+              <p class="mt-1 text-sm text-muted-foreground">
+                Yearly trend, monthly cadence, and day-level usage for LLM requests.
+              </p>
+            </div>
+            <button z-button zType="outline" (click)="refreshAiCosting()">Refresh</button>
+          </div>
         </div>
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="text-sm">
+            <span class="text-muted-foreground">Year</span>
+            <select
+              class="mt-1 block rounded-md border bg-background px-3 py-2 text-sm"
+              [value]="d.selected_year"
+              (change)="onAiYearChange($event)"
+            >
+              @for (year of aiAvailableYears(); track year) {
+                <option [value]="year">{{ year }}</option>
+              }
+            </select>
+          </label>
+          <label class="text-sm">
+            <span class="text-muted-foreground">Month</span>
+            <select
+              class="mt-1 block rounded-md border bg-background px-3 py-2 text-sm"
+              [value]="d.selected_month"
+              (change)="onAiMonthChange($event)"
+            >
+              @for (option of monthOptions; track option) {
+                <option [value]="option.value">
+                  {{ option.label }}
+                </option>
+              }
+            </select>
+          </label>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <z-card class="p-4">
+            <div class="text-xs uppercase tracking-wider text-muted-foreground">Year Cost</div>
+            <div class="mt-1 text-2xl font-semibold">
+              ${{ d.year_summary?.total_cost | number: '1.4-4' }}
+            </div>
+          </z-card>
+          <z-card class="p-4">
+            <div class="text-xs uppercase tracking-wider text-muted-foreground">Year Requests</div>
+            <div class="mt-1 text-2xl font-semibold">{{ d.year_summary?.request_count }}</div>
+          </z-card>
+          <z-card class="p-4">
+            <div class="text-xs uppercase tracking-wider text-muted-foreground">Month Cost</div>
+            <div class="mt-1 text-2xl font-semibold">
+              ${{ d.month_summary?.total_cost | number: '1.4-4' }}
+            </div>
+          </z-card>
+          <z-card class="p-4">
+            <div class="text-xs uppercase tracking-wider text-muted-foreground">Month Requests</div>
+            <div class="mt-1 text-2xl font-semibold">{{ d.month_summary?.request_count }}</div>
+          </z-card>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4">
+            <canvas
+              baseChart
+              [type]="'line'"
+              [data]="chart('aiYearlyCost')"
+              [options]="{ responsive: true }"
+            ></canvas>
+          </z-card>
+          <z-card class="p-4">
+            <canvas
+              baseChart
+              [type]="'line'"
+              [data]="chart('aiMonthlyCost')"
+              [options]="{ responsive: true }"
+            ></canvas>
+          </z-card>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4">
+            <canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('aiMonthlyRequests')"
+              [options]="{ responsive: true }"
+            ></canvas>
+          </z-card>
+          <z-card class="p-4">
+            <canvas
+              baseChart
+              [type]="'doughnut'"
+              [data]="chart('aiFeatureBreakdown')"
+              [options]="{ responsive: true }"
+            ></canvas>
+          </z-card>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4">
+            <canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('aiModelBreakdownCost')"
+              [options]="{ responsive: true }"
+            ></canvas>
+          </z-card>
+          <z-card class="p-4">
+            <canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('aiModelBreakdownRequests')"
+              [options]="{ responsive: true }"
+            ></canvas>
+          </z-card>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4">
+            <canvas
+              baseChart
+              [type]="'line'"
+              [data]="chart('aiDailyCost')"
+              [options]="{ responsive: true }"
+            ></canvas>
+          </z-card>
+          <z-card class="p-4">
+            <canvas
+              baseChart
+              [type]="'line'"
+              [data]="chart('aiDailyRequests')"
+              [options]="{ responsive: true }"
+            ></canvas>
+          </z-card>
+        </div>
+        <z-card
+          class="rounded-lg border bg-card overflow-auto py-0 gap-0 **:data-[slot=card-content]:px-0"
+        >
+          <table z-table class="w-full text-sm">
+            <thead class="bg-muted/50">
+              <tr>
+                <th class="p-2 text-left">Feature</th>
+                <th class="p-2 text-right">Requests</th>
+                <th class="p-2 text-right">Success</th>
+                <th class="p-2 text-right">Failed</th>
+                <th class="p-2 text-right">Tokens</th>
+                <th class="p-2 text-right">Cost (USD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of d.feature_breakdown_month; track row) {
+                <tr class="border-t">
+                  <td class="p-2">{{ row.feature }}</td>
+                  <td class="p-2 text-right">{{ row.request_count }}</td>
+                  <td class="p-2 text-right">{{ row.success_count }}</td>
+                  <td class="p-2 text-right">{{ row.failed_count }}</td>
+                  <td class="p-2 text-right">{{ row.total_tokens }}</td>
+                  <td class="p-2 text-right">${{ row.total_cost | number: '1.4-4' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </z-card>
+        <z-card
+          class="rounded-lg border bg-card overflow-auto py-0 gap-0 **:data-[slot=card-content]:px-0"
+        >
+          <table z-table class="w-full text-sm">
+            <thead class="bg-muted/50">
+              <tr>
+                <th class="p-2 text-left">Model</th>
+                <th class="p-2 text-right">Requests</th>
+                <th class="p-2 text-right">Success</th>
+                <th class="p-2 text-right">Failed</th>
+                <th class="p-2 text-right">Tokens</th>
+                <th class="p-2 text-right">Cost (USD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of d.model_breakdown_month; track row) {
+                <tr class="border-t">
+                  <td class="p-2">{{ row.model }}</td>
+                  <td class="p-2 text-right">{{ row.request_count }}</td>
+                  <td class="p-2 text-right">{{ row.success_count }}</td>
+                  <td class="p-2 text-right">{{ row.failed_count }}</td>
+                  <td class="p-2 text-right">{{ row.total_tokens }}</td>
+                  <td class="p-2 text-right">${{ row.total_cost | number: '1.4-4' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </z-card>
+      </section>
+    }
+    @if (slug() === 'revenue') {
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('revenueMonthly')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'line'"
+            [data]="chart('revenueMonthly')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+      </div>
+    }
+    @if (slug() === 'kpi-dashboard') {
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'line'"
+            [data]="chart('kpiRevenue')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('kpiCustomers')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+      </div>
+    }
+    @if (slug() === 'invoice-status') {
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'doughnut'"
+            [data]="chart('statusCounts')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('aging')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+      </div>
+    }
+    @if (slug() === 'customer-ltv') {
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('ltvTop')"
+            [options]="{ responsive: true, indexAxis: 'y' }"
+          ></canvas
+        ></z-card>
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'pie'"
+            [data]="chart('ltvSegment')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+      </div>
+    }
+    @if (slug() === 'product-revenue') {
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <z-card class="p-4">
+          <div class="text-sm">Total Revenue</div>
+          <div class="text-2xl font-semibold">{{ d.total_revenue_formatted }}</div>
+        </z-card>
+        <z-card class="p-4">
+          <div class="text-sm">Total Profit</div>
+          <div class="text-2xl font-semibold">{{ d.total_profit_formatted }}</div>
+        </z-card>
+        <z-card class="p-4">
+          <div class="text-sm">Profit Margin</div>
+          <div class="text-2xl font-semibold">{{ d.overall_profit_margin_percent }}%</div>
+        </z-card>
+        <z-card class="p-4">
+          <div class="text-sm">Applications</div>
+          <div class="text-2xl font-semibold">{{ d.total_applications }}</div>
+        </z-card>
+      </div>
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('productRevenue')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('productProfit')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+      </div>
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'line'"
+            [data]="chart('profitMonthly')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('productMargin')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+      </div>
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('invoiceProfit')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'doughnut'"
+            [data]="chart('typeRevenue')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+      </div>
+      <z-card
+        class="rounded-lg border bg-card overflow-auto py-0 gap-0 **:data-[slot=card-content]:px-0"
+      >
+        <table z-table class="w-full text-sm">
+          <thead class="bg-muted/50">
+            <tr>
+              <th class="p-2 text-left">Product</th>
+              <th class="p-2 text-right">Base</th>
+              <th class="p-2 text-right">Retail</th>
+              <th class="p-2 text-right">Unit Profit</th>
+              <th class="p-2 text-right">Revenue</th>
+              <th class="p-2 text-right">Total Profit</th>
+              <th class="p-2 text-right">Margin %</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of d.product_data; track row) {
+              <tr class="border-t">
+                <td class="p-2">{{ row.name }}</td>
+                <td class="p-2 text-right">{{ row.base_price_formatted }}</td>
+                <td class="p-2 text-right">{{ row.retail_price_formatted }}</td>
+                <td class="p-2 text-right">{{ row.unit_profit_formatted }}</td>
+                <td class="p-2 text-right">{{ row.total_revenue_formatted }}</td>
+                <td class="p-2 text-right">{{ row.total_profit_formatted }}</td>
+                <td class="p-2 text-right">{{ row.profit_margin_percent }}%</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </z-card>
+      <z-card
+        class="rounded-lg border bg-card overflow-auto py-0 gap-0 **:data-[slot=card-content]:px-0"
+      >
+        <table z-table class="w-full text-sm">
+          <thead class="bg-muted/50">
+            <tr>
+              <th class="p-2 text-left">Invoice</th>
+              <th class="p-2 text-left">Customer</th>
+              <th class="p-2 text-left">Date</th>
+              <th class="p-2 text-right">Amount</th>
+              <th class="p-2 text-right">Profit</th>
+              <th class="p-2 text-right">Margin %</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of d.invoice_profit_data; track row) {
+              <tr class="border-t">
+                <td class="p-2">{{ row.invoice_number }}</td>
+                <td class="p-2">{{ row.customer_name }}</td>
+                <td class="p-2">{{ row.invoice_date | appDate }}</td>
+                <td class="p-2 text-right">{{ row.total_amount_formatted }}</td>
+                <td class="p-2 text-right">{{ row.profit_formatted }}</td>
+                <td class="p-2 text-right">{{ row.profit_margin_percent }}%</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </z-card>
+    }
+    @if (slug() === 'cash-flow') {
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'line'"
+            [data]="chart('cashflowMonthly')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('paymentTypes')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+      </div>
+    }
+    @if (slug() === 'application-pipeline') {
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'doughnut'"
+            [data]="chart('statusCounts')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('processingTime')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+      </div>
+    }
+    @if (slug() === 'product-demand') {
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'line'"
+            [data]="chart('demandTotal')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+        <z-card class="p-4"
+          ><canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('demandGrowth')"
+            [options]="{ responsive: true }"
+          ></canvas
+        ></z-card>
+      </div>
+    }
+    @if (slug() === 'monthly-invoices') {
+      <z-card
+        class="rounded-lg border bg-card overflow-auto py-0 gap-0 **:data-[slot=card-content]:px-0"
+      >
+        <table z-table class="w-full text-sm">
+          <thead class="bg-muted/50">
+            <tr>
+              <th class="p-2 text-left">Invoice</th>
+              <th class="p-2 text-left">Customer</th>
+              <th class="p-2 text-left">Date</th>
+              <th class="p-2 text-right">Amount</th>
+              <th class="p-2 text-right">Due</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of d.invoices; track row) {
+              <tr class="border-t">
+                <td class="p-2">{{ row.invoice_number }}</td>
+                <td class="p-2">{{ row.customer_name }}</td>
+                <td class="p-2">{{ row.invoice_date | appDate }}</td>
+                <td class="p-2 text-right">{{ row.total_amount_formatted }}</td>
+                <td class="p-2 text-right">{{ row.total_due_formatted }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </z-card>
+    }
+  }
+</div>

@@ -1,13 +1,13 @@
 from decimal import Decimal
 
+from core.services.invoice_service import create_invoice
+from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
-
-from core.services.invoice_service import create_invoice
-from customers.models import Customer
 from invoices.models import Invoice
+from products.models import Product
+from rest_framework.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -16,6 +16,7 @@ class CreateInvoiceDuplicateNoTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="testuser", password="testpass")
         self.customer = Customer.objects.create(customer_type="person", first_name="Alice", last_name="Test")
+        self.product = Product.objects.create(name="Test Product", code="DUP-INV-1")
 
     def test_create_invoice_with_duplicate_invoice_no_gets_new_number(self):
         # Arrange: create an existing invoice with a specific invoice_no
@@ -37,7 +38,9 @@ class CreateInvoiceDuplicateNoTest(TestCase):
             "due_date": invoice_date,
             "notes": "Duplicate test",
             "sent": False,
-            "invoice_applications": [],
+            "invoice_applications": [
+                {"product": self.product.id, "amount": Decimal("100000")},
+            ],
         }
 
         # Act

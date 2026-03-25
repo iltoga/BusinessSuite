@@ -142,10 +142,6 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
   // Product-specific bulk delete query
   private readonly productBulkDeleteQuery = signal<string>('');
-  readonly columnFilters = signal<Record<string, string[]>>({
-    deprecated: ['active'],
-    productCategoryName: [],
-  });
 
   readonly deprecatedFilterOptions: ColumnFilterOption[] = [
     { value: 'active', label: 'Not deprecated' },
@@ -273,6 +269,10 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
   constructor() {
     super();
+    this.columnFilters.set({
+      deprecated: ['active'],
+      productCategoryName: [],
+    });
     this.config = {
       entityType: 'products',
       entityLabel: 'Products',
@@ -316,21 +316,6 @@ export class ProductListComponent extends BaseListComponent<Product> {
         return response.products;
       }),
     );
-  }
-
-  /**
-   * Handle column filter change
-   */
-  onColumnFilterChange(event: ColumnFilterChangeEvent): void {
-    if (event.column !== 'deprecated' && event.column !== 'productCategoryName') {
-      return;
-    }
-    this.columnFilters.update((current) => ({
-      ...current,
-      [event.column]: event.values,
-    }));
-    this.page.set(1);
-    this.reload();
   }
 
   /**
@@ -419,8 +404,8 @@ export class ProductListComponent extends BaseListComponent<Product> {
    */
   override openBulkDeleteDialog(): void {
     const query = this.query().trim();
-    const mode = query ? 'selected' : 'all';
-    const detailsText = query
+    const mode = this.hasAnyFilter() ? 'selected' : 'all';
+    const detailsText = this.hasAnyFilter()
       ? 'This will permanently remove all matching product records and their associated tasks from the database.'
       : 'This will permanently remove all product records and their associated tasks from the database.';
 
@@ -679,8 +664,9 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
   private resolveDeprecatedFilter(): { deprecated: boolean | undefined; hideDeprecated: boolean } {
     const selected = new Set(this.columnFilters()['deprecated'] ?? []);
+    // Empty = no filter = show all (same as all-selected)
     if (selected.size === 0) {
-      return { deprecated: undefined, hideDeprecated: true };
+      return { deprecated: undefined, hideDeprecated: false };
     }
     if (selected.has('active') && selected.has('deprecated')) {
       return { deprecated: undefined, hideDeprecated: false };
@@ -691,7 +677,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
     if (selected.has('active')) {
       return { deprecated: false, hideDeprecated: false };
     }
-    return { deprecated: undefined, hideDeprecated: true };
+    return { deprecated: undefined, hideDeprecated: false };
   }
 
   private resolveCategoryFilter(): string | undefined {
