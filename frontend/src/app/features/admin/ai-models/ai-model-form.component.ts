@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -94,12 +94,11 @@ interface ModelOption extends ZardComboboxOption {
   selector: 'app-ai-model-form',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     RouterModule,
     ZardButtonComponent,
-    ZardComboboxComponent,
-  ],
+    ZardComboboxComponent
+],
   templateUrl: './ai-model-form.component.html',
   styleUrls: ['./ai-model-form.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

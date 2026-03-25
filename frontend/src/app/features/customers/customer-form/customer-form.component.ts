@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,15 +6,16 @@ import {
   signal,
   type OnInit,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule, Validators, type FormGroup } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
 
 import { AsyncJob, type CountryCode, type Customer } from '@/core/api';
-import { extractJobId } from '@/core/utils/async-job-contract';
 import { CustomersService } from '@/core/services/customers.service';
 import { JobService } from '@/core/services/job.service';
 import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service';
 import { SseService } from '@/core/services/sse.service';
+import { extractJobId } from '@/core/utils/async-job-contract';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardCheckboxComponent } from '@/shared/components/checkbox';
@@ -82,7 +82,6 @@ interface CustomerUpdateDto extends CustomerCreateDto {
   selector: 'app-customer-form',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardInputDirective,
     ZardComboboxComponent,
@@ -318,9 +317,12 @@ export class CustomerFormComponent
     this.setupValueChangeSubscriptions();
 
     // Set up conditional validation based on customer_type changes
-    this.form.get('customer_type')?.valueChanges.subscribe((customerType) => {
-      this.updateConditionalValidators(customerType ?? 'person');
-    });
+    this.form
+      .get('customer_type')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((customerType) => {
+        this.updateConditionalValidators(customerType ?? 'person');
+      });
 
     // Initial validation setup
     this.updateConditionalValidators(this.form.get('customer_type')?.value ?? 'person');
@@ -508,21 +510,36 @@ export class CustomerFormComponent
 
   // Private methods for OCR and form handling
   private setupValueChangeSubscriptions(): void {
-    this.form.get('passport_issue_date')?.valueChanges.subscribe(() => {
-      this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
-    });
-    this.form.get('passport_expiration_date')?.valueChanges.subscribe(() => {
-      this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
-    });
-    this.form.get('birthdate')?.valueChanges.subscribe(() => {
-      this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
-    });
-    this.form.get('notify_documents_expiration')?.valueChanges.subscribe(() => {
-      this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
-    });
-    this.form.get('notify_by')?.valueChanges.subscribe(() => {
-      this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
-    });
+    this.form
+      .get('passport_issue_date')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+      });
+    this.form
+      .get('passport_expiration_date')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+      });
+    this.form
+      .get('birthdate')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+      });
+    this.form
+      .get('notify_documents_expiration')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+      });
+    this.form
+      .get('notify_by')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+      });
   }
 
   private setPassportFilePreview(file: File): void {

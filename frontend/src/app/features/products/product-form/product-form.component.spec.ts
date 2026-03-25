@@ -38,6 +38,7 @@ describe('ProductFormComponent', () => {
       productsUpdate: vi.fn(),
     };
     component.itemId = 3;
+    component.destroyRef = { onDestroy: vi.fn().mockReturnValue(() => {}) };
 
     component.form = (ProductFormComponent.prototype as any).buildForm.call(component);
     component.addTask = (ProductFormComponent.prototype as any).addTask.bind(component);
@@ -271,5 +272,37 @@ describe('ProductFormComponent', () => {
         page: 2,
       },
     });
+  });
+
+  it('task calendar toggle stops syncing notify after destroyRef fires', () => {
+    const component = createHarness();
+    const teardownCallbacks: Array<() => void> = [];
+    component.destroyRef = {
+      onDestroy(cb: () => void) {
+        teardownCallbacks.push(cb);
+        return () => {};
+      },
+    };
+    // Re-initialize form with the updated destroyRef
+    component.form = (ProductFormComponent.prototype as any).buildForm.call(component);
+
+    component.addTask();
+    const taskGroup = component.tasksArray.at(0);
+    const calendarControl = taskGroup.get('addTaskToCalendar');
+    const notifyControl = taskGroup.get('notifyCustomer');
+
+    // Before destroy: toggling calendar enables/disables notify
+    calendarControl.setValue(true);
+    expect(notifyControl.enabled).toBe(true);
+
+    calendarControl.setValue(false);
+    expect(notifyControl.disabled).toBe(true);
+
+    // Fire destroy
+    teardownCallbacks.forEach((cb) => cb());
+
+    // After destroy: toggling calendar should NOT affect notify
+    calendarControl.setValue(true);
+    expect(notifyControl.disabled).toBe(true);
   });
 });

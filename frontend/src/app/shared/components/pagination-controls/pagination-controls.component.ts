@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -7,7 +7,7 @@ import { ZardIconComponent } from '@/shared/components/icon';
 @Component({
   selector: 'app-pagination-controls',
   standalone: true,
-  imports: [CommonModule, ZardButtonComponent, ZardIconComponent],
+  imports: [ZardButtonComponent, ZardIconComponent],
   templateUrl: './pagination-controls.component.html',
   styleUrls: ['./pagination-controls.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

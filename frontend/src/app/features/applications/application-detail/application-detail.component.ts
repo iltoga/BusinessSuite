@@ -15,6 +15,7 @@ import {
   untracked,
   type OnInit,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -52,7 +53,7 @@ import { FileUploadComponent } from '@/shared/components/file-upload';
 import { ZardIconComponent, type ZardIcon } from '@/shared/components/icon';
 import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { ZardInputDirective } from '@/shared/components/input';
-import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
+
 import {
   CardSkeletonComponent,
   TableSkeletonComponent,
@@ -73,7 +74,6 @@ import {
   ApplicationDeleteDialogComponent,
   type ApplicationDeleteDialogData,
 } from '@/shared/components/application-delete-dialog';
-import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import { ZardDialogService } from '@/shared/components/dialog';
 import {
   DocumentViewDialogContentComponent,
@@ -133,8 +133,6 @@ interface PreUploadValidationOutcome {
     ZardIconComponent,
     ImageMagnifierComponent,
     ZardInputDirective,
-    ZardPopoverComponent,
-    ZardPopoverDirective,
     CardSkeletonComponent,
     TableSkeletonComponent,
     ZardSkeletonComponent,
@@ -145,7 +143,6 @@ interface PreUploadValidationOutcome {
     ApplicationWorkflowTimelineComponent,
     AddDocumentDialogComponent,
     ApplicationDeleteDialogComponent,
-    ConfirmDialogComponent,
     OcrReviewDialogComponent,
     OcrDataDialogComponent,
   ],
@@ -649,10 +646,12 @@ export class ApplicationDetailComponent implements OnInit {
     });
 
     // When categorization applies results, reload the application
-    this.catHandler.applicationReloadRequested.subscribe(() => {
-      const app = this.application();
-      if (app) this.loadApplication(app.id);
-    });
+    this.catHandler.applicationReloadRequested
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        const app = this.application();
+        if (app) this.loadApplication(app.id);
+      });
   }
 
   ngOnInit(): void {

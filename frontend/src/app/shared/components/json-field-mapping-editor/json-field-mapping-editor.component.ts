@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -36,7 +36,7 @@ type FieldMappingRowForm = FormGroup<{
 @Component({
   selector: 'app-json-field-mapping-editor',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ZardCardComponent, ZardButtonComponent, ZardInputDirective],
+  imports: [ReactiveFormsModule, ZardCardComponent, ZardButtonComponent, ZardInputDirective],
   templateUrl: './json-field-mapping-editor.component.html',
   styleUrls: ['./json-field-mapping-editor.component.css'],
   providers: [

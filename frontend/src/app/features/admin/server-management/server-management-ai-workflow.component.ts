@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { ZardBadgeComponent } from '@/shared/components/badge';
@@ -14,14 +14,13 @@ import { ServerManagementAiWorkflowFeatureCardComponent } from './server-managem
   selector: 'app-server-management-ai-workflow',
   standalone: true,
   imports: [
-    CommonModule,
     ZardCardComponent,
     ZardButtonComponent,
     ZardBadgeComponent,
     TypeaheadComboboxComponent,
     ServerManagementAiWorkflowFailoverChainComponent,
-    ServerManagementAiWorkflowFeatureCardComponent,
-  ],
+    ServerManagementAiWorkflowFeatureCardComponent
+],
   templateUrl: './server-management-ai-workflow.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

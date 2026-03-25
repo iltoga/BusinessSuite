@@ -4,7 +4,7 @@ import { ZardButtonComponent } from '@/shared/components/button';
 import { Z_MODAL_DATA, ZardDialogRef } from '@/shared/components/dialog';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardLoaderComponent } from '@/shared/components/loader/loader.component';
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -23,7 +23,7 @@ export interface JobProgressData {
 @Component({
   selector: 'app-job-progress-dialog',
   standalone: true,
-  imports: [CommonModule, ZardLoaderComponent, ZardButtonComponent, ZardIconComponent],
+  imports: [ZardLoaderComponent, ZardButtonComponent, ZardIconComponent],
   template: `
     <div class="flex flex-col items-center justify-center py-6 space-y-4">
       @if (!isFinished()) {

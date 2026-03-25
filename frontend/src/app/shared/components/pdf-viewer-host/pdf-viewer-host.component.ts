@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -23,12 +23,11 @@ import { ZardSkeletonComponent } from '@/shared/components/skeleton';
   selector: 'app-pdf-viewer-host',
   standalone: true,
   imports: [
-    CommonModule,
     NgxExtendedPdfViewerModule,
     ZardButtonComponent,
     ZardIconComponent,
-    ZardSkeletonComponent,
-  ],
+    ZardSkeletonComponent
+],
   templateUrl: './pdf-viewer-host.component.html',
   styleUrls: ['./pdf-viewer-host.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

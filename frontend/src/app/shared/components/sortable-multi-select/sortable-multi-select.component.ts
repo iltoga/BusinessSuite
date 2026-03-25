@@ -1,5 +1,5 @@
 import { DragDropModule, moveItemInArray, type CdkDragDrop } from '@angular/cdk/drag-drop';
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
 
 export interface SortableOption {
@@ -10,7 +10,7 @@ export interface SortableOption {
 @Component({
   selector: 'app-sortable-multi-select',
   standalone: true,
-  imports: [CommonModule, DragDropModule],
+  imports: [DragDropModule],
   templateUrl: './sortable-multi-select.component.html',
   styleUrls: ['./sortable-multi-select.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

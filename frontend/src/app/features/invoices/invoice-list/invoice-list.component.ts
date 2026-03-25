@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -57,7 +57,6 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   selector: 'app-invoice-list',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     DataTableComponent,
     SearchToolbarComponent,
@@ -72,8 +71,8 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ShortcutHighlightPipe,
     ...ZardDropdownImports,
     ContextHelpDirective,
-    AppDatePipe,
-  ],
+    AppDatePipe
+],
   templateUrl: './invoice-list.component.html',
   styleUrls: ['./invoice-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

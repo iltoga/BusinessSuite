@@ -3,7 +3,6 @@ import { AuthService } from '@/core/services/auth.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { ThemeName } from '@/core/theme.config';
 import { ZardButtonComponent } from '@/shared/components/button';
-import { ZardIconComponent } from '@/shared/components/icon';
 import { Component, inject } from '@angular/core';
 
 /**
@@ -22,7 +21,7 @@ import { Component, inject } from '@angular/core';
 @Component({
   selector: 'app-theme-switcher',
   standalone: true,
-  imports: [ZardButtonComponent, ZardIconComponent],
+  imports: [ZardButtonComponent],
   template: `
     <div class="flex gap-4 items-center">
       <!-- Dark Mode Toggle -->

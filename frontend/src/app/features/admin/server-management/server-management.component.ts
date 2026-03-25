@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -160,13 +160,12 @@ type ServerActionName = 'clearCache' | 'mediaDiagnostic' | 'mediaRepair' | 'medi
   selector: 'app-server-management',
   standalone: true,
   imports: [
-    CommonModule,
     ZardCardComponent,
     ZardButtonComponent,
     ZardBadgeComponent,
     ServerManagementAiWorkflowComponent,
-    ...ZardTooltipImports,
-  ],
+    ...ZardTooltipImports
+],
   templateUrl: './server-management.component.html',
   styleUrls: ['./server-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

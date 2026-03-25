@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, computed, forwardRef, model } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
@@ -8,7 +8,7 @@ import { mergeClasses } from '@/shared/utils/merge-classes';
 @Component({
   selector: 'z-checkbox',
   standalone: true,
-  imports: [CommonModule, ZardIconComponent],
+  imports: [ZardIconComponent],
   template: `
     <label
       class="flex items-center gap-2 cursor-pointer"

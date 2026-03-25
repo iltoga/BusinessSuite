@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, HostBinding, inject, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
@@ -9,7 +9,7 @@ import { MenuService } from '@/shared/services/menu.service';
 @Component({
   selector: 'app-menu-item',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, ZardIconComponent],
+  imports: [RouterLink, RouterLinkActive, ZardIconComponent],
   templateUrl: './menu-item.component.html',
   styleUrl: './menu-item.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -41,13 +41,17 @@
 </z-dropdown-menu-content>
 
 @if (printPreviewOpen()) {
-  <app-pdf-viewer-host
-    [src]="printPreviewBlob()"
-    [isBusy]="printPreviewLoading()"
-    [errorMessage]="printPreviewError()"
-    [showDownloadButton]="true"
-    [downloadFileName]="printPreviewFilename()"
-    (downloadRequested)="downloadPreviewPdf()"
-    (closed)="closePrintPreview()"
-  />
+  @defer {
+    <app-pdf-viewer-host
+      [src]="printPreviewBlob()"
+      [isBusy]="printPreviewLoading()"
+      [errorMessage]="printPreviewError()"
+      [showDownloadButton]="true"
+      [downloadFileName]="printPreviewFilename()"
+      (downloadRequested)="downloadPreviewPdf()"
+      (closed)="closePrintPreview()"
+    />
+  } @placeholder {
+    <div class="flex items-center justify-center p-8 text-muted-foreground">Loading viewer…</div>
+  }
 }

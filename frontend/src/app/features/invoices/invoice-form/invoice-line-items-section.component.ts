@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
 
@@ -10,12 +10,11 @@ import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/compone
   selector: 'app-invoice-line-items-section',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardCardComponent,
     ZardButtonComponent,
-    ZardComboboxComponent,
-  ],
+    ZardComboboxComponent
+],
   templateUrl: './invoice-line-items-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

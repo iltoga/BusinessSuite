@@ -273,18 +273,22 @@
 
         @if (isCategorizationActive()) {
           <div class="mb-4">
-            <app-categorization-progress
-              [totalFiles]="categorizationTotalFiles()"
-              [processedFiles]="categorizationProcessedFiles()"
-              [progressPercentOverride]="categorizationProgressPercentOverride()"
-              [results]="categorizationResults()"
-              [isComplete]="categorizationComplete()"
-              [isApplying]="isCategorizationApplying()"
-              [statusMessage]="categorizationStatusMessage()"
-              (applyAll)="onApplyCategorization($event)"
-              (dismissSelected)="dismissSelectedCategorization($event)"
-              (dismiss)="dismissCategorization()"
-            />
+            @defer {
+              <app-categorization-progress
+                [totalFiles]="categorizationTotalFiles()"
+                [processedFiles]="categorizationProcessedFiles()"
+                [progressPercentOverride]="categorizationProgressPercentOverride()"
+                [results]="categorizationResults()"
+                [isComplete]="categorizationComplete()"
+                [isApplying]="isCategorizationApplying()"
+                [statusMessage]="categorizationStatusMessage()"
+                (applyAll)="onApplyCategorization($event)"
+                (dismissSelected)="dismissSelectedCategorization($event)"
+                (dismiss)="dismissCategorization()"
+              />
+            } @placeholder {
+              <div class="text-sm text-muted-foreground">Loading categorization…</div>
+            }
           </div>
         }
 
@@ -610,11 +614,9 @@
                 [disabled]="actionLoading() !== null"
               >
                 @if (action.icon) {
-                  <z-icon
-                    *ngIf="mapIcon(action.icon)"
-                    [zType]="mapIcon(action.icon)"
-                    class="mr-1"
-                  />
+                  @if (mapIcon(action.icon)) {
+                    <z-icon [zType]="mapIcon(action.icon)" class="mr-1" />
+                  }
                 }
                 {{ action.label }}
                 @if (isActionLoadingFor(selectedDocument()!, action.name)) {

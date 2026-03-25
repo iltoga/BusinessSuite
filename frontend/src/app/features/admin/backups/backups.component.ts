@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -60,7 +60,6 @@ interface Backup {
   selector: 'app-backups',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     ZardCardComponent,
     ZardButtonComponent,
@@ -69,8 +68,8 @@ interface Backup {
     ZardIconComponent,
     DataTableComponent,
     FileUploadComponent,
-    AppDatePipe,
-  ],
+    AppDatePipe
+],
   templateUrl: './backups.component.html',
   styleUrls: ['./backups.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

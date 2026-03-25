@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { ZardBadgeComponent } from '@/shared/components/badge';
@@ -9,7 +9,7 @@ export type ExpiryStatus = 'missing' | 'expired' | 'expiring-soon' | 'valid';
 @Component({
   selector: 'app-expiry-badge',
   standalone: true,
-  imports: [CommonModule, ZardBadgeComponent, AppDatePipe],
+  imports: [ZardBadgeComponent, AppDatePipe],
   templateUrl: './expiry-badge.component.html',
   styleUrls: ['./expiry-badge.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

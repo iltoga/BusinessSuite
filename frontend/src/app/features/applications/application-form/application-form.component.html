@@ -26,13 +26,14 @@
               [zStatus]="
                 form.get('customer')?.invalid && form.get('customer')?.touched ? 'error' : undefined
               "
-            />
-            <div
-              *ngIf="form.get('customer')?.invalid && form.get('customer')?.touched"
-              class="text-xs text-destructive mt-1"
-            >
-              Customer is required
-            </div>
+              />
+            @if (form.get('customer')?.invalid && form.get('customer')?.touched) {
+              <div
+                class="text-xs text-destructive mt-1"
+                >
+                Customer is required
+              </div>
+            }
           </div>
 
           <div>
@@ -48,12 +49,13 @@
                 form.get('product')?.invalid && form.get('product')?.touched ? 'error' : undefined
               "
             ></app-product-select>
-            <div
-              *ngIf="form.get('product')?.invalid && form.get('product')?.touched"
-              class="text-xs text-destructive mt-1"
-            >
-              Product is required
-            </div>
+            @if (form.get('product')?.invalid && form.get('product')?.touched) {
+              <div
+                class="text-xs text-destructive mt-1"
+                >
+                Product is required
+              </div>
+            }
           </div>
 
           <div>
@@ -68,94 +70,97 @@
                 class="min-w-0 truncate text-muted-foreground"
                 [title]="dueDateContextLabel()"
                 >{{ dueDateContextLabel() }}</span
-              >
-            </label>
-            <z-date-input formControlName="dueDate"></z-date-input>
-            <div
-              *ngIf="
+                >
+              </label>
+              <z-date-input formControlName="dueDate"></z-date-input>
+              @if (
                 form.get('dueDate')?.errors?.['dueBeforeDocDate'] && form.get('dueDate')?.touched
-              "
-              class="text-xs text-destructive mt-1"
-            >
-              Due date cannot be before Application Submission Date
+                ) {
+                <div
+                  class="text-xs text-destructive mt-1"
+                  >
+                  Due date cannot be before Application Submission Date
+                </div>
+              }
             </div>
-          </div>
 
-          <div class="md:col-span-2 flex flex-wrap items-center gap-6">
-            <label class="flex items-center gap-2">
-              <input
-                type="checkbox"
-                formControlName="addDeadlinesToCalendar"
-                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <span class="text-sm font-medium">Add deadlines to calendar</span>
-            </label>
+            <div class="md:col-span-2 flex flex-wrap items-center gap-6">
+              <label class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  formControlName="addDeadlinesToCalendar"
+                  class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                <span class="text-sm font-medium">Add deadlines to calendar</span>
+              </label>
 
-            <label
-              class="flex items-center gap-2"
+              <label
+                class="flex items-center gap-2"
               [zTooltip]="
                 canNotifyCustomer()
                   ? null
                   : 'Customer cannot be notified because we don\'t have his email or whatsapp'
               "
-            >
-              <input
-                type="checkbox"
-                formControlName="notifyCustomer"
-                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <span class="text-sm font-medium">Notify customer</span>
-            </label>
+                >
+                <input
+                  type="checkbox"
+                  formControlName="notifyCustomer"
+                  class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                <span class="text-sm font-medium">Notify customer</span>
+              </label>
+            </div>
+
+            @if (form.value.notifyCustomer) {
+              <div class="md:col-span-2">
+                <label class="text-sm font-medium block mb-1">Customer notification channel</label>
+                <z-combobox
+                  formControlName="notifyCustomerChannel"
+                  [options]="customerNotificationOptions()"
+                  [searchable]="false"
+                  [zWidth]="'full'"
+                  />
+              </div>
+            }
+
+            <div class="md:col-span-2">
+              <label class="text-sm font-medium">Notes</label>
+              <textarea
+                formControlName="notes"
+                class="block w-full mt-1 p-2 border rounded"
+                rows="4"
+              ></textarea>
+            </div>
           </div>
+        </z-card>
 
-          <div class="md:col-span-2" *ngIf="form.value.notifyCustomer">
-            <label class="text-sm font-medium block mb-1">Customer notification channel</label>
-            <z-combobox
-              formControlName="notifyCustomerChannel"
-              [options]="customerNotificationOptions()"
-              [searchable]="false"
-              [zWidth]="'full'"
-            />
-          </div>
+        <!-- Step 2: Application Documents -->
+        <app-application-form-documents-section
+          [documentsArray]="documentsArray"
+          [documentsLoading]="documentsLoading()"
+          [documentsPanelOpen]="documentsPanelOpen()"
+          [documentTypeOptions]="documentTypeOptions()"
+          [selectedDocTypeIds]="selectedDocTypeIds()"
+          [stayPermitDocTypeIds]="stayPermitDocTypeIds()"
+          [productSelected]="!!form.get('product')?.value"
+          (addDocument)="addDocument()"
+          (removeDocument)="removeDocument($event)"
+          />
 
-          <div class="md:col-span-2">
-            <label class="text-sm font-medium">Notes</label>
-            <textarea
-              formControlName="notes"
-              class="block w-full mt-1 p-2 border rounded"
-              rows="4"
-            ></textarea>
-          </div>
-        </div>
-      </z-card>
-
-      <!-- Step 2: Application Documents -->
-      <app-application-form-documents-section
-        [documentsArray]="documentsArray"
-        [documentsLoading]="documentsLoading()"
-        [documentsPanelOpen]="documentsPanelOpen()"
-        [documentTypeOptions]="documentTypeOptions()"
-        [selectedDocTypeIds]="selectedDocTypeIds()"
-        [stayPermitDocTypeIds]="stayPermitDocTypeIds()"
-        [productSelected]="!!form.get('product')?.value"
-        (addDocument)="addDocument()"
-        (removeDocument)="removeDocument($event)"
-      />
-
-      <div class="mt-4 flex items-center gap-3">
-        <button z-button zType="default" type="submit" [zDisabled]="form.invalid || isSubmitting()">
-          {{
+        <div class="mt-4 flex items-center gap-3">
+          <button z-button zType="default" type="submit" [zDisabled]="form.invalid || isSubmitting()">
+            {{
             isSubmitting()
-              ? isEditMode()
-                ? 'Saving...'
-                : 'Creating...'
-              : isEditMode()
-                ? 'Save'
-                : 'Create'
-          }}
-        </button>
-        <z-button zType="ghost" (click)="goBack()">Cancel</z-button>
-      </div>
-    </form>
-  }
-</div>
+            ? isEditMode()
+            ? 'Saving...'
+            : 'Creating...'
+            : isEditMode()
+            ? 'Save'
+            : 'Create'
+            }}
+          </button>
+          <z-button zType="ghost" (click)="goBack()">Cancel</z-button>
+        </div>
+      </form>
+    }
+  </div>

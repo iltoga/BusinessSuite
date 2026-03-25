@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { ZardCardComponent } from '@/shared/components/card';
@@ -6,7 +6,7 @@ import { ZardCardComponent } from '@/shared/components/card';
 @Component({
   selector: 'app-dashboard-widget',
   standalone: true,
-  imports: [CommonModule, ZardCardComponent],
+  imports: [ZardCardComponent],
   template: `
     <z-card class="p-4 h-full bg-card/80 backdrop-blur border-border/60">
       <div class="flex items-center justify-between mb-3">

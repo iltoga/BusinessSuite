@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 
 import { Z_MODAL_DATA } from '@/shared/components/dialog';
@@ -20,7 +20,7 @@ export interface InvoiceDeleteDialogResult {
 @Component({
   selector: 'app-invoice-delete-dialog-content',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './invoice-delete-dialog-content.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

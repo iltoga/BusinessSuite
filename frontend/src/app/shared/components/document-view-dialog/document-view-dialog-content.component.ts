@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -30,12 +30,11 @@ export interface DocumentViewDialogData {
   selector: 'app-document-view-dialog-content',
   standalone: true,
   imports: [
-    CommonModule,
     ZardButtonComponent,
     ZardIconComponent,
     ImageMagnifierComponent,
-    AppDatePipe,
-  ],
+    AppDatePipe
+],
   templateUrl: './document-view-dialog-content.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

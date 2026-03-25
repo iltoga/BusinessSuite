@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -109,7 +109,7 @@ export interface BaseListConfig<T> {
 @Component({
   selector: 'app-base-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: '',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

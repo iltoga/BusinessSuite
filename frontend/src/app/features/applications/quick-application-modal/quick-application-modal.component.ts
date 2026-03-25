@@ -7,7 +7,7 @@ import { FormErrorSummaryComponent } from '@/shared/components/form-error-summar
 import { ZardInputDirective } from '@/shared/components/input';
 import { ProductSelectComponent } from '@/shared/components/product-select';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -27,14 +27,13 @@ import { catchError, map, of, switchMap } from 'rxjs';
   selector: 'app-quick-application-modal',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardButtonComponent,
     ZardInputDirective,
     ZardDateInputComponent,
     ProductSelectComponent,
-    FormErrorSummaryComponent,
-  ],
+    FormErrorSummaryComponent
+],
   templateUrl: './quick-application-modal.component.html',
   styleUrls: ['./quick-application-modal.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

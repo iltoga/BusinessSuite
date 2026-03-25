@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -24,7 +24,7 @@ import { map } from 'rxjs/operators';
 @Component({
   selector: 'app-product-select',
   standalone: true,
-  imports: [CommonModule, TypeaheadComboboxComponent],
+  imports: [TypeaheadComboboxComponent],
   templateUrl: './product-select.component.html',
   styleUrls: ['./product-select.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

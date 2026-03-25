@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -56,7 +56,6 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   selector: 'app-application-list',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     DataTableComponent,
     SearchToolbarComponent,
@@ -68,8 +67,8 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     BulkDeleteDialogComponent,
     ...ZardBadgeImports,
     ContextHelpDirective,
-    AppDatePipe,
-  ],
+    AppDatePipe
+],
   templateUrl: './application-list.component.html',
   styleUrls: ['./application-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

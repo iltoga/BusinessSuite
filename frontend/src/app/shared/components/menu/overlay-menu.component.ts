@@ -1,14 +1,12 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
 
-import { ZardIconComponent } from '@/shared/components/icon';
 import { MenuItemComponent } from '@/shared/components/menu/menu-item.component';
 import { MenuItem } from '@/shared/models/menu-item.model';
 
 @Component({
   selector: 'app-overlay-menu',
   standalone: true,
-  imports: [CommonModule, MenuItemComponent, ZardIconComponent],
+  imports: [MenuItemComponent],
   templateUrl: './overlay-menu.component.html',
   styleUrl: './overlay-menu.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

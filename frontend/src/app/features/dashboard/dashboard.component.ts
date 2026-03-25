@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -19,12 +19,11 @@ import { ContextHelpDirective } from '@/shared/directives';
   selector: 'app-dashboard',
   standalone: true,
   imports: [
-    CommonModule,
     ZardButtonComponent,
     ZardCardComponent,
     ContextHelpDirective,
-    CalendarIntegrationComponent,
-  ],
+    CalendarIntegrationComponent
+],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

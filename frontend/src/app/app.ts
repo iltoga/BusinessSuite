@@ -17,19 +17,13 @@ import { filter, take } from 'rxjs';
 import { AuthService } from '@/core/services/auth.service';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { PushNotificationsService } from '@/core/services/push-notifications.service';
+import { HelpDrawerComponent } from '@/shared/components/help-drawer';
 import { ReminderDialogStackComponent } from '@/shared/components/reminder-dialog-stack/reminder-dialog-stack.component';
-import { HelpDrawerComponent, HotkeysDrawerComponent } from '@/shared/components/help-drawer';
 import { HelpService } from '@/shared/services/help.service';
 
 @Component({
   selector: 'app-root',
-  imports: [
-    RouterOutlet,
-    ZardToastComponent,
-    ReminderDialogStackComponent,
-    HelpDrawerComponent,
-    HotkeysDrawerComponent,
-  ],
+  imports: [RouterOutlet, ZardToastComponent, ReminderDialogStackComponent, HelpDrawerComponent],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -74,7 +68,8 @@ export class App implements OnDestroy {
 
     this.desktopReminderOpenUnsubscribe = this.desktopBridge.onReminderOpen((payload) => {
       const reminderId = Number(payload?.reminderId);
-      const queryParams = Number.isFinite(reminderId) && reminderId > 0 ? { reminderId } : undefined;
+      const queryParams =
+        Number.isFinite(reminderId) && reminderId > 0 ? { reminderId } : undefined;
 
       this.zone.run(() => {
         this.router.navigate(['/utils/reminders'], { queryParams }).catch(() => {

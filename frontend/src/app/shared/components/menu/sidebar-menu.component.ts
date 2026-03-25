@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { MenuItemComponent } from '@/shared/components/menu/menu-item.component';
@@ -7,7 +7,7 @@ import { MenuItem } from '@/shared/models/menu-item.model';
 @Component({
   selector: 'app-sidebar-menu',
   standalone: true,
-  imports: [CommonModule, MenuItemComponent],
+  imports: [MenuItemComponent],
   templateUrl: './sidebar-menu.component.html',
   styleUrl: './sidebar-menu.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

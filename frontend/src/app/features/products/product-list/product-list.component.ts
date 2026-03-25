@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -69,7 +69,6 @@ import {
   selector: 'app-product-list',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     DataTableComponent,
     SearchToolbarComponent,
@@ -81,8 +80,8 @@ import {
     ZardBadgeComponent,
     BulkDeleteDialogComponent,
     ...ZardTooltipImports,
-    AppDatePipe,
-  ],
+    AppDatePipe
+],
   templateUrl: './product-list.component.html',
   styleUrls: ['./product-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -46,7 +46,7 @@ export class PushNotificationsService {
   private readonly incomingMessages = new Subject<PushPayload>();
   readonly incoming$ = this.incomingMessages.asObservable();
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
+  constructor(@Inject(PLATFORM_ID) private platformId: object) {}
 
   async initialize(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
@@ -61,7 +61,10 @@ export class PushNotificationsService {
     }
 
     try {
-      await this.ensureFirebaseScripts();
+      const firebaseScriptsLoaded = await this.ensureFirebaseScripts();
+      if (!firebaseScriptsLoaded) {
+        return;
+      }
 
       // Register at a dedicated scope so it does NOT conflict with ngsw-worker.js
       // at scope /.  If both share scope /, firebase-messaging-sw.js stays in
@@ -164,9 +167,18 @@ export class PushNotificationsService {
     }
   }
 
-  private async ensureFirebaseScripts(): Promise<void> {
-    await this.loadScriptOnce('firebase-app-compat', FIREBASE_APP_COMPAT);
-    await this.loadScriptOnce('firebase-messaging-compat', FIREBASE_MESSAGING_COMPAT);
+  private async ensureFirebaseScripts(): Promise<boolean> {
+    try {
+      await this.loadScriptOnce('firebase-app-compat', FIREBASE_APP_COMPAT);
+      await this.loadScriptOnce('firebase-messaging-compat', FIREBASE_MESSAGING_COMPAT);
+      return true;
+    } catch (error) {
+      console.warn(
+        '[PushNotificationsService] Firebase SDK unavailable; push notifications disabled.',
+        this.describeError(error),
+      );
+      return false;
+    }
   }
 
   private loadScriptOnce(id: string, src: string): Promise<void> {

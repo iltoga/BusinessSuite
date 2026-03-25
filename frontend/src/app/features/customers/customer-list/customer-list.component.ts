@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -50,7 +50,6 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   selector: 'app-customer-list',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     DataTableComponent,
     SearchToolbarComponent,
@@ -62,8 +61,8 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ...ZardSelectImports,
     ZardBadgeComponent,
     ContextHelpDirective,
-    AppDatePipe,
-  ],
+    AppDatePipe
+],
   templateUrl: './customer-list.component.html',
   styleUrls: ['./customer-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

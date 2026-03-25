@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -18,9 +17,8 @@ import type {
   ZardButtonSizeVariants,
   ZardButtonTypeVariants,
 } from '@/shared/components/button/button.variants';
-import { ZardIconComponent } from '@/shared/components/icon';
-import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { ZardDialogRef } from '@/shared/components/dialog';
+import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
 import { DocumentViewerOverlayService } from '@/shared/services/document-viewer-overlay.service';
 import { inferPreviewTypeFromUrl } from '@/shared/utils/document-preview-source';
@@ -30,9 +28,7 @@ import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
   selector: 'app-document-preview',
   standalone: true,
   imports: [
-    CommonModule,
     ZardButtonComponent,
-    ZardIconComponent,
     ImageMagnifierComponent,
     ZardPopoverComponent,
     ZardPopoverDirective,

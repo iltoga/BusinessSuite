@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { ZardSkeletonComponent } from './skeleton.component';
@@ -8,7 +8,7 @@ import { ZardTableImports } from '@/shared/components/table';
 @Component({
   selector: 'app-table-skeleton',
   standalone: true,
-  imports: [CommonModule, ...ZardTableImports, ZardSkeletonComponent],
+  imports: [...ZardTableImports, ZardSkeletonComponent],
   template: `
     <table z-table class="w-full">
       <thead z-table-header>

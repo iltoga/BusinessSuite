@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -22,7 +22,7 @@ import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
 @Component({
   selector: 'app-file-upload',
   standalone: true,
-  imports: [CommonModule, ZardButtonComponent, ImageMagnifierComponent],
+  imports: [ZardButtonComponent, ImageMagnifierComponent],
   templateUrl: './file-upload.component.html',
   styleUrls: ['./file-upload.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

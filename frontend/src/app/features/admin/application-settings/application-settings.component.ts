@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
@@ -25,12 +25,11 @@ interface AdminAppSettingItem {
   selector: 'app-application-settings',
   standalone: true,
   imports: [
-    CommonModule,
     ZardCardComponent,
     ZardButtonComponent,
     ZardIconComponent,
-    ...ZardDropdownImports,
-  ],
+    ...ZardDropdownImports
+],
   templateUrl: './application-settings.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

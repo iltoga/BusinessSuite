@@ -1,3 +1,5 @@
+import { extractJobId } from '@/core/utils/async-job-contract';
+import { createAsyncRequestMetadata, requestMetadataContext } from '@/core/utils/request-metadata';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { FileUploadComponent } from '@/shared/components/file-upload';
 import { ZardIconComponent } from '@/shared/components/icon';
@@ -19,13 +21,10 @@ import { environment } from '../../../../environments/environment';
 import { CustomersService } from '../../../core/services/customers.service';
 import { JobService } from '../../../core/services/job.service';
 import { GlobalToastService } from '../../../core/services/toast.service';
-import { ContextHelpDirective } from '../../../shared/directives/context-help.directive';
 import { AppDatePipe } from '../../../shared/pipes/app-date-pipe';
 import { HelpService } from '../../../shared/services/help.service';
 import { buildLocalFilePreview } from '../../../shared/utils/document-preview-source';
 import { extractServerErrorMessage } from '../../../shared/utils/form-errors';
-import { extractJobId } from '@/core/utils/async-job-contract';
-import { createAsyncRequestMetadata, requestMetadataContext } from '@/core/utils/request-metadata';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -93,9 +92,7 @@ function readStringArray(record: Record<string, unknown>, ...keys: string[]): st
     return null;
   }
 
-  const items = value
-    .map((item) => String(item ?? '').trim())
-    .filter((item) => item.length > 0);
+  const items = value.map((item) => String(item ?? '').trim()).filter((item) => item.length > 0);
   return items.length > 0 ? items : null;
 }
 
@@ -191,10 +188,9 @@ function normalizeCustomerMatchCandidate(value: unknown): CustomerMatchCandidate
     nationality_code: readString(value, 'nationality_code', 'nationalityCode'),
     nationality_name: readString(value, 'nationality_name', 'nationalityName'),
     match_kind: readString(value, 'match_kind', 'matchKind'),
-    passport_status: (readString(value, 'passport_status', 'passportStatus') as
-      | 'missing'
-      | 'present'
-      | null) ?? null,
+    passport_status:
+      (readString(value, 'passport_status', 'passportStatus') as 'missing' | 'present' | null) ??
+      null,
     similarity: readNumber(value, 'similarity'),
   };
 }
@@ -237,9 +233,9 @@ export function normalizePassportCheckResult(value: unknown): PassportCheckResul
     is_valid: readBoolean(value, 'is_valid', 'isValid') ?? false,
     method_used: readString(value, 'method_used', 'methodUsed') ?? undefined,
     model_used: readString(value, 'model_used', 'modelUsed') ?? undefined,
-    passport_data: normalizePassportExtractedData(
-      readField(value, 'passport_data', 'passportData'),
-    ) ?? undefined,
+    passport_data:
+      normalizePassportExtractedData(readField(value, 'passport_data', 'passportData')) ??
+      undefined,
     rejection_code: readString(value, 'rejection_code', 'rejectionCode') ?? undefined,
     rejection_reason: readString(value, 'rejection_reason', 'rejectionReason') ?? undefined,
     rejection_reasons: readStringArray(value, 'rejection_reasons', 'rejectionReasons') ?? undefined,
@@ -267,7 +263,6 @@ interface PassportCheckResult {
     FormsModule,
     ZardButtonComponent,
     ZardIconComponent,
-    ContextHelpDirective,
     FileUploadComponent,
     AppDatePipe,
   ],

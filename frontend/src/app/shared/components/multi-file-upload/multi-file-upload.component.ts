@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -24,7 +24,7 @@ export interface SelectedFile {
 @Component({
   selector: 'app-multi-file-upload',
   standalone: true,
-  imports: [CommonModule, ZardButtonComponent, ZardIconComponent],
+  imports: [ZardButtonComponent, ZardIconComponent],
   templateUrl: './multi-file-upload.component.html',
   styleUrls: ['./multi-file-upload.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

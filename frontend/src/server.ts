@@ -505,6 +505,56 @@ app.get('/healthz', (_req, res) => {
     });
 });
 
+/* ------------------------------------------------------------------ */
+/*  Security headers middleware                                       */
+/*  Defence-in-depth: set headers here even if a reverse proxy also   */
+/*  adds them. The CSP header uses the nonce generated later during   */
+/*  HTML rewriting when CSP_ENABLED=true.                             */
+/* ------------------------------------------------------------------ */
+const cspEnabled = (process.env['CSP_ENABLED'] || '').toLowerCase() === 'true';
+const cspMode = process.env['CSP_MODE'] || 'report-only'; // report-only | enforce
+const cspReportUri = (process.env['CSP_REPORT_URI'] || '').trim();
+
+function buildCspDirectives(nonce: string): string {
+  const directives = [
+    `default-src 'self'`,
+    `script-src 'self' 'nonce-${nonce}' https://www.googletagmanager.com https://apis.google.com https://www.gstatic.com`,
+    `style-src 'self' 'unsafe-inline'`, // Tailwind/CSS-in-JS requires inline styles
+    `img-src 'self' data: blob: https:`,
+    `font-src 'self' data:`,
+    `connect-src 'self' https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com`,
+    `frame-ancestors 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+    `worker-src 'self' blob:`,
+    `object-src 'none'`,
+  ];
+  if (cspReportUri) {
+    directives.push(`report-uri ${cspReportUri}`);
+  }
+  return directives.join('; ');
+}
+
+app.use((req, res, next) => {
+  // Always set non-CSP security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+  if (cspEnabled) {
+    // Generate a per-request nonce and stash it on res.locals for the SSR handler
+    const nonce = generateNonce();
+    res.locals['cspNonce'] = nonce;
+
+    const cspHeader =
+      cspMode === 'enforce' ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only';
+    res.setHeader(cspHeader, buildCspDirectives(nonce));
+  }
+
+  next();
+});
+
 app.use((req, res, next) => {
   if (!OTLP_TRACES_ENABLED || !shouldTraceRequest(req)) {
     next();
@@ -676,10 +726,6 @@ app.use(async (req, res, next) => {
     }
     if (!response) return next();
 
-    // Access env vars with bracket notation to satisfy TS index signature typing
-    const cspEnabled = (process.env['CSP_ENABLED'] || '').toLowerCase() === 'true';
-    const cspMode = process.env['CSP_MODE'] || 'report-only'; // report-only|enforce
-
     // Read content-type from Headers if available
     let contentType = '';
     if (response.headers && typeof (response.headers as any).get === 'function') {
@@ -730,7 +776,8 @@ app.use(async (req, res, next) => {
       );
 
       if (cspEnabled) {
-        const nonce = generateNonce();
+        // Reuse the per-request nonce set by the security headers middleware
+        const nonce: string = res.locals['cspNonce'] || generateNonce();
 
         // Prepare a modified Headers instance based on existing headers
         let modifiedHeaders: Headers;
@@ -749,14 +796,16 @@ app.use(async (req, res, next) => {
         modifiedHeaders.set('x-csp-nonce', nonce);
         modifiedHeaders.set('x-csp-mode', cspMode);
 
-        // Also set headers on the Node response (ensures nginx sees them when proxied)
-        res.setHeader('X-CSP-Nonce', nonce);
-        res.setHeader('X-CSP-Mode', cspMode);
-
         // Inject Angular root attribute so Angular uses the nonce without requiring index.html rewrites
         let modifiedBody = responseHtmlWithTitle.replace(
-          /<app(\s|>)/,
-          `<app ngCspNonce="${nonce}"$1`,
+          /<app-root(\s|>)/,
+          `<app-root ngCspNonce="${nonce}"$1`,
+        );
+
+        // Add nonce to any pre-existing inline <script> tags (e.g. branding in index.html)
+        modifiedBody = modifiedBody.replace(
+          /<script(?![^>]*\bnonce\b)/gi,
+          `<script nonce="${nonce}"`,
         );
 
         // Inject server config from .env into the page so the app picks it up immediately

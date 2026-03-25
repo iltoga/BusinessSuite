@@ -14,12 +14,10 @@ import { CustomerSelectComponent } from '@/shared/components/customer-select';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardIconComponent } from '@/shared/components/icon';
-import { ZardInputDirective } from '@/shared/components/input';
 import { ProductSelectComponent } from '@/shared/components/product-select';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
-import { TypeaheadComboboxComponent } from '@/shared/components/typeahead-combobox';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
-import { CommonModule, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -39,7 +37,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   distinctUntilChanged,
   finalize,
@@ -99,17 +97,13 @@ interface ApplicationFormNavigationState {
   selector: 'app-application-form',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
-    RouterLink,
     ZardButtonComponent,
     ZardCardComponent,
     ZardIconComponent,
-    ZardInputDirective,
     ZardComboboxComponent,
     CustomerSelectComponent,
     ProductSelectComponent,
-    TypeaheadComboboxComponent,
     ZardDateInputComponent,
     FormErrorSummaryComponent,
     ApplicationFormDocumentsSectionComponent,
@@ -868,12 +862,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     const calendarTask = explicitTask ?? tasks.find((task) => task.addTaskToCalendar) ?? null;
 
     return {
-      requiredDocuments: this.adaptDocumentTypes(
-        source?.['requiredDocuments'],
-      ),
-      optionalDocuments: this.adaptDocumentTypes(
-        source?.['optionalDocuments'],
-      ),
+      requiredDocuments: this.adaptDocumentTypes(source?.['requiredDocuments']),
+      optionalDocuments: this.adaptDocumentTypes(source?.['optionalDocuments']),
       tasks,
       calendarTask,
     };

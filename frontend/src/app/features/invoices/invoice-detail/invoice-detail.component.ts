@@ -1,4 +1,4 @@
-import { CommonModule, formatDate } from '@angular/common';
+import { formatDate } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -24,12 +24,10 @@ import { ZardCardComponent } from '@/shared/components/card';
 import { CardSectionComponent } from '@/shared/components/card-section';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import { DetailFieldComponent } from '@/shared/components/detail-field';
+import { ZardDropdownImports } from '@/shared/components/dropdown';
+import { ZardIconComponent } from '@/shared/components/icon/icon.component';
 import { InvoiceDownloadDropdownComponent } from '@/shared/components/invoice-download-dropdown/invoice-download-dropdown.component';
-import {
-  CardSkeletonComponent,
-  TableSkeletonComponent,
-  ZardSkeletonComponent,
-} from '@/shared/components/skeleton';
+import { CardSkeletonComponent, ZardSkeletonComponent } from '@/shared/components/skeleton';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { BaseDetailComponent, BaseDetailConfig } from '@/shared/core/base-detail.component';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
@@ -49,7 +47,6 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
   selector: 'app-invoice-detail',
   standalone: true,
   imports: [
-    CommonModule,
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
@@ -58,11 +55,12 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
     ConfirmDialogComponent,
     PaymentModalComponent,
     CardSkeletonComponent,
-    TableSkeletonComponent,
     ZardSkeletonComponent,
     InvoiceDownloadDropdownComponent,
+    ZardIconComponent,
     AppDatePipe,
     ...ZardTooltipImports,
+    ...ZardDropdownImports,
   ],
   templateUrl: './invoice-detail.component.html',
   styleUrls: ['./invoice-detail.component.css'],

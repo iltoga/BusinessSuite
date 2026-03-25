@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -54,7 +54,6 @@ interface CacheClearResponse {
   selector: 'app-profile',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardCardComponent,
     ZardButtonComponent,
@@ -65,8 +64,8 @@ interface CacheClearResponse {
     ZardIconComponent,
     ZardSwitchComponent,
     ...ZardSelectImports,
-    AppDatePipe,
-  ],
+    AppDatePipe
+],
   templateUrl: './profile.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

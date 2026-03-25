@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -18,13 +18,12 @@ import { ZardIconComponent } from '@/shared/components/icon';
   selector: 'app-application-form-documents-section',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     ZardCardComponent,
     ZardIconComponent,
     ZardComboboxComponent,
-    ZardButtonComponent,
-  ],
+    ZardButtonComponent
+],
   templateUrl: './application-form-documents-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

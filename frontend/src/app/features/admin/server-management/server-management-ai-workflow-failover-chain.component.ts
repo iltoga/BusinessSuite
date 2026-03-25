@@ -1,5 +1,5 @@
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -12,12 +12,11 @@ import { ServerManagementAiWorkflowFacade } from './server-management-ai-workflo
   selector: 'app-server-management-ai-workflow-failover-chain',
   standalone: true,
   imports: [
-    CommonModule,
     DragDropModule,
     ZardButtonComponent,
     ZardInputDirective,
-    TypeaheadComboboxComponent,
-  ],
+    TypeaheadComboboxComponent
+],
   template: `
     <div class="mt-3 rounded border border-border/70 bg-muted/20 p-3">
       <div class="flex flex-wrap items-start justify-between gap-3">

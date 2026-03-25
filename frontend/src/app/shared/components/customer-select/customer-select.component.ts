@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -34,7 +34,7 @@ const CUSTOMER_ORDERING = 'sort_last_name,sort_first_name,sort_company_name';
 @Component({
   selector: 'app-customer-select',
   standalone: true,
-  imports: [CommonModule, ZardComboboxComponent],
+  imports: [ZardComboboxComponent],
   templateUrl: './customer-select.component.html',
   styleUrls: ['./customer-select.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

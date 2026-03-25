@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -14,14 +14,13 @@ import {
   type OnDestroy,
 } from '@angular/core';
 
-import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 
 @Component({
   selector: 'app-search-toolbar',
   standalone: true,
-  imports: [CommonModule, ZardButtonComponent, ZardIconComponent, ZardInputDirective],
+  imports: [ZardIconComponent, ZardInputDirective],
   templateUrl: './search-toolbar.component.html',
   styleUrls: ['./search-toolbar.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
