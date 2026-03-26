@@ -36,6 +36,10 @@ describe('ProductDetailComponent', () => {
     component = TestBed.runInInjectionContext(() => new ProductDetailComponent());
   });
 
+  it('starts in a loading state to avoid flashing not-found before ngOnInit loads data', () => {
+    expect(component.isLoading()).toBe(true);
+  });
+
   it('reports no documents or tasks when product has neither', () => {
     component.product.set({
       id: 36,
