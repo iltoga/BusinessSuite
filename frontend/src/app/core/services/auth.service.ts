@@ -13,9 +13,19 @@
  */
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { computed, Inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
+import { computed, inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, finalize, map, Observable, of, shareReplay, tap, throwError } from 'rxjs';
+import {
+  catchError,
+  finalize,
+  map,
+  Observable,
+  of,
+  shareReplay,
+  tap,
+  throwError,
+  timeout,
+} from 'rxjs';
 
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { unwrapApiRecord } from '@/core/utils/api-envelope';
@@ -70,17 +80,7 @@ export interface AuthSessionPayload {
   user?: AuthUserPayload | null;
 }
 
-interface MockAuthConfigResponse {
-  sub?: string;
-  username?: string;
-  email?: string | null;
-  roles?: string[];
-  groups?: string[];
-  isSuperuser?: boolean;
-  is_superuser?: boolean;
-  isStaff?: boolean;
-  is_staff?: boolean;
-}
+type JwtPayload = Record<string, unknown>;
 
 export interface LoginCredentials {
   username: string;
@@ -88,6 +88,8 @@ export interface LoginCredentials {
 }
 
 const REFRESH_SESSION_HINT_COOKIE_NAME = 'bs_refresh_session_hint';
+const LOGIN_REQUEST_TIMEOUT_MS = 15_000;
+const REFRESH_REQUEST_TIMEOUT_MS = 8_000;
 
 @Injectable({
   providedIn: 'root',
@@ -95,6 +97,11 @@ const REFRESH_SESSION_HINT_COOKIE_NAME = 'bs_refresh_session_hint';
 export class AuthService {
   private readonly API_URL = '/api';
   private readonly MOCK_CLAIMS_URL = '/api/mock-auth-config/';
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly configService = inject(ConfigService);
+  private readonly desktopBridge = inject(DesktopBridgeService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   private _token = signal<string | null>(null);
   private _claims = signal<AuthClaims | null>(null);
@@ -147,13 +154,7 @@ export class AuthService {
   isLoading = this._isLoading.asReadonly();
   error = this._error.asReadonly();
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-    private configService: ConfigService,
-    private desktopBridge: DesktopBridgeService,
-    @Inject(PLATFORM_ID) private platformId: Object,
-  ) {
+  constructor() {
     this.desktopBridge.publishAuthToken(null);
   }
 
@@ -224,6 +225,7 @@ export class AuthService {
         withCredentials: true,
       })
       .pipe(
+        timeout(LOGIN_REQUEST_TIMEOUT_MS),
         tap((response) => {
           this.applyAuthSession(response);
           this._isLoading.set(false);
@@ -268,8 +270,8 @@ export class AuthService {
       )
       .subscribe({
         // No-op handlers: we've already handled logging above; keep subscription to fire the request
-        next: () => {},
-        error: () => {},
+        next: () => void 0,
+        error: () => void 0,
       });
   }
 
@@ -339,6 +341,7 @@ export class AuthService {
         },
       )
       .pipe(
+        timeout(REFRESH_REQUEST_TIMEOUT_MS),
         tap((response) => {
           this.applyAuthSession(response);
         }),
@@ -443,7 +446,7 @@ export class AuthService {
     });
   }
 
-  private extractErrorMessage(error: any): string | null {
+  private extractErrorMessage(error: unknown): string | null {
     return extractServerErrorMessage(error);
   }
 
@@ -465,16 +468,17 @@ export class AuthService {
     }
 
     return {
-      sub: payload['sub'],
-      email: payload['email'] ?? null,
-      fullName: payload['full_name'] ?? payload['fullName'] ?? null,
-      avatar: payload['avatar'] ?? null,
-      roles: payload['roles'] ?? payload['groups'] ?? [],
-      groups: payload['groups'] ?? payload['roles'] ?? [],
-      isSuperuser: payload['is_superuser'] ?? payload['isSuperuser'] ?? false,
-      isStaff: payload['is_staff'] ?? payload['isStaff'] ?? false,
-      iat: payload['iat'],
-      exp: payload['exp'],
+      sub: this.getStringClaim(payload, 'sub') ?? undefined,
+      email: this.getStringClaim(payload, 'email'),
+      fullName:
+        this.getStringClaim(payload, 'full_name') ?? this.getStringClaim(payload, 'fullName'),
+      avatar: this.getStringClaim(payload, 'avatar'),
+      roles: this.getStringArrayClaim(payload, 'roles', 'groups'),
+      groups: this.getStringArrayClaim(payload, 'groups', 'roles'),
+      isSuperuser: this.getBooleanClaim(payload, 'is_superuser', 'isSuperuser'),
+      isStaff: this.getBooleanClaim(payload, 'is_staff', 'isStaff'),
+      iat: this.getNumberClaim(payload, 'iat') ?? undefined,
+      exp: this.getNumberClaim(payload, 'exp') ?? undefined,
     } satisfies AuthClaims;
   }
 
@@ -529,7 +533,7 @@ export class AuthService {
           this._mockClaims.set(claims);
           this._claims.set(claims);
         }),
-        catchError((error) => {
+        catchError((_error) => {
           const fallback = this.buildFallbackMockClaims();
           this._mockClaims.set(fallback);
           this._claims.set(fallback);
@@ -539,7 +543,7 @@ export class AuthService {
       .subscribe();
   }
 
-  private decodeJwtPayload(token: string): Record<string, any> | null {
+  private decodeJwtPayload(token: string): JwtPayload | null {
     try {
       const parts = token.split('.');
       if (parts.length < 2) {
@@ -552,10 +556,55 @@ export class AuthService {
         return null;
       }
       const decoded = atob(padded);
-      return JSON.parse(decoded);
+      const parsed: unknown = JSON.parse(decoded);
+      return this.isRecord(parsed) ? parsed : null;
     } catch {
       return null;
     }
+  }
+
+  private getStringClaim(payload: JwtPayload, ...keys: string[]): string | null {
+    for (const key of keys) {
+      const value = payload[key];
+      if (typeof value === 'string') {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  private getStringArrayClaim(payload: JwtPayload, ...keys: string[]): string[] {
+    for (const key of keys) {
+      const value = payload[key];
+      if (Array.isArray(value)) {
+        return value.filter((item): item is string => typeof item === 'string');
+      }
+    }
+    return [];
+  }
+
+  private getBooleanClaim(payload: JwtPayload, ...keys: string[]): boolean {
+    for (const key of keys) {
+      const value = payload[key];
+      if (typeof value === 'boolean') {
+        return value;
+      }
+    }
+    return false;
+  }
+
+  private getNumberClaim(payload: JwtPayload, ...keys: string[]): number | null {
+    for (const key of keys) {
+      const value = payload[key];
+      if (typeof value === 'number') {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   /**

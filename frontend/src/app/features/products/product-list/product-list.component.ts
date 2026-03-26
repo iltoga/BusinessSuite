@@ -13,7 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom, forkJoin, map, type Observable } from 'rxjs';
 
-import { ProductsService, type AsyncJob, type Product } from '@/core/api';
+import { ProductsService, type AsyncJob, type Product, type ProductCreateUpdate } from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
 import { JobService } from '@/core/services/job.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
@@ -109,33 +109,19 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
   // Template references
   private readonly nameTemplate =
-    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
-      'nameTemplate',
-    );
+    viewChild.required<TemplateRef<ProductTemplateContext>>('nameTemplate');
   private readonly descriptionTemplate =
-    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
-      'descriptionTemplate',
-    );
+    viewChild.required<TemplateRef<ProductTemplateContext>>('descriptionTemplate');
   private readonly typeTemplate =
-    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
-      'typeTemplate',
-    );
+    viewChild.required<TemplateRef<ProductTemplateContext>>('typeTemplate');
   private readonly categoryTemplate =
-    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
-      'categoryTemplate',
-    );
+    viewChild.required<TemplateRef<ProductTemplateContext>>('categoryTemplate');
   private readonly deprecatedTemplate =
-    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
-      'deprecatedTemplate',
-    );
+    viewChild.required<TemplateRef<ProductTemplateContext>>('deprecatedTemplate');
   private readonly retailPriceTemplate =
-    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
-      'retailPriceTemplate',
-    );
+    viewChild.required<TemplateRef<ProductTemplateContext>>('retailPriceTemplate');
   private readonly createdAtTemplate =
-    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
-      'createdAtTemplate',
-    );
+    viewChild.required<TemplateRef<ProductTemplateContext>>('createdAtTemplate');
   private readonly importFileInput = viewChild<ElementRef<HTMLInputElement>>('importFileInput');
 
   // Product-specific bulk delete query
@@ -343,7 +329,9 @@ export class ProductListComponent extends BaseListComponent<Product> {
    * Update the deprecated flag for a product
    */
   private updateDeprecatedStatus(product: Product, deprecated: boolean): void {
-    this.productsApi.productsPartialUpdate(product.id, { deprecated } as any).subscribe({
+    const updatePayload = { deprecated } as unknown as ProductCreateUpdate;
+
+    this.productsApi.productsPartialUpdate(product.id, updatePayload).subscribe({
       next: () => {
         this.toast.success(deprecated ? 'Product deprecated' : 'Product activated');
         this.reload();
@@ -371,7 +359,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
     const deleteRequest = result.forceDelete
       ? this.productsApi.productsForceDeleteCreate(product.id, {
           forceDeleteConfirmed: true,
-        } as any)
+        })
       : this.productsApi.productsDestroy(product.id);
 
     deleteRequest.subscribe({
@@ -424,7 +412,9 @@ export class ProductListComponent extends BaseListComponent<Product> {
   onBulkDeleteConfirmed(): void {
     const query = this.productBulkDeleteQuery();
 
-    this.productsApi.productsBulkDeleteCreate({ searchQuery: query || '' } as any).subscribe({
+    const bulkDeletePayload = { searchQuery: query || '' } as unknown as Product;
+
+    this.productsApi.productsBulkDeleteCreate(bulkDeletePayload).subscribe({
       next: (response) => {
         const payload = unwrapApiRecord(response) as {
           deletedCount?: number;
@@ -614,7 +604,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
   }
 
   private categoryValue(row?: Product | null): string {
-    const value = (row as any)?.productCategoryName;
+    const value = row?.productCategoryName;
     return value ? String(value) : '';
   }
 
@@ -625,7 +615,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
     const configured = String(this.configService.settings.baseCurrency ?? 'IDR')
       .trim()
       .toUpperCase();
-    const currency = String(((row as any)?.currency ?? configured) || 'IDR')
+    const currency = String((row?.currency ?? configured) || 'IDR')
       .trim()
       .toUpperCase();
     if (!currency || currency.length < 2 || currency.length > 3 || !/^[A-Z]+$/.test(currency)) {
@@ -657,7 +647,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
    * Get retail price value
    */
   retailPriceValue(row: Product): string | number | null {
-    return (row as any).retailPrice ?? (row as any).retail_price ?? null;
+    return row.retailPrice ?? null;
   }
 
   private resolveDeprecatedFilter(): { deprecated: boolean | undefined; hideDeprecated: boolean } {
@@ -789,45 +779,47 @@ export class ProductListComponent extends BaseListComponent<Product> {
    * Map product delete preview response
    */
   private mapProductDeletePreview(response: unknown, product: Product): ProductDeletePreviewData {
-    const payload: any = unwrapApiRecord(response) ?? {};
-    const relatedCounts: any = payload.relatedCounts ?? {};
-    const relatedRecords: any = payload.relatedRecords ?? {};
-    const relatedRecordsTruncated: any = payload.relatedRecordsTruncated ?? {};
+    const payload = (unwrapApiRecord(response) ?? {}) as ProductDeletePreviewPayload;
+    const relatedCounts = payload.relatedCounts ?? {};
+    const relatedRecords = payload.relatedRecords ?? {};
+    const relatedRecordsTruncated = payload.relatedRecordsTruncated ?? {};
 
-    const taskRecords = this.asArray<any>(relatedRecords.tasks).map((task: any) => ({
-      id: this.asNumber(task?.id),
-      step: this.asNumber(task?.step),
-      name: String(task?.name ?? ''),
+    const taskRecords = this.asArray<ProductDeleteTaskPayload>(relatedRecords.tasks).map(
+      (task) => ({
+        id: this.asNumber(task?.id),
+        step: this.asNumber(task?.step),
+        name: String(task?.name ?? ''),
+      }),
+    );
+
+    const applicationRecords = this.asArray<ProductDeleteApplicationPayload>(
+      relatedRecords.applications,
+    ).map((application) => ({
+      id: this.asNumber(application?.id),
+      customerName: String(application?.customerName ?? '—'),
+      status: String(application?.status ?? ''),
+      statusDisplay: String(application?.statusDisplay ?? ''),
+      docDate: this.asNullableString(application?.docDate),
+      dueDate: this.asNullableString(application?.dueDate),
+      workflowCount: this.asNumber(application?.workflowCount),
+      documentCount: this.asNumber(application?.documentCount),
+      invoiceLineCount: this.asNumber(application?.invoiceLineCount),
     }));
 
-    const applicationRecords = this.asArray<any>(relatedRecords.applications).map(
-      (application: any) => ({
-        id: this.asNumber(application?.id),
-        customerName: String(application?.customerName ?? '—'),
-        status: String(application?.status ?? ''),
-        statusDisplay: String(application?.statusDisplay ?? ''),
-        docDate: application?.docDate ?? null,
-        dueDate: application?.dueDate ?? null,
-        workflowCount: this.asNumber(application?.workflowCount),
-        documentCount: this.asNumber(application?.documentCount),
-        invoiceLineCount: this.asNumber(application?.invoiceLineCount),
-      }),
-    );
-
-    const invoiceLineRecords = this.asArray<any>(relatedRecords.invoiceApplications).map(
-      (invoiceLine: any) => ({
-        id: this.asNumber(invoiceLine?.id),
-        invoiceId: this.asNumber(invoiceLine?.invoiceId),
-        invoiceNoDisplay: String(invoiceLine?.invoiceNoDisplay ?? ''),
-        invoiceStatus: String(invoiceLine?.invoiceStatus ?? ''),
-        customerApplicationId: this.asNullableNumber(invoiceLine?.customerApplicationId),
-        customerName: String(invoiceLine?.customerName ?? '—'),
-        amount: invoiceLine?.amount ?? '0',
-        status: String(invoiceLine?.status ?? ''),
-        statusDisplay: String(invoiceLine?.statusDisplay ?? ''),
-        paymentCount: this.asNumber(invoiceLine?.paymentCount),
-      }),
-    );
+    const invoiceLineRecords = this.asArray<ProductDeleteInvoiceApplicationPayload>(
+      relatedRecords.invoiceApplications,
+    ).map((invoiceLine) => ({
+      id: this.asNumber(invoiceLine?.id),
+      invoiceId: this.asNumber(invoiceLine?.invoiceId),
+      invoiceNoDisplay: String(invoiceLine?.invoiceNoDisplay ?? ''),
+      invoiceStatus: String(invoiceLine?.invoiceStatus ?? ''),
+      customerApplicationId: this.asNullableNumber(invoiceLine?.customerApplicationId),
+      customerName: String(invoiceLine?.customerName ?? '—'),
+      amount: this.asStringOrNumber(invoiceLine?.amount, '0'),
+      status: String(invoiceLine?.status ?? ''),
+      statusDisplay: String(invoiceLine?.statusDisplay ?? ''),
+      paymentCount: this.asNumber(invoiceLine?.paymentCount),
+    }));
 
     return {
       productId: this.asNumber(payload.productId ?? product.id),
@@ -835,7 +827,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       productName: String(payload.productName ?? product.name ?? ''),
       canDelete: Boolean(payload.canDelete ?? true),
       requiresForceDelete: Boolean(payload.requiresForceDelete ?? false),
-      message: payload.message ?? null,
+      message: this.asNullableString(payload.message),
       relatedCounts: {
         tasks: this.asNumber(relatedCounts.tasks),
         applications: this.asNumber(relatedCounts.applications),
@@ -884,4 +876,69 @@ export class ProductListComponent extends BaseListComponent<Product> {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
+
+  private asNullableString(value: unknown): string | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    return typeof value === 'string' ? value : String(value);
+  }
+
+  private asStringOrNumber(value: unknown, fallback: string): string | number {
+    return typeof value === 'string' || typeof value === 'number' ? value : fallback;
+  }
 }
+
+type ProductTemplateContext = { $implicit: Product; value: unknown; row: Product };
+
+type ProductDeleteTaskPayload = {
+  id?: unknown;
+  step?: unknown;
+  name?: unknown;
+};
+
+type ProductDeleteApplicationPayload = {
+  id?: unknown;
+  customerName?: unknown;
+  status?: unknown;
+  statusDisplay?: unknown;
+  docDate?: unknown;
+  dueDate?: unknown;
+  workflowCount?: unknown;
+  documentCount?: unknown;
+  invoiceLineCount?: unknown;
+};
+
+type ProductDeleteInvoiceApplicationPayload = {
+  id?: unknown;
+  invoiceId?: unknown;
+  invoiceNoDisplay?: unknown;
+  invoiceStatus?: unknown;
+  customerApplicationId?: unknown;
+  customerName?: unknown;
+  amount?: unknown;
+  status?: unknown;
+  statusDisplay?: unknown;
+  paymentCount?: unknown;
+};
+
+type ProductDeletePreviewPayload = {
+  productId?: unknown;
+  productCode?: unknown;
+  productName?: unknown;
+  canDelete?: unknown;
+  requiresForceDelete?: unknown;
+  message?: unknown;
+  relatedCounts?: Partial<Record<keyof ProductDeletePreviewData['relatedCounts'], unknown>>;
+  relatedRecords?: {
+    tasks?: unknown;
+    applications?: unknown;
+    invoiceApplications?: unknown;
+  };
+  relatedRecordsTruncated?: {
+    tasks?: unknown;
+    applications?: unknown;
+    invoiceApplications?: unknown;
+  };
+  recordLimit?: unknown;
+};
