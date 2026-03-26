@@ -3,6 +3,8 @@ from decimal import Decimal
 from io import BytesIO
 from unittest.mock import MagicMock, mock_open, patch
 
+from core.services.invoice_service import create_invoice
+from core.utils import formatutils
 from customer_applications.models import DocApplication
 from customers.models import Customer
 from django.contrib.auth import get_user_model
@@ -10,9 +12,6 @@ from django.test import TestCase, override_settings
 from invoices.services.InvoiceService import InvoiceService
 from payments.models import Payment
 from products.models import Product, ProductCategory
-
-from core.services.invoice_service import create_invoice
-from core.utils import formatutils
 
 User = get_user_model()
 
@@ -179,3 +178,34 @@ class InvoiceServiceTests(TestCase):
         doc.merge_rows.assert_any_call("invoice_item", items)
         doc.merge_rows.assert_any_call("payment_invoice_application", payments)
         self.assertEqual(doc.merge_rows.call_count, 2)
+
+    @override_settings(
+        STATIC_SOURCE_ROOT="/tmp/test-static",
+        DOCX_INVOICE_TEMPLATE_NAME="missing-branded-template.docx",
+    )
+    def test_generate_invoice_document_falls_back_when_configured_template_is_missing(self):
+        service = InvoiceService(self.invoice)
+        data, items = service.generate_invoice_data()
+        doc = MagicMock()
+        doc.write.side_effect = lambda buf: buf.write(b"fallback-doc-output")
+
+        expected_missing = "/tmp/test-static/reporting/missing-branded-template.docx"
+        expected_fallback = "/tmp/test-static/reporting/invoice_template_with_footer_revisbali.docx"
+
+        def open_side_effect(path, mode):
+            if path == expected_missing:
+                raise FileNotFoundError(path)
+            if path == expected_fallback:
+                return mock_open(read_data=b"template-bytes")()
+            raise AssertionError(f"Unexpected template path: {path}")
+
+        with patch("builtins.open", side_effect=open_side_effect) as open_mock, patch(
+            "invoices.services.InvoiceService.MailMerge", return_value=doc
+        ):
+            buffer = service.generate_invoice_document(data, items)
+
+        self.assertEqual(buffer.getvalue(), b"fallback-doc-output")
+        self.assertEqual(open_mock.call_args_list[0].args, (expected_missing, "rb"))
+        self.assertEqual(open_mock.call_args_list[1].args, (expected_fallback, "rb"))
+        doc.merge.assert_called_once_with(**data)
+        doc.merge_rows.assert_called_once_with("invoice_item", items)

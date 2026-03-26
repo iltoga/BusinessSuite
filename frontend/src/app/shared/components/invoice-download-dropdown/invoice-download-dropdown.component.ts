@@ -1,5 +1,6 @@
 import { InvoicesService } from '@/core/api/api/invoices.service';
 import { AuthService } from '@/core/services/auth.service';
+import { SseService } from '@/core/services/sse.service';
 import { ZardButtonComponent } from '@/shared/components/button/button.component';
 import {
   ZardButtonSizeVariants,
@@ -11,17 +12,30 @@ import { PdfViewerHostComponent } from '@/shared/components/pdf-viewer-host/pdf-
 import { ZardSkeletonComponent } from '@/shared/components/skeleton';
 import { downloadBlob } from '@/shared/utils/file-download';
 
-import { JobService } from '@/core/services/job.service';
-import { extractJobId } from '@/core/utils/async-job-contract';
 import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  inject,
-  input,
-  signal,
-} from '@angular/core';
+  camelizePayload,
+  extractJobId,
+  isRecord,
+  toOptionalNumber,
+  toOptionalString,
+} from '@/core/utils/async-job-contract';
+import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { firstValueFrom, Subscription } from 'rxjs';
+
+type InvoiceDownloadTracking = {
+  jobId: string;
+  streamUrl?: string;
+  statusUrl?: string;
+  downloadUrl?: string;
+};
+
+type InvoiceDownloadProgress = {
+  status?: string;
+  progress?: number;
+  downloadUrl?: string;
+  errorMessage?: string;
+  message?: string;
+};
 
 @Component({
   selector: 'app-invoice-download-dropdown',
@@ -40,8 +54,7 @@ import { firstValueFrom, Subscription } from 'rxjs';
 export class InvoiceDownloadDropdownComponent {
   private invoicesService = inject(InvoicesService);
   private authService = inject(AuthService);
-  private jobService = inject(JobService);
-  private destroyRef = inject(DestroyRef);
+  private sseService = inject(SseService);
 
   invoiceId = input.required<number>();
   invoiceNumber = input.required<string>();
@@ -153,15 +166,13 @@ export class InvoiceDownloadDropdownComponent {
       const payload = await firstValueFrom(
         this.invoicesService.invoicesDownloadAsyncCreate(this.invoiceId(), { format: 'pdf' }),
       );
-      const jobId = extractJobId(payload);
-      const downloadUrl = payload?.['downloadUrl'];
-      let finalUrl: string;
+      const tracking = this.extractTrackingInfo(payload);
 
-      if (jobId) {
-        finalUrl = await this.trackJobStatus(jobId, downloadUrl, onProgress);
-      } else {
+      if (!tracking) {
         throw new Error('Missing job ID in PDF generation response');
       }
+
+      const finalUrl = await this.trackJobStatus(tracking, onProgress);
 
       return this.fetchFile(finalUrl);
     } catch (err) {
@@ -170,11 +181,41 @@ export class InvoiceDownloadDropdownComponent {
     }
   }
 
+  private extractTrackingInfo(payload: unknown): InvoiceDownloadTracking | null {
+    const record = isRecord(payload) ? (camelizePayload(payload) as Record<string, unknown>) : null;
+    const jobId = extractJobId(record ?? payload);
+    if (!jobId) {
+      return null;
+    }
+
+    return {
+      jobId,
+      streamUrl: toOptionalString(record?.['streamUrl']),
+      statusUrl: toOptionalString(record?.['statusUrl']),
+      downloadUrl: toOptionalString(record?.['downloadUrl']),
+    };
+  }
+
+  private normalizeDownloadProgress(payload: unknown): InvoiceDownloadProgress {
+    const record = isRecord(payload) ? (camelizePayload(payload) as Record<string, unknown>) : {};
+    return {
+      status: toOptionalString(record['status']),
+      progress: toOptionalNumber(record['progress']),
+      downloadUrl: toOptionalString(record['downloadUrl']),
+      errorMessage: toOptionalString(record['errorMessage']) ?? toOptionalString(record['error']),
+      message: toOptionalString(record['message']),
+    };
+  }
+
   private async trackJobStatus(
-    jobId: string,
-    downloadUrl: string | undefined,
+    tracking: InvoiceDownloadTracking,
     onProgress: (progress: number) => void,
   ): Promise<string> {
+    const streamUrl = tracking.streamUrl;
+    if (!streamUrl) {
+      return this.pollJobStatus(tracking, onProgress);
+    }
+
     return new Promise((resolve, reject) => {
       let settled = false;
       let sub: Subscription | null = null;
@@ -192,40 +233,79 @@ export class InvoiceDownloadDropdownComponent {
         settled = true;
         reject(error);
       };
-      sub = this.jobService.watchJob(jobId).subscribe({
-        next: (jobStatus) => {
-          if (typeof jobStatus.progress === 'number') {
-            onProgress(jobStatus.progress);
-          }
-          if (jobStatus.status === 'completed') {
-            const result = jobStatus.result as Record<string, any> | undefined;
-            const finalUrl = result?.['downloadUrl'] || downloadUrl;
-            if (!finalUrl) {
-              sub?.unsubscribe();
-              settleReject(new Error('PDF generation completed without a download URL'));
-              return;
+
+      const resolveFromStatus = () => {
+        void this.pollJobStatus(tracking, onProgress).then(settleResolve).catch(settleReject);
+      };
+
+      sub = this.sseService
+        .connectMessages<unknown>(streamUrl, { useReplayCursor: true })
+        .subscribe({
+          next: (message) => {
+            const update = this.normalizeDownloadProgress(message.data);
+            if (typeof update.progress === 'number') {
+              onProgress(update.progress);
             }
+
+            if (message.event === 'complete' || update.status === 'completed') {
+              const finalUrl = update.downloadUrl || tracking.downloadUrl;
+              if (!finalUrl) {
+                sub?.unsubscribe();
+                resolveFromStatus();
+                return;
+              }
+              sub?.unsubscribe();
+              settleResolve(finalUrl);
+            } else if (message.event === 'error' || update.status === 'failed') {
+              sub?.unsubscribe();
+              settleReject(
+                new Error(update.errorMessage || update.message || 'PDF generation failed'),
+              );
+            }
+          },
+          error: () => {
             sub?.unsubscribe();
-            settleResolve(finalUrl as string);
-          } else if (jobStatus.status === 'failed') {
-            const result = jobStatus.result as Record<string, any> | undefined;
-            sub?.unsubscribe();
-            settleReject(
-              new Error((result?.['errorMessage'] as string) || 'PDF generation failed'),
-            );
-          }
-        },
-        error: (err) => {
-          sub?.unsubscribe();
-          settleReject(err);
-        },
-        complete: () => {
-          if (!settled) {
-            settleReject(new Error('PDF generation tracking stopped before completion'));
-          }
-        },
-      });
+            resolveFromStatus();
+          },
+          complete: () => {
+            if (!settled) {
+              resolveFromStatus();
+            }
+          },
+        });
     });
+  }
+
+  private async pollJobStatus(
+    tracking: InvoiceDownloadTracking,
+    onProgress: (progress: number) => void,
+  ): Promise<string> {
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const payload = await firstValueFrom(
+        this.invoicesService.invoicesDownloadAsyncStatusRetrieve(tracking.jobId),
+      );
+      const update = this.normalizeDownloadProgress(payload);
+
+      if (typeof update.progress === 'number') {
+        onProgress(update.progress);
+      }
+
+      if (update.status === 'completed') {
+        const finalUrl = update.downloadUrl || tracking.downloadUrl;
+        if (!finalUrl) {
+          throw new Error('PDF generation completed without a download URL');
+        }
+        return finalUrl;
+      }
+
+      if (update.status === 'failed') {
+        throw new Error(update.errorMessage || update.message || 'PDF generation failed');
+      }
+
+      await this.sleep(1000);
+    }
+
+    throw new Error('PDF generation tracking stopped before completion');
   }
 
   private async fetchSyncPdfBlob(
