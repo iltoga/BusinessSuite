@@ -13,6 +13,7 @@ import { DashboardService, DashboardStats } from '@/core/services/dashboard.serv
 import { ZardButtonComponent } from '@/shared/components/button';
 import { CalendarIntegrationComponent } from '@/shared/components/calendar/calendar-integration.component';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardSkeletonComponent } from '@/shared/components/skeleton';
 import { ContextHelpDirective } from '@/shared/directives';
 
 @Component({
@@ -21,9 +22,10 @@ import { ContextHelpDirective } from '@/shared/directives';
   imports: [
     ZardButtonComponent,
     ZardCardComponent,
+    ZardSkeletonComponent,
     ContextHelpDirective,
-    CalendarIntegrationComponent
-],
+    CalendarIntegrationComponent,
+  ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

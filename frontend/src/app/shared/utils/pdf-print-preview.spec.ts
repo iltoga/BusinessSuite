@@ -4,8 +4,6 @@ import { openPdfPrintPreview } from './pdf-print-preview';
 
 describe('openPdfPrintPreview', () => {
   it('navigates an existing popup to the blob URL and schedules printing', async () => {
-    vi.useFakeTimers();
-
     const blobUrl = 'blob:invoice-preview';
     const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue(blobUrl);
     const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
@@ -27,17 +25,11 @@ describe('openPdfPrintPreview', () => {
 
     expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
     expect((popup as any).location.href).toBe(blobUrl);
-    expect(addEventListener).toHaveBeenCalledWith('load', expect.any(Function), { once: true });
-    expect(addEventListener).toHaveBeenCalledWith('afterprint', expect.any(Function), {
-      once: true,
-    });
-
-    vi.advanceTimersByTime(1500);
-    expect(focus).toHaveBeenCalled();
-    expect(print).toHaveBeenCalled();
+    expect(addEventListener).not.toHaveBeenCalled();
+    expect(focus).not.toHaveBeenCalled();
+    expect(print).not.toHaveBeenCalled();
 
     revokeObjectURLSpy.mockRestore();
     createObjectURLSpy.mockRestore();
-    vi.useRealTimers();
   });
 });

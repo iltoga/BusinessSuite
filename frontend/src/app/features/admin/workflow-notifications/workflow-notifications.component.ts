@@ -6,6 +6,8 @@ import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { ZardDialogService } from '@/shared/components/dialog';
+import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { isPlatformBrowser } from '@angular/common';
@@ -36,8 +38,10 @@ import {
     ZardButtonComponent,
     ZardComboboxComponent,
     ZardInputDirective,
-    AppDatePipe
-],
+    ZardIconComponent,
+    ...ZardDropdownImports,
+    AppDatePipe,
+  ],
   templateUrl: './workflow-notifications.component.html',
   styleUrls: ['./workflow-notifications.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

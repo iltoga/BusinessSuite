@@ -1,13 +1,60 @@
 <div class="h-full flex flex-col gap-6" [contextHelp]="'/products'">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Products</h1>
-    <a
-      routerLink="/products/new"
-      [state]="{ from: 'products', searchQuery: query(), page: page() }"
-      [contextHelp]="'/products/new'"
-    >
-      <z-button zType="default" zSize="default">New Product</z-button>
-    </a>
+    <div class="flex flex-wrap items-center gap-2">
+      <z-button
+        zType="default"
+        zSize="sm"
+        [zLoading]="printInProgress()"
+        [zDisabled]="printInProgress() || exportInProgress() || importInProgress()"
+        (click)="startPrint()"
+      >
+        Download Catalog
+      </z-button>
+      @if (isInAdminGroup()) {
+        <z-button
+          zType="default"
+          zSize="sm"
+          [zLoading]="exportInProgress()"
+          [zDisabled]="printInProgress() || exportInProgress() || importInProgress()"
+          (click)="startExport()"
+        >
+          Export
+          @if (exportInProgress() && exportProgress() !== null) {
+            ({{ exportProgress() }}%)
+          }
+        </z-button>
+        <z-button
+          zType="default"
+          zSize="sm"
+          [zLoading]="importInProgress()"
+          [zDisabled]="printInProgress() || importInProgress() || exportInProgress()"
+          (click)="openImportPicker()"
+        >
+          Import
+          @if (importInProgress() && importProgress() !== null) {
+            ({{ importProgress() }}%)
+          }
+        </z-button>
+      }
+      @if (isInAdminGroup() && totalItems() > 0) {
+        <z-button
+          zType="destructive"
+          zSize="sm"
+          (click)="openBulkDeleteDialog()"
+          [contextHelp]="'/products/bulk-delete'"
+        >
+          {{ bulkDeleteLabel() }}
+        </z-button>
+      }
+      <a
+        routerLink="/products/new"
+        [state]="{ from: 'products', searchQuery: query(), page: page() }"
+        [contextHelp]="'/products/new'"
+      >
+        <z-button zType="default" zSize="default">New Product</z-button>
+      </a>
+    </div>
   </div>
 
   <z-card class="bg-card rounded-lg border shadow-sm py-0 gap-0 **:data-[slot=card-content]:px-0">
@@ -15,58 +62,12 @@
       <app-search-toolbar
         [query]="query()"
         [placeholder]="'Search Products...'"
-        [hasActiveFilters]="hasActiveColumnFilters()"
         (queryChange)="onQueryChange($event)"
-        (clearFilters)="clearAllFilters()"
         (tabOut)="dataTable.focusFirstRowIfNone()"
         [contextHelp]="'/products/search'"
-      >
-        <z-button
-          zType="default"
-          zSize="sm"
-          [zLoading]="printInProgress()"
-          [zDisabled]="printInProgress() || exportInProgress() || importInProgress()"
-          (click)="startPrint()"
-        >
-          Download Catalog
-        </z-button>
-        @if (isInAdminGroup()) {
-          <z-button
-            zType="default"
-            zSize="sm"
-            [zLoading]="exportInProgress()"
-            [zDisabled]="printInProgress() || exportInProgress() || importInProgress()"
-            (click)="startExport()"
-          >
-            Export
-            @if (exportInProgress() && exportProgress() !== null) {
-              ({{ exportProgress() }}%)
-            }
-          </z-button>
-          <z-button
-            zType="default"
-            zSize="sm"
-            [zLoading]="importInProgress()"
-            [zDisabled]="printInProgress() || importInProgress() || exportInProgress()"
-            (click)="openImportPicker()"
-          >
-            Import
-            @if (importInProgress() && importProgress() !== null) {
-              ({{ importProgress() }}%)
-            }
-          </z-button>
-        }
-        @if (isInAdminGroup() && totalItems() > 0) {
-          <z-button
-            zType="destructive"
-            zSize="sm"
-            (click)="openBulkDeleteDialog()"
-            [contextHelp]="'/products/bulk-delete'"
-          >
-            {{ bulkDeleteLabel() }}
-          </z-button>
-        }
-      </app-search-toolbar>
+        [hasActiveFilters]="hasActiveColumnFilters()"
+        (clearFilters)="clearAllFilters()"
+      />
       <input
         #importFileInput
         type="file"
@@ -164,16 +165,20 @@
   </div>
 </ng-template>
 
-<app-product-delete-dialog
-  [isOpen]="productDeleteOpen()"
-  [data]="productDeleteData()"
-  (confirmed)="onProductDeleteConfirmed($event)"
-  (cancelled)="onProductDeleteCancelled()"
-/>
+@defer (when productDeleteOpen(); prefetch on idle) {
+  <app-product-delete-dialog
+    [isOpen]="productDeleteOpen()"
+    [data]="productDeleteData()"
+    (confirmed)="onProductDeleteConfirmed($event)"
+    (cancelled)="onProductDeleteCancelled()"
+  />
+} @placeholder {}
 
-<app-bulk-delete-dialog
-  [isOpen]="bulkDeleteOpen()"
-  [data]="bulkDeleteData()"
-  (confirmed)="onBulkDeleteConfirmed()"
-  (cancelled)="onBulkDeleteCancelled()"
-/>
+@defer (when bulkDeleteOpen(); prefetch on idle) {
+  <app-bulk-delete-dialog
+    [isOpen]="bulkDeleteOpen()"
+    [data]="bulkDeleteData()"
+    (confirmed)="onBulkDeleteConfirmed()"
+    (cancelled)="onBulkDeleteCancelled()"
+  />
+} @placeholder {}

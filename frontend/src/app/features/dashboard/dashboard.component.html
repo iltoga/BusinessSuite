@@ -20,6 +20,17 @@
   </div>
 
   <div class="mt-6">
-    <app-calendar-integration></app-calendar-integration>
+    @defer (on viewport; prefetch on idle) {
+      <app-calendar-integration></app-calendar-integration>
+    } @placeholder {
+      <z-card class="p-4">
+        <z-skeleton class="mb-4 h-8 w-48" />
+        <div class="grid grid-cols-7 gap-2">
+          @for (_ of [].constructor(35); track $index) {
+            <z-skeleton class="h-8 w-full" />
+          }
+        </div>
+      </z-card>
+    }
   </div>
 </div>

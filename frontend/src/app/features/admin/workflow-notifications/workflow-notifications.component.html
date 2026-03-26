@@ -34,7 +34,7 @@
           <th class="p-2">Recipient</th>
           <th class="p-2">Subject</th>
           <th class="p-2">Scheduled</th>
-          <th class="p-2">Actions</th>
+          <th class="p-2 w-12"></th>
         </tr>
       </thead>
       <tbody>
@@ -47,18 +47,44 @@
             <td class="p-2" data-label="Scheduled">
               {{ item.scheduled_for ? (item.scheduled_for | appDate: 'datetime') : '-' }}
             </td>
-            <td class="p-2 notification-actions-cell" data-label="Actions">
-              <div class="notification-actions flex flex-wrap gap-2">
-                <button z-button zSize="sm" [disabled]="isResending(item.id)" (click)="resend(item.id)">
-                  {{ isResending(item.id) ? 'Resending...' : 'Resend' }}
-                </button>
-                <button z-button zType="secondary" zSize="sm" (click)="cancel(item.id)">
-                  Cancel
-                </button>
-                <button z-button zType="destructive" zSize="sm" (click)="remove(item.id)">
-                  Delete
-                </button>
-              </div>
+            <td class="p-2 text-right" data-label="Actions">
+              <button
+                #actionTrigger
+                z-dropdown
+                [zDropdownMenu]="rowActionsMenu"
+                z-button
+                zType="ghost"
+                zSize="sm"
+                type="button"
+                class="h-8 w-8 p-0"
+                aria-label="Row actions"
+                aria-haspopup="menu"
+              >
+                <z-icon zType="ellipsis-vertical" />
+              </button>
+              <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-40">
+                @defer (on interaction(actionTrigger)) {
+                  <button
+                    z-dropdown-menu-item
+                    type="button"
+                    [disabled]="isResending(item.id)"
+                    (click)="resend(item.id)"
+                  >
+                    {{ isResending(item.id) ? 'Resending...' : 'Resend' }}
+                  </button>
+                  <button z-dropdown-menu-item type="button" (click)="cancel(item.id)">
+                    Cancel
+                  </button>
+                  <button
+                    z-dropdown-menu-item
+                    variant="destructive"
+                    type="button"
+                    (click)="remove(item.id)"
+                  >
+                    Delete
+                  </button>
+                }
+              </z-dropdown-menu-content>
             </td>
           </tr>
         }

@@ -287,7 +287,11 @@
                 (dismiss)="dismissCategorization()"
               />
             } @placeholder {
-              <div class="text-sm text-muted-foreground">Loading categorization…</div>
+              <div class="space-y-3 rounded-lg border p-4">
+                <z-skeleton class="h-4 w-1/3" />
+                <z-skeleton class="h-2 w-full" />
+                <z-skeleton class="h-4 w-1/4" />
+              </div>
             }
           </div>
         }
@@ -547,12 +551,14 @@
   </div>
 }
 
-<app-add-document-dialog
-  [isOpen]="isAddDocumentDialogOpen()"
-  [options]="filteredDocTypeOptions()"
-  (closed)="closeAddDocumentDialog()"
-  (addDocument)="addApplicationDocument($event)"
-/>
+@defer (when isAddDocumentDialogOpen(); prefetch on idle) {
+  <app-add-document-dialog
+    [isOpen]="isAddDocumentDialogOpen()"
+    [options]="filteredDocTypeOptions()"
+    (closed)="closeAddDocumentDialog()"
+    (addDocument)="addApplicationDocument($event)"
+  />
+} @placeholder {}
 
 @if (isUploadOpen() && selectedDocument()) {
   <div class="app-modal-overlay fixed inset-0 z-1200 flex justify-center bg-black/50 p-4">
@@ -807,22 +813,28 @@
   </div>
 }
 
-<app-ocr-review-dialog
-  [isOpen]="ocrReviewOpen()"
-  [reviewData]="ocrReviewData()"
-  (apply)="applyOcrData()"
-  (dismiss)="dismissOcrReview()"
-/>
+@defer (when ocrReviewOpen(); prefetch on idle) {
+  <app-ocr-review-dialog
+    [isOpen]="ocrReviewOpen()"
+    [reviewData]="ocrReviewData()"
+    (apply)="applyOcrData()"
+    (dismiss)="dismissOcrReview()"
+  />
+} @placeholder {}
 
-<app-ocr-data-dialog
-  [isOpen]="ocrExtractedDataDialogOpen()"
-  [text]="ocrExtractedDataDialogText()"
-  (closed)="dismissOcrExtractedDataDialog()"
-/>
+@defer (when ocrExtractedDataDialogOpen(); prefetch on idle) {
+  <app-ocr-data-dialog
+    [isOpen]="ocrExtractedDataDialogOpen()"
+    [text]="ocrExtractedDataDialogText()"
+    (closed)="dismissOcrExtractedDataDialog()"
+  />
+} @placeholder {}
 
-<app-application-delete-dialog
-  [isOpen]="deleteWithInvoiceOpen()"
-  [data]="deleteWithInvoiceData()"
-  (confirmed)="confirmDeleteWithInvoiceAction()"
-  (cancelled)="cancelDeleteWithInvoiceAction()"
-/>
+@defer (when deleteWithInvoiceOpen(); prefetch on idle) {
+  <app-application-delete-dialog
+    [isOpen]="deleteWithInvoiceOpen()"
+    [data]="deleteWithInvoiceData()"
+    (confirmed)="confirmDeleteWithInvoiceAction()"
+    (cancelled)="cancelDeleteWithInvoiceAction()"
+  />
+} @placeholder {}

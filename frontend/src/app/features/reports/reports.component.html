@@ -124,78 +124,89 @@
             <div class="mt-1 text-2xl font-semibold">{{ d.month_summary?.request_count }}</div>
           </z-card>
         </div>
-        <div class="grid gap-6 md:grid-cols-2">
-          <z-card class="p-4">
-            <canvas
-              baseChart
-              [type]="'line'"
-              [data]="chart('aiYearlyCost')"
-              [options]="{ responsive: true }"
-            ></canvas>
-          </z-card>
-          <z-card class="p-4">
-            <canvas
-              baseChart
-              [type]="'line'"
-              [data]="chart('aiMonthlyCost')"
-              [options]="{ responsive: true }"
-            ></canvas>
-          </z-card>
-        </div>
-        <div class="grid gap-6 md:grid-cols-2">
-          <z-card class="p-4">
-            <canvas
-              baseChart
-              [type]="'bar'"
-              [data]="chart('aiMonthlyRequests')"
-              [options]="{ responsive: true }"
-            ></canvas>
-          </z-card>
-          <z-card class="p-4">
-            <canvas
-              baseChart
-              [type]="'doughnut'"
-              [data]="chart('aiFeatureBreakdown')"
-              [options]="{ responsive: true }"
-            ></canvas>
-          </z-card>
-        </div>
-        <div class="grid gap-6 md:grid-cols-2">
-          <z-card class="p-4">
-            <canvas
-              baseChart
-              [type]="'bar'"
-              [data]="chart('aiModelBreakdownCost')"
-              [options]="{ responsive: true }"
-            ></canvas>
-          </z-card>
-          <z-card class="p-4">
-            <canvas
-              baseChart
-              [type]="'bar'"
-              [data]="chart('aiModelBreakdownRequests')"
-              [options]="{ responsive: true }"
-            ></canvas>
-          </z-card>
-        </div>
-        <div class="grid gap-6 md:grid-cols-2">
-          <z-card class="p-4">
-            <canvas
-              baseChart
-              [type]="'line'"
-              [data]="chart('aiDailyCost')"
-              [options]="{ responsive: true }"
-            ></canvas>
-          </z-card>
-          <z-card class="p-4">
-            <canvas
-              baseChart
-              [type]="'line'"
-              [data]="chart('aiDailyRequests')"
-              [options]="{ responsive: true }"
-            ></canvas>
-          </z-card>
-        </div>
+        @defer (on immediate) {
+          <div class="grid gap-6 md:grid-cols-2">
+            <z-card class="p-4">
+              <canvas
+                baseChart
+                [type]="'line'"
+                [data]="chart('aiYearlyCost')"
+                [options]="{ responsive: true }"
+              ></canvas>
+            </z-card>
+            <z-card class="p-4">
+              <canvas
+                baseChart
+                [type]="'line'"
+                [data]="chart('aiMonthlyCost')"
+                [options]="{ responsive: true }"
+              ></canvas>
+            </z-card>
+          </div>
+          <div class="grid gap-6 md:grid-cols-2">
+            <z-card class="p-4">
+              <canvas
+                baseChart
+                [type]="'bar'"
+                [data]="chart('aiMonthlyRequests')"
+                [options]="{ responsive: true }"
+              ></canvas>
+            </z-card>
+            <z-card class="p-4">
+              <canvas
+                baseChart
+                [type]="'doughnut'"
+                [data]="chart('aiFeatureBreakdown')"
+                [options]="{ responsive: true }"
+              ></canvas>
+            </z-card>
+          </div>
+          <div class="grid gap-6 md:grid-cols-2">
+            <z-card class="p-4">
+              <canvas
+                baseChart
+                [type]="'bar'"
+                [data]="chart('aiModelBreakdownCost')"
+                [options]="{ responsive: true }"
+              ></canvas>
+            </z-card>
+            <z-card class="p-4">
+              <canvas
+                baseChart
+                [type]="'bar'"
+                [data]="chart('aiModelBreakdownRequests')"
+                [options]="{ responsive: true }"
+              ></canvas>
+            </z-card>
+          </div>
+          <div class="grid gap-6 md:grid-cols-2">
+            <z-card class="p-4">
+              <canvas
+                baseChart
+                [type]="'line'"
+                [data]="chart('aiDailyCost')"
+                [options]="{ responsive: true }"
+              ></canvas>
+            </z-card>
+            <z-card class="p-4">
+              <canvas
+                baseChart
+                [type]="'line'"
+                [data]="chart('aiDailyRequests')"
+                [options]="{ responsive: true }"
+              ></canvas>
+            </z-card>
+          </div>
+        } @placeholder {
+          <div class="space-y-6">
+            @for (_ of [1, 2, 3, 4]; track $index) {
+              <div class="grid gap-6 md:grid-cols-2">
+                <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+                <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+              </div>
+            }
+          </div>
+        }
         <z-card
           class="rounded-lg border bg-card overflow-auto py-0 gap-0 **:data-[slot=card-content]:px-0"
         >
@@ -255,84 +266,112 @@
       </section>
     }
     @if (slug() === 'revenue') {
-      <div class="grid gap-6 md:grid-cols-2">
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('revenueMonthly')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'line'"
-            [data]="chart('revenueMonthly')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-      </div>
+      @defer (on immediate) {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('revenueMonthly')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'line'"
+              [data]="chart('revenueMonthly')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+        </div>
+      } @placeholder {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+        </div>
+      }
     }
     @if (slug() === 'kpi-dashboard') {
-      <div class="grid gap-6 md:grid-cols-2">
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'line'"
-            [data]="chart('kpiRevenue')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('kpiCustomers')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-      </div>
+      @defer (on immediate) {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'line'"
+              [data]="chart('kpiRevenue')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('kpiCustomers')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+        </div>
+      } @placeholder {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+        </div>
+      }
     }
     @if (slug() === 'invoice-status') {
-      <div class="grid gap-6 md:grid-cols-2">
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'doughnut'"
-            [data]="chart('statusCounts')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('aging')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-      </div>
+      @defer (on immediate) {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'doughnut'"
+              [data]="chart('statusCounts')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('aging')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+        </div>
+      } @placeholder {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+        </div>
+      }
     }
     @if (slug() === 'customer-ltv') {
-      <div class="grid gap-6 md:grid-cols-2">
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('ltvTop')"
-            [options]="{ responsive: true, indexAxis: 'y' }"
-          ></canvas
-        ></z-card>
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'pie'"
-            [data]="chart('ltvSegment')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-      </div>
+      @defer (on immediate) {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('ltvTop')"
+              [options]="{ responsive: true, indexAxis: 'y' }"
+            ></canvas
+          ></z-card>
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'pie'"
+              [data]="chart('ltvSegment')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+        </div>
+      } @placeholder {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+        </div>
+      }
     }
     @if (slug() === 'product-revenue') {
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -353,60 +392,71 @@
           <div class="text-2xl font-semibold">{{ d.total_applications }}</div>
         </z-card>
       </div>
-      <div class="grid gap-6 md:grid-cols-2">
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('productRevenue')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('productProfit')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-      </div>
-      <div class="grid gap-6 md:grid-cols-2">
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'line'"
-            [data]="chart('profitMonthly')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('productMargin')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-      </div>
-      <div class="grid gap-6 md:grid-cols-2">
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('invoiceProfit')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'doughnut'"
-            [data]="chart('typeRevenue')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-      </div>
+      @defer (on immediate) {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('productRevenue')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('productProfit')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'line'"
+              [data]="chart('profitMonthly')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('productMargin')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('invoiceProfit')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'doughnut'"
+              [data]="chart('typeRevenue')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+        </div>
+      } @placeholder {
+        <div class="space-y-6">
+          @for (_ of [1, 2, 3]; track $index) {
+            <div class="grid gap-6 md:grid-cols-2">
+              <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+              <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+            </div>
+          }
+        </div>
+      }
       <z-card
         class="rounded-lg border bg-card overflow-auto py-0 gap-0 **:data-[slot=card-content]:px-0"
       >
@@ -467,64 +517,85 @@
       </z-card>
     }
     @if (slug() === 'cash-flow') {
-      <div class="grid gap-6 md:grid-cols-2">
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'line'"
-            [data]="chart('cashflowMonthly')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('paymentTypes')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-      </div>
+      @defer (on immediate) {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'line'"
+              [data]="chart('cashflowMonthly')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('paymentTypes')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+        </div>
+      } @placeholder {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+        </div>
+      }
     }
     @if (slug() === 'application-pipeline') {
-      <div class="grid gap-6 md:grid-cols-2">
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'doughnut'"
-            [data]="chart('statusCounts')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('processingTime')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-      </div>
+      @defer (on immediate) {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'doughnut'"
+              [data]="chart('statusCounts')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('processingTime')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+        </div>
+      } @placeholder {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+        </div>
+      }
     }
     @if (slug() === 'product-demand') {
-      <div class="grid gap-6 md:grid-cols-2">
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'line'"
-            [data]="chart('demandTotal')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-        <z-card class="p-4"
-          ><canvas
-            baseChart
-            [type]="'bar'"
-            [data]="chart('demandGrowth')"
-            [options]="{ responsive: true }"
-          ></canvas
-        ></z-card>
-      </div>
+      @defer (on immediate) {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'line'"
+              [data]="chart('demandTotal')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+          <z-card class="p-4"
+            ><canvas
+              baseChart
+              [type]="'bar'"
+              [data]="chart('demandGrowth')"
+              [options]="{ responsive: true }"
+            ></canvas
+          ></z-card>
+        </div>
+      } @placeholder {
+        <div class="grid gap-6 md:grid-cols-2">
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+          <z-card class="p-4"><z-skeleton class="h-[300px] w-full" /></z-card>
+        </div>
+      }
     }
     @if (slug() === 'monthly-invoices') {
       <z-card
