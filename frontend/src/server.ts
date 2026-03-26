@@ -515,10 +515,12 @@ const cspEnabled = (process.env['CSP_ENABLED'] || '').toLowerCase() === 'true';
 const cspMode = process.env['CSP_MODE'] || 'report-only'; // report-only | enforce
 const cspReportUri = (process.env['CSP_REPORT_URI'] || '').trim();
 
-function buildCspDirectives(nonce: string): string {
+function buildCspDirectives(): string {
   const directives = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' https://www.googletagmanager.com https://apis.google.com https://www.gstatic.com https://static.cloudflareinsights.com`,
+    // 'unsafe-inline' is required because nonce-based script-src blocks inline event handlers
+    // (onclick, onload, etc.) which Angular and third-party scripts may generate.
+    `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://apis.google.com https://www.gstatic.com https://static.cloudflareinsights.com`,
     `style-src 'self' 'unsafe-inline'`, // Tailwind/CSS-in-JS requires inline styles
     `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
@@ -543,13 +545,13 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
   if (cspEnabled) {
-    // Generate a per-request nonce and stash it on res.locals for the SSR handler
+    // Generate a per-request nonce and stash it on res.locals for the SSR handler.
+    // NOTE: The SSR server does NOT emit the Content-Security-Policy header itself.
+    // The nonce is injected into HTML (ngCspNonce, <script nonce="...">), and the
+    // x-csp-nonce / x-csp-mode response headers tell the upstream reverse-proxy
+    // (nginx) to set the actual CSP header at the edge.
     const nonce = generateNonce();
     res.locals['cspNonce'] = nonce;
-
-    const cspHeader =
-      cspMode === 'enforce' ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only';
-    res.setHeader(cspHeader, buildCspDirectives(nonce));
   }
 
   next();
