@@ -168,6 +168,8 @@ jobs:
               echo "ℹ️  MIGRATE_STORAGE_ASSETS != true — skipping storage migration tasks"
             fi
 
-            # Clean up dangling images only (safe, preserves layer cache)
-            echo "🧹  Cleaning up dangling images …"
+            # Clean up: dangling images, stopped containers, and build cache over 2GB
+            echo "🧹  Cleaning up unused Docker resources …"
             docker image prune -f
+            docker container prune -f
+            docker builder prune -f --keep-storage=2gb
