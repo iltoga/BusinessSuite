@@ -15,11 +15,7 @@ WORKDIR /usr/src/app
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   libpq-dev \
-  cron \
   curl \
-  jq \
-  procps \
-  vim \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml uv.lock ./

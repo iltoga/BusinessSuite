@@ -27,9 +27,6 @@ jobs:
             set -e
             REPO_DIR="${{ secrets.REPO_DIR }}"
 
-            # Making space for new deployment
-            docker system prune -f
-
             echo "🚀  Starting deployment …"
             echo "📁  Repository directory: $REPO_DIR"
 
@@ -48,25 +45,10 @@ jobs:
             echo "📊  Current commit: $OLD_COMMIT"
 
             echo "📥  Fetching latest changes …"
-            git fetch --all
+            git fetch origin main
 
             echo "🔄  Switching to main branch …"
             git checkout main
-
-            echo "🐳  Stopping all existing containers..."
-            # Stop containers managed by compose
-            docker compose down --remove-orphans || echo "⚠️  No compose containers to stop"
-
-            # Force remove any containers that might be lingering
-            docker ps -a -q --filter "name=postgres-srv" | xargs -r docker rm -f || true
-            docker ps -a -q --filter "name=pgadmin" | xargs -r docker rm -f || true
-            docker ps -a -q --filter "name=bs-core" | xargs -r docker rm -f || true
-            docker ps -a -q --filter "name=bs-worker" | xargs -r docker rm -f || true
-            docker ps -a -q --filter "name=bs-scheduler" | xargs -r docker rm -f || true
-            docker ps -a -q --filter "name=bs-redis" | xargs -r docker rm -f || true
-            docker ps -a -q --filter "name=bs-alloy" | xargs -r docker rm -f || true
-            docker ps -a -q --filter "name=crmrevisbalicom" | xargs -r docker rm -f || true
-            echo "✅  All containers removed"
 
             echo "🧹  Resetting local state …"
             git reset --hard origin/main
@@ -75,21 +57,36 @@ jobs:
             echo "🧹  Cleaning safe untracked files..."
             git clean -f || echo "⚠️  Some files couldn't be cleaned, continuing..."
 
-            echo "⬇️  Pulling latest commits …"
-            git pull origin main
-
             NEW_COMMIT=$(git rev-parse HEAD)
             echo "📊  New commit: $NEW_COMMIT"
 
-            echo "🔍  Detecting dependency-file changes …"
-            DEP_CHANGED=false
-            if [ "$OLD_COMMIT" != none ] && [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
-              if git diff --name-only $OLD_COMMIT $NEW_COMMIT | grep -E '(backend/pyproject\.toml|backend/uv\.lock|Dockerfile|Dockerfile\.frontend|frontend/|backend/locale/|.*\\.po$)' >/dev/null; then
-                DEP_CHANGED=true
-                echo "📦  Dependencies or Dockerfile changed — full rebuild needed."
-              else
-                echo "📦  No dependency/Dockerfile change — cached dependencies will be reused."
+            if [ "$OLD_COMMIT" = "$NEW_COMMIT" ]; then
+              echo "ℹ️  No new commits — skipping deploy."
+              exit 0
+            fi
+
+            echo "🔍  Detecting what changed …"
+            BACKEND_CHANGED=false
+            FRONTEND_CHANGED=false
+            if [ "$OLD_COMMIT" != none ]; then
+              CHANGED_FILES=$(git diff --name-only "$OLD_COMMIT" "$NEW_COMMIT")
+              if echo "$CHANGED_FILES" | grep -qE '^(backend/pyproject\.toml|backend/uv\.lock|backend/Dockerfile)'; then
+                BACKEND_CHANGED=true
+                echo "📦  Backend deps/Dockerfile changed — backend rebuild needed."
               fi
+              if echo "$CHANGED_FILES" | grep -qE '^(frontend/|Dockerfile\.frontend)'; then
+                FRONTEND_CHANGED=true
+                echo "📦  Frontend changed — frontend rebuild needed."
+              fi
+              # If compose file itself changed, rebuild both
+              if echo "$CHANGED_FILES" | grep -qE '^docker-compose\.yml$'; then
+                BACKEND_CHANGED=true
+                FRONTEND_CHANGED=true
+                echo "📦  docker-compose.yml changed — full rebuild needed."
+              fi
+            else
+              BACKEND_CHANGED=true
+              FRONTEND_CHANGED=true
             fi
 
             echo "⚙️  Exporting environment variables from .env …"
@@ -107,18 +104,30 @@ jobs:
             export DOCKER_BUILDKIT=1
             export COMPOSE_DOCKER_CLI_BUILD=1
 
-            echo "🏗️  Building and starting containers …"
-            if [ "$DEP_CHANGED" = true ]; then
-              docker compose build --pull
+            # ── BUILD IMAGES WHILE OLD CONTAINERS STILL RUN ──
+            echo "🏗️  Building images (old containers still serving traffic) …"
+            BUILD_TARGETS=""
+            if [ "$BACKEND_CHANGED" = true ]; then
+              BUILD_TARGETS="$BUILD_TARGETS bs-core"
             fi
+            if [ "$FRONTEND_CHANGED" = true ]; then
+              BUILD_TARGETS="$BUILD_TARGETS bs-frontend"
+            fi
+            if [ -n "$BUILD_TARGETS" ]; then
+              docker compose build $BUILD_TARGETS
+            else
+              echo "ℹ️  No image rebuilds needed — using cached images."
+            fi
+
+            # ── QUICK SWAP: stop old, start new ──
+            echo "🐳  Replacing containers …"
+            docker compose down --remove-orphans || echo "⚠️  No compose containers to stop"
             docker compose up -d --remove-orphans bs-alloy bs-core bs-worker bs-scheduler bs-frontend
 
             # Optionally run initial data seeding if explicitly requested via .env (INITIALIZE_DB=true)
             if [ "${INITIALIZE_DB:-false}" = "true" ]; then
               echo "🧪  INITIALIZE_DB=true — running one-off seeding script inside bs-core container via exec with retries"
 
-              # Try to execute the init script inside the running bs-core container.
-              # Use `exec` to avoid creating a second container that could conflict on ports.
               ATTEMPTS=0
               MAX_ATTEMPTS=6
               SLEEP_SECONDS=10
@@ -159,5 +168,6 @@ jobs:
               echo "ℹ️  MIGRATE_STORAGE_ASSETS != true — skipping storage migration tasks"
             fi
 
-            echo "🧹  Cleaning up unused data …"
-            docker system prune -f
+            # Clean up dangling images only (safe, preserves layer cache)
+            echo "🧹  Cleaning up dangling images …"
+            docker image prune -f

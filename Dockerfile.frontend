@@ -17,8 +17,12 @@ RUN set -eux; \
   bun install --frozen-lockfile || \
   (rm -rf /root/.bun/install/cache && bun install --frozen-lockfile)
 
-# Copy the rest of the frontend files
-COPY frontend/ ./
+# Copy config files first (rarely change) — separate layer for cache
+COPY frontend/tsconfig*.json frontend/angular.json frontend/ngsw-config.json frontend/components.json ./
+
+# Copy source code last (changes most often)
+COPY frontend/src/ ./src/
+COPY frontend/public/ ./public/
 
 # Run Angular CLI via Node to avoid Bun's ESM loader limitations during build
 RUN node ./node_modules/@angular/cli/bin/ng.js build --configuration production --progress=false
@@ -27,12 +31,13 @@ FROM oven/bun:latest AS runner
 
 WORKDIR /app
 
+# Copy production deps from builder instead of reinstalling
+COPY --from=builder /app/node_modules ./node_modules
 COPY frontend/package.json frontend/bun.lock ./
-RUN set -eux; \
-  bun install --frozen-lockfile --production || \
-  (rm -rf /root/.bun/install/cache && bun install --frozen-lockfile --production)
-
 COPY --from=builder /app/dist ./dist
+
+# Prune dev dependencies in-place (faster than a second install)
+RUN bun install --frozen-lockfile --production || true
 
 ENV NODE_ENV=production
 ENV PORT=4000

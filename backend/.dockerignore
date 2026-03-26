@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+htmlcov/
+logs/
+media/
+tmp/
+cache/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+testfiles/
+dev_scripts/
+fixtures/
+test_*.py
