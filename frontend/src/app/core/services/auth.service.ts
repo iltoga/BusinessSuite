@@ -15,7 +15,17 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { computed, Inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, finalize, map, Observable, of, shareReplay, tap, throwError } from 'rxjs';
+import {
+  catchError,
+  finalize,
+  map,
+  Observable,
+  of,
+  shareReplay,
+  tap,
+  throwError,
+  timeout,
+} from 'rxjs';
 
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { unwrapApiRecord } from '@/core/utils/api-envelope';
@@ -88,6 +98,8 @@ export interface LoginCredentials {
 }
 
 const REFRESH_SESSION_HINT_COOKIE_NAME = 'bs_refresh_session_hint';
+const LOGIN_REQUEST_TIMEOUT_MS = 15_000;
+const REFRESH_REQUEST_TIMEOUT_MS = 8_000;
 
 @Injectable({
   providedIn: 'root',
@@ -142,7 +154,7 @@ export class AuthService {
     return groups.some((group) => String(group).toLowerCase() === managerName);
   });
   isAdminOrManager = computed(
-    () => this.isSuperuser() || this.isInAdminGroup() || this.isInManagerGroup(),
+    () => this.isSuperuser() || this.isInAdmioGroup() || this.isInManagerGroup(),
   );
   isLoading = this._isLoading.asReadonly();
   error = this._error.asReadonly();
@@ -224,6 +236,7 @@ export class AuthService {
         withCredentials: true,
       })
       .pipe(
+        timeout(LOGIN_REQUEST_TIMEOUT_MS),
         tap((response) => {
           this.applyAuthSession(response);
           this._isLoading.set(false);
@@ -339,6 +352,7 @@ export class AuthService {
         },
       )
       .pipe(
+        timeout(REFRESH_REQUEST_TIMEOUT_MS),
         tap((response) => {
           this.applyAuthSession(response);
         }),

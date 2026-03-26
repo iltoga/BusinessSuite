@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { firstValueFrom, of, throwError } from 'rxjs';
+import { firstValueFrom, never, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AuthService } from './auth.service';
@@ -175,6 +175,7 @@ describe('AuthService auth flow', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     restoreLocalStorage();
+    vi.useRealTimers();
   });
 
   it('normalizes canonical login envelopes and stores the access token in memory', async () => {
@@ -244,6 +245,19 @@ describe('AuthService auth flow', () => {
       expect.objectContaining({ withCredentials: true }),
     );
     expect(service.getToken()).toBe('refreshed-access-token');
+  });
+
+  it('fails closed when the refresh endpoint stalls during session restore', async () => {
+    vi.useFakeTimers();
+    document.cookie = 'bs_refresh_session_hint=1; path=/';
+    httpClientMock.post.mockReturnValueOnce(never());
+
+    const restorePromise = firstValueFrom(service.restoreSession());
+
+    await vi.advanceTimersByTimeAsync(8_000);
+
+    await expect(restorePromise).resolves.toBe(false);
+    expect(service.getToken()).toBeNull();
   });
 
   it('skips refresh when there is no refresh session hint cookie', async () => {

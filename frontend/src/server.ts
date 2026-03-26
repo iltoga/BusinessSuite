@@ -518,11 +518,11 @@ const cspReportUri = (process.env['CSP_REPORT_URI'] || '').trim();
 function buildCspDirectives(nonce: string): string {
   const directives = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' https://www.googletagmanager.com https://apis.google.com https://www.gstatic.com`,
+    `script-src 'self' 'nonce-${nonce}' https://www.googletagmanager.com https://apis.google.com https://www.gstatic.com https://static.cloudflareinsights.com`,
     `style-src 'self' 'unsafe-inline'`, // Tailwind/CSS-in-JS requires inline styles
     `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
-    `connect-src 'self' https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://www.gstatic.com`,
+    `connect-src 'self' wss: https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://www.gstatic.com https://cloudflareinsights.com`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
