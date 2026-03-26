@@ -74,7 +74,8 @@ jobs:
             git checkout main
 
             echo "🧹  Resetting local state …"
-            git reset --hard origin/main
+            # Use FETCH_HEAD — git fetch origin main doesn't always update origin/main tracking ref
+            git reset --hard FETCH_HEAD
 
             # Safely clean only untracked files that won't interfere with operations
             echo "🧹  Cleaning safe untracked files..."
