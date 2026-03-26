@@ -17,12 +17,8 @@ RUN set -eux; \
   bun install --frozen-lockfile || \
   (rm -rf /root/.bun/install/cache && bun install --frozen-lockfile)
 
-# Copy config files first (rarely change) — separate layer for cache
-COPY frontend/tsconfig*.json frontend/angular.json frontend/ngsw-config.json frontend/components.json ./
-
-# Copy source code last (changes most often)
-COPY frontend/src/ ./src/
-COPY frontend/public/ ./public/
+# Copy the rest of the frontend files
+COPY frontend/ ./
 
 # Run Angular CLI via Node to avoid Bun's ESM loader limitations during build
 RUN node ./node_modules/@angular/cli/bin/ng.js build --configuration production --progress=false
