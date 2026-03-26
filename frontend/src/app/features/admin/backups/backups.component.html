@@ -106,7 +106,12 @@
         </button>
       </div>
     </div>
-    <app-data-table [data]="items()" [columns]="columns()" [isLoading]="isLoading()" />
+    <app-data-table
+      [data]="items()"
+      [columns]="columns()"
+      [actions]="actions()"
+      [isLoading]="isLoading()"
+    />
   </z-card>
 </div>
 
@@ -139,30 +144,4 @@
 <!-- Size Template -->
 <ng-template #sizeTemplate let-item>
   {{ formatFileSize(item.size) }}
-</ng-template>
-
-<!-- Actions Template -->
-<ng-template #actionsTemplate let-item>
-  <div class="flex flex-wrap gap-2 sm:flex-nowrap">
-    <button
-      z-button
-      zType="ghost"
-      zSize="sm"
-      (click)="downloadBackup(item.filename)"
-      [zDisabled]="isOperationRunning()"
-    >
-      Download
-    </button>
-    @if (canRestoreBackups()) {
-      <button
-        z-button
-        zType="ghost"
-        zSize="sm"
-        (click)="restoreBackup(item.filename)"
-        [zDisabled]="isOperationRunning()"
-      >
-        Restore
-      </button>
-    }
-  </div>
 </ng-template>

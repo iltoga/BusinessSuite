@@ -216,14 +216,16 @@
     </app-card-section>
   </div>
 
-  <app-payment-modal
-    [isOpen]="paymentModalOpen()"
-    [invoiceApplication]="selectedApplication()"
-    [invoiceApplications]="selectedApplications()"
-    [payment]="selectedPayment()"
-    (saved)="onPaymentSaved()"
-    (closed)="closePaymentModal()"
-  />
+  @defer (when paymentModalOpen(); prefetch on idle) {
+    <app-payment-modal
+      [isOpen]="paymentModalOpen()"
+      [invoiceApplication]="selectedApplication()"
+      [invoiceApplications]="selectedApplications()"
+      [payment]="selectedPayment()"
+      (saved)="onPaymentSaved()"
+      (closed)="closePaymentModal()"
+    />
+  } @placeholder {}
 
   <app-confirm-dialog
     [isOpen]="paymentDeleteOpen()"

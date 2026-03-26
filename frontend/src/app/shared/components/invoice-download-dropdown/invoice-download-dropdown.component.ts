@@ -8,8 +8,11 @@ import {
 import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
 import { ZardIconComponent } from '@/shared/components/icon/icon.component';
 import { PdfViewerHostComponent } from '@/shared/components/pdf-viewer-host/pdf-viewer-host.component';
+import { ZardSkeletonComponent } from '@/shared/components/skeleton';
 import { downloadBlob } from '@/shared/utils/file-download';
 
+import { JobService } from '@/core/services/job.service';
+import { extractJobId } from '@/core/utils/async-job-contract';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -18,10 +21,7 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { JobService } from '@/core/services/job.service';
 import { firstValueFrom, Subscription } from 'rxjs';
-import { extractJobId } from '@/core/utils/async-job-contract';
 
 @Component({
   selector: 'app-invoice-download-dropdown',
@@ -30,8 +30,9 @@ import { extractJobId } from '@/core/utils/async-job-contract';
     ...ZardDropdownImports,
     ZardButtonComponent,
     ZardIconComponent,
-    PdfViewerHostComponent
-],
+    ZardSkeletonComponent,
+    PdfViewerHostComponent,
+  ],
   templateUrl: './invoice-download-dropdown.component.html',
   styleUrls: ['./invoice-download-dropdown.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -209,7 +210,9 @@ export class InvoiceDownloadDropdownComponent {
           } else if (jobStatus.status === 'failed') {
             const result = jobStatus.result as Record<string, any> | undefined;
             sub?.unsubscribe();
-            settleReject(new Error((result?.['errorMessage'] as string) || 'PDF generation failed'));
+            settleReject(
+              new Error((result?.['errorMessage'] as string) || 'PDF generation failed'),
+            );
           }
         },
         error: (err) => {
@@ -229,7 +232,9 @@ export class InvoiceDownloadDropdownComponent {
     onProgress: (progress: number) => void,
   ): Promise<{ blob: Blob; filename: string }> {
     onProgress(5);
-    const blob = await firstValueFrom(this.invoicesService.invoicesDownloadRetrieve(this.invoiceId(), 'pdf'));
+    const blob = await firstValueFrom(
+      this.invoicesService.invoicesDownloadRetrieve(this.invoiceId(), 'pdf'),
+    );
     onProgress(100);
     return { blob, filename: this.defaultPdfFilename() };
   }

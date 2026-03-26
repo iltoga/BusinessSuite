@@ -52,6 +52,8 @@
       (closed)="closePrintPreview()"
     />
   } @placeholder {
-    <div class="flex items-center justify-center p-8 text-muted-foreground">Loading viewer…</div>
+    <div class="flex h-[60vh] items-center justify-center p-8">
+      <z-skeleton class="h-full w-full rounded-lg" />
+    </div>
   }
 }

@@ -30,6 +30,7 @@ describe('ProductListComponent', () => {
       .subscribe();
 
   beforeEach(() => {
+    sessionStorage.clear();
     mockToastService = {
       success: vi.fn(),
       error: vi.fn(),
@@ -117,6 +118,11 @@ describe('ProductListComponent', () => {
     component.ngOnInit();
     component.page.set(1);
     component.query.set('');
+    mockRouter.navigate.mockClear();
+  });
+
+  afterEach(() => {
+    sessionStorage.clear();
   });
 
   it('hides deprecated products by default and restores that default when the filter is cleared', () => {
@@ -198,13 +204,17 @@ describe('ProductListComponent', () => {
     editAction!.action({ id: 12, deprecated: false } as any);
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/products/12/edit'], {
-      state: {
+      state: expect.objectContaining({
         from: 'products',
         focusId: 12,
         searchQuery: 'visa',
         page: 3,
         returnToList: true,
-      },
+        filters: {
+          deprecated: ['active'],
+          productCategoryName: [],
+        },
+      }),
     });
   });
 

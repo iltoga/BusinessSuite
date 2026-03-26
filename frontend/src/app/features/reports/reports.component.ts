@@ -20,6 +20,7 @@ import {
 } from '@/core/services/reports.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardSkeletonComponent } from '@/shared/components/skeleton';
 import { ZardTableComponent } from '@/shared/components/table';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
@@ -107,6 +108,7 @@ const CHART_TYPES_BY_SLUG = {
     BaseChartDirective,
     ZardButtonComponent,
     ZardCardComponent,
+    ZardSkeletonComponent,
     ZardTableComponent,
     AppDatePipe,
   ],
@@ -129,7 +131,9 @@ export class ReportsComponent {
 
   chartColors = ['#0f766e', '#1d4ed8', '#b45309', '#dc2626', '#15803d', '#0ea5e9', '#475569'];
 
-  reportTitle = computed(() => this.reportList().find((r) => r.url.includes(this.slug()))?.name || 'Reports');
+  reportTitle = computed(
+    () => this.reportList().find((r) => r.url.includes(this.slug()))?.name || 'Reports',
+  );
   isAiCosting = computed(() => this.slug() === 'ai-costing');
   aiAvailableYears = computed<number[]>(() => this.data()?.available_years ?? []);
   readonly monthOptions = REPORT_MONTH_OPTIONS;
@@ -262,7 +266,9 @@ export class ReportsComponent {
       case 'statusCounts':
         return {
           labels: d.status_data.map((s) => s.status),
-          datasets: [{ data: d.status_data.map((s) => s.count), backgroundColor: this.chartColors }],
+          datasets: [
+            { data: d.status_data.map((s) => s.count), backgroundColor: this.chartColors },
+          ],
         };
       case 'aging':
         return {
@@ -356,7 +362,9 @@ export class ReportsComponent {
       case 'typeRevenue':
         return {
           labels: d.type_data.map((t) => t.type),
-          datasets: [{ data: d.type_data.map((t) => t.revenue), backgroundColor: this.chartColors }],
+          datasets: [
+            { data: d.type_data.map((t) => t.revenue), backgroundColor: this.chartColors },
+          ],
         };
       case 'cashflowMonthly':
         return {

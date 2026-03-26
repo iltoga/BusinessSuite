@@ -2,9 +2,6 @@
   <div class="flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Products</h1>
     <div class="flex flex-wrap items-center gap-2">
-      @if (hasActiveColumnFilters()) {
-        <z-button zType="secondary" zSize="sm" (click)="clearAllFilters()">Clear Filters</z-button>
-      }
       <z-button
         zType="default"
         zSize="sm"
@@ -68,6 +65,8 @@
         (queryChange)="onQueryChange($event)"
         (tabOut)="dataTable.focusFirstRowIfNone()"
         [contextHelp]="'/products/search'"
+        [hasActiveFilters]="hasActiveColumnFilters()"
+        (clearFilters)="clearAllFilters()"
       />
       <input
         #importFileInput
@@ -166,16 +165,20 @@
   </div>
 </ng-template>
 
-<app-product-delete-dialog
-  [isOpen]="productDeleteOpen()"
-  [data]="productDeleteData()"
-  (confirmed)="onProductDeleteConfirmed($event)"
-  (cancelled)="onProductDeleteCancelled()"
-/>
+@defer (when productDeleteOpen(); prefetch on idle) {
+  <app-product-delete-dialog
+    [isOpen]="productDeleteOpen()"
+    [data]="productDeleteData()"
+    (confirmed)="onProductDeleteConfirmed($event)"
+    (cancelled)="onProductDeleteCancelled()"
+  />
+} @placeholder {}
 
-<app-bulk-delete-dialog
-  [isOpen]="bulkDeleteOpen()"
-  [data]="bulkDeleteData()"
-  (confirmed)="onBulkDeleteConfirmed()"
-  (cancelled)="onBulkDeleteCancelled()"
-/>
+@defer (when bulkDeleteOpen(); prefetch on idle) {
+  <app-bulk-delete-dialog
+    [isOpen]="bulkDeleteOpen()"
+    [data]="bulkDeleteData()"
+    (confirmed)="onBulkDeleteConfirmed()"
+    (cancelled)="onBulkDeleteCancelled()"
+  />
+} @placeholder {}

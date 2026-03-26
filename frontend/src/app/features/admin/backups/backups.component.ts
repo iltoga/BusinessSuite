@@ -1,4 +1,3 @@
-
 import {
   ChangeDetectionStrategy,
   Component,
@@ -12,27 +11,26 @@ import { FormsModule } from '@angular/forms';
 import { catchError, EMPTY, finalize, map, of, Subscription, type Observable } from 'rxjs';
 
 import { BackupsService } from '@/core/api';
-import { AuthService } from '@/core/services/auth.service';
 import { SseService } from '@/core/services/sse.service';
-import {
-  BaseListComponent,
-  BaseListConfig,
-  type ListRequestParams,
-  type PaginatedResponse,
-} from '@/shared/core/base-list.component';
-import { GlobalToastService } from '@/core/services/toast.service';
-import { createAsyncRequestMetadata } from '@/core/utils/request-metadata';
 import { unwrapApiRecord } from '@/core/utils/api-envelope';
+import { createAsyncRequestMetadata } from '@/core/utils/request-metadata';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardCheckboxComponent } from '@/shared/components/checkbox';
 import {
   ColumnConfig,
+  DataTableAction,
   DataTableComponent,
 } from '@/shared/components/data-table/data-table.component';
 import { FileUploadComponent } from '@/shared/components/file-upload/file-upload.component';
 import { ZardIconComponent } from '@/shared/components/icon';
+import {
+  BaseListComponent,
+  BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
+} from '@/shared/core/base-list.component';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
 interface Backup {
@@ -47,13 +45,13 @@ interface Backup {
 
 /**
  * Backups component
- * 
+ *
  * Extends BaseListComponent to inherit common list patterns:
  * - Keyboard shortcuts (N for new, B/Left for back)
  * - Navigation state restoration
  * - Pagination, sorting, search
  * - Focus management
- * 
+ *
  * Note: This component has complex SSE and file upload logic that is component-specific
  */
 @Component({
@@ -68,8 +66,8 @@ interface Backup {
     ZardIconComponent,
     DataTableComponent,
     FileUploadComponent,
-    AppDatePipe
-],
+    AppDatePipe,
+  ],
   templateUrl: './backups.component.html',
   styleUrls: ['./backups.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -78,7 +76,6 @@ export class BackupsComponent extends BaseListComponent<Backup> {
   @ViewChild('selectTemplate', { static: true }) selectTemplate!: TemplateRef<any>;
   @ViewChild('statusTemplate', { static: true }) statusTemplate!: TemplateRef<any>;
   @ViewChild('sizeTemplate', { static: true }) sizeTemplate!: TemplateRef<any>;
-  @ViewChild('actionsTemplate', { static: true }) actionsTemplate!: TemplateRef<any>;
   @ViewChild('createdAtTemplate', { static: true }) createdAtTemplate!: TemplateRef<any>;
 
   private readonly backupsApi = inject(BackupsService);
@@ -113,8 +110,39 @@ export class BackupsComponent extends BaseListComponent<Backup> {
     { key: 'type', header: 'Type', sortable: true },
     { key: 'size', header: 'Size', sortable: true, template: this.sizeTemplate },
     { key: 'status', header: 'Status', sortable: false, template: this.statusTemplate },
-    { key: 'actions', header: '', width: '4%', template: this.actionsTemplate },
+    { key: 'actions', header: '', width: '4%' },
   ]);
+
+  // Actions configuration (drives both 3-dot menu and row keyboard shortcuts)
+  override readonly actions = computed<DataTableAction<Backup>[]>(() => {
+    const acts: DataTableAction<Backup>[] = [
+      {
+        label: 'Download',
+        icon: 'download',
+        variant: 'default',
+        shortcut: 'W',
+        action: (item) => this.downloadBackup(item.filename),
+      },
+    ];
+    if (this.canRestoreBackups()) {
+      acts.push({
+        label: 'Restore',
+        icon: 'archive',
+        variant: 'warning',
+        shortcut: 'R',
+        action: (item) => this.restoreBackup(item.filename),
+      });
+    }
+    acts.push({
+      label: 'Delete',
+      icon: 'trash',
+      variant: 'destructive',
+      isDestructive: true,
+      shortcut: 'D',
+      action: (item) => this.deleteBackup(item.filename),
+    });
+    return acts;
+  });
 
   // bridge property for ngModel two-way binding on <z-checkbox>
   get selectAllFlag(): boolean {
@@ -158,13 +186,32 @@ export class BackupsComponent extends BaseListComponent<Backup> {
    */
   override ngOnInit(): void {
     super.ngOnInit();
+  }
 
-    // Set column templates
-    this.columns()[0].template = this.selectTemplate;
-    this.columns()[2].template = this.createdAtTemplate;
-    this.columns()[4].template = this.sizeTemplate;
-    this.columns()[5].template = this.statusTemplate;
-    this.columns()[6].template = this.actionsTemplate;
+  /**
+   * Shift+T focuses the backup table (mirrors behaviour of other list views that
+   * get this shortcut via the search-toolbar global listener).
+   */
+  override handleGlobalKeydown(event: KeyboardEvent): void {
+    super.handleGlobalKeydown(event);
+    if (!this.isBrowser) return;
+    const tag = document.activeElement?.tagName ?? '';
+    const isEditable =
+      tag === 'INPUT' ||
+      tag === 'TEXTAREA' ||
+      Boolean((document.activeElement as HTMLElement | null)?.isContentEditable);
+    if (isEditable) return;
+    if (
+      event.shiftKey &&
+      event.key.toUpperCase() === 'T' &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.dataTable().focusFirstRowIfNone();
+    }
   }
 
   /**

@@ -82,6 +82,7 @@ describe('BaseListComponent', () => {
   let routeMock: ReturnType<typeof createRouteMock>;
 
   beforeEach(() => {
+    sessionStorage.clear();
     routerMock = { navigate: vi.fn() };
     routeMock = createRouteMock();
     Object.defineProperty(window.history, 'state', {
@@ -101,6 +102,10 @@ describe('BaseListComponent', () => {
 
     component = TestBed.runInInjectionContext(() => new TestListHarness());
     component.ngOnInit();
+  });
+
+  afterEach(() => {
+    sessionStorage.clear();
   });
 
   it('should create', () => {

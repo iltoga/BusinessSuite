@@ -1,4 +1,3 @@
-
 import {
   ChangeDetectionStrategy,
   Component,
@@ -28,7 +27,6 @@ import { ZardCardComponent } from '@/shared/components/card';
 import {
   DataTableComponent,
   type ColumnConfig,
-  type ColumnFilterChangeEvent,
   type ColumnFilterOption,
   type DataTableAction,
 } from '@/shared/components/data-table/data-table.component';
@@ -80,8 +78,8 @@ import {
     ZardBadgeComponent,
     BulkDeleteDialogComponent,
     ...ZardTooltipImports,
-    AppDatePipe
-],
+    AppDatePipe,
+  ],
   templateUrl: './product-list.component.html',
   styleUrls: ['./product-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -664,9 +662,10 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
   private resolveDeprecatedFilter(): { deprecated: boolean | undefined; hideDeprecated: boolean } {
     const selected = new Set(this.columnFilters()['deprecated'] ?? []);
-    // Empty = no filter = show all (same as all-selected)
+    // Empty selection restores the default list behaviour: hide deprecated products
+    // without forcing an explicit status filter chip back into the UI.
     if (selected.size === 0) {
-      return { deprecated: undefined, hideDeprecated: false };
+      return { deprecated: undefined, hideDeprecated: true };
     }
     if (selected.has('active') && selected.has('deprecated')) {
       return { deprecated: undefined, hideDeprecated: false };
