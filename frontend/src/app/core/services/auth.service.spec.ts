@@ -1,4 +1,6 @@
 import { HttpClient } from '@angular/common/http';
+import { PLATFORM_ID } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { firstValueFrom, never, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
@@ -18,6 +20,31 @@ const installLocalStorageMock = (mock: Storage) => {
 
 const restoreLocalStorage = () => {
   installLocalStorageMock(originalLocalStorage);
+};
+
+type AuthServiceInternals = {
+  _token: { set(value: string | null): void };
+  _claims: { set(value: { sub: string } | null): void };
+};
+
+const createAuthService = (
+  httpClientMock: HttpClient,
+  routerMock: Router,
+  configServiceMock: ConfigService,
+  desktopBridgeMock: DesktopBridgeService,
+): AuthService => {
+  TestBed.configureTestingModule({
+    providers: [
+      AuthService,
+      { provide: HttpClient, useValue: httpClientMock },
+      { provide: Router, useValue: routerMock },
+      { provide: ConfigService, useValue: configServiceMock },
+      { provide: DesktopBridgeService, useValue: desktopBridgeMock },
+      { provide: PLATFORM_ID, useValue: 'browser' },
+    ],
+  });
+
+  return TestBed.inject(AuthService);
 };
 
 describe('AuthService logout', () => {
@@ -46,12 +73,11 @@ describe('AuthService logout', () => {
     };
     desktopBridgeMock = { publishAuthToken: vi.fn() };
 
-    service = new AuthService(
+    service = createAuthService(
       httpClientMock as unknown as HttpClient,
       routerMock as unknown as Router,
       configServiceMock as unknown as ConfigService,
       desktopBridgeMock as unknown as DesktopBridgeService,
-      'browser',
     );
   });
 
@@ -68,8 +94,9 @@ describe('AuthService logout', () => {
     );
 
     // Set a token so we can verify it's cleared
-    (service as any)._token.set('my-token');
-    (service as any)._claims.set({ sub: '1' });
+    const internals = service as unknown as AuthServiceInternals;
+    internals._token.set('my-token');
+    internals._claims.set({ sub: '1' });
 
     service.logout();
 
@@ -95,7 +122,8 @@ describe('AuthService logout', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     httpClientMock.post.mockReturnValueOnce(throwError(() => ({ status: 500, detail: 'Boom' })));
 
-    (service as any)._token.set('my-token');
+    const internals = service as unknown as AuthServiceInternals;
+    internals._token.set('my-token');
 
     service.logout();
 
@@ -123,7 +151,8 @@ describe('AuthService logout', () => {
 
   it('does not call backend logout when token is already expired', () => {
     const expiredPayload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) - 60 }));
-    (service as any)._token.set(`header.${expiredPayload}.signature`);
+    const internals = service as unknown as AuthServiceInternals;
+    internals._token.set(`header.${expiredPayload}.signature`);
 
     service.logout();
 
@@ -163,12 +192,11 @@ describe('AuthService auth flow', () => {
     };
     desktopBridgeMock = { publishAuthToken: vi.fn() };
 
-    service = new AuthService(
+    service = createAuthService(
       httpClientMock as unknown as HttpClient,
       routerMock as unknown as Router,
       configServiceMock as unknown as ConfigService,
       desktopBridgeMock as unknown as DesktopBridgeService,
-      'browser',
     );
   });
 
@@ -293,12 +321,11 @@ describe('AuthService mock auth', () => {
     };
     desktopBridgeMock = { publishAuthToken: vi.fn() };
 
-    service = new AuthService(
+    service = createAuthService(
       httpClientMock as unknown as HttpClient,
       routerMock as unknown as Router,
       configServiceMock as unknown as ConfigService,
       desktopBridgeMock as unknown as DesktopBridgeService,
-      'browser',
     );
   });
 
