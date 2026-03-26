@@ -119,10 +119,31 @@ jobs:
               echo "ℹ️  No image rebuilds needed — using cached images."
             fi
 
-            # ── QUICK SWAP: stop old, start new ──
-            echo "🐳  Replacing containers …"
-            docker compose down --remove-orphans || echo "⚠️  No compose containers to stop"
-            docker compose up -d --remove-orphans bs-alloy bs-core bs-worker bs-scheduler bs-frontend
+            # ── QUICK SWAP: stop app containers, keep db + redis running ──
+            APP_SERVICES="bs-core bs-worker bs-scheduler bs-frontend bs-alloy"
+
+            echo "🐳  Stopping application containers (db + redis stay running) …"
+            docker compose stop $APP_SERVICES 2>/dev/null || true
+            docker compose rm -f $APP_SERVICES 2>/dev/null || true
+
+            echo "📦  Ensuring db + redis are running and healthy …"
+            docker compose up -d db redis
+            # Wait for infrastructure to be healthy before starting app containers
+            INFRA_WAIT=0
+            INFRA_MAX_WAIT=60
+            until docker compose exec -T db pg_isready -U "${DB_USER}" -d "${DB_NAME}" >/dev/null 2>&1; do
+              INFRA_WAIT=$((INFRA_WAIT + 3))
+              if [ "$INFRA_WAIT" -ge "$INFRA_MAX_WAIT" ]; then
+                echo "❌  db not healthy after ${INFRA_MAX_WAIT}s — aborting."
+                exit 1
+              fi
+              echo "⏳  Waiting for db to be ready (${INFRA_WAIT}s/${INFRA_MAX_WAIT}s) …"
+              sleep 3
+            done
+            echo "✅  db is healthy."
+
+            echo "🚀  Starting application containers …"
+            docker compose up -d --remove-orphans $APP_SERVICES
 
             # Optionally run initial data seeding if explicitly requested via .env (INITIALIZE_DB=true)
             if [ "${INITIALIZE_DB:-false}" = "true" ]; then
@@ -172,4 +193,6 @@ jobs:
             echo "🧹  Cleaning up unused Docker resources …"
             docker image prune -f
             docker container prune -f
-            docker builder prune -f --keep-storage=2gb
+            docker builder prune -f --keep-storage=2gb 2>/dev/null \
+              || docker builder prune -f --all 2>/dev/null \
+              || echo "⚠️  builder prune not supported, skipping"
