@@ -26,8 +26,8 @@ import { CardSkeletonComponent, ZardSkeletonComponent } from '@/shared/component
     ZardCardComponent,
     ZardBadgeComponent,
     CardSkeletonComponent,
-    ZardSkeletonComponent
-],
+    ZardSkeletonComponent,
+  ],
   templateUrl: './document-type-detail.component.html',
   styleUrls: ['./document-type-detail.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,7 +40,7 @@ export class DocumentTypeDetailComponent implements OnInit {
   private platformId = inject(PLATFORM_ID);
 
   readonly documentType = signal<DocumentType | null>(null);
-  readonly isLoading = signal(false);
+  readonly isLoading = signal(true);
   readonly originSearchQuery = signal<string | null>(null);
 
   get structuredOutputRows(): Array<{ fieldName: string; description: string }> {

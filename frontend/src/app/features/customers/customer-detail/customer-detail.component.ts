@@ -8,7 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Observable } from 'rxjs';
+import { catchError, forkJoin, Observable, of } from 'rxjs';
 
 import type { Customer, CustomerApplicationHistory } from '@/core/api';
 import {
@@ -21,6 +21,8 @@ import { ZardCardComponent } from '@/shared/components/card';
 import { CardSectionComponent } from '@/shared/components/card-section';
 import { DetailFieldComponent } from '@/shared/components/detail-field';
 import { DetailGridComponent } from '@/shared/components/detail-grid';
+import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { SectionHeaderComponent } from '@/shared/components/section-header';
 import {
@@ -30,8 +32,6 @@ import {
 } from '@/shared/components/skeleton';
 import { BaseDetailComponent, BaseDetailConfig } from '@/shared/core/base-detail.component';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
-import { ZardIconComponent } from '@/shared/components/icon';
 
 /**
  * Customer detail component
@@ -383,26 +383,23 @@ export class CustomerDetailComponent extends BaseDetailComponent<Customer> {
   private loadCustomerAndHistory(id: number): void {
     this.isLoading.set(true);
 
-    // Fetch customer details
-    this.customersService.getCustomer(id).subscribe({
-      next: (data) => {
-        this.item.set(data);
+    forkJoin({
+      customer: this.customersService.getCustomer(id),
+      history: this.customersService.getApplicationsHistory(id).pipe(
+        catchError(() => {
+          this.toast.error('Failed to load applications history');
+          return of([] as CustomerApplicationHistory[]);
+        }),
+      ),
+    }).subscribe({
+      next: ({ customer, history }) => {
+        this.item.set(customer);
+        this.applicationsHistory.set(history);
+        this.isLoading.set(false);
       },
       error: () => {
         this.toast.error('Failed to load customer');
-        this.isLoading.set(false);
-      },
-    });
-
-    // Fetch applications history
-    this.customersService.getApplicationsHistory(id).subscribe({
-      next: (data) => {
-        this.applicationsHistory.set(data);
-        this.isLoading.set(false);
-      },
-      error: () => {
-        this.toast.error('Failed to load applications history');
-        this.isLoading.set(false);
+        this.goBack();
       },
     });
   }

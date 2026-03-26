@@ -77,7 +77,7 @@ export class ProductDetailComponent implements OnInit {
     );
 
   readonly product = signal<ProductDetail | null>(null);
-  readonly isLoading = signal(false);
+  readonly isLoading = signal(true);
   readonly originSearchQuery = signal<string | null>(null);
   readonly originPage = signal<number | null>(null);
 
@@ -174,7 +174,9 @@ export class ProductDetailComponent implements OnInit {
   }
 
   currencyCode(): string {
-    const currency = String(this.product()?.currency ?? 'IDR').trim().toUpperCase();
+    const currency = String(this.product()?.currency ?? 'IDR')
+      .trim()
+      .toUpperCase();
     if (!currency || currency.length < 2 || currency.length > 3) {
       return 'IDR';
     }
