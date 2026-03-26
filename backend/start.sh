@@ -92,7 +92,7 @@ echo "Running migrations..."
 $PYTHON_BIN manage.py migrate --noinput
 
 echo "Collecting static files..."
-$PYTHON_BIN manage.py collectstatic --noinput --clear
+$PYTHON_BIN manage.py collectstatic --noinput
 
 echo "Compiling translations..."
 $PYTHON_BIN manage.py compilemessages || echo "Warning: compilemessages skipped (msgfmt might be missing)"

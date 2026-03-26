@@ -17,13 +17,11 @@ class InvoiceService:
         static_source_root = getattr(settings, "STATIC_SOURCE_ROOT", "static")
         fallback_names = (
             [
-                "partial_invoice_template_with_footer_revisbali.docx",
-                "partial_invoice_template_with_footer.docx",
+                getattr(settings, "DOCX_PARTIAL_INVOICE_TEMPLATE_NAME", "partial_invoice_template_with_footer.docx"),
             ]
             if partial
             else [
-                "invoice_template_with_footer_revisbali.docx",
-                "invoice_template_with_footer.docx",
+                getattr(settings, "DOCX_INVOICE_TEMPLATE_NAME", "invoice_template_with_footer.docx"),
             ]
         )
 
