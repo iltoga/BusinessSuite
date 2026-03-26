@@ -1,13 +1,28 @@
 <div class="h-full flex flex-col gap-6" [contextHelp]="'/applications'">
   <div class="flex flex-wrap items-start justify-between gap-3">
     <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Applications</h1>
-    <a
-      [routerLink]="'/applications/new'"
-      [state]="{ from: 'applications', searchQuery: query(), page: page() }"
-      [contextHelp]="'/applications/new'"
-    >
-      <z-button zType="default" zSize="default">New Application</z-button>
-    </a>
+    <div class="flex flex-wrap items-center gap-2">
+      @if (hasActiveColumnFilters()) {
+        <z-button zType="secondary" zSize="sm" (click)="clearAllFilters()">Clear Filters</z-button>
+      }
+      @if (isInAdminGroup() && totalItems() > 0) {
+        <z-button
+          zType="destructive"
+          zSize="sm"
+          (click)="openBulkDeleteDialog()"
+          [contextHelp]="'/applications/bulk-delete'"
+        >
+          {{ bulkDeleteLabel() }}
+        </z-button>
+      }
+      <a
+        [routerLink]="'/applications/new'"
+        [state]="{ from: 'applications', searchQuery: query(), page: page() }"
+        [contextHelp]="'/applications/new'"
+      >
+        <z-button zType="default" zSize="default">New Application</z-button>
+      </a>
+    </div>
   </div>
 
   <z-card class="bg-card rounded-lg border shadow-sm py-0 gap-0 **:data-[slot=card-content]:px-0">
@@ -15,23 +30,10 @@
       <app-search-toolbar
         [query]="query()"
         [placeholder]="'Search Applications...'"
-        [hasActiveFilters]="hasActiveColumnFilters()"
         (queryChange)="onQueryChange($event)"
-        (clearFilters)="clearAllFilters()"
         (tabOut)="dataTable.focusFirstRowIfNone()"
         [contextHelp]="'/applications/search'"
-      >
-        @if (isInAdminGroup() && totalItems() > 0) {
-          <z-button
-            zType="destructive"
-            zSize="sm"
-            (click)="openBulkDeleteDialog()"
-            [contextHelp]="'/applications/bulk-delete'"
-          >
-            {{ bulkDeleteLabel() }}
-          </z-button>
-        }
-      </app-search-toolbar>
+      />
     </div>
 
     <div class="p-0">

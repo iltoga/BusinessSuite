@@ -9,6 +9,8 @@
 
 **ERP/CRM for visa and document-service agencies**: customer onboarding, application workflows, document collection + OCR, invoices, payments, and deadline calendars.
 
+> 🎯 **[Project Presentation & Portfolio Showcase →](README-project-presentation.md)** — Architecture diagrams, business flows, and a detailed walkthrough of the system designed for technical review.
+
 Quick links: [Architecture](docs/architecture.md) · [Backend](docs/backend.md) · [Frontend](docs/frontend.md) · [Async Processing](docs/async-processing.md) · [Deployment](docs/deployment.md) · [Copilot Rules](.github/copilot-instructions.md)
 
 ---

@@ -2,6 +2,31 @@
   <div class="flex flex-wrap items-start justify-between gap-3">
     <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Invoices</h1>
     <div class="flex flex-wrap items-center gap-2">
+      <div class="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="hidePaid"
+          [checked]="hidePaid()"
+          (change)="onToggleHidePaid($event)"
+          class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+          />
+        <label
+          for="hidePaid"
+          class="text-sm font-medium leading-none cursor-pointer select-none"
+          >
+          Hide Paid
+        </label>
+      </div>
+      @if (isInAdminGroup() && totalItems() > 0) {
+        <z-button
+          zType="destructive"
+          zSize="sm"
+          (click)="openBulkDeleteDialog()"
+          [contextHelp]="'/invoices/bulk-delete'"
+          >
+          {{ bulkDeleteLabel() }}
+        </z-button>
+      }
       <a routerLink="/invoices/import">
         <z-button zType="secondary" zSize="default">Import Invoice</z-button>
       </a>
@@ -23,35 +48,7 @@
         (queryChange)="onQueryChange($event)"
         (tabOut)="dataTable.focusFirstRowIfNone()"
         [contextHelp]="'/invoices/search'"
-        >
-        <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-          <div class="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="hidePaid"
-              [checked]="hidePaid()"
-              (change)="onToggleHidePaid($event)"
-              class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-              />
-            <label
-              for="hidePaid"
-              class="text-sm font-medium leading-none cursor-pointer select-none"
-              >
-              Hide Paid
-            </label>
-          </div>
-          @if (isInAdminGroup() && totalItems() > 0) {
-            <z-button
-              zType="destructive"
-              zSize="sm"
-              (click)="openBulkDeleteDialog()"
-              [contextHelp]="'/invoices/bulk-delete'"
-              >
-              {{ bulkDeleteLabel() }}
-            </z-button>
-          }
-        </div>
-      </app-search-toolbar>
+        />
     </div>
 
     <div class="p-0">
