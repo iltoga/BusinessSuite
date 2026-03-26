@@ -38,6 +38,29 @@ jobs:
             cd "$REPO_DIR"
             echo "📂  Working directory: $(pwd)"
 
+            # ── EARLY DISK CLEANUP — free space before git fetch ──
+            echo "🧹  Pre-deploy disk cleanup …"
+            DISK_AVAIL_KB=$(df --output=avail "$REPO_DIR" 2>/dev/null | tail -1 | tr -d ' ' || echo 999999)
+            echo "📊  Disk available: ${DISK_AVAIL_KB} KB"
+            # If less than 500 MB free, aggressively reclaim space
+            if [ "$DISK_AVAIL_KB" -lt 512000 ] 2>/dev/null; then
+              echo "⚠️  Low disk space (${DISK_AVAIL_KB} KB) — running aggressive Docker cleanup …"
+              docker container prune -f 2>/dev/null || true
+              docker image prune -af 2>/dev/null || true
+              docker builder prune -af 2>/dev/null || true
+              docker volume prune -f --filter 'label!=keep' 2>/dev/null || true
+              # Clean old Docker logs (can grow huge on small VPS)
+              find /var/lib/docker/containers/ -name '*.log' -size +10M -exec truncate -s 0 {} \; 2>/dev/null || true
+              # Clean git gc
+              git gc --aggressive --prune=now 2>/dev/null || true
+              DISK_AFTER=$(df --output=avail "$REPO_DIR" 2>/dev/null | tail -1 | tr -d ' ' || echo unknown)
+              echo "📊  Disk after cleanup: ${DISK_AFTER} KB"
+            else
+              # Always prune dangling images and stopped containers (lightweight)
+              docker container prune -f 2>/dev/null || true
+              docker image prune -f 2>/dev/null || true
+            fi
+
             echo "🔗  Ensuring correct Git remote …"
             git remote set-url origin git@github.com:iltoga/BusinessSuite.git
 
@@ -189,10 +212,13 @@ jobs:
               echo "ℹ️  MIGRATE_STORAGE_ASSETS != true — skipping storage migration tasks"
             fi
 
-            # Clean up: dangling images, stopped containers, and build cache over 2GB
-            echo "🧹  Cleaning up unused Docker resources …"
-            docker image prune -f
-            docker container prune -f
+            # Post-deploy cleanup: dangling images, stopped containers, and build cache
+            echo "🧹  Post-deploy cleanup …"
+            docker image prune -f 2>/dev/null || true
+            docker container prune -f 2>/dev/null || true
             docker builder prune -f --keep-storage=2gb 2>/dev/null \
               || docker builder prune -f --all 2>/dev/null \
               || echo "⚠️  builder prune not supported, skipping"
+
+            DISK_FINAL=$(df -h "$REPO_DIR" 2>/dev/null | tail -1 || echo "unknown")
+            echo "📊  Final disk status: $DISK_FINAL"
