@@ -652,10 +652,11 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
   private resolveDeprecatedFilter(): { deprecated: boolean | undefined; hideDeprecated: boolean } {
     const selected = new Set(this.columnFilters()['deprecated'] ?? []);
-    // Empty selection restores the default list behaviour: hide deprecated products
-    // without forcing an explicit status filter chip back into the UI.
+    // Empty selection means "no status filter": show both active and deprecated products.
+    // The backend defaults to hiding deprecated rows when the parameter is omitted, so we must
+    // explicitly disable that default here.
     if (selected.size === 0) {
-      return { deprecated: undefined, hideDeprecated: true };
+      return { deprecated: undefined, hideDeprecated: false };
     }
     if (selected.has('active') && selected.has('deprecated')) {
       return { deprecated: undefined, hideDeprecated: false };

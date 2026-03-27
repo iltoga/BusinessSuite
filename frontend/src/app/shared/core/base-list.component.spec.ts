@@ -252,6 +252,22 @@ describe('BaseListComponent', () => {
     expect(component.page()).toBe(7);
   });
 
+  it('keeps unrelated column filters when one filter is cleared', () => {
+    component.onColumnFilterChange({ column: 'status', values: ['active'] });
+    component.onColumnFilterChange({ column: 'category', values: ['visa'] });
+
+    expect(component.columnFilters()).toEqual({
+      status: ['active'],
+      category: ['visa'],
+    });
+
+    component.onColumnFilterChange({ column: 'status', values: [] });
+
+    expect(component.columnFilters()).toEqual({
+      category: ['visa'],
+    });
+  });
+
   it('should include query params in goBack navigation', () => {
     component.onQueryChange('persisted');
     component.onPageChange(4);
