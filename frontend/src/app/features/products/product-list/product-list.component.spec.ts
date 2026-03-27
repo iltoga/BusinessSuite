@@ -125,7 +125,7 @@ describe('ProductListComponent', () => {
     sessionStorage.clear();
   });
 
-  it('hides deprecated products by default and restores that default when the filter is cleared', () => {
+  it('shows active-only products by default and all products when the deprecated filter is cleared', () => {
     loadCurrentPage();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
       false,
@@ -155,11 +155,56 @@ describe('ProductListComponent', () => {
     loadCurrentPage();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
       undefined,
-      true,
+      false,
       'name',
       1,
       10,
       undefined,
+      undefined,
+      undefined,
+    );
+  });
+
+  it('applies deprecated and category filters together', () => {
+    component.onColumnFilterChange({ column: 'deprecated', values: ['deprecated'] });
+    component.onColumnFilterChange({
+      column: 'productCategoryName',
+      values: ['Visa Category', 'Zeta Category'],
+    });
+    loadCurrentPage();
+
+    expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
+      true,
+      false,
+      'name',
+      1,
+      10,
+      'Visa Category,Zeta Category',
+      undefined,
+      undefined,
+    );
+    expect(mockProductsService.productsCategoryOptionsList).toHaveBeenLastCalledWith(
+      true,
+      false,
+      undefined,
+    );
+  });
+
+  it('treats Clear All Filters as unfiltered and still allows category filters', () => {
+    component.onColumnFilterChange({ column: 'deprecated', values: ['deprecated'] });
+    component.onColumnFilterChange({ column: 'productCategoryName', values: ['Visa Category'] });
+
+    component.clearAllFilters();
+    component.onColumnFilterChange({ column: 'productCategoryName', values: ['Visa Category'] });
+    loadCurrentPage();
+
+    expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
+      undefined,
+      false,
+      'name',
+      1,
+      10,
+      'Visa Category',
       undefined,
       undefined,
     );
