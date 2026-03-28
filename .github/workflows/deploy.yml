@@ -38,17 +38,21 @@ jobs:
             cd "$REPO_DIR"
             echo "📂  Working directory: $(pwd)"
 
+            FRONTEND_RECLAIM_THRESHOLD_KB=6291456
+            FRONTEND_MIN_SAFE_BUILD_KB=4194304
+
             # ── EARLY DISK CLEANUP — free space before git fetch ──
             echo "🧹  Pre-deploy disk cleanup …"
             DISK_AVAIL_KB=$(df --output=avail "$REPO_DIR" 2>/dev/null | tail -1 | tr -d ' ' || echo 999999)
             echo "📊  Disk available: ${DISK_AVAIL_KB} KB"
             # If less than 500 MB free, aggressively reclaim space
             if [ "$DISK_AVAIL_KB" -lt 512000 ] 2>/dev/null; then
-              echo "⚠️  Low disk space (${DISK_AVAIL_KB} KB) — running aggressive Docker cleanup …"
+              echo "⚠️  Low disk space (${DISK_AVAIL_KB} KB) — running safe Docker cleanup …"
               docker container prune -f 2>/dev/null || true
-              docker image prune -af 2>/dev/null || true
-              docker builder prune -af 2>/dev/null || true
-              docker volume prune -f --filter 'label!=keep' 2>/dev/null || true
+              docker image prune -f 2>/dev/null || true
+              docker builder prune -f --keep-storage=2gb 2>/dev/null \
+                || docker builder prune -f 2>/dev/null \
+                || true
               # Clean old Docker logs (can grow huge on small VPS)
               find /var/lib/docker/containers/ -name '*.log' -size +10M -exec truncate -s 0 {} \; 2>/dev/null || true
               # Clean git gc
@@ -128,6 +132,26 @@ jobs:
             export DOCKER_BUILDKIT=1
             export COMPOSE_DOCKER_CLI_BUILD=1
 
+            if [ "$FRONTEND_CHANGED" = true ]; then
+              DISK_BEFORE_FRONTEND_BUILD=$(df --output=avail "$REPO_DIR" 2>/dev/null | tail -1 | tr -d ' ' || echo 999999)
+              echo "📊  Disk available before frontend build: ${DISK_BEFORE_FRONTEND_BUILD} KB"
+              if [ "$DISK_BEFORE_FRONTEND_BUILD" -lt "$FRONTEND_RECLAIM_THRESHOLD_KB" ] 2>/dev/null; then
+                echo "⚠️  Frontend rebuild needs space and only ${DISK_BEFORE_FRONTEND_BUILD} KB is free — reclaiming from this stack only …"
+                docker compose stop bs-frontend 2>/dev/null || true
+                docker compose rm -f bs-frontend 2>/dev/null || true
+                docker image rm bs-frontend:web 2>/dev/null || true
+                docker builder prune -af --keep-storage=512mb 2>/dev/null \
+                  || docker builder prune -af 2>/dev/null \
+                  || true
+                DISK_AFTER_FRONTEND_RECLAIM=$(df --output=avail "$REPO_DIR" 2>/dev/null | tail -1 | tr -d ' ' || echo 0)
+                echo "📊  Disk after frontend reclaim: ${DISK_AFTER_FRONTEND_RECLAIM} KB"
+                if [ "$DISK_AFTER_FRONTEND_RECLAIM" -lt "$FRONTEND_MIN_SAFE_BUILD_KB" ] 2>/dev/null; then
+                  echo "❌  Only ${DISK_AFTER_FRONTEND_RECLAIM} KB free after frontend reclaim; need at least ${FRONTEND_MIN_SAFE_BUILD_KB} KB before rebuilding bs-frontend. Aborting to avoid filling the VPS disk."
+                  exit 1
+                fi
+              fi
+            fi
+
             # ── BUILD IMAGES WHILE OLD CONTAINERS STILL RUN ──
             echo "🏗️  Building images (old containers still serving traffic) …"
             BUILD_TARGETS=""
@@ -138,7 +162,15 @@ jobs:
               BUILD_TARGETS="$BUILD_TARGETS bs-frontend"
             fi
             if [ -n "$BUILD_TARGETS" ]; then
-              docker compose build $BUILD_TARGETS
+              if [ "$BACKEND_CHANGED" = true ]; then
+                docker compose build bs-core
+              fi
+              if [ "$FRONTEND_CHANGED" = true ]; then
+                docker compose build \
+                  --build-arg NODE_OPTIONS=--max-old-space-size=1536 \
+                  --build-arg NG_BUILD_MAX_WORKERS=1 \
+                  bs-frontend
+              fi
             else
               echo "ℹ️  No image rebuilds needed — using cached images."
             fi
