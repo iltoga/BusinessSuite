@@ -494,9 +494,14 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
    */
   onBulkDeleteConfirmed(): void {
     const query = this.applicationBulkDeleteQuery();
+    const bulkDeletePayload = {
+      searchQuery: query || '',
+    } as unknown as Parameters<
+      CustomerApplicationsService['customerApplicationsBulkDeleteCreate']
+    >[0];
 
     this.service
-      .customerApplicationsBulkDeleteCreate({ searchQuery: query || '' } as any)
+      .customerApplicationsBulkDeleteCreate(bulkDeletePayload)
       .subscribe({
         next: (response) => {
           const payload = unwrapApiRecord(response) as {

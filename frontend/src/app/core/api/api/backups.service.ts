@@ -22,7 +22,7 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
-import { DeleteMultipleBackups } from '../model/delete-multiple-backups';
+import { DeleteMultipleBackupsRequest } from '../model/delete-multiple-backups-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -236,13 +236,13 @@ export class BackupsService extends BaseService {
    * Delete multiple backup files
    * Delete multiple backup files.
    * @endpoint post /api/backups/delete-multiple/
-   * @param deleteMultipleBackups
+   * @param deleteMultipleBackupsRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public backupsDeleteMultipleCreate(
-    deleteMultipleBackups: DeleteMultipleBackups,
+    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -252,7 +252,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public backupsDeleteMultipleCreate(
-    deleteMultipleBackups: DeleteMultipleBackups,
+    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -262,7 +262,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public backupsDeleteMultipleCreate(
-    deleteMultipleBackups: DeleteMultipleBackups,
+    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -272,7 +272,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public backupsDeleteMultipleCreate(
-    deleteMultipleBackups: DeleteMultipleBackups,
+    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -281,9 +281,9 @@ export class BackupsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (deleteMultipleBackups === null || deleteMultipleBackups === undefined) {
+    if (deleteMultipleBackupsRequest === null || deleteMultipleBackupsRequest === undefined) {
       throw new Error(
-        'Required parameter deleteMultipleBackups was null or undefined when calling backupsDeleteMultipleCreate.',
+        'Required parameter deleteMultipleBackupsRequest was null or undefined when calling backupsDeleteMultipleCreate.',
       );
     }
 
@@ -336,7 +336,7 @@ export class BackupsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: deleteMultipleBackups,
+      body: deleteMultipleBackupsRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

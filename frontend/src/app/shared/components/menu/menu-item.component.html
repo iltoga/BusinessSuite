@@ -1,6 +1,7 @@
 @let menuItem = item();
 @let hasChildren = !!menuItem.children?.length;
 @let expanded = isExpanded();
+@let active = isActive();
 
 <div
   [class.relative]="mode() === 'overlay'"
@@ -15,10 +16,9 @@
       tabindex="0"
       class="menu-entry hover:bg-accent/60 focus-visible:bg-accent/60 hover:text-foreground focus-visible:text-foreground"
       [class.overlay-entry]="mode() === 'overlay'"
+      [class.menu-entry-active]="active"
       [routerLink]="menuItem.route"
-      routerLinkActive="menu-entry-active bg-accent/80 text-foreground font-semibold"
-      [routerLinkActiveOptions]="{ exact: !hasChildren }"
-      ariaCurrentWhenActive="page"
+      [attr.aria-current]="active ? 'page' : null"
       [attr.aria-label]="menuItem.accessibility?.ariaLabel || menuItem.label"
       [attr.aria-haspopup]="hasChildren ? 'menu' : null"
       [attr.aria-expanded]="hasChildren ? expanded : null"

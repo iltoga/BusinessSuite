@@ -42,16 +42,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
         required: true
       security:
       - jwtAuth: []
@@ -100,16 +100,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
         required: true
       security:
       - jwtAuth: []
@@ -136,16 +136,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
         required: true
       security:
       - jwtAuth: []
@@ -225,26 +225,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomTokenObtain'
+              $ref: '#/components/schemas/CustomTokenObtainRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CustomTokenObtain'
+              $ref: '#/components/schemas/CustomTokenObtainRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CustomTokenObtain'
+              $ref: '#/components/schemas/CustomTokenObtainRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CustomTokenObtain'
+              $ref: '#/components/schemas/CustomTokenObtainRequest'
         required: true
       security:
       - {}
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CustomTokenObtain'
-          description: ''
+          description: No response body
   /api/async-jobs/:
     get:
       operationId: asyncJobsList
@@ -334,16 +330,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DeleteMultipleBackups'
+              $ref: '#/components/schemas/DeleteMultipleBackupsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DeleteMultipleBackups'
+              $ref: '#/components/schemas/DeleteMultipleBackupsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DeleteMultipleBackups'
+              $ref: '#/components/schemas/DeleteMultipleBackupsRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DeleteMultipleBackups'
+              $ref: '#/components/schemas/DeleteMultipleBackupsRequest'
         required: true
       security:
       - jwtAuth: []
@@ -549,16 +545,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
         required: true
       security:
       - jwtAuth: []
@@ -618,16 +614,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -676,16 +672,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -712,16 +708,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -767,16 +763,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminder'
+              $ref: '#/components/schemas/CalendarReminderRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminder'
+              $ref: '#/components/schemas/CalendarReminderRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminder'
+              $ref: '#/components/schemas/CalendarReminderRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminder'
+              $ref: '#/components/schemas/CalendarReminderRequest'
         required: true
       security:
       - jwtAuth: []
@@ -822,16 +818,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+              $ref: '#/components/schemas/CalendarReminderBulkCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+              $ref: '#/components/schemas/CalendarReminderBulkCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+              $ref: '#/components/schemas/CalendarReminderBulkCreateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+              $ref: '#/components/schemas/CalendarReminderBulkCreateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -867,16 +863,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+              $ref: '#/components/schemas/CalendarReminderInboxMarkReadRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+              $ref: '#/components/schemas/CalendarReminderInboxMarkReadRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+              $ref: '#/components/schemas/CalendarReminderInboxMarkReadRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+              $ref: '#/components/schemas/CalendarReminderInboxMarkReadRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -896,16 +892,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+              $ref: '#/components/schemas/CalendarReminderInboxSnoozeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+              $ref: '#/components/schemas/CalendarReminderInboxSnoozeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+              $ref: '#/components/schemas/CalendarReminderInboxSnoozeRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+              $ref: '#/components/schemas/CalendarReminderInboxSnoozeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -934,7 +930,32 @@ paths:
           description: ''
   /api/calendar-reminders/users/:
     get:
-      operationId: calendarRemindersUsersRetrieve
+      operationId: calendarRemindersUsersList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
       tags:
       - calendar-reminders
       security:
@@ -945,7 +966,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CalendarReminder'
+                $ref: '#/components/schemas/PaginatedPushNotificationUserList'
           description: ''
   /api/calendar/{id}/:
     get:
@@ -992,16 +1013,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1032,16 +1053,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1197,16 +1218,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1256,16 +1277,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1292,16 +1313,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1358,16 +1379,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1423,16 +1444,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1593,17 +1614,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/CustomerApplicationsBulkDeleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/CustomerApplicationsBulkDeleteRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/CustomerApplicationsBulkDeleteRequestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
-        required: true
+              $ref: '#/components/schemas/CustomerApplicationsBulkDeleteRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1612,7 +1632,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+                $ref: '#/components/schemas/CustomerApplicationsBulkDeleteResponse'
           description: ''
   /api/customers/:
     get:
@@ -1662,16 +1682,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1717,16 +1737,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1751,16 +1771,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1849,16 +1869,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1924,16 +1944,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomersBulkDeleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomersBulkDeleteRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomersBulkDeleteRequestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomersBulkDeleteRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1942,7 +1962,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
+                $ref: '#/components/schemas/CustomersBulkDeleteResponse'
           description: ''
   /api/customers/check-passport/:
     post:
@@ -1956,10 +1976,10 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PassportCheck'
+              $ref: '#/components/schemas/PassportCheckRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PassportCheck'
+              $ref: '#/components/schemas/PassportCheckRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2099,16 +2119,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2157,16 +2177,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2193,16 +2213,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2303,13 +2323,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2357,13 +2377,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2390,13 +2410,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2437,13 +2457,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2516,13 +2536,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentMerge'
+              $ref: '#/components/schemas/DocumentMergeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentMerge'
+              $ref: '#/components/schemas/DocumentMergeRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentMerge'
+              $ref: '#/components/schemas/DocumentMergeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2573,16 +2593,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2631,16 +2651,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2667,16 +2687,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2757,16 +2777,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2815,16 +2835,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2851,16 +2871,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2909,8 +2929,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/InvoiceDeletePreviewResponse'
           description: ''
   /api/invoices/{id}/download/:
     get:
@@ -3000,20 +3019,16 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceForceDeleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceForceDeleteRequestRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceForceDeleteRequestRequest'
           '*/*':
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceForceDeleteRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3022,8 +3037,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/InvoiceForceDeleteResponse'
           description: ''
   /api/invoices/{id}/mark-as-paid/:
     post:
@@ -3041,20 +3055,17 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceMarkAsPaidRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceMarkAsPaidRequestRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceMarkAsPaidRequestRequest'
           '*/*':
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceMarkAsPaidRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3063,7 +3074,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InvoiceList'
+                $ref: '#/components/schemas/InvoiceMarkAsPaidResponse'
           description: ''
   /api/invoices/bulk-delete/:
     post:
@@ -3074,20 +3085,16 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoicesBulkDeleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoicesBulkDeleteRequestRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoicesBulkDeleteRequestRequest'
           '*/*':
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoicesBulkDeleteRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3096,8 +3103,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/InvoicesBulkDeleteResponse'
           description: ''
   /api/invoices/download-async/file/{jobId}/:
     get:
@@ -3188,12 +3194,11 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/InvoiceFromApplicationPrefillResponse'
           description: ''
   /api/invoices/get_billable_products/{customerId}/:
     get:
-      operationId: invoicesGetBillableProductsRetrieve
+      operationId: invoicesGetBillableProductsList
       parameters:
       - in: query
         name: current_invoice_id
@@ -3206,6 +3211,30 @@ paths:
         schema:
           type: integer
         required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
       tags:
       - invoices
       security:
@@ -3216,8 +3245,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/PaginatedBillableProductRowList'
           description: ''
   /api/invoices/get_customer_applications/{customerId}/:
     get:
@@ -3455,7 +3483,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InvoiceList'
+                $ref: '#/components/schemas/InvoiceProposalResponse'
           description: ''
   /api/letters/customer-data/{customerId}/:
     get:
@@ -3487,16 +3515,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuratPermohonanRequest'
+              $ref: '#/components/schemas/SuratPermohonanRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SuratPermohonanRequest'
+              $ref: '#/components/schemas/SuratPermohonanRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SuratPermohonanRequest'
+              $ref: '#/components/schemas/SuratPermohonanRequestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/SuratPermohonanRequest'
+              $ref: '#/components/schemas/SuratPermohonanRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3592,16 +3620,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3650,16 +3678,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3686,16 +3714,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3792,16 +3820,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3850,16 +3878,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3886,16 +3914,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4019,17 +4047,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductsBulkDeleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductsBulkDeleteRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductsBulkDeleteRequestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Product'
-        required: true
+              $ref: '#/components/schemas/ProductsBulkDeleteRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4038,7 +4065,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductsBulkDeleteResponse'
           description: ''
   /api/products/category-options/:
     get:
@@ -4110,16 +4137,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4183,10 +4210,10 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProductImportStart'
+              $ref: '#/components/schemas/ProductImportStartRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProductImportStart'
+              $ref: '#/components/schemas/ProductImportStartRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4250,20 +4277,6 @@ paths:
         browser never needs to reach googleapis.com directly.
       tags:
       - push-notifications
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4285,20 +4298,6 @@ paths:
         required to reach firebaseinstallations.googleapis.com directly.
       tags:
       - push-notifications
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4318,16 +4317,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+              $ref: '#/components/schemas/WebPushSubscriptionUpsertRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+              $ref: '#/components/schemas/WebPushSubscriptionUpsertRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+              $ref: '#/components/schemas/WebPushSubscriptionUpsertRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+              $ref: '#/components/schemas/WebPushSubscriptionUpsertRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4348,16 +4347,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AdminPushNotificationSend'
+              $ref: '#/components/schemas/AdminPushNotificationSendRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AdminPushNotificationSend'
+              $ref: '#/components/schemas/AdminPushNotificationSendRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AdminPushNotificationSend'
+              $ref: '#/components/schemas/AdminPushNotificationSendRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/AdminPushNotificationSend'
+              $ref: '#/components/schemas/AdminPushNotificationSendRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4367,7 +4366,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AdminPushNotificationSend'
+                $ref: '#/components/schemas/AdminPushNotificationDispatchResult'
           description: ''
   /api/push-notifications/send-test-whatsapp/:
     post:
@@ -4378,16 +4377,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AdminWhatsappTestSend'
+              $ref: '#/components/schemas/AdminWhatsappTestSendRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AdminWhatsappTestSend'
+              $ref: '#/components/schemas/AdminWhatsappTestSendRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AdminWhatsappTestSend'
+              $ref: '#/components/schemas/AdminWhatsappTestSendRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/AdminWhatsappTestSend'
+              $ref: '#/components/schemas/AdminWhatsappTestSendRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4396,7 +4395,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AdminWhatsappTestSend'
+                $ref: '#/components/schemas/AdminWhatsappTestSendResponse'
           description: ''
   /api/push-notifications/subscriptions/:
     get:
@@ -4422,16 +4421,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PushNotificationTest'
+              $ref: '#/components/schemas/PushNotificationTestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PushNotificationTest'
+              $ref: '#/components/schemas/PushNotificationTestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PushNotificationTest'
+              $ref: '#/components/schemas/PushNotificationTestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/PushNotificationTest'
+              $ref: '#/components/schemas/PushNotificationTestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4440,7 +4439,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PushNotificationTest'
+                $ref: '#/components/schemas/PushNotificationDispatchResult'
           description: ''
   /api/push-notifications/unregister/:
     post:
@@ -4451,16 +4450,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+              $ref: '#/components/schemas/WebPushSubscriptionDeleteRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+              $ref: '#/components/schemas/WebPushSubscriptionDeleteRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+              $ref: '#/components/schemas/WebPushSubscriptionDeleteRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+              $ref: '#/components/schemas/WebPushSubscriptionDeleteRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4470,11 +4469,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WebPushSubscriptionDelete'
+                $ref: '#/components/schemas/PushNotificationUnregisterResponse'
           description: ''
   /api/push-notifications/users/:
     get:
-      operationId: pushNotificationsUsersRetrieve
+      operationId: pushNotificationsUsersList
       tags:
       - push-notifications
       security:
@@ -4485,7 +4484,27 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WebPushSubscription'
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminPushNotificationUser'
+          description: ''
+  /api/rbac/my-permissions/:
+    get:
+      operationId: rbacMyPermissionsRetrieve
+      description: |-
+        Returns a compiled dictionary of all menu and field access rules
+        that apply to the current authenticated user.
+      tags:
+      - rbac
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RbacPermissions'
           description: ''
   /api/server-management/app-settings/:
     get:
@@ -4816,16 +4835,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MediaCleanupRequest'
+              $ref: '#/components/schemas/MediaCleanupRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/MediaCleanupRequest'
+              $ref: '#/components/schemas/MediaCleanupRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/MediaCleanupRequest'
+              $ref: '#/components/schemas/MediaCleanupRequestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/MediaCleanupRequest'
+              $ref: '#/components/schemas/MediaCleanupRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5121,16 +5140,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5177,16 +5196,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5212,16 +5231,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5261,16 +5280,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomTokenRefresh'
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CustomTokenRefresh'
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CustomTokenRefresh'
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CustomTokenRefresh'
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
       security:
       - {}
       responses:
@@ -5289,13 +5308,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ChangePassword'
+              $ref: '#/components/schemas/ChangePasswordRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ChangePassword'
+              $ref: '#/components/schemas/ChangePasswordRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/ChangePassword'
+              $ref: '#/components/schemas/ChangePasswordRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5313,13 +5332,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5356,13 +5375,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5431,16 +5450,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserSettings'
+              $ref: '#/components/schemas/UserSettingsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/UserSettings'
+              $ref: '#/components/schemas/UserSettingsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UserSettings'
+              $ref: '#/components/schemas/UserSettingsRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/UserSettings'
+              $ref: '#/components/schemas/UserSettingsRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -5489,16 +5508,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5547,16 +5566,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5583,16 +5602,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/AiModel'
+              $ref: '#/components/schemas/AiModelRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5672,26 +5691,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomTokenObtain'
+              $ref: '#/components/schemas/CustomTokenObtainRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CustomTokenObtain'
+              $ref: '#/components/schemas/CustomTokenObtainRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CustomTokenObtain'
+              $ref: '#/components/schemas/CustomTokenObtainRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CustomTokenObtain'
+              $ref: '#/components/schemas/CustomTokenObtainRequest'
         required: true
       security:
       - {}
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CustomTokenObtain'
-          description: ''
+          description: No response body
   /api/v1/async-jobs/:
     get:
       operationId: v1AsyncJobsList
@@ -5781,16 +5796,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DeleteMultipleBackups'
+              $ref: '#/components/schemas/DeleteMultipleBackupsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DeleteMultipleBackups'
+              $ref: '#/components/schemas/DeleteMultipleBackupsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DeleteMultipleBackups'
+              $ref: '#/components/schemas/DeleteMultipleBackupsRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DeleteMultipleBackups'
+              $ref: '#/components/schemas/DeleteMultipleBackupsRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5996,16 +6011,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6065,16 +6080,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6123,16 +6138,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6159,16 +6174,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderCreate'
+              $ref: '#/components/schemas/CalendarReminderCreateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6214,16 +6229,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminder'
+              $ref: '#/components/schemas/CalendarReminderRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminder'
+              $ref: '#/components/schemas/CalendarReminderRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminder'
+              $ref: '#/components/schemas/CalendarReminderRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminder'
+              $ref: '#/components/schemas/CalendarReminderRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6269,16 +6284,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+              $ref: '#/components/schemas/CalendarReminderBulkCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+              $ref: '#/components/schemas/CalendarReminderBulkCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+              $ref: '#/components/schemas/CalendarReminderBulkCreateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+              $ref: '#/components/schemas/CalendarReminderBulkCreateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6314,16 +6329,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+              $ref: '#/components/schemas/CalendarReminderInboxMarkReadRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+              $ref: '#/components/schemas/CalendarReminderInboxMarkReadRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+              $ref: '#/components/schemas/CalendarReminderInboxMarkReadRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+              $ref: '#/components/schemas/CalendarReminderInboxMarkReadRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -6343,16 +6358,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+              $ref: '#/components/schemas/CalendarReminderInboxSnoozeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+              $ref: '#/components/schemas/CalendarReminderInboxSnoozeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+              $ref: '#/components/schemas/CalendarReminderInboxSnoozeRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+              $ref: '#/components/schemas/CalendarReminderInboxSnoozeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6381,7 +6396,32 @@ paths:
           description: ''
   /api/v1/calendar-reminders/users/:
     get:
-      operationId: v1CalendarRemindersUsersRetrieve
+      operationId: v1CalendarRemindersUsersList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
       tags:
       - v1
       security:
@@ -6392,7 +6432,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CalendarReminder'
+                $ref: '#/components/schemas/PaginatedPushNotificationUserList'
           description: ''
   /api/v1/calendar/{id}/:
     get:
@@ -6439,16 +6479,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6479,16 +6519,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleCalendarEvent'
+              $ref: '#/components/schemas/GoogleCalendarEventRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6644,16 +6684,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6703,16 +6743,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6739,16 +6779,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+              $ref: '#/components/schemas/DocApplicationCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6805,16 +6845,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6870,16 +6910,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelationsRequest'
         required: true
       security:
       - jwtAuth: []
@@ -7040,17 +7080,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/CustomerApplicationsBulkDeleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/CustomerApplicationsBulkDeleteRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+              $ref: '#/components/schemas/CustomerApplicationsBulkDeleteRequestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
-        required: true
+              $ref: '#/components/schemas/CustomerApplicationsBulkDeleteRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -7059,7 +7098,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+                $ref: '#/components/schemas/CustomerApplicationsBulkDeleteResponse'
           description: ''
   /api/v1/customers/:
     get:
@@ -7109,16 +7148,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -7164,16 +7203,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -7198,16 +7237,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -7296,16 +7335,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomerRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -7371,16 +7410,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomersBulkDeleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomersBulkDeleteRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomersBulkDeleteRequestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Customer'
+              $ref: '#/components/schemas/CustomersBulkDeleteRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -7389,7 +7428,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
+                $ref: '#/components/schemas/CustomersBulkDeleteResponse'
           description: ''
   /api/v1/customers/check-passport/:
     post:
@@ -7403,10 +7442,10 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PassportCheck'
+              $ref: '#/components/schemas/PassportCheckRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PassportCheck'
+              $ref: '#/components/schemas/PassportCheckRequest'
         required: true
       security:
       - jwtAuth: []
@@ -7546,16 +7585,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -7604,16 +7643,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -7640,16 +7679,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/DocumentType'
+              $ref: '#/components/schemas/DocumentTypeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -7750,13 +7789,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -7804,13 +7843,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -7837,13 +7876,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -7884,13 +7923,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/Document'
+              $ref: '#/components/schemas/DocumentRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -7963,13 +8002,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentMerge'
+              $ref: '#/components/schemas/DocumentMergeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentMerge'
+              $ref: '#/components/schemas/DocumentMergeRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentMerge'
+              $ref: '#/components/schemas/DocumentMergeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -8020,16 +8059,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
         required: true
       security:
       - jwtAuth: []
@@ -8078,16 +8117,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
         required: true
       security:
       - jwtAuth: []
@@ -8114,16 +8153,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Holiday'
+              $ref: '#/components/schemas/HolidayRequest'
         required: true
       security:
       - jwtAuth: []
@@ -8204,16 +8243,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -8262,16 +8301,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -8298,16 +8337,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/InvoiceCreateUpdate'
+              $ref: '#/components/schemas/InvoiceCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -8356,8 +8395,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/InvoiceDeletePreviewResponse'
           description: ''
   /api/v1/invoices/{id}/download/:
     get:
@@ -8447,20 +8485,16 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceForceDeleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceForceDeleteRequestRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceForceDeleteRequestRequest'
           '*/*':
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceForceDeleteRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -8469,8 +8503,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/InvoiceForceDeleteResponse'
           description: ''
   /api/v1/invoices/{id}/mark-as-paid/:
     post:
@@ -8488,20 +8521,17 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceMarkAsPaidRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceMarkAsPaidRequestRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceMarkAsPaidRequestRequest'
           '*/*':
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoiceMarkAsPaidRequestRequest'
+        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -8510,7 +8540,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InvoiceList'
+                $ref: '#/components/schemas/InvoiceMarkAsPaidResponse'
           description: ''
   /api/v1/invoices/bulk-delete/:
     post:
@@ -8521,20 +8551,16 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoicesBulkDeleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoicesBulkDeleteRequestRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoicesBulkDeleteRequestRequest'
           '*/*':
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/InvoicesBulkDeleteRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -8543,8 +8569,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/InvoicesBulkDeleteResponse'
           description: ''
   /api/v1/invoices/download-async/file/{jobId}/:
     get:
@@ -8635,12 +8660,11 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/InvoiceFromApplicationPrefillResponse'
           description: ''
   /api/v1/invoices/get_billable_products/{customerId}/:
     get:
-      operationId: v1InvoicesGetBillableProductsRetrieve
+      operationId: v1InvoicesGetBillableProductsList
       parameters:
       - in: query
         name: current_invoice_id
@@ -8653,6 +8677,30 @@ paths:
         schema:
           type: integer
         required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
       tags:
       - v1
       security:
@@ -8663,8 +8711,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/PaginatedBillableProductRowList'
           description: ''
   /api/v1/invoices/get_customer_applications/{customerId}/:
     get:
@@ -8902,7 +8949,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InvoiceList'
+                $ref: '#/components/schemas/InvoiceProposalResponse'
           description: ''
   /api/v1/letters/customer-data/{customerId}/:
     get:
@@ -8934,16 +8981,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuratPermohonanRequest'
+              $ref: '#/components/schemas/SuratPermohonanRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SuratPermohonanRequest'
+              $ref: '#/components/schemas/SuratPermohonanRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SuratPermohonanRequest'
+              $ref: '#/components/schemas/SuratPermohonanRequestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/SuratPermohonanRequest'
+              $ref: '#/components/schemas/SuratPermohonanRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9039,16 +9086,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9097,16 +9144,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9133,16 +9180,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/PaymentRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9239,16 +9286,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9297,16 +9344,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9333,16 +9380,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/ProductCreateUpdate'
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9466,17 +9513,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductsBulkDeleteRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductsBulkDeleteRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductsBulkDeleteRequestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Product'
-        required: true
+              $ref: '#/components/schemas/ProductsBulkDeleteRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -9485,7 +9531,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductsBulkDeleteResponse'
           description: ''
   /api/v1/products/category-options/:
     get:
@@ -9557,16 +9603,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9630,10 +9676,10 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProductImportStart'
+              $ref: '#/components/schemas/ProductImportStartRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ProductImportStart'
+              $ref: '#/components/schemas/ProductImportStartRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9697,20 +9743,6 @@ paths:
         browser never needs to reach googleapis.com directly.
       tags:
       - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -9732,20 +9764,6 @@ paths:
         required to reach firebaseinstallations.googleapis.com directly.
       tags:
       - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/WebPushSubscription'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -9765,16 +9783,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+              $ref: '#/components/schemas/WebPushSubscriptionUpsertRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+              $ref: '#/components/schemas/WebPushSubscriptionUpsertRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+              $ref: '#/components/schemas/WebPushSubscriptionUpsertRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+              $ref: '#/components/schemas/WebPushSubscriptionUpsertRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9795,16 +9813,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AdminPushNotificationSend'
+              $ref: '#/components/schemas/AdminPushNotificationSendRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AdminPushNotificationSend'
+              $ref: '#/components/schemas/AdminPushNotificationSendRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AdminPushNotificationSend'
+              $ref: '#/components/schemas/AdminPushNotificationSendRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/AdminPushNotificationSend'
+              $ref: '#/components/schemas/AdminPushNotificationSendRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9814,7 +9832,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AdminPushNotificationSend'
+                $ref: '#/components/schemas/AdminPushNotificationDispatchResult'
           description: ''
   /api/v1/push-notifications/send-test-whatsapp/:
     post:
@@ -9825,16 +9843,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AdminWhatsappTestSend'
+              $ref: '#/components/schemas/AdminWhatsappTestSendRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AdminWhatsappTestSend'
+              $ref: '#/components/schemas/AdminWhatsappTestSendRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AdminWhatsappTestSend'
+              $ref: '#/components/schemas/AdminWhatsappTestSendRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/AdminWhatsappTestSend'
+              $ref: '#/components/schemas/AdminWhatsappTestSendRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -9843,7 +9861,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AdminWhatsappTestSend'
+                $ref: '#/components/schemas/AdminWhatsappTestSendResponse'
           description: ''
   /api/v1/push-notifications/subscriptions/:
     get:
@@ -9869,16 +9887,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PushNotificationTest'
+              $ref: '#/components/schemas/PushNotificationTestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PushNotificationTest'
+              $ref: '#/components/schemas/PushNotificationTestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PushNotificationTest'
+              $ref: '#/components/schemas/PushNotificationTestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/PushNotificationTest'
+              $ref: '#/components/schemas/PushNotificationTestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -9887,7 +9905,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PushNotificationTest'
+                $ref: '#/components/schemas/PushNotificationDispatchResult'
           description: ''
   /api/v1/push-notifications/unregister/:
     post:
@@ -9898,16 +9916,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+              $ref: '#/components/schemas/WebPushSubscriptionDeleteRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+              $ref: '#/components/schemas/WebPushSubscriptionDeleteRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+              $ref: '#/components/schemas/WebPushSubscriptionDeleteRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+              $ref: '#/components/schemas/WebPushSubscriptionDeleteRequest'
         required: true
       security:
       - jwtAuth: []
@@ -9917,11 +9935,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WebPushSubscriptionDelete'
+                $ref: '#/components/schemas/PushNotificationUnregisterResponse'
           description: ''
   /api/v1/push-notifications/users/:
     get:
-      operationId: v1PushNotificationsUsersRetrieve
+      operationId: v1PushNotificationsUsersList
       tags:
       - v1
       security:
@@ -9932,7 +9950,27 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WebPushSubscription'
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminPushNotificationUser'
+          description: ''
+  /api/v1/rbac/my-permissions/:
+    get:
+      operationId: v1RbacMyPermissionsRetrieve
+      description: |-
+        Returns a compiled dictionary of all menu and field access rules
+        that apply to the current authenticated user.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RbacPermissions'
           description: ''
   /api/v1/server-management/app-settings/:
     get:
@@ -10263,16 +10301,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MediaCleanupRequest'
+              $ref: '#/components/schemas/MediaCleanupRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/MediaCleanupRequest'
+              $ref: '#/components/schemas/MediaCleanupRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/MediaCleanupRequest'
+              $ref: '#/components/schemas/MediaCleanupRequestRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/MediaCleanupRequest'
+              $ref: '#/components/schemas/MediaCleanupRequestRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -10568,16 +10606,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
         required: true
       security:
       - jwtAuth: []
@@ -10624,16 +10662,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
         required: true
       security:
       - jwtAuth: []
@@ -10659,16 +10697,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/GoogleTask'
+              $ref: '#/components/schemas/GoogleTaskRequest'
         required: true
       security:
       - jwtAuth: []
@@ -10708,16 +10746,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomTokenRefresh'
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CustomTokenRefresh'
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CustomTokenRefresh'
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/CustomTokenRefresh'
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
       security:
       - {}
       responses:
@@ -10736,13 +10774,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ChangePassword'
+              $ref: '#/components/schemas/ChangePasswordRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ChangePassword'
+              $ref: '#/components/schemas/ChangePasswordRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/ChangePassword'
+              $ref: '#/components/schemas/ChangePasswordRequest'
         required: true
       security:
       - jwtAuth: []
@@ -10760,13 +10798,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -10803,13 +10841,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: '#/components/schemas/UserProfileRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -10878,16 +10916,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserSettings'
+              $ref: '#/components/schemas/UserSettingsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/UserSettings'
+              $ref: '#/components/schemas/UserSettingsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UserSettings'
+              $ref: '#/components/schemas/UserSettingsRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/UserSettings'
+              $ref: '#/components/schemas/UserSettingsRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -10936,16 +10974,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
         required: true
       security:
       - jwtAuth: []
@@ -10994,16 +11032,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
         required: true
       security:
       - jwtAuth: []
@@ -11030,16 +11068,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
         required: true
       security:
       - jwtAuth: []
@@ -11080,21 +11118,6 @@ paths:
         required: true
       tags:
       - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -11117,21 +11140,6 @@ paths:
         required: true
       tags:
       - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -11180,16 +11188,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
         required: true
       security:
       - jwtAuth: []
@@ -11238,16 +11246,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
         required: true
       security:
       - jwtAuth: []
@@ -11274,16 +11282,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
           '*/*':
             schema:
-              $ref: '#/components/schemas/WorkflowNotification'
+              $ref: '#/components/schemas/WorkflowNotificationRequest'
         required: true
       security:
       - jwtAuth: []
@@ -11324,21 +11332,6 @@ paths:
         required: true
       tags:
       - workflow-notifications
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -11361,21 +11354,6 @@ paths:
         required: true
       tags:
       - workflow-notifications
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/WorkflowNotification'
-        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -11460,15 +11438,33 @@ paths:
       - Mock
 components:
   schemas:
-    AdminPushNotificationSend:
+    AdminPushNotificationDispatchResult:
+      type: object
+      properties:
+        sent:
+          type: integer
+        failed:
+          type: integer
+        skipped:
+          type: integer
+        total:
+          type: integer
+      required:
+      - failed
+      - sent
+      - skipped
+      - total
+    AdminPushNotificationSendRequest:
       type: object
       properties:
         title:
           type: string
+          minLength: 1
           default: Revis Bali CRM Notification
           maxLength: 120
         body:
           type: string
+          minLength: 1
           default: Push notification test completed.
           maxLength: 500
         data:
@@ -11482,7 +11478,29 @@ components:
           minimum: 1
       required:
       - user_id
-    AdminWhatsappTestSend:
+    AdminPushNotificationUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        full_name:
+          type: string
+        active_push_subscriptions:
+          type: integer
+        total_push_subscriptions:
+          type: integer
+      required:
+      - active_push_subscriptions
+      - email
+      - full_name
+      - id
+      - total_push_subscriptions
+      - username
+    AdminWhatsappTestSendRequest:
       type: object
       properties:
         to:
@@ -11490,12 +11508,36 @@ components:
           default: ''
         subject:
           type: string
+          minLength: 1
           default: Revis Bali CRM WhatsApp Test
           maxLength: 120
         body:
           type: string
+          minLength: 1
           default: WhatsApp test message from Revis Bali CRM.
           maxLength: 1000
+    AdminWhatsappTestSendResponse:
+      type: object
+      properties:
+        recipient:
+          type: string
+        used_default_recipient:
+          type: boolean
+        message_id:
+          type: string
+        workflow_notification_id:
+          type: integer
+        workflow_notification_status:
+          type: string
+        workflow_notification_application_id:
+          type: integer
+      required:
+      - message_id
+      - recipient
+      - used_default_recipient
+      - workflow_notification_application_id
+      - workflow_notification_id
+      - workflow_notification_status
     AiModel:
       type: object
       properties:
@@ -11710,6 +11752,97 @@ components:
       - image_price_per_million_tokens
       - prompt_price_per_million_tokens
       - request_price_per_million_tokens
+    AiModelRequest:
+      type: object
+      properties:
+        provider:
+          enum:
+          - openrouter
+          - openai
+          - groq
+          type: string
+          description: |-
+            * `openrouter` - OpenRouter
+            * `openai` - OpenAI
+            * `groq` - Groq
+          x-spec-enum-id: 8e115a4a25e5b1e5
+        model_id:
+          type: string
+          maxLength: 255
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        vision:
+          type: boolean
+        file_upload:
+          type: boolean
+        reasoning:
+          type: boolean
+        context_length:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        max_completion_tokens:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        modality:
+          type: string
+          maxLength: 120
+        architecture_modality:
+          type: string
+          maxLength: 120
+        architecture_tokenizer:
+          type: string
+          maxLength: 255
+        instruct_type:
+          type: string
+          maxLength: 120
+        prompt_price_per_token:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Stored per-token value.
+        completion_price_per_token:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Stored per-token value.
+        image_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Stored per-unit value.
+        request_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+          description: Stored per-unit value.
+        top_provider_id:
+          type: string
+          maxLength: 255
+        provider_name:
+          type: string
+          maxLength: 255
+        supported_parameters: {}
+        per_request_limits: {}
+        source:
+          type: string
+          maxLength: 32
+        raw_metadata: {}
+      required:
+      - model_id
+      - name
+      - provider
     AsyncJob:
       type: object
       properties:
@@ -11777,6 +11910,24 @@ components:
       - status
       - taskName
       - updatedAt
+    BillableProductRow:
+      type: object
+      properties:
+        product:
+          $ref: '#/components/schemas/Product'
+        pendingApplications:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocApplicationInvoice'
+        pendingApplicationsCount:
+          type: integer
+        hasPendingApplications:
+          type: boolean
+      required:
+      - hasPendingApplications
+      - pendingApplications
+      - pendingApplicationsCount
+      - product
     CalendarReminder:
       type: object
       properties:
@@ -11889,7 +12040,7 @@ components:
       - user
       - user_email
       - user_full_name
-    CalendarReminderBulkCreate:
+    CalendarReminderBulkCreateRequest:
       type: object
       properties:
         reminder_date:
@@ -11900,10 +12051,12 @@ components:
           format: time
         timezone:
           type: string
+          minLength: 1
           default: Asia/Makassar
           maxLength: 64
         content:
           type: string
+          minLength: 1
           maxLength: 2000
         calendar_event_id:
           type: string
@@ -11944,7 +12097,47 @@ components:
       - content
       - reminder_date
       - reminder_time
+    CalendarReminderCreateRequest:
+      type: object
+      properties:
+        reminder_date:
+          type: string
+          format: date
+        reminder_time:
+          type: string
+          format: time
+        timezone:
+          type: string
+          minLength: 1
+          default: Asia/Makassar
+          maxLength: 64
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        calendar_event_id:
+          type: string
+          nullable: true
+        user_id:
+          type: integer
+          minimum: 1
+      required:
+      - content
+      - reminder_date
+      - reminder_time
     CalendarReminderInboxMarkRead:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        device_label:
+          type: string
+          default: ''
+          maxLength: 255
+    CalendarReminderInboxMarkReadRequest:
       type: object
       properties:
         ids:
@@ -11973,13 +12166,59 @@ components:
           maxLength: 255
       required:
       - id
-    ChangePassword:
+    CalendarReminderInboxSnoozeRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        minutes:
+          type: integer
+          maximum: 1440
+          minimum: 1
+          default: 15
+        device_label:
+          type: string
+          default: ''
+          maxLength: 255
+      required:
+      - id
+    CalendarReminderRequest:
+      type: object
+      properties:
+        user:
+          type: integer
+        calendar_event:
+          type: string
+          minLength: 1
+          nullable: true
+        reminder_date:
+          type: string
+          format: date
+        reminder_time:
+          type: string
+          format: time
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        content:
+          type: string
+          minLength: 1
+      required:
+      - content
+      - reminder_date
+      - reminder_time
+      - user
+    ChangePasswordRequest:
       type: object
       properties:
         old_password:
           type: string
+          minLength: 1
         new_password:
           type: string
+          minLength: 1
       required:
       - new_password
       - old_password
@@ -12007,15 +12246,17 @@ components:
       - alpha3_code
       - country
       - numeric_code
-    CustomTokenObtain:
+    CustomTokenObtainRequest:
       type: object
       properties:
         username:
           type: string
           writeOnly: true
+          minLength: 1
         password:
           type: string
           writeOnly: true
+          minLength: 1
       required:
       - password
       - username
@@ -12029,6 +12270,12 @@ components:
           readOnly: true
       required:
       - access
+    CustomTokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
     Customer:
       type: object
       description: |-
@@ -12331,6 +12578,18 @@ components:
       - status_display
       - str_field
       - submission_window_last_date
+    CustomerApplicationsBulkDeleteRequestRequest:
+      type: object
+      properties:
+        searchQuery:
+          type: string
+    CustomerApplicationsBulkDeleteResponse:
+      type: object
+      properties:
+        deletedCount:
+          type: integer
+      required:
+      - deletedCount
     CustomerMinimal:
       type: object
       properties:
@@ -12351,6 +12610,162 @@ components:
       required:
       - full_name
       - id
+    CustomerRequest:
+      type: object
+      description: |-
+        Serializer for Customer model.
+
+        Note: This serializer exposes all model fields.
+        Keep `fields = '__all__'` to avoid missing fields from the model.
+      properties:
+        title:
+          enum:
+          - ''
+          - Mr
+          - Mrs
+          - Ms
+          - Miss
+          - Dr
+          - Prof
+          - null
+          type: string
+          description: |-
+            * `` - ---------
+            * `Mr` - Mr
+            * `Mrs` - Mrs
+            * `Ms` - Ms
+            * `Miss` - Miss
+            * `Dr` - Dr
+            * `Prof` - Prof
+          x-spec-enum-id: fb2e913ac6c01251
+          nullable: true
+        customer_type:
+          enum:
+          - person
+          - company
+          type: string
+          description: |-
+            * `person` - Person
+            * `company` - Company
+          x-spec-enum-id: 8a64fc5ccb66f6d0
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 50
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 50
+        company_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          nullable: true
+          maxLength: 50
+        telephone:
+          type: string
+          nullable: true
+          maxLength: 50
+        whatsapp:
+          type: string
+          nullable: true
+          maxLength: 50
+        telegram:
+          type: string
+          nullable: true
+          maxLength: 50
+        facebook:
+          type: string
+          nullable: true
+          maxLength: 50
+        instagram:
+          type: string
+          nullable: true
+          maxLength: 50
+        twitter:
+          type: string
+          nullable: true
+          maxLength: 50
+        npwp:
+          type: string
+          nullable: true
+          title: NPWP (Indonesia)
+          maxLength: 30
+        nationality:
+          type: string
+          minLength: 1
+          nullable: true
+        birthdate:
+          type: string
+          format: date
+          nullable: true
+        birth_place:
+          type: string
+          nullable: true
+          maxLength: 100
+        passport_number:
+          type: string
+          nullable: true
+          maxLength: 50
+        passport_issue_date:
+          type: string
+          format: date
+          nullable: true
+        passport_expiration_date:
+          type: string
+          format: date
+          nullable: true
+        passport_file:
+          type: string
+          format: binary
+          nullable: true
+        passport_metadata:
+          nullable: true
+        gender:
+          enum:
+          - ''
+          - M
+          - F
+          - null
+          type: string
+          description: |-
+            * `` - ---------
+            * `M` - Male
+            * `F` - Female
+          x-spec-enum-id: 86eda1811d2e0173
+          nullable: true
+        address_bali:
+          type: string
+          nullable: true
+        address_abroad:
+          type: string
+          nullable: true
+        notify_documents_expiration:
+          type: boolean
+        notify_by:
+          enum:
+          - ''
+          - Email
+          - SMS
+          - WhatsApp
+          - Telegram
+          - Telephone
+          - null
+          type: string
+          description: |-
+            * `` - ---------
+            * `Email` - Email
+            * `SMS` - SMS
+            * `WhatsApp` - WhatsApp
+            * `Telegram` - Telegram
+            * `Telephone` - Telephone
+          x-spec-enum-id: b574c89ed61ac216
+          nullable: true
+        active:
+          type: boolean
     CustomerUninvoicedApplication:
       type: object
       properties:
@@ -12433,6 +12848,20 @@ components:
       - status
       - status_display
       - str_field
+    CustomersBulkDeleteRequestRequest:
+      type: object
+      properties:
+        searchQuery:
+          type: string
+        hideDisabled:
+          type: boolean
+    CustomersBulkDeleteResponse:
+      type: object
+      properties:
+        deletedCount:
+          type: integer
+      required:
+      - deletedCount
     DashboardStats:
       type: object
       properties:
@@ -12446,13 +12875,14 @@ components:
       - applications
       - customers
       - invoices
-    DeleteMultipleBackups:
+    DeleteMultipleBackupsRequest:
       type: object
       properties:
         filenames:
           type: array
           items:
             type: string
+            minLength: 1
       required:
       - filenames
     DocApplicationCreateUpdate:
@@ -12461,6 +12891,44 @@ components:
         id:
           type: integer
           readOnly: true
+        customer:
+          type: integer
+        product:
+          type: integer
+        doc_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        add_deadlines_to_calendar:
+          type: boolean
+        notify_customer_too:
+          type: boolean
+        notify_customer_channel:
+          enum:
+          - email
+          - whatsapp
+          - ''
+          - null
+          type: string
+          description: |-
+            * `email` - Email
+            * `whatsapp` - WhatsApp
+          x-spec-enum-id: 419230b23f0b5bdd
+          nullable: true
+      required:
+      - customer
+      - doc_date
+      - id
+      - product
+    DocApplicationCreateUpdateRequest:
+      type: object
+      properties:
         customer:
           type: integer
         product:
@@ -12500,7 +12968,6 @@ components:
       required:
       - customer
       - doc_date
-      - id
       - product
     DocApplicationDetail:
       type: object
@@ -12850,6 +13317,48 @@ components:
       - ready_for_invoice
       - submission_window_last_date
       - updated_at
+    DocApplicationSerializerWithRelationsRequest:
+      type: object
+      properties:
+        customer:
+          type: integer
+        product:
+          type: integer
+        doc_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        add_deadlines_to_calendar:
+          type: boolean
+        status:
+          enum:
+          - pending
+          - processing
+          - completed
+          - rejected
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `processing` - Processing
+            * `completed` - Completed
+            * `rejected` - Rejected
+          x-spec-enum-id: 5197c6d22c3675f4
+        notes:
+          type: string
+          nullable: true
+        created_by:
+          type: integer
+        updated_by:
+          type: integer
+          nullable: true
+      required:
+      - created_by
+      - customer
+      - doc_date
+      - product
     DocWorkflow:
       type: object
       properties:
@@ -12948,9 +13457,6 @@ components:
           allOf:
           - $ref: '#/components/schemas/DocumentType'
           readOnly: true
-        doc_type_id:
-          type: integer
-          writeOnly: true
         doc_number:
           type: string
           maxLength: 50
@@ -13005,20 +13511,6 @@ components:
           readOnly: true
         ai_validation_result:
           readOnly: true
-          nullable: true
-        ai_validation_status_override:
-          enum:
-          - ''
-          - valid
-          - invalid
-          - error
-          type: string
-          description: "* `` - \n* `valid` - valid\n* `invalid` - invalid\n* `error`
-            - error"
-          x-spec-enum-id: d9048f465c57f55e
-          writeOnly: true
-        ai_validation_result_override:
-          writeOnly: true
           nullable: true
         created_at:
           type: string
@@ -13085,7 +13577,7 @@ components:
       - icon
       - label
       - name
-    DocumentMerge:
+    DocumentMergeRequest:
       type: object
       description: Serializer for merging documents.
       properties:
@@ -13097,6 +13589,39 @@ components:
           minItems: 1
       required:
       - document_ids
+    DocumentRequest:
+      type: object
+      properties:
+        doc_type_id:
+          type: integer
+          writeOnly: true
+        doc_number:
+          type: string
+          maxLength: 50
+        expiration_date:
+          type: string
+          format: date
+          nullable: true
+        details:
+          type: string
+        metadata:
+          nullable: true
+        required:
+          type: boolean
+        ai_validation_status_override:
+          enum:
+          - ''
+          - valid
+          - invalid
+          - error
+          type: string
+          description: "* `` - \n* `valid` - valid\n* `invalid` - invalid\n* `error`
+            - error"
+          x-spec-enum-id: d9048f465c57f55e
+          writeOnly: true
+        ai_validation_result_override:
+          writeOnly: true
+          nullable: true
     DocumentType:
       type: object
       properties:
@@ -13146,6 +13671,62 @@ components:
       required:
       - id
       - name
+    DocumentTypeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 500
+        deprecated:
+          type: boolean
+        auto_generation:
+          type: boolean
+          description: Whether this document type exposes a system-provided automatic
+            generation/upload action.
+        ai_validation:
+          type: boolean
+        has_expiration_date:
+          type: boolean
+        expiring_threshold_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        is_stay_permit:
+          type: boolean
+        has_doc_number:
+          type: boolean
+        has_file:
+          type: boolean
+        has_details:
+          type: boolean
+        validation_rule_regex:
+          type: string
+          maxLength: 500
+        validation_rule_ai_positive:
+          type: string
+        validation_rule_ai_negative:
+          type: string
+        ai_structured_output:
+          type: string
+        is_in_required_documents:
+          type: boolean
+      required:
+      - name
+    FieldPermissions:
+      type: object
+      properties:
+        can_read:
+          type: boolean
+        can_write:
+          type: boolean
+      required:
+      - can_read
+      - can_write
     GoogleCalendarEvent:
       type: object
       properties:
@@ -13154,6 +13735,57 @@ components:
           readOnly: true
         summary:
           type: string
+        description:
+          type: string
+        attendees: {}
+        notifications: {}
+        colorId:
+          enum:
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+          - '6'
+          - '7'
+          - '8'
+          - '9'
+          - '10'
+          - '11'
+          type: string
+          description: |-
+            * `1` - 1
+            * `2` - 2
+            * `3` - 3
+            * `4` - 4
+            * `5` - 5
+            * `6` - 6
+            * `7` - 7
+            * `8` - 8
+            * `9` - 9
+            * `10` - 10
+            * `11` - 11
+          x-spec-enum-id: 288816a990461073
+        start:
+          readOnly: true
+        end:
+          readOnly: true
+        htmlLink:
+          type: string
+          format: uri
+          readOnly: true
+      required:
+      - end
+      - htmlLink
+      - id
+      - start
+      - summary
+    GoogleCalendarEventRequest:
+      type: object
+      properties:
+        summary:
+          type: string
+          minLength: 1
         description:
           type: string
         start_time:
@@ -13196,20 +13828,8 @@ components:
         done:
           type: boolean
           writeOnly: true
-        start:
-          readOnly: true
-        end:
-          readOnly: true
-        htmlLink:
-          type: string
-          format: uri
-          readOnly: true
       required:
-      - end
       - end_time
-      - htmlLink
-      - id
-      - start
       - start_time
       - summary
     GoogleTask:
@@ -13238,6 +13858,20 @@ components:
       - selfLink
       - status
       - title
+    GoogleTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        notes:
+          type: string
+        due:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - title
     Holiday:
       type: object
       properties:
@@ -13263,6 +13897,26 @@ components:
       - date
       - id
       - is_weekend
+      - name
+    HolidayRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        country:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - country
+      - date
       - name
     InvoiceApplicationDetail:
       type: object
@@ -13401,6 +14055,23 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
       required:
       - amount
+    InvoiceApplicationWriteRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        product:
+          type: integer
+          nullable: true
+        customer_application:
+          type: integer
+          nullable: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - amount
     InvoiceCreateUpdate:
       type: object
       properties:
@@ -13432,6 +14103,58 @@ components:
       - id
       - invoice_applications
       - invoice_date
+    InvoiceCreateUpdateRequest:
+      type: object
+      properties:
+        customer:
+          type: integer
+        invoice_no:
+          type: integer
+          nullable: true
+        invoice_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+        notes:
+          type: string
+        sent:
+          type: boolean
+        invoice_applications:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceApplicationWriteRequest'
+      required:
+      - customer
+      - due_date
+      - invoice_applications
+      - invoice_date
+    InvoiceDeletePreviewResponse:
+      type: object
+      properties:
+        invoiceNoDisplay:
+          type: string
+        customerName:
+          type: string
+        totalAmount:
+          type: string
+        statusDisplay:
+          type: string
+        invoiceApplicationsCount:
+          type: integer
+        customerApplicationsCount:
+          type: integer
+        paymentsCount:
+          type: integer
+      required:
+      - customerApplicationsCount
+      - customerName
+      - invoiceApplicationsCount
+      - invoiceNoDisplay
+      - paymentsCount
+      - statusDisplay
+      - totalAmount
     InvoiceDetail:
       type: object
       properties:
@@ -13553,6 +14276,71 @@ components:
       - total_paid_amount
       - updated_at
       - updated_by
+    InvoiceForceDeleteRequestRequest:
+      type: object
+      properties:
+        forceDeleteConfirmed:
+          type: boolean
+        deleteCustomerApplications:
+          type: boolean
+    InvoiceForceDeleteResponse:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+        invoiceApplicationsCount:
+          type: integer
+        customerApplicationsCount:
+          type: integer
+        paymentsCount:
+          type: integer
+        deletedCustomerApplications:
+          type: integer
+      required:
+      - customerApplicationsCount
+      - deleted
+      - deletedCustomerApplications
+      - invoiceApplicationsCount
+      - paymentsCount
+    InvoiceFromApplicationPrefillLine:
+      type: object
+      properties:
+        product:
+          type: integer
+        customerApplication:
+          type: integer
+        amount:
+          type: string
+      required:
+      - amount
+      - customerApplication
+      - product
+    InvoiceFromApplicationPrefillLocks:
+      type: object
+      properties:
+        customer:
+          type: boolean
+        sourceLine:
+          type: boolean
+      required:
+      - customer
+      - sourceLine
+    InvoiceFromApplicationPrefillResponse:
+      type: object
+      properties:
+        customer:
+          $ref: '#/components/schemas/Customer'
+        sourceApplication:
+          $ref: '#/components/schemas/DocApplicationInvoice'
+        invoiceApplication:
+          $ref: '#/components/schemas/InvoiceFromApplicationPrefillLine'
+        locks:
+          $ref: '#/components/schemas/InvoiceFromApplicationPrefillLocks'
+      required:
+      - customer
+      - invoiceApplication
+      - locks
+      - sourceApplication
     InvoiceList:
       type: object
       properties:
@@ -13664,12 +14452,79 @@ components:
       - total_paid_amount
       - updated_at
       - updated_by
-    MediaCleanupRequest:
+    InvoiceMarkAsPaidRequestRequest:
+      type: object
+      properties:
+        paymentType:
+          type: string
+          minLength: 1
+        paymentDate:
+          type: string
+          format: date
+      required:
+      - paymentType
+    InvoiceMarkAsPaidResponse:
+      type: object
+      properties:
+        created:
+          type: integer
+      required:
+      - created
+    InvoiceProposalResponse:
+      type: object
+      properties:
+        invoiceNo:
+          type: integer
+      required:
+      - invoiceNo
+    InvoicesBulkDeleteRequestRequest:
+      type: object
+      properties:
+        searchQuery:
+          type: string
+        hidePaid:
+          type: boolean
+        deleteCustomerApplications:
+          type: boolean
+    InvoicesBulkDeleteResponse:
+      type: object
+      properties:
+        deletedInvoices:
+          type: integer
+        deletedCustomerApplications:
+          type: integer
+      required:
+      - deletedCustomerApplications
+      - deletedInvoices
+    MediaCleanupRequestRequest:
       type: object
       properties:
         dryRun:
           type: boolean
           default: true
+    PaginatedBillableProductRowList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillableProductRow'
     PaginatedCalendarReminderList:
       type: object
       required:
@@ -13877,12 +14732,35 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Product'
-    PassportCheck:
+    PaginatedPushNotificationUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PushNotificationUser'
+    PassportCheckRequest:
       type: object
       properties:
         file:
           type: string
-          format: uri
+          format: binary
           description: Passport image file
         method:
           enum:
@@ -13946,8 +14824,45 @@ components:
       - created_by
       - id
       - invoice_application
+    PaymentRequest:
+      type: object
+      properties:
+        invoice_application:
+          type: integer
+        from_customer:
+          type: integer
+        payment_date:
+          type: string
+          format: date
+        payment_type:
+          enum:
+          - cash
+          - credit_card
+          - wire_transfer
+          - crypto
+          - paypal
+          type: string
+          description: |-
+            * `cash` - Cash
+            * `credit_card` - Credit card
+            * `wire_transfer` - Wire transfer
+            * `crypto` - Crypto
+            * `paypal` - PayPal
+          x-spec-enum-id: b00a41a957db1ed6
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        notes:
+          type: string
+      required:
+      - amount
+      - invoice_application
     Product:
       type: object
+      description: |-
+        Generic mixin to dynamically redact fields from the serializer
+        if the requesting user lacks read/write access based on RBAC rules.
       properties:
         id:
           type: integer
@@ -14054,6 +14969,9 @@ components:
       - value
     ProductCreateUpdate:
       type: object
+      description: |-
+        Generic mixin to dynamically redact fields from the serializer
+        if the requesting user lacks read/write access based on RBAC rules.
       properties:
         id:
           type: integer
@@ -14081,6 +14999,70 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         currency:
           type: string
+          pattern: ^[A-Za-z]{2,3}$
+          maxLength: 3
+        product_category:
+          type: integer
+          nullable: true
+        validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        documents_min_validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        application_window_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        validation_prompt:
+          type: string
+        deprecated:
+          type: boolean
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskNested'
+      required:
+      - code
+      - id
+      - name
+    ProductCreateUpdateRequest:
+      type: object
+      description: |-
+        Generic mixin to dynamically redact fields from the serializer
+        if the requesting user lacks read/write access based on RBAC rules.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        code:
+          type: string
+          minLength: 1
+          maxLength: 20
+        description:
+          type: string
+        immigration_id:
+          type: string
+          format: uuid
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        retail_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          minLength: 1
           pattern: ^[A-Za-z]{2,3}$
           maxLength: 3
         product_category:
@@ -14120,7 +15102,7 @@ components:
         tasks:
           type: array
           items:
-            $ref: '#/components/schemas/TaskNested'
+            $ref: '#/components/schemas/TaskNestedRequest'
         required_document_ids:
           type: array
           items:
@@ -14133,10 +15115,12 @@ components:
           writeOnly: true
       required:
       - code
-      - id
       - name
     ProductDetail:
       type: object
+      description: |-
+        Generic mixin to dynamically redact fields from the serializer
+        if the requesting user lacks read/write access based on RBAC rules.
       properties:
         id:
           type: integer
@@ -14249,12 +15233,12 @@ components:
       - tasks
       - updated_at
       - updated_by
-    ProductImportStart:
+    ProductImportStartRequest:
       type: object
       properties:
         file:
           type: string
-          format: uri
+          format: binary
       required:
       - file
     ProductImportStartResponse:
@@ -14311,15 +15295,109 @@ components:
       - progress
       - queued
       - status
-    PushNotificationTest:
+    ProductRequest:
+      type: object
+      description: |-
+        Generic mixin to dynamically redact fields from the serializer
+        if the requesting user lacks read/write access based on RBAC rules.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        code:
+          type: string
+          minLength: 1
+          maxLength: 20
+        description:
+          type: string
+        immigration_id:
+          type: string
+          format: uuid
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        retail_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          minLength: 1
+          pattern: ^[A-Za-z]{2,3}$
+          maxLength: 3
+        validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        required_documents:
+          type: string
+          maxLength: 1024
+        optional_documents:
+          type: string
+          maxLength: 1024
+        documents_min_validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        application_window_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        validation_prompt:
+          type: string
+        deprecated:
+          type: boolean
+        uses_customer_app_workflow:
+          type: boolean
+      required:
+      - code
+      - name
+    ProductsBulkDeleteRequestRequest:
+      type: object
+      properties:
+        searchQuery:
+          type: string
+    ProductsBulkDeleteResponse:
+      type: object
+      properties:
+        deletedCount:
+          type: integer
+      required:
+      - deletedCount
+    PushNotificationDispatchResult:
+      type: object
+      properties:
+        sent:
+          type: integer
+        failed:
+          type: integer
+        skipped:
+          type: integer
+        total:
+          type: integer
+      required:
+      - failed
+      - sent
+      - skipped
+      - total
+    PushNotificationTestRequest:
       type: object
       properties:
         title:
           type: string
+          minLength: 1
           default: Revis Bali CRM Notification
           maxLength: 120
         body:
           type: string
+          minLength: 1
           default: Push notification test completed.
           maxLength: 500
         data:
@@ -14328,6 +15406,49 @@ components:
         link:
           type: string
           default: ''
+    PushNotificationUnregisterResponse:
+      type: object
+      properties:
+        updated:
+          type: integer
+      required:
+      - updated
+    PushNotificationUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        full_name:
+          type: string
+        active_push_subscriptions:
+          type: integer
+        total_push_subscriptions:
+          type: integer
+      required:
+      - active_push_subscriptions
+      - email
+      - full_name
+      - id
+      - total_push_subscriptions
+      - username
+    RbacPermissions:
+      type: object
+      properties:
+        menus:
+          type: object
+          additionalProperties:
+            type: boolean
+        fields:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/FieldPermissions'
+      required:
+      - fields
+      - menus
     SuratPermohonanCustomerData:
       type: object
       properties:
@@ -14352,7 +15473,7 @@ components:
           type: string
       required:
       - name
-    SuratPermohonanRequest:
+    SuratPermohonanRequestRequest:
       type: object
       properties:
         customer_id:
@@ -14449,6 +15570,46 @@ components:
       required:
       - name
       - step
+    TaskNestedRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          nullable: true
+        step:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        duration:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        duration_is_business_days:
+          type: boolean
+        notify_days_before:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        notify_customer:
+          type: boolean
+        add_task_to_calendar:
+          type: boolean
+        last_step:
+          type: boolean
+      required:
+      - name
+      - step
     UserProfile:
       type: object
       properties:
@@ -14500,11 +15661,35 @@ components:
       - last_login
       - role
       - username
+    UserProfileRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
     UserSettings:
       type: object
       properties:
         theme:
           type: string
+          maxLength: 50
+        dark_mode:
+          type: boolean
+        preferences: {}
+    UserSettingsRequest:
+      type: object
+      properties:
+        theme:
+          type: string
+          minLength: 1
           maxLength: 50
         dark_mode:
           type: boolean
@@ -14544,11 +15729,12 @@ components:
       - last_error
       - last_seen_at
       - updated_at
-    WebPushSubscriptionDelete:
+    WebPushSubscriptionDeleteRequest:
       type: object
       properties:
         token:
           type: string
+          minLength: 1
           maxLength: 512
       required:
       - token
@@ -14557,6 +15743,22 @@ components:
       properties:
         token:
           type: string
+          maxLength: 512
+        device_label:
+          type: string
+          default: ''
+          maxLength: 255
+        user_agent:
+          type: string
+          default: ''
+      required:
+      - token
+    WebPushSubscriptionUpsertRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
           maxLength: 512
         device_label:
           type: string
@@ -14656,6 +15858,67 @@ components:
       - sent_at
       - subject
       - updated_at
+    WorkflowNotificationRequest:
+      type: object
+      properties:
+        status:
+          enum:
+          - pending
+          - sent
+          - delivered
+          - read
+          - failed
+          - cancelled
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `sent` - Sent
+            * `delivered` - Delivered
+            * `read` - Read
+            * `failed` - Failed
+            * `cancelled` - Cancelled
+          x-spec-enum-id: 5bcfd580b9dc65fe
+        channel:
+          type: string
+          minLength: 1
+          default: email
+          maxLength: 20
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 255
+        body:
+          type: string
+          minLength: 1
+        recipient:
+          type: string
+          minLength: 1
+          maxLength: 255
+        scheduled_for:
+          type: string
+          format: date-time
+          nullable: true
+        notification_type:
+          type: string
+          default: ''
+          maxLength: 64
+        target_date:
+          type: string
+          format: date
+          nullable: true
+        doc_application:
+          type: integer
+        doc_workflow:
+          type: integer
+          nullable: true
+        created_by:
+          type: integer
+          nullable: true
+      required:
+      - body
+      - doc_application
+      - recipient
+      - subject
   securitySchemes:
     cookieAuth:
       type: apiKey

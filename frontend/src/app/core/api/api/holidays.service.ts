@@ -23,6 +23,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
 import { Holiday } from '../model/holiday';
+// @ts-ignore
+import { HolidayRequest } from '../model/holiday-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -43,13 +45,13 @@ export class HolidaysService extends BaseService {
 
   /**
    * @endpoint post /api/holidays/
-   * @param holiday
+   * @param holidayRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public holidaysCreate(
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -59,7 +61,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<Holiday>;
   public holidaysCreate(
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -69,7 +71,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpResponse<Holiday>>;
   public holidaysCreate(
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -79,7 +81,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpEvent<Holiday>>;
   public holidaysCreate(
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -88,9 +90,9 @@ export class HolidaysService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (holiday === null || holiday === undefined) {
+    if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
-        'Required parameter holiday was null or undefined when calling holidaysCreate.',
+        'Required parameter holidayRequest was null or undefined when calling holidaysCreate.',
       );
     }
 
@@ -143,7 +145,7 @@ export class HolidaysService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Holiday>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: holiday,
+      body: holidayRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -354,14 +356,14 @@ export class HolidaysService extends BaseService {
   /**
    * @endpoint patch /api/holidays/{id}/
    * @param id A unique integer value identifying this holiday.
-   * @param holiday
+   * @param holidayRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public holidaysPartialUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -372,7 +374,7 @@ export class HolidaysService extends BaseService {
   ): Observable<Holiday>;
   public holidaysPartialUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -383,7 +385,7 @@ export class HolidaysService extends BaseService {
   ): Observable<HttpResponse<Holiday>>;
   public holidaysPartialUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -394,7 +396,7 @@ export class HolidaysService extends BaseService {
   ): Observable<HttpEvent<Holiday>>;
   public holidaysPartialUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -408,9 +410,9 @@ export class HolidaysService extends BaseService {
         'Required parameter id was null or undefined when calling holidaysPartialUpdate.',
       );
     }
-    if (holiday === null || holiday === undefined) {
+    if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
-        'Required parameter holiday was null or undefined when calling holidaysPartialUpdate.',
+        'Required parameter holidayRequest was null or undefined when calling holidaysPartialUpdate.',
       );
     }
 
@@ -463,7 +465,7 @@ export class HolidaysService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Holiday>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: holiday,
+      body: holidayRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -573,14 +575,14 @@ export class HolidaysService extends BaseService {
   /**
    * @endpoint put /api/holidays/{id}/
    * @param id A unique integer value identifying this holiday.
-   * @param holiday
+   * @param holidayRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public holidaysUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -591,7 +593,7 @@ export class HolidaysService extends BaseService {
   ): Observable<Holiday>;
   public holidaysUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -602,7 +604,7 @@ export class HolidaysService extends BaseService {
   ): Observable<HttpResponse<Holiday>>;
   public holidaysUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -613,7 +615,7 @@ export class HolidaysService extends BaseService {
   ): Observable<HttpEvent<Holiday>>;
   public holidaysUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -625,9 +627,9 @@ export class HolidaysService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling holidaysUpdate.');
     }
-    if (holiday === null || holiday === undefined) {
+    if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
-        'Required parameter holiday was null or undefined when calling holidaysUpdate.',
+        'Required parameter holidayRequest was null or undefined when calling holidaysUpdate.',
       );
     }
 
@@ -680,7 +682,7 @@ export class HolidaysService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Holiday>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: holiday,
+      body: holidayRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

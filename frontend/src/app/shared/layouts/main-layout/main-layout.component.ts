@@ -98,7 +98,6 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
     return this.themeService.isDarkMode() ? inverted : normal;
   });
 
-  canAccessProducts = computed(() => this.authService.isAdminOrManager());
   canAccessReports = computed(() => this.authService.isAdminOrManager());
   userFullName = computed(() => this.authService.claims()?.fullName || 'User');
   userEmail = computed(() => this.authService.claims()?.email || '');
@@ -148,7 +147,6 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
       const target = routeMap[key];
       if (target) {
         if (target === '/reports' && !this.canAccessReports()) return;
-        if (target === '/products' && !this.canAccessProducts()) return;
         event.preventDefault();
         event.stopPropagation();
         this.router.navigate([target]);

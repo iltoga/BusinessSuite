@@ -13,7 +13,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom, forkJoin, map, type Observable } from 'rxjs';
 
-import { ProductsService, type AsyncJob, type Product, type ProductCreateUpdate } from '@/core/api';
+import {
+  ProductsService,
+  type AsyncJob,
+  type Product,
+  type ProductCreateUpdateRequest,
+} from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
 import { JobService } from '@/core/services/job.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
@@ -329,9 +334,11 @@ export class ProductListComponent extends BaseListComponent<Product> {
    * Update the deprecated flag for a product
    */
   private updateDeprecatedStatus(product: Product, deprecated: boolean): void {
-    const updatePayload = { deprecated } as unknown as ProductCreateUpdate;
+    const updatePayload: Partial<ProductCreateUpdateRequest> = { deprecated };
 
-    this.productsApi.productsPartialUpdate(product.id, updatePayload).subscribe({
+    this.productsApi
+      .productsPartialUpdate(product.id, updatePayload as ProductCreateUpdateRequest)
+      .subscribe({
       next: () => {
         this.toast.success(deprecated ? 'Product deprecated' : 'Product activated');
         this.reload();
@@ -412,7 +419,9 @@ export class ProductListComponent extends BaseListComponent<Product> {
   onBulkDeleteConfirmed(): void {
     const query = this.productBulkDeleteQuery();
 
-    const bulkDeletePayload = { searchQuery: query || '' } as unknown as Product;
+    const bulkDeletePayload = {
+      searchQuery: query || '',
+    } as unknown as Parameters<ProductsService['productsBulkDeleteCreate']>[0];
 
     this.productsApi.productsBulkDeleteCreate(bulkDeletePayload).subscribe({
       next: (response) => {

@@ -67,6 +67,9 @@ router.register(r"document-ocr", views.DocumentOCRViewSet, basename="document-oc
 router.register(r"compute", views.ComputeViewSet, basename="compute")
 router.register(r"dashboard-stats", views.DashboardStatsView, basename="dashboard-stats")
 
+from .views_rbac import RbacViewSet
+router.register(r"rbac", RbacViewSet, basename="rbac")
+
 # Google Calendar & Tasks integration
 from .google_views import GoogleCalendarViewSet, GoogleTasksViewSet
 from .reports_views import (

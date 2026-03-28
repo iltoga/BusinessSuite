@@ -1,3 +1,4 @@
+import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   AfterViewInit,
@@ -13,13 +14,12 @@ import {
   PLATFORM_ID,
   QueryList,
   signal,
-  ViewChildren,
   viewChild,
+  ViewChildren,
   type TemplateRef,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ShortcutHighlightPipe } from './shortcut-highlight.pipe';
-import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
@@ -27,7 +27,10 @@ import { ZardIconComponent, type ZardIcon } from '@/shared/components/icon';
 import { ZardSkeletonComponent } from '@/shared/components/skeleton';
 import { ZardTableImports } from '@/shared/components/table';
 
-export interface ColumnConfig<T = any> {
+import { RBAC_RULES } from '@/core/tokens/rbac.token';
+type TableRow = any;
+
+export interface ColumnConfig<T = TableRow> {
   key: string;
   header: string;
   subtitle?: string;
@@ -41,7 +44,7 @@ export interface ColumnConfig<T = any> {
    */
   width?: string;
   headerActionTemplate?: TemplateRef<{ column: ColumnConfig<T> }>;
-  template?: TemplateRef<{ $implicit: T; value: any; row: T }>;
+  template?: TemplateRef<{ $implicit: T; value: unknown; row: T }>;
   filter?: ColumnFilterConfig;
 }
 
@@ -71,7 +74,7 @@ export type DataTableActionVariant =
   | 'outline'
   | 'ghost';
 
-export interface DataTableAction<T = any> {
+export interface DataTableAction<T = TableRow> {
   label: string;
   icon: ZardIcon;
   action: (item: T) => void;
@@ -114,9 +117,10 @@ export interface ColumnFilterChangeEvent {
   styleUrls: ['./data-table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DataTableComponent<T = Record<string, any>> implements AfterViewInit, OnDestroy {
+export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private readonly rbacRulesSignal = inject(RBAC_RULES);
 
   data = input.required<readonly T[]>();
   readonly virtualData = computed(() => {
@@ -126,6 +130,25 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
     return this.data();
   });
   columns = input.required<readonly ColumnConfig<T>[]>();
+  rbacModelName = input<string | null>(null);
+
+  readonly visibleColumns = computed(() => {
+    const cols = this.columns();
+    const model = this.rbacModelName();
+    if (!model) return cols;
+
+    const rules = this.rbacRulesSignal();
+    return cols.filter((col) => {
+      if (col.key === 'actions') return true;
+      const rbacKey = `${model}.${col.key}`;
+      const fieldRule = rules.fields?.[rbacKey];
+      if (fieldRule && fieldRule.canRead === false) {
+        return false;
+      }
+      return true;
+    });
+  });
+
   actions = input<readonly DataTableAction<T>[] | null>(null);
   rowClass = input<((row: T) => string | null | undefined) | null>(null);
   totalItems = input<number>(0);
@@ -167,9 +190,18 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
 
   readonly viewport = viewChild(CdkVirtualScrollViewport);
 
-  trackByFn(index: number, item: T): unknown {
-    return item && typeof item === 'object' && 'id' in item ? (item as any).id : index;
+  private getRowId(row: T | null | undefined): string | number | undefined {
+    if (!row || typeof row !== 'object') {
+      return undefined;
+    }
+
+    const id = (row as Record<string, unknown>)['id'];
+    return typeof id === 'string' || typeof id === 'number' ? id : undefined;
   }
+
+  trackByFn = (index: number, item: T): unknown => {
+    return this.getRowId(item) ?? index;
+  };
 
   constructor() {
     effect(() => {
@@ -181,7 +213,10 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
         if (this._pendingFocusId !== null) {
           const id = this._pendingFocusId;
           this._pendingFocusId = null;
-          const index = (d || []).findIndex((r: any) => r && (r.id === id || r.id === Number(id)));
+          const index = (d || []).findIndex((r) => {
+            const rowId = this.getRowId(r);
+            return rowId === id || rowId === Number(id);
+          });
           if (index !== -1) {
             // Delay to allow DOM update
             setTimeout(() => this.focusRowByIndex(index), 10);
@@ -196,7 +231,7 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
             setTimeout(() => this.focusRowByIndex(0), 10);
           }
         } else {
-          // Standard pagination/search reload: always reset viewport to top 
+          // Standard pagination/search reload: always reset viewport to top
           // so large page offsets don't cause an empty virtual view
           setTimeout(() => this.viewport()?.scrollToIndex(0), 10);
         }
@@ -311,11 +346,12 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
     // On data reload the row object reference can change, so fall back to id matching.
     const selected = this.selectedRow();
     let index = selected ? data.indexOf(selected) : -1;
-    if (index === -1 && selected && typeof selected === 'object' && 'id' in (selected as any)) {
-      const selectedId = (selected as any).id;
-      index = data.findIndex(
-        (row: any) => row && (row.id === selectedId || row.id === Number(selectedId)),
-      );
+    const selectedId = this.getRowId(selected);
+    if (index === -1 && selectedId !== undefined) {
+      index = data.findIndex((row) => {
+        const rowId = this.getRowId(row);
+        return rowId === selectedId || rowId === Number(selectedId);
+      });
     }
     this.focusRowByIndex(index !== -1 ? index : 0);
   }
@@ -333,7 +369,10 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
       return;
     }
 
-    const index = data.findIndex((r: any) => r && (r.id === id || r.id === Number(id)));
+    const index = data.findIndex((r) => {
+      const rowId = this.getRowId(r);
+      return rowId === id || rowId === Number(id);
+    });
     if (index !== -1) {
       this.focusRowByIndex(index);
       return;
@@ -376,7 +415,9 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
     el.setAttribute('tabindex', '0');
     try {
       el.focus({ preventScroll: true });
-    } catch (e) {}
+    } catch {
+      // Ignore focus errors in browsers that reject preventScroll.
+    }
   }
 
   private _retryFocus(index: number, attempt: number): void {
@@ -389,10 +430,12 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
       // To strictly focus the specific row, we find the element matching the item.
       const rowItem = this.data()?.[index];
       let targetEl: HTMLElement | undefined;
-      
+
       if (rowItem) {
         // Find by selected row class
-        targetEl = elements.find(e => e.nativeElement.classList.contains('selected'))?.nativeElement;
+        targetEl = elements.find((e) =>
+          e.nativeElement.classList.contains('selected'),
+        )?.nativeElement;
       }
 
       if (targetEl) {

@@ -17,7 +17,7 @@
       }
       <a
         [routerLink]="'/applications/new'"
-        [state]="{ from: 'applications', searchQuery: query(), page: page() }"
+        [state]="{ from: 'applications', returnToList: true, searchQuery: query(), page: page() }"
         [contextHelp]="'/applications/new'"
       >
         <z-button zType="default" zSize="default">New Application</z-button>

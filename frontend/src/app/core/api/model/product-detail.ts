@@ -10,6 +10,9 @@
 import { TaskNested } from './task-nested';
 import { DocumentType } from './document-type';
 
+/**
+ * Generic mixin to dynamically redact fields from the serializer if the requesting user lacks read/write access based on RBAC rules.
+ */
 export interface ProductDetail {
   readonly id: number;
   name: string;

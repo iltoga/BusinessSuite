@@ -15,6 +15,7 @@ describe('ZardDropdownService', () => {
     detach: ReturnType<typeof vi.fn>;
     dispose: ReturnType<typeof vi.fn>;
     hasAttached: ReturnType<typeof vi.fn>;
+    updatePosition: ReturnType<typeof vi.fn>;
     outsidePointerEvents: ReturnType<typeof vi.fn>;
   };
   let rendererListenSpy: ReturnType<typeof vi.fn>;
@@ -45,6 +46,7 @@ describe('ZardDropdownService', () => {
       detach: vi.fn(),
       dispose: vi.fn(),
       hasAttached: vi.fn(() => true),
+      updatePosition: vi.fn(),
       outsidePointerEvents: vi.fn(() => outsideEvents$.asObservable()),
     };
     rendererListenSpy = vi.fn(() => vi.fn());

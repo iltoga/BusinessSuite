@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -39,6 +40,10 @@ describe('initializeApplication', () => {
       titleService: {
         setTitle,
       } as any,
+      rbacService: {
+        rbacMyPermissionsRetrieve: vi.fn().mockReturnValue(of({ menus: {}, fields: {} })),
+      } as any,
+      rbacRulesSignal: signal({ menus: {}, fields: {} } as any),
       isBrowser: true,
     });
 
@@ -77,6 +82,10 @@ describe('initializeApplication', () => {
       titleService: {
         setTitle: vi.fn(),
       } as any,
+      rbacService: {
+        rbacMyPermissionsRetrieve: vi.fn().mockReturnValue(of({ menus: {}, fields: {} })),
+      } as any,
+      rbacRulesSignal: signal({ menus: {}, fields: {} } as any),
       isBrowser: true,
     });
 
@@ -109,6 +118,10 @@ describe('initializeApplication', () => {
       titleService: {
         setTitle: vi.fn(),
       } as any,
+      rbacService: {
+        rbacMyPermissionsRetrieve: vi.fn().mockReturnValue(of({ menus: {}, fields: {} })),
+      } as any,
+      rbacRulesSignal: signal({ menus: {}, fields: {} } as any),
       isBrowser: false,
     });
 

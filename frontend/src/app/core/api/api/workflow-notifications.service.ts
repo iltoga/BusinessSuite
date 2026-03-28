@@ -23,6 +23,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
 import { WorkflowNotification } from '../model/workflow-notification';
+// @ts-ignore
+import { WorkflowNotificationRequest } from '../model/workflow-notification-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -44,14 +46,12 @@ export class WorkflowNotificationsService extends BaseService {
   /**
    * @endpoint post /api/workflow-notifications/{id}/cancel/
    * @param id A unique integer value identifying this workflow notification.
-   * @param workflowNotification
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public workflowNotificationsCancelCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -62,7 +62,6 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<WorkflowNotification>;
   public workflowNotificationsCancelCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -73,7 +72,6 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<HttpResponse<WorkflowNotification>>;
   public workflowNotificationsCancelCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -84,7 +82,6 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<HttpEvent<WorkflowNotification>>;
   public workflowNotificationsCancelCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -96,11 +93,6 @@ export class WorkflowNotificationsService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling workflowNotificationsCancelCreate.',
-      );
-    }
-    if (workflowNotification === null || workflowNotification === undefined) {
-      throw new Error(
-        'Required parameter workflowNotification was null or undefined when calling workflowNotificationsCancelCreate.',
       );
     }
 
@@ -126,18 +118,6 @@ export class WorkflowNotificationsService extends BaseService {
 
     const localVarTransferCache: boolean = options?.transferCache ?? true;
 
-    // to determine the Content-Type header
-    const consumes: string[] = [
-      'application/json',
-      'application/x-www-form-urlencoded',
-      'multipart/form-data',
-    ];
-    const httpContentTypeSelected: string | undefined =
-      this.configuration.selectHeaderContentType(consumes);
-    if (httpContentTypeSelected !== undefined) {
-      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-    }
-
     let responseType_: 'text' | 'json' | 'blob' = 'json';
     if (localVarHttpHeaderAcceptSelected) {
       if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -153,7 +133,6 @@ export class WorkflowNotificationsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WorkflowNotification>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: workflowNotification,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -165,13 +144,13 @@ export class WorkflowNotificationsService extends BaseService {
 
   /**
    * @endpoint post /api/workflow-notifications/
-   * @param workflowNotification
+   * @param workflowNotificationRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public workflowNotificationsCreate(
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -181,7 +160,7 @@ export class WorkflowNotificationsService extends BaseService {
     },
   ): Observable<WorkflowNotification>;
   public workflowNotificationsCreate(
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -191,7 +170,7 @@ export class WorkflowNotificationsService extends BaseService {
     },
   ): Observable<HttpResponse<WorkflowNotification>>;
   public workflowNotificationsCreate(
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -201,7 +180,7 @@ export class WorkflowNotificationsService extends BaseService {
     },
   ): Observable<HttpEvent<WorkflowNotification>>;
   public workflowNotificationsCreate(
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -210,9 +189,9 @@ export class WorkflowNotificationsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (workflowNotification === null || workflowNotification === undefined) {
+    if (workflowNotificationRequest === null || workflowNotificationRequest === undefined) {
       throw new Error(
-        'Required parameter workflowNotification was null or undefined when calling workflowNotificationsCreate.',
+        'Required parameter workflowNotificationRequest was null or undefined when calling workflowNotificationsCreate.',
       );
     }
 
@@ -265,7 +244,7 @@ export class WorkflowNotificationsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WorkflowNotification>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: workflowNotification,
+      body: workflowNotificationRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -482,14 +461,14 @@ export class WorkflowNotificationsService extends BaseService {
   /**
    * @endpoint patch /api/workflow-notifications/{id}/
    * @param id A unique integer value identifying this workflow notification.
-   * @param workflowNotification
+   * @param workflowNotificationRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public workflowNotificationsPartialUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -500,7 +479,7 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<WorkflowNotification>;
   public workflowNotificationsPartialUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -511,7 +490,7 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<HttpResponse<WorkflowNotification>>;
   public workflowNotificationsPartialUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -522,7 +501,7 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<HttpEvent<WorkflowNotification>>;
   public workflowNotificationsPartialUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -536,9 +515,9 @@ export class WorkflowNotificationsService extends BaseService {
         'Required parameter id was null or undefined when calling workflowNotificationsPartialUpdate.',
       );
     }
-    if (workflowNotification === null || workflowNotification === undefined) {
+    if (workflowNotificationRequest === null || workflowNotificationRequest === undefined) {
       throw new Error(
-        'Required parameter workflowNotification was null or undefined when calling workflowNotificationsPartialUpdate.',
+        'Required parameter workflowNotificationRequest was null or undefined when calling workflowNotificationsPartialUpdate.',
       );
     }
 
@@ -591,7 +570,7 @@ export class WorkflowNotificationsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WorkflowNotification>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: workflowNotification,
+      body: workflowNotificationRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -604,14 +583,12 @@ export class WorkflowNotificationsService extends BaseService {
   /**
    * @endpoint post /api/workflow-notifications/{id}/resend/
    * @param id A unique integer value identifying this workflow notification.
-   * @param workflowNotification
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public workflowNotificationsResendCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -622,7 +599,6 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<WorkflowNotification>;
   public workflowNotificationsResendCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -633,7 +609,6 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<HttpResponse<WorkflowNotification>>;
   public workflowNotificationsResendCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -644,7 +619,6 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<HttpEvent<WorkflowNotification>>;
   public workflowNotificationsResendCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -656,11 +630,6 @@ export class WorkflowNotificationsService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling workflowNotificationsResendCreate.',
-      );
-    }
-    if (workflowNotification === null || workflowNotification === undefined) {
-      throw new Error(
-        'Required parameter workflowNotification was null or undefined when calling workflowNotificationsResendCreate.',
       );
     }
 
@@ -686,18 +655,6 @@ export class WorkflowNotificationsService extends BaseService {
 
     const localVarTransferCache: boolean = options?.transferCache ?? true;
 
-    // to determine the Content-Type header
-    const consumes: string[] = [
-      'application/json',
-      'application/x-www-form-urlencoded',
-      'multipart/form-data',
-    ];
-    const httpContentTypeSelected: string | undefined =
-      this.configuration.selectHeaderContentType(consumes);
-    if (httpContentTypeSelected !== undefined) {
-      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-    }
-
     let responseType_: 'text' | 'json' | 'blob' = 'json';
     if (localVarHttpHeaderAcceptSelected) {
       if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -713,7 +670,6 @@ export class WorkflowNotificationsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WorkflowNotification>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: workflowNotification,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -825,14 +781,14 @@ export class WorkflowNotificationsService extends BaseService {
   /**
    * @endpoint put /api/workflow-notifications/{id}/
    * @param id A unique integer value identifying this workflow notification.
-   * @param workflowNotification
+   * @param workflowNotificationRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public workflowNotificationsUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -843,7 +799,7 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<WorkflowNotification>;
   public workflowNotificationsUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -854,7 +810,7 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<HttpResponse<WorkflowNotification>>;
   public workflowNotificationsUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -865,7 +821,7 @@ export class WorkflowNotificationsService extends BaseService {
   ): Observable<HttpEvent<WorkflowNotification>>;
   public workflowNotificationsUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -879,9 +835,9 @@ export class WorkflowNotificationsService extends BaseService {
         'Required parameter id was null or undefined when calling workflowNotificationsUpdate.',
       );
     }
-    if (workflowNotification === null || workflowNotification === undefined) {
+    if (workflowNotificationRequest === null || workflowNotificationRequest === undefined) {
       throw new Error(
-        'Required parameter workflowNotification was null or undefined when calling workflowNotificationsUpdate.',
+        'Required parameter workflowNotificationRequest was null or undefined when calling workflowNotificationsUpdate.',
       );
     }
 
@@ -934,7 +890,7 @@ export class WorkflowNotificationsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WorkflowNotification>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: workflowNotification,
+      body: workflowNotificationRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

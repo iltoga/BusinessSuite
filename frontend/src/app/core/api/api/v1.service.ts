@@ -22,63 +22,123 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
-import { AdminPushNotificationSend } from '../model/admin-push-notification-send';
+import { AdminPushNotificationDispatchResult } from '../model/admin-push-notification-dispatch-result';
 // @ts-ignore
-import { AdminWhatsappTestSend } from '../model/admin-whatsapp-test-send';
+import { AdminPushNotificationSendRequest } from '../model/admin-push-notification-send-request';
+// @ts-ignore
+import { AdminPushNotificationUser } from '../model/admin-push-notification-user';
+// @ts-ignore
+import { AdminWhatsappTestSendRequest } from '../model/admin-whatsapp-test-send-request';
+// @ts-ignore
+import { AdminWhatsappTestSendResponse } from '../model/admin-whatsapp-test-send-response';
 // @ts-ignore
 import { AiModel } from '../model/ai-model';
+// @ts-ignore
+import { AiModelRequest } from '../model/ai-model-request';
 // @ts-ignore
 import { AsyncJob } from '../model/async-job';
 // @ts-ignore
 import { CalendarReminder } from '../model/calendar-reminder';
 // @ts-ignore
-import { CalendarReminderBulkCreate } from '../model/calendar-reminder-bulk-create';
+import { CalendarReminderBulkCreateRequest } from '../model/calendar-reminder-bulk-create-request';
 // @ts-ignore
 import { CalendarReminderCreate } from '../model/calendar-reminder-create';
 // @ts-ignore
+import { CalendarReminderCreateRequest } from '../model/calendar-reminder-create-request';
+// @ts-ignore
 import { CalendarReminderInboxMarkRead } from '../model/calendar-reminder-inbox-mark-read';
+// @ts-ignore
+import { CalendarReminderInboxMarkReadRequest } from '../model/calendar-reminder-inbox-mark-read-request';
 // @ts-ignore
 import { CalendarReminderInboxSnooze } from '../model/calendar-reminder-inbox-snooze';
 // @ts-ignore
+import { CalendarReminderInboxSnoozeRequest } from '../model/calendar-reminder-inbox-snooze-request';
+// @ts-ignore
+import { CalendarReminderRequest } from '../model/calendar-reminder-request';
+// @ts-ignore
 import { CountryCode } from '../model/country-code';
 // @ts-ignore
-import { CustomTokenObtain } from '../model/custom-token-obtain';
+import { CustomTokenObtainRequest } from '../model/custom-token-obtain-request';
 // @ts-ignore
 import { CustomTokenRefresh } from '../model/custom-token-refresh';
 // @ts-ignore
+import { CustomTokenRefreshRequest } from '../model/custom-token-refresh-request';
+// @ts-ignore
 import { Customer } from '../model/customer';
+// @ts-ignore
+import { CustomerApplicationsBulkDeleteRequestRequest } from '../model/customer-applications-bulk-delete-request-request';
+// @ts-ignore
+import { CustomerApplicationsBulkDeleteResponse } from '../model/customer-applications-bulk-delete-response';
+// @ts-ignore
+import { CustomerRequest } from '../model/customer-request';
+// @ts-ignore
+import { CustomersBulkDeleteRequestRequest } from '../model/customers-bulk-delete-request-request';
+// @ts-ignore
+import { CustomersBulkDeleteResponse } from '../model/customers-bulk-delete-response';
 // @ts-ignore
 import { DashboardStats } from '../model/dashboard-stats';
 // @ts-ignore
-import { DeleteMultipleBackups } from '../model/delete-multiple-backups';
+import { DeleteMultipleBackupsRequest } from '../model/delete-multiple-backups-request';
 // @ts-ignore
 import { DocApplicationCreateUpdate } from '../model/doc-application-create-update';
+// @ts-ignore
+import { DocApplicationCreateUpdateRequest } from '../model/doc-application-create-update-request';
 // @ts-ignore
 import { DocApplicationDetail } from '../model/doc-application-detail';
 // @ts-ignore
 import { DocApplicationSerializerWithRelations } from '../model/doc-application-serializer-with-relations';
 // @ts-ignore
+import { DocApplicationSerializerWithRelationsRequest } from '../model/doc-application-serializer-with-relations-request';
+// @ts-ignore
 import { DocWorkflow } from '../model/doc-workflow';
 // @ts-ignore
 import { Document } from '../model/document';
 // @ts-ignore
-import { DocumentAction } from '../model/document-action';
-// @ts-ignore
 import { DocumentType } from '../model/document-type';
+// @ts-ignore
+import { DocumentTypeRequest } from '../model/document-type-request';
 // @ts-ignore
 import { GoogleCalendarEvent } from '../model/google-calendar-event';
 // @ts-ignore
+import { GoogleCalendarEventRequest } from '../model/google-calendar-event-request';
+// @ts-ignore
 import { GoogleTask } from '../model/google-task';
+// @ts-ignore
+import { GoogleTaskRequest } from '../model/google-task-request';
 // @ts-ignore
 import { Holiday } from '../model/holiday';
 // @ts-ignore
+import { HolidayRequest } from '../model/holiday-request';
+// @ts-ignore
 import { InvoiceCreateUpdate } from '../model/invoice-create-update';
+// @ts-ignore
+import { InvoiceCreateUpdateRequest } from '../model/invoice-create-update-request';
+// @ts-ignore
+import { InvoiceDeletePreviewResponse } from '../model/invoice-delete-preview-response';
 // @ts-ignore
 import { InvoiceDetail } from '../model/invoice-detail';
 // @ts-ignore
+import { InvoiceForceDeleteRequestRequest } from '../model/invoice-force-delete-request-request';
+// @ts-ignore
+import { InvoiceForceDeleteResponse } from '../model/invoice-force-delete-response';
+// @ts-ignore
+import { InvoiceFromApplicationPrefillResponse } from '../model/invoice-from-application-prefill-response';
+// @ts-ignore
 import { InvoiceList } from '../model/invoice-list';
 // @ts-ignore
-import { MediaCleanupRequest } from '../model/media-cleanup-request';
+import { InvoiceMarkAsPaidRequestRequest } from '../model/invoice-mark-as-paid-request-request';
+// @ts-ignore
+import { InvoiceMarkAsPaidResponse } from '../model/invoice-mark-as-paid-response';
+// @ts-ignore
+import { InvoiceProposalResponse } from '../model/invoice-proposal-response';
+// @ts-ignore
+import { InvoicesBulkDeleteRequestRequest } from '../model/invoices-bulk-delete-request-request';
+// @ts-ignore
+import { InvoicesBulkDeleteResponse } from '../model/invoices-bulk-delete-response';
+// @ts-ignore
+import { MediaCleanupRequestRequest } from '../model/media-cleanup-request-request';
+// @ts-ignore
+import { PaginatedBillableProductRowList } from '../model/paginated-billable-product-row-list';
 // @ts-ignore
 import { PaginatedCalendarReminderList } from '../model/paginated-calendar-reminder-list';
 // @ts-ignore
@@ -98,7 +158,11 @@ import { PaginatedPaymentList } from '../model/paginated-payment-list';
 // @ts-ignore
 import { PaginatedProductList } from '../model/paginated-product-list';
 // @ts-ignore
+import { PaginatedPushNotificationUserList } from '../model/paginated-push-notification-user-list';
+// @ts-ignore
 import { Payment } from '../model/payment';
+// @ts-ignore
+import { PaymentRequest } from '../model/payment-request';
 // @ts-ignore
 import { Product } from '../model/product';
 // @ts-ignore
@@ -106,29 +170,49 @@ import { ProductCategoryFilterOption } from '../model/product-category-filter-op
 // @ts-ignore
 import { ProductCreateUpdate } from '../model/product-create-update';
 // @ts-ignore
+import { ProductCreateUpdateRequest } from '../model/product-create-update-request';
+// @ts-ignore
 import { ProductDetail } from '../model/product-detail';
 // @ts-ignore
 import { ProductImportStartResponse } from '../model/product-import-start-response';
 // @ts-ignore
 import { ProductPriceListPrintStartResponse } from '../model/product-price-list-print-start-response';
 // @ts-ignore
-import { PushNotificationTest } from '../model/push-notification-test';
+import { ProductRequest } from '../model/product-request';
+// @ts-ignore
+import { ProductsBulkDeleteRequestRequest } from '../model/products-bulk-delete-request-request';
+// @ts-ignore
+import { ProductsBulkDeleteResponse } from '../model/products-bulk-delete-response';
+// @ts-ignore
+import { PushNotificationDispatchResult } from '../model/push-notification-dispatch-result';
+// @ts-ignore
+import { PushNotificationTestRequest } from '../model/push-notification-test-request';
+// @ts-ignore
+import { PushNotificationUnregisterResponse } from '../model/push-notification-unregister-response';
+// @ts-ignore
+import { RbacPermissions } from '../model/rbac-permissions';
 // @ts-ignore
 import { SuratPermohonanCustomerData } from '../model/surat-permohonan-customer-data';
 // @ts-ignore
-import { SuratPermohonanRequest } from '../model/surat-permohonan-request';
+import { SuratPermohonanRequestRequest } from '../model/surat-permohonan-request-request';
 // @ts-ignore
 import { UserProfile } from '../model/user-profile';
 // @ts-ignore
 import { UserSettings } from '../model/user-settings';
 // @ts-ignore
+import { UserSettingsRequest } from '../model/user-settings-request';
+// @ts-ignore
 import { WebPushSubscription } from '../model/web-push-subscription';
 // @ts-ignore
-import { WebPushSubscriptionDelete } from '../model/web-push-subscription-delete';
+import { WebPushSubscriptionDeleteRequest } from '../model/web-push-subscription-delete-request';
 // @ts-ignore
 import { WebPushSubscriptionUpsert } from '../model/web-push-subscription-upsert';
 // @ts-ignore
+import { WebPushSubscriptionUpsertRequest } from '../model/web-push-subscription-upsert-request';
+// @ts-ignore
 import { WorkflowNotification } from '../model/workflow-notification';
+// @ts-ignore
+import { WorkflowNotificationRequest } from '../model/workflow-notification-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -237,13 +321,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/ai-models/
-   * @param aiModel
+   * @param aiModelRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AiModelsCreate(
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -253,7 +337,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<AiModel>;
   public v1AiModelsCreate(
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -263,7 +347,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public v1AiModelsCreate(
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -273,7 +357,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public v1AiModelsCreate(
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -282,9 +366,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (aiModel === null || aiModel === undefined) {
+    if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
-        'Required parameter aiModel was null or undefined when calling v1AiModelsCreate.',
+        'Required parameter aiModelRequest was null or undefined when calling v1AiModelsCreate.',
       );
     }
 
@@ -337,7 +421,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<AiModel>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: aiModel,
+      body: aiModelRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -667,14 +751,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint patch /api/v1/ai-models/{id}/
    * @param id A unique integer value identifying this ai model.
-   * @param aiModel
+   * @param aiModelRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AiModelsPartialUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -685,7 +769,7 @@ export class V1Service extends BaseService {
   ): Observable<AiModel>;
   public v1AiModelsPartialUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -696,7 +780,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<AiModel>>;
   public v1AiModelsPartialUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -707,7 +791,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<AiModel>>;
   public v1AiModelsPartialUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -721,9 +805,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1AiModelsPartialUpdate.',
       );
     }
-    if (aiModel === null || aiModel === undefined) {
+    if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
-        'Required parameter aiModel was null or undefined when calling v1AiModelsPartialUpdate.',
+        'Required parameter aiModelRequest was null or undefined when calling v1AiModelsPartialUpdate.',
       );
     }
 
@@ -776,7 +860,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<AiModel>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: aiModel,
+      body: aiModelRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -888,14 +972,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/ai-models/{id}/
    * @param id A unique integer value identifying this ai model.
-   * @param aiModel
+   * @param aiModelRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AiModelsUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -906,7 +990,7 @@ export class V1Service extends BaseService {
   ): Observable<AiModel>;
   public v1AiModelsUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -917,7 +1001,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<AiModel>>;
   public v1AiModelsUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -928,7 +1012,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<AiModel>>;
   public v1AiModelsUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -940,9 +1024,9 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1AiModelsUpdate.');
     }
-    if (aiModel === null || aiModel === undefined) {
+    if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
-        'Required parameter aiModel was null or undefined when calling v1AiModelsUpdate.',
+        'Required parameter aiModelRequest was null or undefined when calling v1AiModelsUpdate.',
       );
     }
 
@@ -995,7 +1079,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<AiModel>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: aiModel,
+      body: aiModelRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -1008,61 +1092,45 @@ export class V1Service extends BaseService {
   /**
    * Takes a set of user credentials and returns an access and refresh JSON web token pair to prove the authentication of those credentials.
    * @endpoint post /api/v1/api-token-auth/
-   * @param customTokenObtain
+   * @param customTokenObtainRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ApiTokenAuthCreate(
-    customTokenObtain: CustomTokenObtain,
+    customTokenObtainRequest: CustomTokenObtainRequest,
     observe?: 'body',
     reportProgress?: boolean,
-    options?: {
-      httpHeaderAccept?: 'application/json';
-      context?: HttpContext;
-      transferCache?: boolean;
-    },
-  ): Observable<CustomTokenObtain>;
+    options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
+  ): Observable<any>;
   public v1ApiTokenAuthCreate(
-    customTokenObtain: CustomTokenObtain,
+    customTokenObtainRequest: CustomTokenObtainRequest,
     observe?: 'response',
     reportProgress?: boolean,
-    options?: {
-      httpHeaderAccept?: 'application/json';
-      context?: HttpContext;
-      transferCache?: boolean;
-    },
-  ): Observable<HttpResponse<CustomTokenObtain>>;
+    options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
+  ): Observable<HttpResponse<any>>;
   public v1ApiTokenAuthCreate(
-    customTokenObtain: CustomTokenObtain,
+    customTokenObtainRequest: CustomTokenObtainRequest,
     observe?: 'events',
     reportProgress?: boolean,
-    options?: {
-      httpHeaderAccept?: 'application/json';
-      context?: HttpContext;
-      transferCache?: boolean;
-    },
-  ): Observable<HttpEvent<CustomTokenObtain>>;
+    options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
+  ): Observable<HttpEvent<any>>;
   public v1ApiTokenAuthCreate(
-    customTokenObtain: CustomTokenObtain,
+    customTokenObtainRequest: CustomTokenObtainRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
-    options?: {
-      httpHeaderAccept?: 'application/json';
-      context?: HttpContext;
-      transferCache?: boolean;
-    },
+    options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
-    if (customTokenObtain === null || customTokenObtain === undefined) {
+    if (customTokenObtainRequest === null || customTokenObtainRequest === undefined) {
       throw new Error(
-        'Required parameter customTokenObtain was null or undefined when calling v1ApiTokenAuthCreate.',
+        'Required parameter customTokenObtainRequest was null or undefined when calling v1ApiTokenAuthCreate.',
       );
     }
 
     let localVarHeaders = this.defaultHeaders;
 
     const localVarHttpHeaderAcceptSelected: string | undefined =
-      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([]);
     if (localVarHttpHeaderAcceptSelected !== undefined) {
       localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
     }
@@ -1096,9 +1164,9 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/api-token-auth/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<CustomTokenObtain>('post', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<any>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customTokenObtain,
+      body: customTokenObtainRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -1492,13 +1560,13 @@ export class V1Service extends BaseService {
    * Delete multiple backup files
    * Delete multiple backup files.
    * @endpoint post /api/v1/backups/delete-multiple/
-   * @param deleteMultipleBackups
+   * @param deleteMultipleBackupsRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1BackupsDeleteMultipleCreate(
-    deleteMultipleBackups: DeleteMultipleBackups,
+    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1508,7 +1576,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1BackupsDeleteMultipleCreate(
-    deleteMultipleBackups: DeleteMultipleBackups,
+    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1518,7 +1586,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1BackupsDeleteMultipleCreate(
-    deleteMultipleBackups: DeleteMultipleBackups,
+    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1528,7 +1596,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1BackupsDeleteMultipleCreate(
-    deleteMultipleBackups: DeleteMultipleBackups,
+    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1537,9 +1605,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (deleteMultipleBackups === null || deleteMultipleBackups === undefined) {
+    if (deleteMultipleBackupsRequest === null || deleteMultipleBackupsRequest === undefined) {
       throw new Error(
-        'Required parameter deleteMultipleBackups was null or undefined when calling v1BackupsDeleteMultipleCreate.',
+        'Required parameter deleteMultipleBackupsRequest was null or undefined when calling v1BackupsDeleteMultipleCreate.',
       );
     }
 
@@ -1592,7 +1660,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: deleteMultipleBackups,
+      body: deleteMultipleBackupsRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -2126,13 +2194,13 @@ export class V1Service extends BaseService {
   /**
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint post /api/v1/calendar/
-   * @param googleCalendarEvent
+   * @param googleCalendarEventRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarCreate(
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2142,7 +2210,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<GoogleCalendarEvent>;
   public v1CalendarCreate(
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2152,7 +2220,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<GoogleCalendarEvent>>;
   public v1CalendarCreate(
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2162,7 +2230,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<GoogleCalendarEvent>>;
   public v1CalendarCreate(
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2171,9 +2239,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (googleCalendarEvent === null || googleCalendarEvent === undefined) {
+    if (googleCalendarEventRequest === null || googleCalendarEventRequest === undefined) {
       throw new Error(
-        'Required parameter googleCalendarEvent was null or undefined when calling v1CalendarCreate.',
+        'Required parameter googleCalendarEventRequest was null or undefined when calling v1CalendarCreate.',
       );
     }
 
@@ -2226,7 +2294,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<GoogleCalendarEvent>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: googleCalendarEvent,
+      body: googleCalendarEventRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -2417,14 +2485,14 @@ export class V1Service extends BaseService {
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint patch /api/v1/calendar/{id}/
    * @param id
-   * @param googleCalendarEvent
+   * @param googleCalendarEventRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarPartialUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2435,7 +2503,7 @@ export class V1Service extends BaseService {
   ): Observable<GoogleCalendarEvent>;
   public v1CalendarPartialUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2446,7 +2514,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<GoogleCalendarEvent>>;
   public v1CalendarPartialUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2457,7 +2525,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<GoogleCalendarEvent>>;
   public v1CalendarPartialUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2471,9 +2539,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1CalendarPartialUpdate.',
       );
     }
-    if (googleCalendarEvent === null || googleCalendarEvent === undefined) {
+    if (googleCalendarEventRequest === null || googleCalendarEventRequest === undefined) {
       throw new Error(
-        'Required parameter googleCalendarEvent was null or undefined when calling v1CalendarPartialUpdate.',
+        'Required parameter googleCalendarEventRequest was null or undefined when calling v1CalendarPartialUpdate.',
       );
     }
 
@@ -2526,7 +2594,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<GoogleCalendarEvent>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: googleCalendarEvent,
+      body: googleCalendarEventRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -2540,14 +2608,14 @@ export class V1Service extends BaseService {
    * Record delivery channel for a reminder (in_app or system).
    * @endpoint post /api/v1/calendar-reminders/{id}/ack/
    * @param id A unique integer value identifying this calendar reminder.
-   * @param calendarReminder
+   * @param calendarReminderRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersAckCreate(
     id: number,
-    calendarReminder: CalendarReminder,
+    calendarReminderRequest: CalendarReminderRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2558,7 +2626,7 @@ export class V1Service extends BaseService {
   ): Observable<CalendarReminder>;
   public v1CalendarRemindersAckCreate(
     id: number,
-    calendarReminder: CalendarReminder,
+    calendarReminderRequest: CalendarReminderRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2569,7 +2637,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<CalendarReminder>>;
   public v1CalendarRemindersAckCreate(
     id: number,
-    calendarReminder: CalendarReminder,
+    calendarReminderRequest: CalendarReminderRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2580,7 +2648,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<CalendarReminder>>;
   public v1CalendarRemindersAckCreate(
     id: number,
-    calendarReminder: CalendarReminder,
+    calendarReminderRequest: CalendarReminderRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2594,9 +2662,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1CalendarRemindersAckCreate.',
       );
     }
-    if (calendarReminder === null || calendarReminder === undefined) {
+    if (calendarReminderRequest === null || calendarReminderRequest === undefined) {
       throw new Error(
-        'Required parameter calendarReminder was null or undefined when calling v1CalendarRemindersAckCreate.',
+        'Required parameter calendarReminderRequest was null or undefined when calling v1CalendarRemindersAckCreate.',
       );
     }
 
@@ -2649,7 +2717,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<CalendarReminder>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: calendarReminder,
+      body: calendarReminderRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -2661,7 +2729,7 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/calendar-reminders/bulk-create/
-   * @param calendarReminderBulkCreate
+   * @param calendarReminderBulkCreateRequest
    * @param ordering Which field to use when ordering the results.
    * @param page A page number within the paginated result set.
    * @param pageSize Number of results to return per page.
@@ -2671,7 +2739,7 @@ export class V1Service extends BaseService {
    * @param options additional options
    */
   public v1CalendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreate: CalendarReminderBulkCreate,
+    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
     ordering?: string,
     page?: number,
     pageSize?: number,
@@ -2685,7 +2753,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedCalendarReminderList>;
   public v1CalendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreate: CalendarReminderBulkCreate,
+    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
     ordering?: string,
     page?: number,
     pageSize?: number,
@@ -2699,7 +2767,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCalendarReminderList>>;
   public v1CalendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreate: CalendarReminderBulkCreate,
+    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
     ordering?: string,
     page?: number,
     pageSize?: number,
@@ -2713,7 +2781,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCalendarReminderList>>;
   public v1CalendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreate: CalendarReminderBulkCreate,
+    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
     ordering?: string,
     page?: number,
     pageSize?: number,
@@ -2726,9 +2794,12 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (calendarReminderBulkCreate === null || calendarReminderBulkCreate === undefined) {
+    if (
+      calendarReminderBulkCreateRequest === null ||
+      calendarReminderBulkCreateRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter calendarReminderBulkCreate was null or undefined when calling v1CalendarRemindersBulkCreateCreate.',
+        'Required parameter calendarReminderBulkCreateRequest was null or undefined when calling v1CalendarRemindersBulkCreateCreate.',
       );
     }
 
@@ -2818,7 +2889,7 @@ export class V1Service extends BaseService {
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: calendarReminderBulkCreate,
+        body: calendarReminderBulkCreateRequest,
         params: localVarQueryParameters.toHttpParams(),
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
@@ -2832,13 +2903,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/calendar-reminders/
-   * @param calendarReminderCreate
+   * @param calendarReminderCreateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersCreate(
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2848,7 +2919,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CalendarReminderCreate>;
   public v1CalendarRemindersCreate(
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2858,7 +2929,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderCreate>>;
   public v1CalendarRemindersCreate(
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2868,7 +2939,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderCreate>>;
   public v1CalendarRemindersCreate(
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2877,9 +2948,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (calendarReminderCreate === null || calendarReminderCreate === undefined) {
+    if (calendarReminderCreateRequest === null || calendarReminderCreateRequest === undefined) {
       throw new Error(
-        'Required parameter calendarReminderCreate was null or undefined when calling v1CalendarRemindersCreate.',
+        'Required parameter calendarReminderCreateRequest was null or undefined when calling v1CalendarRemindersCreate.',
       );
     }
 
@@ -2932,7 +3003,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<CalendarReminderCreate>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: calendarReminderCreate,
+      body: calendarReminderCreateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -3027,13 +3098,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/calendar-reminders/inbox/mark-read/
-   * @param calendarReminderInboxMarkRead
+   * @param calendarReminderInboxMarkReadRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkRead?: CalendarReminderInboxMarkRead,
+    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3043,7 +3114,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CalendarReminderInboxMarkRead>;
   public v1CalendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkRead?: CalendarReminderInboxMarkRead,
+    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3053,7 +3124,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderInboxMarkRead>>;
   public v1CalendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkRead?: CalendarReminderInboxMarkRead,
+    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3063,7 +3134,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderInboxMarkRead>>;
   public v1CalendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkRead?: CalendarReminderInboxMarkRead,
+    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3124,7 +3195,7 @@ export class V1Service extends BaseService {
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: calendarReminderInboxMarkRead,
+        body: calendarReminderInboxMarkReadRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -3225,13 +3296,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/calendar-reminders/inbox/snooze/
-   * @param calendarReminderInboxSnooze
+   * @param calendarReminderInboxSnoozeRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnooze: CalendarReminderInboxSnooze,
+    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3241,7 +3312,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CalendarReminderInboxSnooze>;
   public v1CalendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnooze: CalendarReminderInboxSnooze,
+    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3251,7 +3322,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderInboxSnooze>>;
   public v1CalendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnooze: CalendarReminderInboxSnooze,
+    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3261,7 +3332,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderInboxSnooze>>;
   public v1CalendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnooze: CalendarReminderInboxSnooze,
+    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3270,9 +3341,12 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (calendarReminderInboxSnooze === null || calendarReminderInboxSnooze === undefined) {
+    if (
+      calendarReminderInboxSnoozeRequest === null ||
+      calendarReminderInboxSnoozeRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter calendarReminderInboxSnooze was null or undefined when calling v1CalendarRemindersInboxSnoozeCreate.',
+        'Required parameter calendarReminderInboxSnoozeRequest was null or undefined when calling v1CalendarRemindersInboxSnoozeCreate.',
       );
     }
 
@@ -3328,7 +3402,7 @@ export class V1Service extends BaseService {
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: calendarReminderInboxSnooze,
+        body: calendarReminderInboxSnoozeRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -3489,14 +3563,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint patch /api/v1/calendar-reminders/{id}/
    * @param id A unique integer value identifying this calendar reminder.
-   * @param calendarReminderCreate
+   * @param calendarReminderCreateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersPartialUpdate(
     id: number,
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3507,7 +3581,7 @@ export class V1Service extends BaseService {
   ): Observable<CalendarReminderCreate>;
   public v1CalendarRemindersPartialUpdate(
     id: number,
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3518,7 +3592,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<CalendarReminderCreate>>;
   public v1CalendarRemindersPartialUpdate(
     id: number,
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3529,7 +3603,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<CalendarReminderCreate>>;
   public v1CalendarRemindersPartialUpdate(
     id: number,
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3543,9 +3617,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1CalendarRemindersPartialUpdate.',
       );
     }
-    if (calendarReminderCreate === null || calendarReminderCreate === undefined) {
+    if (calendarReminderCreateRequest === null || calendarReminderCreateRequest === undefined) {
       throw new Error(
-        'Required parameter calendarReminderCreate was null or undefined when calling v1CalendarRemindersPartialUpdate.',
+        'Required parameter calendarReminderCreateRequest was null or undefined when calling v1CalendarRemindersPartialUpdate.',
       );
     }
 
@@ -3598,7 +3672,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<CalendarReminderCreate>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: calendarReminderCreate,
+      body: calendarReminderCreateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -3798,14 +3872,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/calendar-reminders/{id}/
    * @param id A unique integer value identifying this calendar reminder.
-   * @param calendarReminderCreate
+   * @param calendarReminderCreateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersUpdate(
     id: number,
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3816,7 +3890,7 @@ export class V1Service extends BaseService {
   ): Observable<CalendarReminderCreate>;
   public v1CalendarRemindersUpdate(
     id: number,
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3827,7 +3901,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<CalendarReminderCreate>>;
   public v1CalendarRemindersUpdate(
     id: number,
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3838,7 +3912,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<CalendarReminderCreate>>;
   public v1CalendarRemindersUpdate(
     id: number,
-    calendarReminderCreate: CalendarReminderCreate,
+    calendarReminderCreateRequest: CalendarReminderCreateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3852,9 +3926,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1CalendarRemindersUpdate.',
       );
     }
-    if (calendarReminderCreate === null || calendarReminderCreate === undefined) {
+    if (calendarReminderCreateRequest === null || calendarReminderCreateRequest === undefined) {
       throw new Error(
-        'Required parameter calendarReminderCreate was null or undefined when calling v1CalendarRemindersUpdate.',
+        'Required parameter calendarReminderCreateRequest was null or undefined when calling v1CalendarRemindersUpdate.',
       );
     }
 
@@ -3907,7 +3981,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<CalendarReminderCreate>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: calendarReminderCreate,
+      body: calendarReminderCreateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -3919,11 +3993,19 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/calendar-reminders/users/
+   * @param ordering Which field to use when ordering the results.
+   * @param page A page number within the paginated result set.
+   * @param pageSize Number of results to return per page.
+   * @param search A search term.
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
-  public v1CalendarRemindersUsersRetrieve(
+  public v1CalendarRemindersUsersList(
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3931,8 +4013,12 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<CalendarReminder>;
-  public v1CalendarRemindersUsersRetrieve(
+  ): Observable<PaginatedPushNotificationUserList>;
+  public v1CalendarRemindersUsersList(
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3940,8 +4026,12 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<CalendarReminder>>;
-  public v1CalendarRemindersUsersRetrieve(
+  ): Observable<HttpResponse<PaginatedPushNotificationUserList>>;
+  public v1CalendarRemindersUsersList(
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3949,8 +4039,12 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<CalendarReminder>>;
-  public v1CalendarRemindersUsersRetrieve(
+  ): Observable<HttpEvent<PaginatedPushNotificationUserList>>;
+  public v1CalendarRemindersUsersList(
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3959,6 +4053,40 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'ordering',
+      <any>ordering,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'page',
+      <any>page,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'page_size',
+      <any>pageSize,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'search',
+      <any>search,
+      QueryParamStyle.Form,
+      true,
+    );
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -3994,15 +4122,20 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/calendar-reminders/users/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<CalendarReminder>('get', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<PaginatedPushNotificationUserList>(
+      'get',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        params: localVarQueryParameters.toHttpParams(),
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -4109,14 +4242,14 @@ export class V1Service extends BaseService {
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint put /api/v1/calendar/{id}/
    * @param id
-   * @param googleCalendarEvent
+   * @param googleCalendarEventRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4127,7 +4260,7 @@ export class V1Service extends BaseService {
   ): Observable<GoogleCalendarEvent>;
   public v1CalendarUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4138,7 +4271,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<GoogleCalendarEvent>>;
   public v1CalendarUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4149,7 +4282,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<GoogleCalendarEvent>>;
   public v1CalendarUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4161,9 +4294,9 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1CalendarUpdate.');
     }
-    if (googleCalendarEvent === null || googleCalendarEvent === undefined) {
+    if (googleCalendarEventRequest === null || googleCalendarEventRequest === undefined) {
       throw new Error(
-        'Required parameter googleCalendarEvent was null or undefined when calling v1CalendarUpdate.',
+        'Required parameter googleCalendarEventRequest was null or undefined when calling v1CalendarUpdate.',
       );
     }
 
@@ -4216,7 +4349,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<GoogleCalendarEvent>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: googleCalendarEvent,
+      body: googleCalendarEventRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -4539,14 +4672,14 @@ export class V1Service extends BaseService {
    * Complete current workflow synchronously and queue calendar sync in Dramatiq.
    * @endpoint post /api/v1/customer-applications/{id}/advance-workflow/
    * @param id A unique integer value identifying this doc application.
-   * @param docApplicationSerializerWithRelations
+   * @param docApplicationSerializerWithRelationsRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsAdvanceWorkflowCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4557,7 +4690,7 @@ export class V1Service extends BaseService {
   ): Observable<DocApplicationSerializerWithRelations>;
   public v1CustomerApplicationsAdvanceWorkflowCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4568,7 +4701,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<DocApplicationSerializerWithRelations>>;
   public v1CustomerApplicationsAdvanceWorkflowCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4579,7 +4712,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<DocApplicationSerializerWithRelations>>;
   public v1CustomerApplicationsAdvanceWorkflowCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4594,11 +4727,11 @@ export class V1Service extends BaseService {
       );
     }
     if (
-      docApplicationSerializerWithRelations === null ||
-      docApplicationSerializerWithRelations === undefined
+      docApplicationSerializerWithRelationsRequest === null ||
+      docApplicationSerializerWithRelationsRequest === undefined
     ) {
       throw new Error(
-        'Required parameter docApplicationSerializerWithRelations was null or undefined when calling v1CustomerApplicationsAdvanceWorkflowCreate.',
+        'Required parameter docApplicationSerializerWithRelationsRequest was null or undefined when calling v1CustomerApplicationsAdvanceWorkflowCreate.',
       );
     }
 
@@ -4654,7 +4787,7 @@ export class V1Service extends BaseService {
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: docApplicationSerializerWithRelations,
+        body: docApplicationSerializerWithRelationsRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -4667,13 +4800,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/customer-applications/bulk-delete/
-   * @param docApplicationSerializerWithRelations
+   * @param customerApplicationsBulkDeleteRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsBulkDeleteCreate(
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4681,9 +4814,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<DocApplicationSerializerWithRelations>;
+  ): Observable<CustomerApplicationsBulkDeleteResponse>;
   public v1CustomerApplicationsBulkDeleteCreate(
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4691,9 +4824,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<DocApplicationSerializerWithRelations>>;
+  ): Observable<HttpResponse<CustomerApplicationsBulkDeleteResponse>>;
   public v1CustomerApplicationsBulkDeleteCreate(
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4701,9 +4834,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<DocApplicationSerializerWithRelations>>;
+  ): Observable<HttpEvent<CustomerApplicationsBulkDeleteResponse>>;
   public v1CustomerApplicationsBulkDeleteCreate(
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4712,15 +4845,6 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (
-      docApplicationSerializerWithRelations === null ||
-      docApplicationSerializerWithRelations === undefined
-    ) {
-      throw new Error(
-        'Required parameter docApplicationSerializerWithRelations was null or undefined when calling v1CustomerApplicationsBulkDeleteCreate.',
-      );
-    }
-
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -4768,12 +4892,12 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/customer-applications/bulk-delete/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<DocApplicationSerializerWithRelations>(
+    return this.httpClient.request<CustomerApplicationsBulkDeleteResponse>(
       'post',
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: docApplicationSerializerWithRelations,
+        body: customerApplicationsBulkDeleteRequestRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -4787,13 +4911,13 @@ export class V1Service extends BaseService {
   /**
    * Create application synchronously and queue calendar sync in Dramatiq.
    * @endpoint post /api/v1/customer-applications/
-   * @param docApplicationCreateUpdate
+   * @param docApplicationCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsCreate(
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4803,7 +4927,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocApplicationDetail>;
   public v1CustomerApplicationsCreate(
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4813,7 +4937,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocApplicationDetail>>;
   public v1CustomerApplicationsCreate(
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4823,7 +4947,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocApplicationDetail>>;
   public v1CustomerApplicationsCreate(
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4832,9 +4956,12 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (docApplicationCreateUpdate === null || docApplicationCreateUpdate === undefined) {
+    if (
+      docApplicationCreateUpdateRequest === null ||
+      docApplicationCreateUpdateRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter docApplicationCreateUpdate was null or undefined when calling v1CustomerApplicationsCreate.',
+        'Required parameter docApplicationCreateUpdateRequest was null or undefined when calling v1CustomerApplicationsCreate.',
       );
     }
 
@@ -4887,7 +5014,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<DocApplicationDetail>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: docApplicationCreateUpdate,
+      body: docApplicationCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -5260,14 +5387,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint patch /api/v1/customer-applications/{id}/
    * @param id A unique integer value identifying this doc application.
-   * @param docApplicationCreateUpdate
+   * @param docApplicationCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsPartialUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -5278,7 +5405,7 @@ export class V1Service extends BaseService {
   ): Observable<DocApplicationCreateUpdate>;
   public v1CustomerApplicationsPartialUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -5289,7 +5416,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<DocApplicationCreateUpdate>>;
   public v1CustomerApplicationsPartialUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -5300,7 +5427,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<DocApplicationCreateUpdate>>;
   public v1CustomerApplicationsPartialUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -5314,9 +5441,12 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1CustomerApplicationsPartialUpdate.',
       );
     }
-    if (docApplicationCreateUpdate === null || docApplicationCreateUpdate === undefined) {
+    if (
+      docApplicationCreateUpdateRequest === null ||
+      docApplicationCreateUpdateRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter docApplicationCreateUpdate was null or undefined when calling v1CustomerApplicationsPartialUpdate.',
+        'Required parameter docApplicationCreateUpdateRequest was null or undefined when calling v1CustomerApplicationsPartialUpdate.',
       );
     }
 
@@ -5372,7 +5502,7 @@ export class V1Service extends BaseService {
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: docApplicationCreateUpdate,
+        body: docApplicationCreateUpdateRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -5387,14 +5517,14 @@ export class V1Service extends BaseService {
    * Re-open a completed application.
    * @endpoint post /api/v1/customer-applications/{id}/reopen/
    * @param id A unique integer value identifying this doc application.
-   * @param docApplicationSerializerWithRelations
+   * @param docApplicationSerializerWithRelationsRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsReopenCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -5405,7 +5535,7 @@ export class V1Service extends BaseService {
   ): Observable<{ [key: string]: any }>;
   public v1CustomerApplicationsReopenCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -5416,7 +5546,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1CustomerApplicationsReopenCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -5427,7 +5557,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1CustomerApplicationsReopenCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -5442,11 +5572,11 @@ export class V1Service extends BaseService {
       );
     }
     if (
-      docApplicationSerializerWithRelations === null ||
-      docApplicationSerializerWithRelations === undefined
+      docApplicationSerializerWithRelationsRequest === null ||
+      docApplicationSerializerWithRelationsRequest === undefined
     ) {
       throw new Error(
-        'Required parameter docApplicationSerializerWithRelations was null or undefined when calling v1CustomerApplicationsReopenCreate.',
+        'Required parameter docApplicationSerializerWithRelationsRequest was null or undefined when calling v1CustomerApplicationsReopenCreate.',
       );
     }
 
@@ -5499,7 +5629,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: docApplicationSerializerWithRelations,
+      body: docApplicationSerializerWithRelationsRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -5612,14 +5742,14 @@ export class V1Service extends BaseService {
    * Update application synchronously and queue calendar sync in Dramatiq.
    * @endpoint put /api/v1/customer-applications/{id}/
    * @param id A unique integer value identifying this doc application.
-   * @param docApplicationCreateUpdate
+   * @param docApplicationCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -5630,7 +5760,7 @@ export class V1Service extends BaseService {
   ): Observable<DocApplicationDetail>;
   public v1CustomerApplicationsUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -5641,7 +5771,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<DocApplicationDetail>>;
   public v1CustomerApplicationsUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -5652,7 +5782,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<DocApplicationDetail>>;
   public v1CustomerApplicationsUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -5666,9 +5796,12 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1CustomerApplicationsUpdate.',
       );
     }
-    if (docApplicationCreateUpdate === null || docApplicationCreateUpdate === undefined) {
+    if (
+      docApplicationCreateUpdateRequest === null ||
+      docApplicationCreateUpdateRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter docApplicationCreateUpdate was null or undefined when calling v1CustomerApplicationsUpdate.',
+        'Required parameter docApplicationCreateUpdateRequest was null or undefined when calling v1CustomerApplicationsUpdate.',
       );
     }
 
@@ -5721,7 +5854,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<DocApplicationDetail>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: docApplicationCreateUpdate,
+      body: docApplicationCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -6275,13 +6408,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/customers/bulk-delete/
-   * @param customer
+   * @param customersBulkDeleteRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersBulkDeleteCreate(
-    customer?: Customer,
+    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -6289,9 +6422,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<Customer>;
+  ): Observable<CustomersBulkDeleteResponse>;
   public v1CustomersBulkDeleteCreate(
-    customer?: Customer,
+    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -6299,9 +6432,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<Customer>>;
+  ): Observable<HttpResponse<CustomersBulkDeleteResponse>>;
   public v1CustomersBulkDeleteCreate(
-    customer?: Customer,
+    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -6309,9 +6442,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<Customer>>;
+  ): Observable<HttpEvent<CustomersBulkDeleteResponse>>;
   public v1CustomersBulkDeleteCreate(
-    customer?: Customer,
+    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -6367,16 +6500,20 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/customers/bulk-delete/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<Customer>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: customer,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<CustomersBulkDeleteResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: customersBulkDeleteRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -6389,28 +6526,28 @@ export class V1Service extends BaseService {
    * @param options additional options
    */
   public v1CustomersCheckPassportCreate(
-    file: string,
+    file: Blob,
     method?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1CustomersCheckPassportCreate(
-    file: string,
+    file: Blob,
     method?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1CustomersCheckPassportCreate(
-    file: string,
+    file: Blob,
     method?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1CustomersCheckPassportCreate(
-    file: string,
+    file: Blob,
     method?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
@@ -6452,6 +6589,9 @@ export class V1Service extends BaseService {
     let localVarFormParams: { append(param: string, value: any): any };
     let localVarUseForm = false;
     let localVarConvertFormParamsToString = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+    localVarUseForm = canConsumeForm;
     if (localVarUseForm) {
       localVarFormParams = new FormData();
     } else {
@@ -6494,13 +6634,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/customers/
-   * @param customer
+   * @param customerRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersCreate(
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -6510,7 +6650,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Customer>;
   public v1CustomersCreate(
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -6520,7 +6660,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public v1CustomersCreate(
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -6530,7 +6670,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public v1CustomersCreate(
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -6588,7 +6728,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Customer>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customer,
+      body: customerRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -6827,14 +6967,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint patch /api/v1/customers/{id}/
    * @param id
-   * @param customer
+   * @param customerRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersPartialUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -6845,7 +6985,7 @@ export class V1Service extends BaseService {
   ): Observable<Customer>;
   public v1CustomersPartialUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -6856,7 +6996,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<Customer>>;
   public v1CustomersPartialUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -6867,7 +7007,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<Customer>>;
   public v1CustomersPartialUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -6931,7 +7071,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Customer>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customer,
+      body: customerRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -7131,14 +7271,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint post /api/v1/customers/{id}/toggle-active/
    * @param id A unique integer value identifying this customer.
-   * @param customer
+   * @param customerRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersToggleActiveCreate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -7149,7 +7289,7 @@ export class V1Service extends BaseService {
   ): Observable<Customer>;
   public v1CustomersToggleActiveCreate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -7160,7 +7300,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<Customer>>;
   public v1CustomersToggleActiveCreate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -7171,7 +7311,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<Customer>>;
   public v1CustomersToggleActiveCreate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -7235,7 +7375,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Customer>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customer,
+      body: customerRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -7406,14 +7546,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/customers/{id}/
    * @param id
-   * @param customer
+   * @param customerRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -7424,7 +7564,7 @@ export class V1Service extends BaseService {
   ): Observable<Customer>;
   public v1CustomersUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -7435,7 +7575,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<Customer>>;
   public v1CustomersUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -7446,7 +7586,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<Customer>>;
   public v1CustomersUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -7510,7 +7650,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Customer>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customer,
+      body: customerRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -7949,13 +8089,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/document-types/
-   * @param documentType
+   * @param documentTypeRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesCreate(
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -7965,7 +8105,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocumentType>;
   public v1DocumentTypesCreate(
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -7975,7 +8115,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public v1DocumentTypesCreate(
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -7985,7 +8125,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public v1DocumentTypesCreate(
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -7994,9 +8134,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (documentType === null || documentType === undefined) {
+    if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
-        'Required parameter documentType was null or undefined when calling v1DocumentTypesCreate.',
+        'Required parameter documentTypeRequest was null or undefined when calling v1DocumentTypesCreate.',
       );
     }
 
@@ -8049,7 +8189,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<DocumentType>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: documentType,
+      body: documentTypeRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -8400,14 +8540,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint patch /api/v1/document-types/{id}/
    * @param id A unique integer value identifying this document type.
-   * @param documentType
+   * @param documentTypeRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesPartialUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -8418,7 +8558,7 @@ export class V1Service extends BaseService {
   ): Observable<DocumentType>;
   public v1DocumentTypesPartialUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -8429,7 +8569,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<DocumentType>>;
   public v1DocumentTypesPartialUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -8440,7 +8580,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<DocumentType>>;
   public v1DocumentTypesPartialUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -8454,9 +8594,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1DocumentTypesPartialUpdate.',
       );
     }
-    if (documentType === null || documentType === undefined) {
+    if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
-        'Required parameter documentType was null or undefined when calling v1DocumentTypesPartialUpdate.',
+        'Required parameter documentTypeRequest was null or undefined when calling v1DocumentTypesPartialUpdate.',
       );
     }
 
@@ -8509,7 +8649,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<DocumentType>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: documentType,
+      body: documentTypeRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -8621,14 +8761,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/document-types/{id}/
    * @param id A unique integer value identifying this document type.
-   * @param documentType
+   * @param documentTypeRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -8639,7 +8779,7 @@ export class V1Service extends BaseService {
   ): Observable<DocumentType>;
   public v1DocumentTypesUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -8650,7 +8790,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<DocumentType>>;
   public v1DocumentTypesUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -8661,7 +8801,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<DocumentType>>;
   public v1DocumentTypesUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -8675,9 +8815,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1DocumentTypesUpdate.',
       );
     }
-    if (documentType === null || documentType === undefined) {
+    if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
-        'Required parameter documentType was null or undefined when calling v1DocumentTypesUpdate.',
+        'Required parameter documentTypeRequest was null or undefined when calling v1DocumentTypesUpdate.',
       );
     }
 
@@ -8730,7 +8870,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<DocumentType>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: documentType,
+      body: documentTypeRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -8745,23 +8885,6 @@ export class V1Service extends BaseService {
    * @endpoint post /api/v1/documents/{id}/actions/{actionName}/
    * @param actionName
    * @param id A unique integer value identifying this document.
-   * @param id2
-   * @param docApplication
-   * @param docType
-   * @param file Return file URL while allowing detail responses to skip expensive storage URL generation.  When &#x60;prefer_cached_file_url&#x60; is enabled in serializer context, use the persisted &#x60;file_link&#x60; first and only fall back to storage-generated URLs if needed.
-   * @param fileLink
-   * @param thumbnailLink
-   * @param completed
-   * @param aiValidation
-   * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
-   * @param aiValidationResult
-   * @param createdAt
-   * @param updatedAt
-   * @param createdBy
-   * @param updatedBy
-   * @param updatedByUsername Return the username of the user who last updated the document.
-   * @param createdByUsername Return the username of the user who created the document.
-   * @param extraActions
    * @param docTypeId
    * @param docNumber
    * @param expirationDate
@@ -8777,23 +8900,6 @@ export class V1Service extends BaseService {
   public v1DocumentsActionsCreate(
     actionName: string,
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -8813,23 +8919,6 @@ export class V1Service extends BaseService {
   public v1DocumentsActionsCreate(
     actionName: string,
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -8849,23 +8938,6 @@ export class V1Service extends BaseService {
   public v1DocumentsActionsCreate(
     actionName: string,
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -8885,23 +8957,6 @@ export class V1Service extends BaseService {
   public v1DocumentsActionsCreate(
     actionName: string,
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -8926,91 +8981,6 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (id2 === null || id2 === undefined) {
-      throw new Error(
-        'Required parameter id2 was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (docApplication === null || docApplication === undefined) {
-      throw new Error(
-        'Required parameter docApplication was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (docType === null || docType === undefined) {
-      throw new Error(
-        'Required parameter docType was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (file === null || file === undefined) {
-      throw new Error(
-        'Required parameter file was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (fileLink === null || fileLink === undefined) {
-      throw new Error(
-        'Required parameter fileLink was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (thumbnailLink === null || thumbnailLink === undefined) {
-      throw new Error(
-        'Required parameter thumbnailLink was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (completed === null || completed === undefined) {
-      throw new Error(
-        'Required parameter completed was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (aiValidation === null || aiValidation === undefined) {
-      throw new Error(
-        'Required parameter aiValidation was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (aiValidationStatus === null || aiValidationStatus === undefined) {
-      throw new Error(
-        'Required parameter aiValidationStatus was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (aiValidationResult === null || aiValidationResult === undefined) {
-      throw new Error(
-        'Required parameter aiValidationResult was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (createdAt === null || createdAt === undefined) {
-      throw new Error(
-        'Required parameter createdAt was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (updatedAt === null || updatedAt === undefined) {
-      throw new Error(
-        'Required parameter updatedAt was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (createdBy === null || createdBy === undefined) {
-      throw new Error(
-        'Required parameter createdBy was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (updatedBy === null || updatedBy === undefined) {
-      throw new Error(
-        'Required parameter updatedBy was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (updatedByUsername === null || updatedByUsername === undefined) {
-      throw new Error(
-        'Required parameter updatedByUsername was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (createdByUsername === null || createdByUsername === undefined) {
-      throw new Error(
-        'Required parameter createdByUsername was null or undefined when calling v1DocumentsActionsCreate.',
-      );
-    }
-    if (extraActions === null || extraActions === undefined) {
-      throw new Error(
-        'Required parameter extraActions was null or undefined when calling v1DocumentsActionsCreate.',
       );
     }
 
@@ -9054,23 +9024,6 @@ export class V1Service extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id2 !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id2) as any) || localVarFormParams;
-    }
-    if (docApplication !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('doc_application', <any>docApplication) as any) ||
-        localVarFormParams;
-    }
-    if (docType !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append(
-          'doc_type',
-          localVarUseForm
-            ? new Blob([JSON.stringify(docType)], { type: 'application/json' })
-            : <any>docType,
-        ) as any) || localVarFormParams;
-    }
     if (docTypeId !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('doc_type_id', <any>docTypeId) as any) || localVarFormParams;
@@ -9084,49 +9037,17 @@ export class V1Service extends BaseService {
         (localVarFormParams.append('expiration_date', <any>expirationDate) as any) ||
         localVarFormParams;
     }
-    if (file !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file', <any>file) as any) || localVarFormParams;
-    }
-    if (fileLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file_link', <any>fileLink) as any) || localVarFormParams;
-    }
-    if (thumbnailLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('thumbnail_link', <any>thumbnailLink) as any) ||
-        localVarFormParams;
-    }
     if (details !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('details', <any>details) as any) || localVarFormParams;
-    }
-    if (completed !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('completed', <any>completed) as any) || localVarFormParams;
     }
     if (metadata !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('metadata', <any>metadata) as any) || localVarFormParams;
     }
-    if (aiValidation !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation', <any>aiValidation) as any) ||
-        localVarFormParams;
-    }
     if (required !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('required', <any>required) as any) || localVarFormParams;
-    }
-    if (aiValidationStatus !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any) ||
-        localVarFormParams;
-    }
-    if (aiValidationResult !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any) ||
-        localVarFormParams;
     }
     if (aiValidationStatusOverride !== undefined) {
       localVarFormParams =
@@ -9141,46 +9062,6 @@ export class V1Service extends BaseService {
           'ai_validation_result_override',
           <any>aiValidationResultOverride,
         ) as any) || localVarFormParams;
-    }
-    if (createdAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_at', <any>createdAt) as any) || localVarFormParams;
-    }
-    if (updatedAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_at', <any>updatedAt) as any) || localVarFormParams;
-    }
-    if (createdBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by', <any>createdBy) as any) || localVarFormParams;
-    }
-    if (updatedBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by', <any>updatedBy) as any) || localVarFormParams;
-    }
-    if (updatedByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (createdByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by_username', <any>createdByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (extraActions) {
-      if (localVarUseForm) {
-        extraActions.forEach((element) => {
-          localVarFormParams =
-            (localVarFormParams.append('extra_actions', <any>element) as any) || localVarFormParams;
-        });
-      } else {
-        localVarFormParams =
-          (localVarFormParams.append(
-            'extra_actions',
-            [...extraActions].join(COLLECTION_FORMATS['csv']),
-          ) as any) || localVarFormParams;
-      }
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -9210,23 +9091,6 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/documents/
-   * @param id
-   * @param docApplication
-   * @param docType
-   * @param file Return file URL while allowing detail responses to skip expensive storage URL generation.  When &#x60;prefer_cached_file_url&#x60; is enabled in serializer context, use the persisted &#x60;file_link&#x60; first and only fall back to storage-generated URLs if needed.
-   * @param fileLink
-   * @param thumbnailLink
-   * @param completed
-   * @param aiValidation
-   * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
-   * @param aiValidationResult
-   * @param createdAt
-   * @param updatedAt
-   * @param createdBy
-   * @param updatedBy
-   * @param updatedByUsername Return the username of the user who last updated the document.
-   * @param createdByUsername Return the username of the user who created the document.
-   * @param extraActions
    * @param docTypeId
    * @param docNumber
    * @param expirationDate
@@ -9240,23 +9104,6 @@ export class V1Service extends BaseService {
    * @param options additional options
    */
   public v1DocumentsCreate(
-    id: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -9274,23 +9121,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<Document>;
   public v1DocumentsCreate(
-    id: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -9308,23 +9138,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public v1DocumentsCreate(
-    id: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -9342,23 +9155,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public v1DocumentsCreate(
-    id: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -9375,92 +9171,6 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (id === null || id === undefined) {
-      throw new Error(
-        'Required parameter id was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (docApplication === null || docApplication === undefined) {
-      throw new Error(
-        'Required parameter docApplication was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (docType === null || docType === undefined) {
-      throw new Error(
-        'Required parameter docType was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (file === null || file === undefined) {
-      throw new Error(
-        'Required parameter file was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (fileLink === null || fileLink === undefined) {
-      throw new Error(
-        'Required parameter fileLink was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (thumbnailLink === null || thumbnailLink === undefined) {
-      throw new Error(
-        'Required parameter thumbnailLink was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (completed === null || completed === undefined) {
-      throw new Error(
-        'Required parameter completed was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (aiValidation === null || aiValidation === undefined) {
-      throw new Error(
-        'Required parameter aiValidation was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (aiValidationStatus === null || aiValidationStatus === undefined) {
-      throw new Error(
-        'Required parameter aiValidationStatus was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (aiValidationResult === null || aiValidationResult === undefined) {
-      throw new Error(
-        'Required parameter aiValidationResult was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (createdAt === null || createdAt === undefined) {
-      throw new Error(
-        'Required parameter createdAt was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (updatedAt === null || updatedAt === undefined) {
-      throw new Error(
-        'Required parameter updatedAt was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (createdBy === null || createdBy === undefined) {
-      throw new Error(
-        'Required parameter createdBy was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (updatedBy === null || updatedBy === undefined) {
-      throw new Error(
-        'Required parameter updatedBy was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (updatedByUsername === null || updatedByUsername === undefined) {
-      throw new Error(
-        'Required parameter updatedByUsername was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (createdByUsername === null || createdByUsername === undefined) {
-      throw new Error(
-        'Required parameter createdByUsername was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-    if (extraActions === null || extraActions === undefined) {
-      throw new Error(
-        'Required parameter extraActions was null or undefined when calling v1DocumentsCreate.',
-      );
-    }
-
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -9501,23 +9211,6 @@ export class V1Service extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id) as any) || localVarFormParams;
-    }
-    if (docApplication !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('doc_application', <any>docApplication) as any) ||
-        localVarFormParams;
-    }
-    if (docType !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append(
-          'doc_type',
-          localVarUseForm
-            ? new Blob([JSON.stringify(docType)], { type: 'application/json' })
-            : <any>docType,
-        ) as any) || localVarFormParams;
-    }
     if (docTypeId !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('doc_type_id', <any>docTypeId) as any) || localVarFormParams;
@@ -9531,49 +9224,17 @@ export class V1Service extends BaseService {
         (localVarFormParams.append('expiration_date', <any>expirationDate) as any) ||
         localVarFormParams;
     }
-    if (file !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file', <any>file) as any) || localVarFormParams;
-    }
-    if (fileLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file_link', <any>fileLink) as any) || localVarFormParams;
-    }
-    if (thumbnailLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('thumbnail_link', <any>thumbnailLink) as any) ||
-        localVarFormParams;
-    }
     if (details !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('details', <any>details) as any) || localVarFormParams;
-    }
-    if (completed !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('completed', <any>completed) as any) || localVarFormParams;
     }
     if (metadata !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('metadata', <any>metadata) as any) || localVarFormParams;
     }
-    if (aiValidation !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation', <any>aiValidation) as any) ||
-        localVarFormParams;
-    }
     if (required !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('required', <any>required) as any) || localVarFormParams;
-    }
-    if (aiValidationStatus !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any) ||
-        localVarFormParams;
-    }
-    if (aiValidationResult !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any) ||
-        localVarFormParams;
     }
     if (aiValidationStatusOverride !== undefined) {
       localVarFormParams =
@@ -9588,46 +9249,6 @@ export class V1Service extends BaseService {
           'ai_validation_result_override',
           <any>aiValidationResultOverride,
         ) as any) || localVarFormParams;
-    }
-    if (createdAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_at', <any>createdAt) as any) || localVarFormParams;
-    }
-    if (updatedAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_at', <any>updatedAt) as any) || localVarFormParams;
-    }
-    if (createdBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by', <any>createdBy) as any) || localVarFormParams;
-    }
-    if (updatedBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by', <any>updatedBy) as any) || localVarFormParams;
-    }
-    if (updatedByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (createdByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by_username', <any>createdByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (extraActions) {
-      if (localVarUseForm) {
-        extraActions.forEach((element) => {
-          localVarFormParams =
-            (localVarFormParams.append('extra_actions', <any>element) as any) || localVarFormParams;
-        });
-      } else {
-        localVarFormParams =
-          (localVarFormParams.append(
-            'extra_actions',
-            [...extraActions].join(COLLECTION_FORMATS['csv']),
-          ) as any) || localVarFormParams;
-      }
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -9970,23 +9591,6 @@ export class V1Service extends BaseService {
    * Override to trigger AI validation when requested.
    * @endpoint patch /api/v1/documents/{id}/
    * @param id A unique integer value identifying this document.
-   * @param id2
-   * @param docApplication
-   * @param docType
-   * @param file Return file URL while allowing detail responses to skip expensive storage URL generation.  When &#x60;prefer_cached_file_url&#x60; is enabled in serializer context, use the persisted &#x60;file_link&#x60; first and only fall back to storage-generated URLs if needed.
-   * @param fileLink
-   * @param thumbnailLink
-   * @param completed
-   * @param aiValidation
-   * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
-   * @param aiValidationResult
-   * @param createdAt
-   * @param updatedAt
-   * @param createdBy
-   * @param updatedBy
-   * @param updatedByUsername Return the username of the user who last updated the document.
-   * @param createdByUsername Return the username of the user who created the document.
-   * @param extraActions
    * @param docTypeId
    * @param docNumber
    * @param expirationDate
@@ -10001,23 +9605,6 @@ export class V1Service extends BaseService {
    */
   public v1DocumentsPartialUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -10036,23 +9623,6 @@ export class V1Service extends BaseService {
   ): Observable<Document>;
   public v1DocumentsPartialUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -10071,23 +9641,6 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<Document>>;
   public v1DocumentsPartialUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -10106,23 +9659,6 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<Document>>;
   public v1DocumentsPartialUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -10142,91 +9678,6 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (id2 === null || id2 === undefined) {
-      throw new Error(
-        'Required parameter id2 was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (docApplication === null || docApplication === undefined) {
-      throw new Error(
-        'Required parameter docApplication was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (docType === null || docType === undefined) {
-      throw new Error(
-        'Required parameter docType was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (file === null || file === undefined) {
-      throw new Error(
-        'Required parameter file was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (fileLink === null || fileLink === undefined) {
-      throw new Error(
-        'Required parameter fileLink was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (thumbnailLink === null || thumbnailLink === undefined) {
-      throw new Error(
-        'Required parameter thumbnailLink was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (completed === null || completed === undefined) {
-      throw new Error(
-        'Required parameter completed was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (aiValidation === null || aiValidation === undefined) {
-      throw new Error(
-        'Required parameter aiValidation was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (aiValidationStatus === null || aiValidationStatus === undefined) {
-      throw new Error(
-        'Required parameter aiValidationStatus was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (aiValidationResult === null || aiValidationResult === undefined) {
-      throw new Error(
-        'Required parameter aiValidationResult was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (createdAt === null || createdAt === undefined) {
-      throw new Error(
-        'Required parameter createdAt was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (updatedAt === null || updatedAt === undefined) {
-      throw new Error(
-        'Required parameter updatedAt was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (createdBy === null || createdBy === undefined) {
-      throw new Error(
-        'Required parameter createdBy was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (updatedBy === null || updatedBy === undefined) {
-      throw new Error(
-        'Required parameter updatedBy was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (updatedByUsername === null || updatedByUsername === undefined) {
-      throw new Error(
-        'Required parameter updatedByUsername was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (createdByUsername === null || createdByUsername === undefined) {
-      throw new Error(
-        'Required parameter createdByUsername was null or undefined when calling v1DocumentsPartialUpdate.',
-      );
-    }
-    if (extraActions === null || extraActions === undefined) {
-      throw new Error(
-        'Required parameter extraActions was null or undefined when calling v1DocumentsPartialUpdate.',
       );
     }
 
@@ -10270,23 +9721,6 @@ export class V1Service extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id2 !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id2) as any) || localVarFormParams;
-    }
-    if (docApplication !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('doc_application', <any>docApplication) as any) ||
-        localVarFormParams;
-    }
-    if (docType !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append(
-          'doc_type',
-          localVarUseForm
-            ? new Blob([JSON.stringify(docType)], { type: 'application/json' })
-            : <any>docType,
-        ) as any) || localVarFormParams;
-    }
     if (docTypeId !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('doc_type_id', <any>docTypeId) as any) || localVarFormParams;
@@ -10300,49 +9734,17 @@ export class V1Service extends BaseService {
         (localVarFormParams.append('expiration_date', <any>expirationDate) as any) ||
         localVarFormParams;
     }
-    if (file !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file', <any>file) as any) || localVarFormParams;
-    }
-    if (fileLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file_link', <any>fileLink) as any) || localVarFormParams;
-    }
-    if (thumbnailLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('thumbnail_link', <any>thumbnailLink) as any) ||
-        localVarFormParams;
-    }
     if (details !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('details', <any>details) as any) || localVarFormParams;
-    }
-    if (completed !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('completed', <any>completed) as any) || localVarFormParams;
     }
     if (metadata !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('metadata', <any>metadata) as any) || localVarFormParams;
     }
-    if (aiValidation !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation', <any>aiValidation) as any) ||
-        localVarFormParams;
-    }
     if (required !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('required', <any>required) as any) || localVarFormParams;
-    }
-    if (aiValidationStatus !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any) ||
-        localVarFormParams;
-    }
-    if (aiValidationResult !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any) ||
-        localVarFormParams;
     }
     if (aiValidationStatusOverride !== undefined) {
       localVarFormParams =
@@ -10357,46 +9759,6 @@ export class V1Service extends BaseService {
           'ai_validation_result_override',
           <any>aiValidationResultOverride,
         ) as any) || localVarFormParams;
-    }
-    if (createdAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_at', <any>createdAt) as any) || localVarFormParams;
-    }
-    if (updatedAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_at', <any>updatedAt) as any) || localVarFormParams;
-    }
-    if (createdBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by', <any>createdBy) as any) || localVarFormParams;
-    }
-    if (updatedBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by', <any>updatedBy) as any) || localVarFormParams;
-    }
-    if (updatedByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (createdByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by_username', <any>createdByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (extraActions) {
-      if (localVarUseForm) {
-        extraActions.forEach((element) => {
-          localVarFormParams =
-            (localVarFormParams.append('extra_actions', <any>element) as any) || localVarFormParams;
-        });
-      } else {
-        localVarFormParams =
-          (localVarFormParams.append(
-            'extra_actions',
-            [...extraActions].join(COLLECTION_FORMATS['csv']),
-          ) as any) || localVarFormParams;
-      }
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -10626,23 +9988,6 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/documents/{id}/
    * @param id A unique integer value identifying this document.
-   * @param id2
-   * @param docApplication
-   * @param docType
-   * @param file Return file URL while allowing detail responses to skip expensive storage URL generation.  When &#x60;prefer_cached_file_url&#x60; is enabled in serializer context, use the persisted &#x60;file_link&#x60; first and only fall back to storage-generated URLs if needed.
-   * @param fileLink
-   * @param thumbnailLink
-   * @param completed
-   * @param aiValidation
-   * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
-   * @param aiValidationResult
-   * @param createdAt
-   * @param updatedAt
-   * @param createdBy
-   * @param updatedBy
-   * @param updatedByUsername Return the username of the user who last updated the document.
-   * @param createdByUsername Return the username of the user who created the document.
-   * @param extraActions
    * @param docTypeId
    * @param docNumber
    * @param expirationDate
@@ -10657,23 +10002,6 @@ export class V1Service extends BaseService {
    */
   public v1DocumentsUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -10692,23 +10020,6 @@ export class V1Service extends BaseService {
   ): Observable<Document>;
   public v1DocumentsUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -10727,23 +10038,6 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<Document>>;
   public v1DocumentsUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -10762,23 +10056,6 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<Document>>;
   public v1DocumentsUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -10798,91 +10075,6 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (id2 === null || id2 === undefined) {
-      throw new Error(
-        'Required parameter id2 was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (docApplication === null || docApplication === undefined) {
-      throw new Error(
-        'Required parameter docApplication was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (docType === null || docType === undefined) {
-      throw new Error(
-        'Required parameter docType was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (file === null || file === undefined) {
-      throw new Error(
-        'Required parameter file was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (fileLink === null || fileLink === undefined) {
-      throw new Error(
-        'Required parameter fileLink was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (thumbnailLink === null || thumbnailLink === undefined) {
-      throw new Error(
-        'Required parameter thumbnailLink was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (completed === null || completed === undefined) {
-      throw new Error(
-        'Required parameter completed was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (aiValidation === null || aiValidation === undefined) {
-      throw new Error(
-        'Required parameter aiValidation was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (aiValidationStatus === null || aiValidationStatus === undefined) {
-      throw new Error(
-        'Required parameter aiValidationStatus was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (aiValidationResult === null || aiValidationResult === undefined) {
-      throw new Error(
-        'Required parameter aiValidationResult was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (createdAt === null || createdAt === undefined) {
-      throw new Error(
-        'Required parameter createdAt was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (updatedAt === null || updatedAt === undefined) {
-      throw new Error(
-        'Required parameter updatedAt was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (createdBy === null || createdBy === undefined) {
-      throw new Error(
-        'Required parameter createdBy was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (updatedBy === null || updatedBy === undefined) {
-      throw new Error(
-        'Required parameter updatedBy was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (updatedByUsername === null || updatedByUsername === undefined) {
-      throw new Error(
-        'Required parameter updatedByUsername was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (createdByUsername === null || createdByUsername === undefined) {
-      throw new Error(
-        'Required parameter createdByUsername was null or undefined when calling v1DocumentsUpdate.',
-      );
-    }
-    if (extraActions === null || extraActions === undefined) {
-      throw new Error(
-        'Required parameter extraActions was null or undefined when calling v1DocumentsUpdate.',
       );
     }
 
@@ -10926,23 +10118,6 @@ export class V1Service extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id2 !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id2) as any) || localVarFormParams;
-    }
-    if (docApplication !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('doc_application', <any>docApplication) as any) ||
-        localVarFormParams;
-    }
-    if (docType !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append(
-          'doc_type',
-          localVarUseForm
-            ? new Blob([JSON.stringify(docType)], { type: 'application/json' })
-            : <any>docType,
-        ) as any) || localVarFormParams;
-    }
     if (docTypeId !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('doc_type_id', <any>docTypeId) as any) || localVarFormParams;
@@ -10956,49 +10131,17 @@ export class V1Service extends BaseService {
         (localVarFormParams.append('expiration_date', <any>expirationDate) as any) ||
         localVarFormParams;
     }
-    if (file !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file', <any>file) as any) || localVarFormParams;
-    }
-    if (fileLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file_link', <any>fileLink) as any) || localVarFormParams;
-    }
-    if (thumbnailLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('thumbnail_link', <any>thumbnailLink) as any) ||
-        localVarFormParams;
-    }
     if (details !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('details', <any>details) as any) || localVarFormParams;
-    }
-    if (completed !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('completed', <any>completed) as any) || localVarFormParams;
     }
     if (metadata !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('metadata', <any>metadata) as any) || localVarFormParams;
     }
-    if (aiValidation !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation', <any>aiValidation) as any) ||
-        localVarFormParams;
-    }
     if (required !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('required', <any>required) as any) || localVarFormParams;
-    }
-    if (aiValidationStatus !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any) ||
-        localVarFormParams;
-    }
-    if (aiValidationResult !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any) ||
-        localVarFormParams;
     }
     if (aiValidationStatusOverride !== undefined) {
       localVarFormParams =
@@ -11013,46 +10156,6 @@ export class V1Service extends BaseService {
           'ai_validation_result_override',
           <any>aiValidationResultOverride,
         ) as any) || localVarFormParams;
-    }
-    if (createdAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_at', <any>createdAt) as any) || localVarFormParams;
-    }
-    if (updatedAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_at', <any>updatedAt) as any) || localVarFormParams;
-    }
-    if (createdBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by', <any>createdBy) as any) || localVarFormParams;
-    }
-    if (updatedBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by', <any>updatedBy) as any) || localVarFormParams;
-    }
-    if (updatedByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (createdByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by_username', <any>createdByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (extraActions) {
-      if (localVarUseForm) {
-        extraActions.forEach((element) => {
-          localVarFormParams =
-            (localVarFormParams.append('extra_actions', <any>element) as any) || localVarFormParams;
-        });
-      } else {
-        localVarFormParams =
-          (localVarFormParams.append(
-            'extra_actions',
-            [...extraActions].join(COLLECTION_FORMATS['csv']),
-          ) as any) || localVarFormParams;
-      }
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -11082,13 +10185,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/holidays/
-   * @param holiday
+   * @param holidayRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1HolidaysCreate(
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11098,7 +10201,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Holiday>;
   public v1HolidaysCreate(
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11108,7 +10211,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Holiday>>;
   public v1HolidaysCreate(
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11118,7 +10221,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Holiday>>;
   public v1HolidaysCreate(
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11127,9 +10230,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (holiday === null || holiday === undefined) {
+    if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
-        'Required parameter holiday was null or undefined when calling v1HolidaysCreate.',
+        'Required parameter holidayRequest was null or undefined when calling v1HolidaysCreate.',
       );
     }
 
@@ -11182,7 +10285,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Holiday>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: holiday,
+      body: holidayRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -11395,14 +10498,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint patch /api/v1/holidays/{id}/
    * @param id A unique integer value identifying this holiday.
-   * @param holiday
+   * @param holidayRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1HolidaysPartialUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11413,7 +10516,7 @@ export class V1Service extends BaseService {
   ): Observable<Holiday>;
   public v1HolidaysPartialUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11424,7 +10527,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<Holiday>>;
   public v1HolidaysPartialUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11435,7 +10538,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<Holiday>>;
   public v1HolidaysPartialUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11449,9 +10552,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1HolidaysPartialUpdate.',
       );
     }
-    if (holiday === null || holiday === undefined) {
+    if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
-        'Required parameter holiday was null or undefined when calling v1HolidaysPartialUpdate.',
+        'Required parameter holidayRequest was null or undefined when calling v1HolidaysPartialUpdate.',
       );
     }
 
@@ -11504,7 +10607,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Holiday>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: holiday,
+      body: holidayRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -11616,14 +10719,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/holidays/{id}/
    * @param id A unique integer value identifying this holiday.
-   * @param holiday
+   * @param holidayRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1HolidaysUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11634,7 +10737,7 @@ export class V1Service extends BaseService {
   ): Observable<Holiday>;
   public v1HolidaysUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11645,7 +10748,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<Holiday>>;
   public v1HolidaysUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11656,7 +10759,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<Holiday>>;
   public v1HolidaysUpdate(
     id: number,
-    holiday: Holiday,
+    holidayRequest: HolidayRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11668,9 +10771,9 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1HolidaysUpdate.');
     }
-    if (holiday === null || holiday === undefined) {
+    if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
-        'Required parameter holiday was null or undefined when calling v1HolidaysUpdate.',
+        'Required parameter holidayRequest was null or undefined when calling v1HolidaysUpdate.',
       );
     }
 
@@ -11723,7 +10826,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Holiday>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: holiday,
+      body: holidayRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -11735,13 +10838,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/invoices/bulk-delete/
-   * @param requestBody
+   * @param invoicesBulkDeleteRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesBulkDeleteCreate(
-    requestBody?: { [key: string]: any },
+    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11749,9 +10852,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoicesBulkDeleteResponse>;
   public v1InvoicesBulkDeleteCreate(
-    requestBody?: { [key: string]: any },
+    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11759,9 +10862,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  ): Observable<HttpResponse<InvoicesBulkDeleteResponse>>;
   public v1InvoicesBulkDeleteCreate(
-    requestBody?: { [key: string]: any },
+    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11769,9 +10872,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  ): Observable<HttpEvent<InvoicesBulkDeleteResponse>>;
   public v1InvoicesBulkDeleteCreate(
-    requestBody?: { [key: string]: any },
+    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11827,27 +10930,31 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/invoices/bulk-delete/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: requestBody,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<InvoicesBulkDeleteResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: invoicesBulkDeleteRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
    * @endpoint post /api/v1/invoices/
-   * @param invoiceCreateUpdate
+   * @param invoiceCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesCreate(
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11857,7 +10964,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceCreateUpdate>;
   public v1InvoicesCreate(
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11867,7 +10974,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public v1InvoicesCreate(
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11877,7 +10984,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public v1InvoicesCreate(
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11886,9 +10993,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (invoiceCreateUpdate === null || invoiceCreateUpdate === undefined) {
+    if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter invoiceCreateUpdate was null or undefined when calling v1InvoicesCreate.',
+        'Required parameter invoiceCreateUpdateRequest was null or undefined when calling v1InvoicesCreate.',
       );
     }
 
@@ -11941,7 +11048,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<InvoiceCreateUpdate>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: invoiceCreateUpdate,
+      body: invoiceCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -11967,7 +11074,7 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceDeletePreviewResponse>;
   public v1InvoicesDeletePreviewRetrieve(
     id: number,
     observe?: 'response',
@@ -11977,7 +11084,7 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  ): Observable<HttpResponse<InvoiceDeletePreviewResponse>>;
   public v1InvoicesDeletePreviewRetrieve(
     id: number,
     observe?: 'events',
@@ -11987,7 +11094,7 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  ): Observable<HttpEvent<InvoiceDeletePreviewResponse>>;
   public v1InvoicesDeletePreviewRetrieve(
     id: number,
     observe: any = 'body',
@@ -12039,15 +11146,19 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/invoices/${this.configuration.encodeParam({ name: 'id', value: id, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/delete-preview/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('get', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<InvoiceDeletePreviewResponse>(
+      'get',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -12654,14 +11765,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint post /api/v1/invoices/{id}/force-delete/
    * @param id A unique integer value identifying this invoice.
-   * @param requestBody
+   * @param invoiceForceDeleteRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesForceDeleteCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -12669,10 +11780,10 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceForceDeleteResponse>;
   public v1InvoicesForceDeleteCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -12680,10 +11791,10 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  ): Observable<HttpResponse<InvoiceForceDeleteResponse>>;
   public v1InvoicesForceDeleteCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -12691,10 +11802,10 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  ): Observable<HttpEvent<InvoiceForceDeleteResponse>>;
   public v1InvoicesForceDeleteCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -12756,16 +11867,20 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/invoices/${this.configuration.encodeParam({ name: 'id', value: id, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/force-delete/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: requestBody,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<InvoiceForceDeleteResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: invoiceForceDeleteRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -12784,7 +11899,7 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceFromApplicationPrefillResponse>;
   public v1InvoicesFromApplicationPrefillRetrieve(
     applicationId: number,
     observe?: 'response',
@@ -12794,7 +11909,7 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  ): Observable<HttpResponse<InvoiceFromApplicationPrefillResponse>>;
   public v1InvoicesFromApplicationPrefillRetrieve(
     applicationId: number,
     observe?: 'events',
@@ -12804,7 +11919,7 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  ): Observable<HttpEvent<InvoiceFromApplicationPrefillResponse>>;
   public v1InvoicesFromApplicationPrefillRetrieve(
     applicationId: number,
     observe: any = 'body',
@@ -12856,28 +11971,40 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/invoices/from_application_prefill/${this.configuration.encodeParam({ name: 'applicationId', value: applicationId, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('get', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<InvoiceFromApplicationPrefillResponse>(
+      'get',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
    * @endpoint get /api/v1/invoices/get_billable_products/{customerId}/
    * @param customerId
    * @param currentInvoiceId Include already linked applications for this invoice in pending groups.
+   * @param ordering Which field to use when ordering the results.
+   * @param page A page number within the paginated result set.
+   * @param pageSize Number of results to return per page.
+   * @param search A search term.
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
-  public v1InvoicesGetBillableProductsRetrieve(
+  public v1InvoicesGetBillableProductsList(
     customerId: number,
     currentInvoiceId?: number,
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -12885,10 +12012,14 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
-  public v1InvoicesGetBillableProductsRetrieve(
+  ): Observable<PaginatedBillableProductRowList>;
+  public v1InvoicesGetBillableProductsList(
     customerId: number,
     currentInvoiceId?: number,
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -12896,10 +12027,14 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
-  public v1InvoicesGetBillableProductsRetrieve(
+  ): Observable<HttpResponse<PaginatedBillableProductRowList>>;
+  public v1InvoicesGetBillableProductsList(
     customerId: number,
     currentInvoiceId?: number,
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -12907,10 +12042,14 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
-  public v1InvoicesGetBillableProductsRetrieve(
+  ): Observable<HttpEvent<PaginatedBillableProductRowList>>;
+  public v1InvoicesGetBillableProductsList(
     customerId: number,
     currentInvoiceId?: number,
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -12921,7 +12060,7 @@ export class V1Service extends BaseService {
   ): Observable<any> {
     if (customerId === null || customerId === undefined) {
       throw new Error(
-        'Required parameter customerId was null or undefined when calling v1InvoicesGetBillableProductsRetrieve.',
+        'Required parameter customerId was null or undefined when calling v1InvoicesGetBillableProductsList.',
       );
     }
 
@@ -12931,6 +12070,38 @@ export class V1Service extends BaseService {
       localVarQueryParameters,
       'current_invoice_id',
       <any>currentInvoiceId,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'ordering',
+      <any>ordering,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'page',
+      <any>page,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'page_size',
+      <any>pageSize,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'search',
+      <any>search,
       QueryParamStyle.Form,
       true,
     );
@@ -12970,16 +12141,20 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/invoices/get_billable_products/${this.configuration.encodeParam({ name: 'customerId', value: customerId, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('get', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      params: localVarQueryParameters.toHttpParams(),
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<PaginatedBillableProductRowList>(
+      'get',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        params: localVarQueryParameters.toHttpParams(),
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -14048,14 +13223,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint post /api/v1/invoices/{id}/mark-as-paid/
    * @param id A unique integer value identifying this invoice.
-   * @param requestBody
+   * @param invoiceMarkAsPaidRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesMarkAsPaidCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -14063,10 +13238,10 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<InvoiceList>;
+  ): Observable<InvoiceMarkAsPaidResponse>;
   public v1InvoicesMarkAsPaidCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -14074,10 +13249,10 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<InvoiceList>>;
+  ): Observable<HttpResponse<InvoiceMarkAsPaidResponse>>;
   public v1InvoicesMarkAsPaidCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -14085,10 +13260,10 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<InvoiceList>>;
+  ): Observable<HttpEvent<InvoiceMarkAsPaidResponse>>;
   public v1InvoicesMarkAsPaidCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -14100,6 +13275,11 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1InvoicesMarkAsPaidCreate.',
+      );
+    }
+    if (invoiceMarkAsPaidRequestRequest === null || invoiceMarkAsPaidRequestRequest === undefined) {
+      throw new Error(
+        'Required parameter invoiceMarkAsPaidRequestRequest was null or undefined when calling v1InvoicesMarkAsPaidCreate.',
       );
     }
 
@@ -14150,29 +13330,33 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/invoices/${this.configuration.encodeParam({ name: 'id', value: id, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/mark-as-paid/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<InvoiceList>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: requestBody,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<InvoiceMarkAsPaidResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: invoiceMarkAsPaidRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
    * @endpoint patch /api/v1/invoices/{id}/
    * @param id A unique integer value identifying this invoice.
-   * @param invoiceCreateUpdate
+   * @param invoiceCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesPartialUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -14183,7 +13367,7 @@ export class V1Service extends BaseService {
   ): Observable<InvoiceCreateUpdate>;
   public v1InvoicesPartialUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -14194,7 +13378,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public v1InvoicesPartialUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -14205,7 +13389,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public v1InvoicesPartialUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -14219,9 +13403,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1InvoicesPartialUpdate.',
       );
     }
-    if (invoiceCreateUpdate === null || invoiceCreateUpdate === undefined) {
+    if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter invoiceCreateUpdate was null or undefined when calling v1InvoicesPartialUpdate.',
+        'Required parameter invoiceCreateUpdateRequest was null or undefined when calling v1InvoicesPartialUpdate.',
       );
     }
 
@@ -14274,7 +13458,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<InvoiceCreateUpdate>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: invoiceCreateUpdate,
+      body: invoiceCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -14301,7 +13485,7 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<InvoiceList>;
+  ): Observable<InvoiceProposalResponse>;
   public v1InvoicesProposeRetrieve(
     invoiceDate?: string,
     observe?: 'response',
@@ -14311,7 +13495,7 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<InvoiceList>>;
+  ): Observable<HttpResponse<InvoiceProposalResponse>>;
   public v1InvoicesProposeRetrieve(
     invoiceDate?: string,
     observe?: 'events',
@@ -14321,7 +13505,7 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<InvoiceList>>;
+  ): Observable<HttpEvent<InvoiceProposalResponse>>;
   public v1InvoicesProposeRetrieve(
     invoiceDate?: string,
     observe: any = 'body',
@@ -14377,7 +13561,7 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/invoices/propose/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<InvoiceList>('get', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<InvoiceProposalResponse>('get', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
@@ -14491,14 +13675,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/invoices/{id}/
    * @param id A unique integer value identifying this invoice.
-   * @param invoiceCreateUpdate
+   * @param invoiceCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -14509,7 +13693,7 @@ export class V1Service extends BaseService {
   ): Observable<InvoiceCreateUpdate>;
   public v1InvoicesUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -14520,7 +13704,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public v1InvoicesUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -14531,7 +13715,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public v1InvoicesUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -14543,9 +13727,9 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1InvoicesUpdate.');
     }
-    if (invoiceCreateUpdate === null || invoiceCreateUpdate === undefined) {
+    if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter invoiceCreateUpdate was null or undefined when calling v1InvoicesUpdate.',
+        'Required parameter invoiceCreateUpdateRequest was null or undefined when calling v1InvoicesUpdate.',
       );
     }
 
@@ -14598,7 +13782,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<InvoiceCreateUpdate>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: invoiceCreateUpdate,
+      body: invoiceCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -14713,13 +13897,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/letters/surat-permohonan/
-   * @param suratPermohonanRequest
+   * @param suratPermohonanRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1LettersSuratPermohonanCreate(
-    suratPermohonanRequest: SuratPermohonanRequest,
+    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -14729,7 +13913,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Blob>;
   public v1LettersSuratPermohonanCreate(
-    suratPermohonanRequest: SuratPermohonanRequest,
+    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -14739,7 +13923,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public v1LettersSuratPermohonanCreate(
-    suratPermohonanRequest: SuratPermohonanRequest,
+    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -14749,7 +13933,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public v1LettersSuratPermohonanCreate(
-    suratPermohonanRequest: SuratPermohonanRequest,
+    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -14758,9 +13942,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (suratPermohonanRequest === null || suratPermohonanRequest === undefined) {
+    if (suratPermohonanRequestRequest === null || suratPermohonanRequestRequest === undefined) {
       throw new Error(
-        'Required parameter suratPermohonanRequest was null or undefined when calling v1LettersSuratPermohonanCreate.',
+        'Required parameter suratPermohonanRequestRequest was null or undefined when calling v1LettersSuratPermohonanCreate.',
       );
     }
 
@@ -14802,7 +13986,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: suratPermohonanRequest,
+      body: suratPermohonanRequestRequest,
       responseType: 'blob',
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -15052,13 +14236,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/payments/
-   * @param payment
+   * @param paymentRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PaymentsCreate(
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15068,7 +14252,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Payment>;
   public v1PaymentsCreate(
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15078,7 +14262,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Payment>>;
   public v1PaymentsCreate(
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15088,7 +14272,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Payment>>;
   public v1PaymentsCreate(
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15097,9 +14281,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (payment === null || payment === undefined) {
+    if (paymentRequest === null || paymentRequest === undefined) {
       throw new Error(
-        'Required parameter payment was null or undefined when calling v1PaymentsCreate.',
+        'Required parameter paymentRequest was null or undefined when calling v1PaymentsCreate.',
       );
     }
 
@@ -15152,7 +14336,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Payment>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: payment,
+      body: paymentRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -15365,14 +14549,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint patch /api/v1/payments/{id}/
    * @param id A unique integer value identifying this payment.
-   * @param payment
+   * @param paymentRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PaymentsPartialUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15383,7 +14567,7 @@ export class V1Service extends BaseService {
   ): Observable<Payment>;
   public v1PaymentsPartialUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15394,7 +14578,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<Payment>>;
   public v1PaymentsPartialUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15405,7 +14589,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<Payment>>;
   public v1PaymentsPartialUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15419,9 +14603,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1PaymentsPartialUpdate.',
       );
     }
-    if (payment === null || payment === undefined) {
+    if (paymentRequest === null || paymentRequest === undefined) {
       throw new Error(
-        'Required parameter payment was null or undefined when calling v1PaymentsPartialUpdate.',
+        'Required parameter paymentRequest was null or undefined when calling v1PaymentsPartialUpdate.',
       );
     }
 
@@ -15474,7 +14658,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Payment>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: payment,
+      body: paymentRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -15586,14 +14770,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/payments/{id}/
    * @param id A unique integer value identifying this payment.
-   * @param payment
+   * @param paymentRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PaymentsUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15604,7 +14788,7 @@ export class V1Service extends BaseService {
   ): Observable<Payment>;
   public v1PaymentsUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15615,7 +14799,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<Payment>>;
   public v1PaymentsUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15626,7 +14810,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<Payment>>;
   public v1PaymentsUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15638,9 +14822,9 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1PaymentsUpdate.');
     }
-    if (payment === null || payment === undefined) {
+    if (paymentRequest === null || paymentRequest === undefined) {
       throw new Error(
-        'Required parameter payment was null or undefined when calling v1PaymentsUpdate.',
+        'Required parameter paymentRequest was null or undefined when calling v1PaymentsUpdate.',
       );
     }
 
@@ -15693,7 +14877,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Payment>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: payment,
+      body: paymentRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -15705,13 +14889,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/products/bulk-delete/
-   * @param product
+   * @param productsBulkDeleteRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsBulkDeleteCreate(
-    product: Product,
+    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15719,9 +14903,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<Product>;
+  ): Observable<ProductsBulkDeleteResponse>;
   public v1ProductsBulkDeleteCreate(
-    product: Product,
+    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15729,9 +14913,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<Product>>;
+  ): Observable<HttpResponse<ProductsBulkDeleteResponse>>;
   public v1ProductsBulkDeleteCreate(
-    product: Product,
+    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15739,9 +14923,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<Product>>;
+  ): Observable<HttpEvent<ProductsBulkDeleteResponse>>;
   public v1ProductsBulkDeleteCreate(
-    product: Product,
+    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15750,12 +14934,6 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (product === null || product === undefined) {
-      throw new Error(
-        'Required parameter product was null or undefined when calling v1ProductsBulkDeleteCreate.',
-      );
-    }
-
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -15803,16 +14981,20 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/products/bulk-delete/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<Product>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: product,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<ProductsBulkDeleteResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: productsBulkDeleteRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -16063,13 +15245,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/products/
-   * @param productCreateUpdate
+   * @param productCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsCreate(
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -16079,7 +15261,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<ProductCreateUpdate>;
   public v1ProductsCreate(
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -16089,7 +15271,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public v1ProductsCreate(
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -16099,7 +15281,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public v1ProductsCreate(
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -16108,9 +15290,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (productCreateUpdate === null || productCreateUpdate === undefined) {
+    if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter productCreateUpdate was null or undefined when calling v1ProductsCreate.',
+        'Required parameter productCreateUpdateRequest was null or undefined when calling v1ProductsCreate.',
       );
     }
 
@@ -16163,7 +15345,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<ProductCreateUpdate>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: productCreateUpdate,
+      body: productCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -16456,13 +15638,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/products/export/start/
-   * @param product
+   * @param productRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsExportStartCreate(
-    product: Product,
+    productRequest: ProductRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -16472,7 +15654,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Product>;
   public v1ProductsExportStartCreate(
-    product: Product,
+    productRequest: ProductRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -16482,7 +15664,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public v1ProductsExportStartCreate(
-    product: Product,
+    productRequest: ProductRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -16492,7 +15674,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public v1ProductsExportStartCreate(
-    product: Product,
+    productRequest: ProductRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -16501,9 +15683,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (product === null || product === undefined) {
+    if (productRequest === null || productRequest === undefined) {
       throw new Error(
-        'Required parameter product was null or undefined when calling v1ProductsExportStartCreate.',
+        'Required parameter productRequest was null or undefined when calling v1ProductsExportStartCreate.',
       );
     }
 
@@ -16556,7 +15738,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Product>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: product,
+      body: productRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -16889,7 +16071,7 @@ export class V1Service extends BaseService {
    * @param options additional options
    */
   public v1ProductsImportStartCreate(
-    file: string,
+    file: Blob,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -16899,7 +16081,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<ProductImportStartResponse>;
   public v1ProductsImportStartCreate(
-    file: string,
+    file: Blob,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -16909,7 +16091,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<ProductImportStartResponse>>;
   public v1ProductsImportStartCreate(
-    file: string,
+    file: Blob,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -16919,7 +16101,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<ProductImportStartResponse>>;
   public v1ProductsImportStartCreate(
-    file: string,
+    file: Blob,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -16964,6 +16146,9 @@ export class V1Service extends BaseService {
     let localVarFormParams: { append(param: string, value: any): any };
     let localVarUseForm = false;
     let localVarConvertFormParamsToString = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+    localVarUseForm = canConsumeForm;
     if (localVarUseForm) {
       localVarFormParams = new FormData();
     } else {
@@ -17204,14 +16389,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint patch /api/v1/products/{id}/
    * @param id A unique integer value identifying this product.
-   * @param productCreateUpdate
+   * @param productCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsPartialUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17222,7 +16407,7 @@ export class V1Service extends BaseService {
   ): Observable<ProductCreateUpdate>;
   public v1ProductsPartialUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17233,7 +16418,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public v1ProductsPartialUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17244,7 +16429,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public v1ProductsPartialUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17258,9 +16443,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1ProductsPartialUpdate.',
       );
     }
-    if (productCreateUpdate === null || productCreateUpdate === undefined) {
+    if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter productCreateUpdate was null or undefined when calling v1ProductsPartialUpdate.',
+        'Required parameter productCreateUpdateRequest was null or undefined when calling v1ProductsPartialUpdate.',
       );
     }
 
@@ -17313,7 +16498,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<ProductCreateUpdate>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: productCreateUpdate,
+      body: productCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -17605,14 +16790,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/products/{id}/
    * @param id A unique integer value identifying this product.
-   * @param productCreateUpdate
+   * @param productCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17623,7 +16808,7 @@ export class V1Service extends BaseService {
   ): Observable<ProductCreateUpdate>;
   public v1ProductsUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17634,7 +16819,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public v1ProductsUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17645,7 +16830,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public v1ProductsUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17657,9 +16842,9 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1ProductsUpdate.');
     }
-    if (productCreateUpdate === null || productCreateUpdate === undefined) {
+    if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter productCreateUpdate was null or undefined when calling v1ProductsUpdate.',
+        'Required parameter productCreateUpdateRequest was null or undefined when calling v1ProductsUpdate.',
       );
     }
 
@@ -17712,7 +16897,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<ProductCreateUpdate>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: productCreateUpdate,
+      body: productCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -17725,13 +16910,11 @@ export class V1Service extends BaseService {
   /**
    * Server-side proxy for Firebase Cloud Messaging registration.  The browser-side Firebase SDK calls fcmregistrations.googleapis.com to exchange a Web Push subscription for an FCM token.  On some networks / Chrome configurations that endpoint is unreachable from the browser (e.g. QUIC / HTTP3 issues) even though the Django server can reach it fine via TCP.  This action forwards the registration request from the browser to the real FCM endpoint server-side so the browser never needs to reach googleapis.com directly.
    * @endpoint post /api/v1/push-notifications/fcm-register-proxy/
-   * @param webPushSubscription
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsFcmRegisterProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17741,7 +16924,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<WebPushSubscription>;
   public v1PushNotificationsFcmRegisterProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17751,7 +16933,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WebPushSubscription>>;
   public v1PushNotificationsFcmRegisterProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17761,7 +16942,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WebPushSubscription>>;
   public v1PushNotificationsFcmRegisterProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17791,18 +16971,6 @@ export class V1Service extends BaseService {
     const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
 
     const localVarTransferCache: boolean = options?.transferCache ?? true;
-
-    // to determine the Content-Type header
-    const consumes: string[] = [
-      'application/json',
-      'application/x-www-form-urlencoded',
-      'multipart/form-data',
-    ];
-    const httpContentTypeSelected: string | undefined =
-      this.configuration.selectHeaderContentType(consumes);
-    if (httpContentTypeSelected !== undefined) {
-      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-    }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
     if (localVarHttpHeaderAcceptSelected) {
@@ -17819,7 +16987,6 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WebPushSubscription>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: webPushSubscription,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -17832,13 +16999,11 @@ export class V1Service extends BaseService {
   /**
    * Server-side proxy for Firebase Installations API.  Handles both FID creation (POST .../installations) and auth-token refresh (POST .../installations/{fid}/authTokens:generate) so the browser is never required to reach firebaseinstallations.googleapis.com directly.
    * @endpoint post /api/v1/push-notifications/firebase-install-proxy/
-   * @param webPushSubscription
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsFirebaseInstallProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17848,7 +17013,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<WebPushSubscription>;
   public v1PushNotificationsFirebaseInstallProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17858,7 +17022,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WebPushSubscription>>;
   public v1PushNotificationsFirebaseInstallProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17868,7 +17031,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WebPushSubscription>>;
   public v1PushNotificationsFirebaseInstallProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17899,18 +17061,6 @@ export class V1Service extends BaseService {
 
     const localVarTransferCache: boolean = options?.transferCache ?? true;
 
-    // to determine the Content-Type header
-    const consumes: string[] = [
-      'application/json',
-      'application/x-www-form-urlencoded',
-      'multipart/form-data',
-    ];
-    const httpContentTypeSelected: string | undefined =
-      this.configuration.selectHeaderContentType(consumes);
-    if (httpContentTypeSelected !== undefined) {
-      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-    }
-
     let responseType_: 'text' | 'json' | 'blob' = 'json';
     if (localVarHttpHeaderAcceptSelected) {
       if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -17926,7 +17076,6 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WebPushSubscription>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: webPushSubscription,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -17938,13 +17087,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/push-notifications/register/
-   * @param webPushSubscriptionUpsert
+   * @param webPushSubscriptionUpsertRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsRegisterCreate(
-    webPushSubscriptionUpsert: WebPushSubscriptionUpsert,
+    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17954,7 +17103,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<WebPushSubscriptionUpsert>;
   public v1PushNotificationsRegisterCreate(
-    webPushSubscriptionUpsert: WebPushSubscriptionUpsert,
+    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17964,7 +17113,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WebPushSubscriptionUpsert>>;
   public v1PushNotificationsRegisterCreate(
-    webPushSubscriptionUpsert: WebPushSubscriptionUpsert,
+    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17974,7 +17123,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WebPushSubscriptionUpsert>>;
   public v1PushNotificationsRegisterCreate(
-    webPushSubscriptionUpsert: WebPushSubscriptionUpsert,
+    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17983,9 +17132,12 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (webPushSubscriptionUpsert === null || webPushSubscriptionUpsert === undefined) {
+    if (
+      webPushSubscriptionUpsertRequest === null ||
+      webPushSubscriptionUpsertRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter webPushSubscriptionUpsert was null or undefined when calling v1PushNotificationsRegisterCreate.',
+        'Required parameter webPushSubscriptionUpsertRequest was null or undefined when calling v1PushNotificationsRegisterCreate.',
       );
     }
 
@@ -18041,7 +17193,7 @@ export class V1Service extends BaseService {
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: webPushSubscriptionUpsert,
+        body: webPushSubscriptionUpsertRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -18054,13 +17206,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/push-notifications/send-test/
-   * @param adminPushNotificationSend
+   * @param adminPushNotificationSendRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsSendTestCreate(
-    adminPushNotificationSend: AdminPushNotificationSend,
+    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -18068,9 +17220,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<AdminPushNotificationSend>;
+  ): Observable<AdminPushNotificationDispatchResult>;
   public v1PushNotificationsSendTestCreate(
-    adminPushNotificationSend: AdminPushNotificationSend,
+    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -18078,9 +17230,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<AdminPushNotificationSend>>;
+  ): Observable<HttpResponse<AdminPushNotificationDispatchResult>>;
   public v1PushNotificationsSendTestCreate(
-    adminPushNotificationSend: AdminPushNotificationSend,
+    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -18088,9 +17240,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<AdminPushNotificationSend>>;
+  ): Observable<HttpEvent<AdminPushNotificationDispatchResult>>;
   public v1PushNotificationsSendTestCreate(
-    adminPushNotificationSend: AdminPushNotificationSend,
+    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -18099,9 +17251,12 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (adminPushNotificationSend === null || adminPushNotificationSend === undefined) {
+    if (
+      adminPushNotificationSendRequest === null ||
+      adminPushNotificationSendRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter adminPushNotificationSend was null or undefined when calling v1PushNotificationsSendTestCreate.',
+        'Required parameter adminPushNotificationSendRequest was null or undefined when calling v1PushNotificationsSendTestCreate.',
       );
     }
 
@@ -18152,12 +17307,12 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/push-notifications/send-test/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<AdminPushNotificationSend>(
+    return this.httpClient.request<AdminPushNotificationDispatchResult>(
       'post',
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: adminPushNotificationSend,
+        body: adminPushNotificationSendRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -18170,13 +17325,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/push-notifications/send-test-whatsapp/
-   * @param adminWhatsappTestSend
+   * @param adminWhatsappTestSendRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSend?: AdminWhatsappTestSend,
+    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -18184,9 +17339,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<AdminWhatsappTestSend>;
+  ): Observable<AdminWhatsappTestSendResponse>;
   public v1PushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSend?: AdminWhatsappTestSend,
+    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -18194,9 +17349,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<AdminWhatsappTestSend>>;
+  ): Observable<HttpResponse<AdminWhatsappTestSendResponse>>;
   public v1PushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSend?: AdminWhatsappTestSend,
+    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -18204,9 +17359,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<AdminWhatsappTestSend>>;
+  ): Observable<HttpEvent<AdminWhatsappTestSendResponse>>;
   public v1PushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSend?: AdminWhatsappTestSend,
+    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -18262,16 +17417,20 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/push-notifications/send-test-whatsapp/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<AdminWhatsappTestSend>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: adminWhatsappTestSend,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<AdminWhatsappTestSendResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: adminWhatsappTestSendRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -18364,13 +17523,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/push-notifications/test/
-   * @param pushNotificationTest
+   * @param pushNotificationTestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsTestCreate(
-    pushNotificationTest?: PushNotificationTest,
+    pushNotificationTestRequest?: PushNotificationTestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -18378,9 +17537,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<PushNotificationTest>;
+  ): Observable<PushNotificationDispatchResult>;
   public v1PushNotificationsTestCreate(
-    pushNotificationTest?: PushNotificationTest,
+    pushNotificationTestRequest?: PushNotificationTestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -18388,9 +17547,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<PushNotificationTest>>;
+  ): Observable<HttpResponse<PushNotificationDispatchResult>>;
   public v1PushNotificationsTestCreate(
-    pushNotificationTest?: PushNotificationTest,
+    pushNotificationTestRequest?: PushNotificationTestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -18398,9 +17557,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<PushNotificationTest>>;
+  ): Observable<HttpEvent<PushNotificationDispatchResult>>;
   public v1PushNotificationsTestCreate(
-    pushNotificationTest?: PushNotificationTest,
+    pushNotificationTestRequest?: PushNotificationTestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -18456,27 +17615,31 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/push-notifications/test/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<PushNotificationTest>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: pushNotificationTest,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<PushNotificationDispatchResult>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: pushNotificationTestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
    * @endpoint post /api/v1/push-notifications/unregister/
-   * @param webPushSubscriptionDelete
+   * @param webPushSubscriptionDeleteRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsUnregisterCreate(
-    webPushSubscriptionDelete: WebPushSubscriptionDelete,
+    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -18484,9 +17647,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<WebPushSubscriptionDelete>;
+  ): Observable<PushNotificationUnregisterResponse>;
   public v1PushNotificationsUnregisterCreate(
-    webPushSubscriptionDelete: WebPushSubscriptionDelete,
+    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -18494,9 +17657,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<WebPushSubscriptionDelete>>;
+  ): Observable<HttpResponse<PushNotificationUnregisterResponse>>;
   public v1PushNotificationsUnregisterCreate(
-    webPushSubscriptionDelete: WebPushSubscriptionDelete,
+    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -18504,9 +17667,9 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<WebPushSubscriptionDelete>>;
+  ): Observable<HttpEvent<PushNotificationUnregisterResponse>>;
   public v1PushNotificationsUnregisterCreate(
-    webPushSubscriptionDelete: WebPushSubscriptionDelete,
+    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -18515,9 +17678,12 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (webPushSubscriptionDelete === null || webPushSubscriptionDelete === undefined) {
+    if (
+      webPushSubscriptionDeleteRequest === null ||
+      webPushSubscriptionDeleteRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter webPushSubscriptionDelete was null or undefined when calling v1PushNotificationsUnregisterCreate.',
+        'Required parameter webPushSubscriptionDeleteRequest was null or undefined when calling v1PushNotificationsUnregisterCreate.',
       );
     }
 
@@ -18568,12 +17734,12 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/push-notifications/unregister/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<WebPushSubscriptionDelete>(
+    return this.httpClient.request<PushNotificationUnregisterResponse>(
       'post',
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: webPushSubscriptionDelete,
+        body: webPushSubscriptionDeleteRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -18590,7 +17756,7 @@ export class V1Service extends BaseService {
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
-  public v1PushNotificationsUsersRetrieve(
+  public v1PushNotificationsUsersList(
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -18598,8 +17764,8 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<WebPushSubscription>;
-  public v1PushNotificationsUsersRetrieve(
+  ): Observable<Array<AdminPushNotificationUser>>;
+  public v1PushNotificationsUsersList(
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -18607,8 +17773,8 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<WebPushSubscription>>;
-  public v1PushNotificationsUsersRetrieve(
+  ): Observable<HttpResponse<Array<AdminPushNotificationUser>>>;
+  public v1PushNotificationsUsersList(
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -18616,8 +17782,8 @@ export class V1Service extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<WebPushSubscription>>;
-  public v1PushNotificationsUsersRetrieve(
+  ): Observable<HttpEvent<Array<AdminPushNotificationUser>>>;
+  public v1PushNotificationsUsersList(
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -18661,7 +17827,100 @@ export class V1Service extends BaseService {
 
     let localVarPath = `/api/v1/push-notifications/users/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<WebPushSubscription>('get', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<Array<AdminPushNotificationUser>>(
+      'get',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
+  }
+
+  /**
+   * Returns a compiled dictionary of all menu and field access rules that apply to the current authenticated user.
+   * @endpoint get /api/v1/rbac/my-permissions/
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public v1RbacMyPermissionsRetrieve(
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<RbacPermissions>;
+  public v1RbacMyPermissionsRetrieve(
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<RbacPermissions>>;
+  public v1RbacMyPermissionsRetrieve(
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<RbacPermissions>>;
+  public v1RbacMyPermissionsRetrieve(
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (cookieAuth) required
+
+    // authentication (jwtAuth) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'jwtAuth',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/rbac/my-permissions/`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<RbacPermissions>('get', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
@@ -19960,13 +19219,13 @@ export class V1Service extends BaseService {
    * Clean unlinked media files
    * Delete unlinked media files from the active media store.
    * @endpoint post /api/v1/server-management/media-cleanup/
-   * @param mediaCleanupRequest
+   * @param mediaCleanupRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ServerManagementMediaCleanupCreate(
-    mediaCleanupRequest?: MediaCleanupRequest,
+    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -19976,7 +19235,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ServerManagementMediaCleanupCreate(
-    mediaCleanupRequest?: MediaCleanupRequest,
+    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -19986,7 +19245,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ServerManagementMediaCleanupCreate(
-    mediaCleanupRequest?: MediaCleanupRequest,
+    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -19996,7 +19255,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ServerManagementMediaCleanupCreate(
-    mediaCleanupRequest?: MediaCleanupRequest,
+    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -20054,7 +19313,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: mediaCleanupRequest,
+      body: mediaCleanupRequestRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -21093,13 +20352,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/tasks/
-   * @param googleTask
+   * @param googleTaskRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1TasksCreate(
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -21109,7 +20368,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<GoogleTask>;
   public v1TasksCreate(
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -21119,7 +20378,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<GoogleTask>>;
   public v1TasksCreate(
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -21129,7 +20388,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<GoogleTask>>;
   public v1TasksCreate(
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -21138,9 +20397,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (googleTask === null || googleTask === undefined) {
+    if (googleTaskRequest === null || googleTaskRequest === undefined) {
       throw new Error(
-        'Required parameter googleTask was null or undefined when calling v1TasksCreate.',
+        'Required parameter googleTaskRequest was null or undefined when calling v1TasksCreate.',
       );
     }
 
@@ -21193,7 +20452,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<GoogleTask>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: googleTask,
+      body: googleTaskRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -21375,14 +20634,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint patch /api/v1/tasks/{id}/
    * @param id
-   * @param googleTask
+   * @param googleTaskRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1TasksPartialUpdate(
     id: string,
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -21393,7 +20652,7 @@ export class V1Service extends BaseService {
   ): Observable<GoogleTask>;
   public v1TasksPartialUpdate(
     id: string,
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -21404,7 +20663,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<GoogleTask>>;
   public v1TasksPartialUpdate(
     id: string,
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -21415,7 +20674,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<GoogleTask>>;
   public v1TasksPartialUpdate(
     id: string,
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -21429,9 +20688,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1TasksPartialUpdate.',
       );
     }
-    if (googleTask === null || googleTask === undefined) {
+    if (googleTaskRequest === null || googleTaskRequest === undefined) {
       throw new Error(
-        'Required parameter googleTask was null or undefined when calling v1TasksPartialUpdate.',
+        'Required parameter googleTaskRequest was null or undefined when calling v1TasksPartialUpdate.',
       );
     }
 
@@ -21484,7 +20743,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<GoogleTask>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: googleTask,
+      body: googleTaskRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -21594,14 +20853,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/tasks/{id}/
    * @param id
-   * @param googleTask
+   * @param googleTaskRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1TasksUpdate(
     id: string,
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -21612,7 +20871,7 @@ export class V1Service extends BaseService {
   ): Observable<GoogleTask>;
   public v1TasksUpdate(
     id: string,
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -21623,7 +20882,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<GoogleTask>>;
   public v1TasksUpdate(
     id: string,
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -21634,7 +20893,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<GoogleTask>>;
   public v1TasksUpdate(
     id: string,
-    googleTask: GoogleTask,
+    googleTaskRequest: GoogleTaskRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -21646,9 +20905,9 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1TasksUpdate.');
     }
-    if (googleTask === null || googleTask === undefined) {
+    if (googleTaskRequest === null || googleTaskRequest === undefined) {
       throw new Error(
-        'Required parameter googleTask was null or undefined when calling v1TasksUpdate.',
+        'Required parameter googleTaskRequest was null or undefined when calling v1TasksUpdate.',
       );
     }
 
@@ -21701,7 +20960,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<GoogleTask>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: googleTask,
+      body: googleTaskRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -21714,13 +20973,13 @@ export class V1Service extends BaseService {
   /**
    * Takes a refresh type JSON web token and returns an access type JSON web token if the refresh token is valid.
    * @endpoint post /api/v1/token/refresh/
-   * @param customTokenRefresh
+   * @param customTokenRefreshRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1TokenRefreshCreate(
-    customTokenRefresh?: CustomTokenRefresh,
+    customTokenRefreshRequest?: CustomTokenRefreshRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -21730,7 +20989,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CustomTokenRefresh>;
   public v1TokenRefreshCreate(
-    customTokenRefresh?: CustomTokenRefresh,
+    customTokenRefreshRequest?: CustomTokenRefreshRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -21740,7 +20999,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CustomTokenRefresh>>;
   public v1TokenRefreshCreate(
-    customTokenRefresh?: CustomTokenRefresh,
+    customTokenRefreshRequest?: CustomTokenRefreshRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -21750,7 +21009,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CustomTokenRefresh>>;
   public v1TokenRefreshCreate(
-    customTokenRefresh?: CustomTokenRefresh,
+    customTokenRefreshRequest?: CustomTokenRefreshRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -21798,7 +21057,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<CustomTokenRefresh>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customTokenRefresh,
+      body: customTokenRefreshRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -21932,13 +21191,6 @@ export class V1Service extends BaseService {
   /**
    * Logout current user and record it in Django.
    * @endpoint post /api/v1/user-profile/logout/
-   * @param id
-   * @param username Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-   * @param fullName
-   * @param role
-   * @param avatar
-   * @param lastLogin
-   * @param isSuperuser Designates that this user has all permissions without explicitly assigning them.
    * @param email
    * @param firstName
    * @param lastName
@@ -21947,13 +21199,6 @@ export class V1Service extends BaseService {
    * @param options additional options
    */
   public v1UserProfileLogoutCreate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -21966,13 +21211,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<UserProfile>;
   public v1UserProfileLogoutCreate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -21985,13 +21223,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<UserProfile>>;
   public v1UserProfileLogoutCreate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -22004,13 +21235,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<UserProfile>>;
   public v1UserProfileLogoutCreate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -22022,42 +21246,6 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (id === null || id === undefined) {
-      throw new Error(
-        'Required parameter id was null or undefined when calling v1UserProfileLogoutCreate.',
-      );
-    }
-    if (username === null || username === undefined) {
-      throw new Error(
-        'Required parameter username was null or undefined when calling v1UserProfileLogoutCreate.',
-      );
-    }
-    if (fullName === null || fullName === undefined) {
-      throw new Error(
-        'Required parameter fullName was null or undefined when calling v1UserProfileLogoutCreate.',
-      );
-    }
-    if (role === null || role === undefined) {
-      throw new Error(
-        'Required parameter role was null or undefined when calling v1UserProfileLogoutCreate.',
-      );
-    }
-    if (avatar === null || avatar === undefined) {
-      throw new Error(
-        'Required parameter avatar was null or undefined when calling v1UserProfileLogoutCreate.',
-      );
-    }
-    if (lastLogin === null || lastLogin === undefined) {
-      throw new Error(
-        'Required parameter lastLogin was null or undefined when calling v1UserProfileLogoutCreate.',
-      );
-    }
-    if (isSuperuser === null || isSuperuser === undefined) {
-      throw new Error(
-        'Required parameter isSuperuser was null or undefined when calling v1UserProfileLogoutCreate.',
-      );
-    }
-
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -22098,13 +21286,6 @@ export class V1Service extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id) as any) || localVarFormParams;
-    }
-    if (username !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('username', <any>username) as any) || localVarFormParams;
-    }
     if (email !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('email', <any>email) as any) || localVarFormParams;
@@ -22116,26 +21297,6 @@ export class V1Service extends BaseService {
     if (lastName !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('last_name', <any>lastName) as any) || localVarFormParams;
-    }
-    if (fullName !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('full_name', <any>fullName) as any) || localVarFormParams;
-    }
-    if (role !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('role', <any>role) as any) || localVarFormParams;
-    }
-    if (avatar !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('avatar', <any>avatar) as any) || localVarFormParams;
-    }
-    if (lastLogin !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('last_login', <any>lastLogin) as any) || localVarFormParams;
-    }
-    if (isSuperuser !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('is_superuser', <any>isSuperuser) as any) || localVarFormParams;
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -22254,13 +21415,6 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/user-profile/update_profile/
-   * @param id
-   * @param username Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-   * @param fullName
-   * @param role
-   * @param avatar
-   * @param lastLogin
-   * @param isSuperuser Designates that this user has all permissions without explicitly assigning them.
    * @param email
    * @param firstName
    * @param lastName
@@ -22269,13 +21423,6 @@ export class V1Service extends BaseService {
    * @param options additional options
    */
   public v1UserProfileUpdateProfilePartialUpdate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -22288,13 +21435,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<UserProfile>;
   public v1UserProfileUpdateProfilePartialUpdate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -22307,13 +21447,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<UserProfile>>;
   public v1UserProfileUpdateProfilePartialUpdate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -22326,13 +21459,6 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<UserProfile>>;
   public v1UserProfileUpdateProfilePartialUpdate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -22344,42 +21470,6 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (id === null || id === undefined) {
-      throw new Error(
-        'Required parameter id was null or undefined when calling v1UserProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (username === null || username === undefined) {
-      throw new Error(
-        'Required parameter username was null or undefined when calling v1UserProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (fullName === null || fullName === undefined) {
-      throw new Error(
-        'Required parameter fullName was null or undefined when calling v1UserProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (role === null || role === undefined) {
-      throw new Error(
-        'Required parameter role was null or undefined when calling v1UserProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (avatar === null || avatar === undefined) {
-      throw new Error(
-        'Required parameter avatar was null or undefined when calling v1UserProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (lastLogin === null || lastLogin === undefined) {
-      throw new Error(
-        'Required parameter lastLogin was null or undefined when calling v1UserProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (isSuperuser === null || isSuperuser === undefined) {
-      throw new Error(
-        'Required parameter isSuperuser was null or undefined when calling v1UserProfileUpdateProfilePartialUpdate.',
-      );
-    }
-
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -22420,13 +21510,6 @@ export class V1Service extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id) as any) || localVarFormParams;
-    }
-    if (username !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('username', <any>username) as any) || localVarFormParams;
-    }
     if (email !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('email', <any>email) as any) || localVarFormParams;
@@ -22438,26 +21521,6 @@ export class V1Service extends BaseService {
     if (lastName !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('last_name', <any>lastName) as any) || localVarFormParams;
-    }
-    if (fullName !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('full_name', <any>fullName) as any) || localVarFormParams;
-    }
-    if (role !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('role', <any>role) as any) || localVarFormParams;
-    }
-    if (avatar !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('avatar', <any>avatar) as any) || localVarFormParams;
-    }
-    if (lastLogin !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('last_login', <any>lastLogin) as any) || localVarFormParams;
-    }
-    if (isSuperuser !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('is_superuser', <any>isSuperuser) as any) || localVarFormParams;
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -22611,13 +21674,13 @@ export class V1Service extends BaseService {
   /**
    * Retrieve or partially update current user\&#39;s settings.  Supports GET and PATCH on the same URL &#x60;/me/&#x60;.
    * @endpoint patch /api/v1/user-settings/me/
-   * @param userSettings
+   * @param userSettingsRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1UserSettingsMePartialUpdate(
-    userSettings?: UserSettings,
+    userSettingsRequest?: UserSettingsRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -22627,7 +21690,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<UserSettings>;
   public v1UserSettingsMePartialUpdate(
-    userSettings?: UserSettings,
+    userSettingsRequest?: UserSettingsRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -22637,7 +21700,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<UserSettings>>;
   public v1UserSettingsMePartialUpdate(
-    userSettings?: UserSettings,
+    userSettingsRequest?: UserSettingsRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -22647,7 +21710,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<UserSettings>>;
   public v1UserSettingsMePartialUpdate(
-    userSettings?: UserSettings,
+    userSettingsRequest?: UserSettingsRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -22705,7 +21768,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<UserSettings>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: userSettings,
+      body: userSettingsRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -22807,14 +21870,12 @@ export class V1Service extends BaseService {
   /**
    * @endpoint post /api/v1/workflow-notifications/{id}/cancel/
    * @param id A unique integer value identifying this workflow notification.
-   * @param workflowNotification
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsCancelCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -22825,7 +21886,6 @@ export class V1Service extends BaseService {
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsCancelCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -22836,7 +21896,6 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsCancelCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -22847,7 +21906,6 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsCancelCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -22859,11 +21917,6 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1WorkflowNotificationsCancelCreate.',
-      );
-    }
-    if (workflowNotification === null || workflowNotification === undefined) {
-      throw new Error(
-        'Required parameter workflowNotification was null or undefined when calling v1WorkflowNotificationsCancelCreate.',
       );
     }
 
@@ -22889,18 +21942,6 @@ export class V1Service extends BaseService {
 
     const localVarTransferCache: boolean = options?.transferCache ?? true;
 
-    // to determine the Content-Type header
-    const consumes: string[] = [
-      'application/json',
-      'application/x-www-form-urlencoded',
-      'multipart/form-data',
-    ];
-    const httpContentTypeSelected: string | undefined =
-      this.configuration.selectHeaderContentType(consumes);
-    if (httpContentTypeSelected !== undefined) {
-      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-    }
-
     let responseType_: 'text' | 'json' | 'blob' = 'json';
     if (localVarHttpHeaderAcceptSelected) {
       if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -22916,7 +21957,6 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WorkflowNotification>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: workflowNotification,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -22928,13 +21968,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/workflow-notifications/
-   * @param workflowNotification
+   * @param workflowNotificationRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsCreate(
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -22944,7 +21984,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsCreate(
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -22954,7 +21994,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsCreate(
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -22964,7 +22004,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsCreate(
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -22973,9 +22013,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (workflowNotification === null || workflowNotification === undefined) {
+    if (workflowNotificationRequest === null || workflowNotificationRequest === undefined) {
       throw new Error(
-        'Required parameter workflowNotification was null or undefined when calling v1WorkflowNotificationsCreate.',
+        'Required parameter workflowNotificationRequest was null or undefined when calling v1WorkflowNotificationsCreate.',
       );
     }
 
@@ -23028,7 +22068,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WorkflowNotification>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: workflowNotification,
+      body: workflowNotificationRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -23245,14 +22285,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint patch /api/v1/workflow-notifications/{id}/
    * @param id A unique integer value identifying this workflow notification.
-   * @param workflowNotification
+   * @param workflowNotificationRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsPartialUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -23263,7 +22303,7 @@ export class V1Service extends BaseService {
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsPartialUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -23274,7 +22314,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsPartialUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -23285,7 +22325,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsPartialUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -23299,9 +22339,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1WorkflowNotificationsPartialUpdate.',
       );
     }
-    if (workflowNotification === null || workflowNotification === undefined) {
+    if (workflowNotificationRequest === null || workflowNotificationRequest === undefined) {
       throw new Error(
-        'Required parameter workflowNotification was null or undefined when calling v1WorkflowNotificationsPartialUpdate.',
+        'Required parameter workflowNotificationRequest was null or undefined when calling v1WorkflowNotificationsPartialUpdate.',
       );
     }
 
@@ -23354,7 +22394,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WorkflowNotification>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: workflowNotification,
+      body: workflowNotificationRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -23367,14 +22407,12 @@ export class V1Service extends BaseService {
   /**
    * @endpoint post /api/v1/workflow-notifications/{id}/resend/
    * @param id A unique integer value identifying this workflow notification.
-   * @param workflowNotification
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsResendCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -23385,7 +22423,6 @@ export class V1Service extends BaseService {
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsResendCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -23396,7 +22433,6 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsResendCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -23407,7 +22443,6 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsResendCreate(
     id: number,
-    workflowNotification: WorkflowNotification,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -23419,11 +22454,6 @@ export class V1Service extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1WorkflowNotificationsResendCreate.',
-      );
-    }
-    if (workflowNotification === null || workflowNotification === undefined) {
-      throw new Error(
-        'Required parameter workflowNotification was null or undefined when calling v1WorkflowNotificationsResendCreate.',
       );
     }
 
@@ -23449,18 +22479,6 @@ export class V1Service extends BaseService {
 
     const localVarTransferCache: boolean = options?.transferCache ?? true;
 
-    // to determine the Content-Type header
-    const consumes: string[] = [
-      'application/json',
-      'application/x-www-form-urlencoded',
-      'multipart/form-data',
-    ];
-    const httpContentTypeSelected: string | undefined =
-      this.configuration.selectHeaderContentType(consumes);
-    if (httpContentTypeSelected !== undefined) {
-      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-    }
-
     let responseType_: 'text' | 'json' | 'blob' = 'json';
     if (localVarHttpHeaderAcceptSelected) {
       if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -23476,7 +22494,6 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WorkflowNotification>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: workflowNotification,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -23588,14 +22605,14 @@ export class V1Service extends BaseService {
   /**
    * @endpoint put /api/v1/workflow-notifications/{id}/
    * @param id A unique integer value identifying this workflow notification.
-   * @param workflowNotification
+   * @param workflowNotificationRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -23606,7 +22623,7 @@ export class V1Service extends BaseService {
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -23617,7 +22634,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -23628,7 +22645,7 @@ export class V1Service extends BaseService {
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsUpdate(
     id: number,
-    workflowNotification: WorkflowNotification,
+    workflowNotificationRequest: WorkflowNotificationRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -23642,9 +22659,9 @@ export class V1Service extends BaseService {
         'Required parameter id was null or undefined when calling v1WorkflowNotificationsUpdate.',
       );
     }
-    if (workflowNotification === null || workflowNotification === undefined) {
+    if (workflowNotificationRequest === null || workflowNotificationRequest === undefined) {
       throw new Error(
-        'Required parameter workflowNotification was null or undefined when calling v1WorkflowNotificationsUpdate.',
+        'Required parameter workflowNotificationRequest was null or undefined when calling v1WorkflowNotificationsUpdate.',
       );
     }
 
@@ -23697,7 +22714,7 @@ export class V1Service extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WorkflowNotification>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: workflowNotification,
+      body: workflowNotificationRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

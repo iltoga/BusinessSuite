@@ -15,7 +15,12 @@ import {
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 
-import { PaymentsService, type InvoiceApplicationDetail, type Payment } from '@/core/api';
+import {
+  PaymentsService,
+  type InvoiceApplicationDetail,
+  type Payment,
+  type PaymentRequest,
+} from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
@@ -228,13 +233,13 @@ export class PaymentModalComponent {
       return;
     }
 
-    const payload = {
+    const payload: PaymentRequest = {
       invoiceApplication: invoiceApplicationId,
       paymentDate,
       paymentType,
       amount: String(amount),
       notes: raw.notes ?? '',
-    } as Payment;
+    };
 
     const request$ = payment
       ? this.paymentsApi.paymentsUpdate(payment.id, payload)
@@ -259,7 +264,7 @@ export class PaymentModalComponent {
 
   private submitFullPayment(
     paymentDate: string,
-    paymentType: Payment.PaymentTypeEnum,
+    paymentType: PaymentRequest.PaymentTypeEnum,
     notes: string,
   ): void {
     const applications = this.fullPaymentApplications();
@@ -278,7 +283,7 @@ export class PaymentModalComponent {
         paymentType,
         amount: String(Number(application.dueAmount ?? 0)),
         notes,
-      } as Payment),
+      }),
     );
 
     forkJoin(requests).subscribe({
@@ -361,7 +366,7 @@ export class PaymentModalComponent {
     return `${year}-${month}-${day}`;
   }
 
-  private normalizePaymentType(value: unknown): Payment.PaymentTypeEnum {
+  private normalizePaymentType(value: unknown): PaymentRequest.PaymentTypeEnum {
     switch (value) {
       case 'credit_card':
       case 'wire_transfer':

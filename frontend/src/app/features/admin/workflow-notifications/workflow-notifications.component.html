@@ -45,7 +45,7 @@
             <td class="p-2" data-label="Recipient">{{ item.recipient }}</td>
             <td class="p-2" data-label="Subject">{{ item.subject }}</td>
             <td class="p-2" data-label="Scheduled">
-              {{ item.scheduled_for ? (item.scheduled_for | appDate: 'datetime') : '-' }}
+              {{ item.scheduledFor ? (item.scheduledFor | appDate: 'datetime') : '-' }}
             </td>
             <td class="p-2 text-right" data-label="Actions">
               <button

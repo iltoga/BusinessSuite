@@ -185,6 +185,20 @@ Also see [QUICK_THEME_GUIDE.md](../.github/copilot/specs/django-angular/QUICK_TH
 
 ---
 
+## Dynamic RBAC (Role-Based Access Control) 🔒
+
+The frontend seamlessly synchronizes with a dynamic, Django-configured RBAC rules engine. Rather than relying on rigid, hardcoded user roles in standard Angular components, the UI reacts dynamically to a unified matrix of permissions injected at application boot.
+
+### Architecture Highlights
+- **Injection Token**: A reactive Angular Signal `RBAC_RULES` tracks permission updates throughout the app lifecycle.
+- **Menu Visibility**: Uses `RbacMenuGuard` and automated filtering within `MenuService` to hide menus natively depending on permissions.
+- **Form Masking**: Any new form extending `BaseFormComponent` automatically inherits field-level masking. If `canRead` falls strictly false, the component nullifies the internal value and natively disables the `<input>`. Forms render this identically across the dashboard without tearing out underlying UI grids—maintaining the visual layout integrity completely.
+- **View Masking**: Components like `DataTableComponent` detect the user's view scope based on the associated `rbacModel` injected from configurations. Columns simply redact strictly masked fields.
+
+*For extensive details and code integration guides, see `docs/rbac.md` inside your codebase.*
+
+---
+
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

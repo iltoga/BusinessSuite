@@ -197,9 +197,8 @@ export class ProfileComponent implements OnInit {
 
   private uploadAvatar(file: File): void {
     this.isSaving.set(true);
-    // The generated API expects avatar as the first positional argument
     this.userProfileService
-      .userProfileUploadAvatarCreate(file as any)
+      .userProfileUploadAvatarCreate(file)
       .pipe(finalize(() => this.isSaving.set(false)))
       .subscribe({
         next: (updated) => {
@@ -222,13 +221,6 @@ export class ProfileComponent implements OnInit {
     this.isSaving.set(true);
     this.userProfileService
       .userProfileUpdateProfilePartialUpdate(
-        profile.id,
-        profile.username,
-        profile.fullName,
-        profile.role,
-        profile.avatar ?? '',
-        profile.lastLogin ?? '',
-        profile.isSuperuser,
         rawValues.email,
         rawValues.firstName,
         rawValues.lastName,

@@ -13,6 +13,8 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { AuthService } from '@/core/services/auth.service';
+
 import {
   ProductsService,
   type DocumentType,
@@ -56,8 +58,11 @@ export class ProductDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private productsApi = inject(ProductsService);
+  private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
+
+  readonly isAdminOrManager = this.authService.isAdminOrManager;
 
   private readonly lastStepTemplate =
     viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
@@ -223,6 +228,7 @@ export class ProductDetailComponent implements OnInit {
       from: 'products',
       focusId: productId,
       searchQuery: this.originSearchQuery(),
+      returnToDetail: true,
     };
     if (this.originPage()) {
       state['page'] = this.originPage();

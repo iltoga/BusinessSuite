@@ -165,13 +165,6 @@ export class UserProfileService extends BaseService {
   /**
    * Logout current user and record it in Django.
    * @endpoint post /api/user-profile/logout/
-   * @param id
-   * @param username Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-   * @param fullName
-   * @param role
-   * @param avatar
-   * @param lastLogin
-   * @param isSuperuser Designates that this user has all permissions without explicitly assigning them.
    * @param email
    * @param firstName
    * @param lastName
@@ -180,13 +173,6 @@ export class UserProfileService extends BaseService {
    * @param options additional options
    */
   public userProfileLogoutCreate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -199,13 +185,6 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<UserProfile>;
   public userProfileLogoutCreate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -218,13 +197,6 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<HttpResponse<UserProfile>>;
   public userProfileLogoutCreate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -237,13 +209,6 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<HttpEvent<UserProfile>>;
   public userProfileLogoutCreate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -255,42 +220,6 @@ export class UserProfileService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (id === null || id === undefined) {
-      throw new Error(
-        'Required parameter id was null or undefined when calling userProfileLogoutCreate.',
-      );
-    }
-    if (username === null || username === undefined) {
-      throw new Error(
-        'Required parameter username was null or undefined when calling userProfileLogoutCreate.',
-      );
-    }
-    if (fullName === null || fullName === undefined) {
-      throw new Error(
-        'Required parameter fullName was null or undefined when calling userProfileLogoutCreate.',
-      );
-    }
-    if (role === null || role === undefined) {
-      throw new Error(
-        'Required parameter role was null or undefined when calling userProfileLogoutCreate.',
-      );
-    }
-    if (avatar === null || avatar === undefined) {
-      throw new Error(
-        'Required parameter avatar was null or undefined when calling userProfileLogoutCreate.',
-      );
-    }
-    if (lastLogin === null || lastLogin === undefined) {
-      throw new Error(
-        'Required parameter lastLogin was null or undefined when calling userProfileLogoutCreate.',
-      );
-    }
-    if (isSuperuser === null || isSuperuser === undefined) {
-      throw new Error(
-        'Required parameter isSuperuser was null or undefined when calling userProfileLogoutCreate.',
-      );
-    }
-
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -331,13 +260,6 @@ export class UserProfileService extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id) as any) || localVarFormParams;
-    }
-    if (username !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('username', <any>username) as any) || localVarFormParams;
-    }
     if (email !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('email', <any>email) as any) || localVarFormParams;
@@ -349,26 +271,6 @@ export class UserProfileService extends BaseService {
     if (lastName !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('last_name', <any>lastName) as any) || localVarFormParams;
-    }
-    if (fullName !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('full_name', <any>fullName) as any) || localVarFormParams;
-    }
-    if (role !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('role', <any>role) as any) || localVarFormParams;
-    }
-    if (avatar !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('avatar', <any>avatar) as any) || localVarFormParams;
-    }
-    if (lastLogin !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('last_login', <any>lastLogin) as any) || localVarFormParams;
-    }
-    if (isSuperuser !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('is_superuser', <any>isSuperuser) as any) || localVarFormParams;
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -487,13 +389,6 @@ export class UserProfileService extends BaseService {
 
   /**
    * @endpoint patch /api/user-profile/update_profile/
-   * @param id
-   * @param username Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-   * @param fullName
-   * @param role
-   * @param avatar
-   * @param lastLogin
-   * @param isSuperuser Designates that this user has all permissions without explicitly assigning them.
    * @param email
    * @param firstName
    * @param lastName
@@ -502,13 +397,6 @@ export class UserProfileService extends BaseService {
    * @param options additional options
    */
   public userProfileUpdateProfilePartialUpdate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -521,13 +409,6 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<UserProfile>;
   public userProfileUpdateProfilePartialUpdate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -540,13 +421,6 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<HttpResponse<UserProfile>>;
   public userProfileUpdateProfilePartialUpdate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -559,13 +433,6 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<HttpEvent<UserProfile>>;
   public userProfileUpdateProfilePartialUpdate(
-    id: number,
-    username: string,
-    fullName: string,
-    role: string,
-    avatar: string,
-    lastLogin: string,
-    isSuperuser: boolean,
     email?: string,
     firstName?: string,
     lastName?: string,
@@ -577,42 +444,6 @@ export class UserProfileService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (id === null || id === undefined) {
-      throw new Error(
-        'Required parameter id was null or undefined when calling userProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (username === null || username === undefined) {
-      throw new Error(
-        'Required parameter username was null or undefined when calling userProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (fullName === null || fullName === undefined) {
-      throw new Error(
-        'Required parameter fullName was null or undefined when calling userProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (role === null || role === undefined) {
-      throw new Error(
-        'Required parameter role was null or undefined when calling userProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (avatar === null || avatar === undefined) {
-      throw new Error(
-        'Required parameter avatar was null or undefined when calling userProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (lastLogin === null || lastLogin === undefined) {
-      throw new Error(
-        'Required parameter lastLogin was null or undefined when calling userProfileUpdateProfilePartialUpdate.',
-      );
-    }
-    if (isSuperuser === null || isSuperuser === undefined) {
-      throw new Error(
-        'Required parameter isSuperuser was null or undefined when calling userProfileUpdateProfilePartialUpdate.',
-      );
-    }
-
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -653,13 +484,6 @@ export class UserProfileService extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id) as any) || localVarFormParams;
-    }
-    if (username !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('username', <any>username) as any) || localVarFormParams;
-    }
     if (email !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('email', <any>email) as any) || localVarFormParams;
@@ -671,26 +495,6 @@ export class UserProfileService extends BaseService {
     if (lastName !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('last_name', <any>lastName) as any) || localVarFormParams;
-    }
-    if (fullName !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('full_name', <any>fullName) as any) || localVarFormParams;
-    }
-    if (role !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('role', <any>role) as any) || localVarFormParams;
-    }
-    if (avatar !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('avatar', <any>avatar) as any) || localVarFormParams;
-    }
-    if (lastLogin !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('last_login', <any>lastLogin) as any) || localVarFormParams;
-    }
-    if (isSuperuser !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('is_superuser', <any>isSuperuser) as any) || localVarFormParams;
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';

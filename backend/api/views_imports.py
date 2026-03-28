@@ -10,6 +10,7 @@ from typing import Any, Generator, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
+from rest_framework import serializers
 from api.permissions import (
     STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
     IsAdminOrManagerGroup,
@@ -131,7 +132,7 @@ from django.utils import timezone
 from django.utils.text import get_valid_filename, slugify
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
 from invoices.models import InvoiceDownloadJob
 from invoices.models.invoice import Invoice, InvoiceApplication
 from invoices.services.InvoiceService import InvoiceService

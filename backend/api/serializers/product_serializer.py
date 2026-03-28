@@ -7,6 +7,8 @@ from products.models.document_type import DocumentType
 from products.models.task import Task
 from rest_framework import serializers
 
+from api.serializers.rbac_mixin import RbacFieldFilterMixin
+
 
 def _ordered_document_names(document_ids):
     if document_ids is None:
@@ -68,7 +70,7 @@ class TaskNestedSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class ProductSerializer(RbacFieldFilterMixin, serializers.ModelSerializer):
     created_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
     updated_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
     product_category = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -104,7 +106,7 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProductDetailSerializer(serializers.ModelSerializer):
+class ProductDetailSerializer(RbacFieldFilterMixin, serializers.ModelSerializer):
     tasks = TaskNestedSerializer(many=True, read_only=True)
     required_document_types = serializers.SerializerMethodField()
     optional_document_types = serializers.SerializerMethodField()
@@ -156,7 +158,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return DocumentTypeSerializer(documents, many=True).data
 
 
-class ProductCreateUpdateSerializer(serializers.ModelSerializer):
+class ProductCreateUpdateSerializer(RbacFieldFilterMixin, serializers.ModelSerializer):
     tasks = TaskNestedSerializer(many=True, required=False)
     required_document_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     optional_document_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)

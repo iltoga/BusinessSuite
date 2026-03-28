@@ -324,8 +324,14 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
       return;
     }
 
-    // P --> Print Preview on selected row
-    if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    // P (without Shift) --> Print Preview on selected row
+    if (
+      !event.shiftKey &&
+      event.key.toLowerCase() === 'p' &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
       const selected = this.dataTable().selectedRow();
       if (!selected) {
         return;

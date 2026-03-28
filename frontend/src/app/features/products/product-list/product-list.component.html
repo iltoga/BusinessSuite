@@ -49,7 +49,7 @@
       }
       <a
         routerLink="/products/new"
-        [state]="{ from: 'products', searchQuery: query(), page: page() }"
+        [state]="{ from: 'products', returnToList: true, searchQuery: query(), page: page() }"
         [contextHelp]="'/products/new'"
       >
         <z-button zType="default" zSize="default">New Product</z-button>

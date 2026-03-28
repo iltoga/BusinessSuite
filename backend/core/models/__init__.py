@@ -19,9 +19,12 @@ from .ui_settings import UiSettings
 from .user_profile import UserProfile
 from .user_settings import UserSettings
 from .web_push_subscription import WebPushSubscription
+from .rbac_rule import RbacMenuRule, RbacFieldRule
 
 __all__ = [
     "CountryCode",
+    "RbacMenuRule",
+    "RbacFieldRule",
     "DocumentOCRJob",
     "OCRJob",
     "AsyncJob",

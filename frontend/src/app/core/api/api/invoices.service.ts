@@ -24,9 +24,31 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 // @ts-ignore
 import { InvoiceCreateUpdate } from '../model/invoice-create-update';
 // @ts-ignore
+import { InvoiceCreateUpdateRequest } from '../model/invoice-create-update-request';
+// @ts-ignore
+import { InvoiceDeletePreviewResponse } from '../model/invoice-delete-preview-response';
+// @ts-ignore
 import { InvoiceDetail } from '../model/invoice-detail';
 // @ts-ignore
+import { InvoiceForceDeleteRequestRequest } from '../model/invoice-force-delete-request-request';
+// @ts-ignore
+import { InvoiceForceDeleteResponse } from '../model/invoice-force-delete-response';
+// @ts-ignore
+import { InvoiceFromApplicationPrefillResponse } from '../model/invoice-from-application-prefill-response';
+// @ts-ignore
 import { InvoiceList } from '../model/invoice-list';
+// @ts-ignore
+import { InvoiceMarkAsPaidRequestRequest } from '../model/invoice-mark-as-paid-request-request';
+// @ts-ignore
+import { InvoiceMarkAsPaidResponse } from '../model/invoice-mark-as-paid-response';
+// @ts-ignore
+import { InvoiceProposalResponse } from '../model/invoice-proposal-response';
+// @ts-ignore
+import { InvoicesBulkDeleteRequestRequest } from '../model/invoices-bulk-delete-request-request';
+// @ts-ignore
+import { InvoicesBulkDeleteResponse } from '../model/invoices-bulk-delete-response';
+// @ts-ignore
+import { PaginatedBillableProductRowList } from '../model/paginated-billable-product-row-list';
 // @ts-ignore
 import { PaginatedDocApplicationInvoiceList } from '../model/paginated-doc-application-invoice-list';
 // @ts-ignore
@@ -51,13 +73,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint post /api/invoices/bulk-delete/
-   * @param requestBody
+   * @param invoicesBulkDeleteRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesBulkDeleteCreate(
-    requestBody?: { [key: string]: any },
+    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -65,9 +87,9 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoicesBulkDeleteResponse>;
   public invoicesBulkDeleteCreate(
-    requestBody?: { [key: string]: any },
+    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -75,9 +97,9 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  ): Observable<HttpResponse<InvoicesBulkDeleteResponse>>;
   public invoicesBulkDeleteCreate(
-    requestBody?: { [key: string]: any },
+    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -85,9 +107,9 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  ): Observable<HttpEvent<InvoicesBulkDeleteResponse>>;
   public invoicesBulkDeleteCreate(
-    requestBody?: { [key: string]: any },
+    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -143,27 +165,31 @@ export class InvoicesService extends BaseService {
 
     let localVarPath = `/api/invoices/bulk-delete/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: requestBody,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<InvoicesBulkDeleteResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: invoicesBulkDeleteRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
    * @endpoint post /api/invoices/
-   * @param invoiceCreateUpdate
+   * @param invoiceCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesCreate(
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -173,7 +199,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceCreateUpdate>;
   public invoicesCreate(
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -183,7 +209,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public invoicesCreate(
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -193,7 +219,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public invoicesCreate(
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -202,9 +228,9 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (invoiceCreateUpdate === null || invoiceCreateUpdate === undefined) {
+    if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter invoiceCreateUpdate was null or undefined when calling invoicesCreate.',
+        'Required parameter invoiceCreateUpdateRequest was null or undefined when calling invoicesCreate.',
       );
     }
 
@@ -257,7 +283,7 @@ export class InvoicesService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<InvoiceCreateUpdate>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: invoiceCreateUpdate,
+      body: invoiceCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -283,7 +309,7 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceDeletePreviewResponse>;
   public invoicesDeletePreviewRetrieve(
     id: number,
     observe?: 'response',
@@ -293,7 +319,7 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  ): Observable<HttpResponse<InvoiceDeletePreviewResponse>>;
   public invoicesDeletePreviewRetrieve(
     id: number,
     observe?: 'events',
@@ -303,7 +329,7 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  ): Observable<HttpEvent<InvoiceDeletePreviewResponse>>;
   public invoicesDeletePreviewRetrieve(
     id: number,
     observe: any = 'body',
@@ -355,15 +381,19 @@ export class InvoicesService extends BaseService {
 
     let localVarPath = `/api/invoices/${this.configuration.encodeParam({ name: 'id', value: id, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/delete-preview/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('get', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<InvoiceDeletePreviewResponse>(
+      'get',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -968,14 +998,14 @@ export class InvoicesService extends BaseService {
   /**
    * @endpoint post /api/invoices/{id}/force-delete/
    * @param id A unique integer value identifying this invoice.
-   * @param requestBody
+   * @param invoiceForceDeleteRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesForceDeleteCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -983,10 +1013,10 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceForceDeleteResponse>;
   public invoicesForceDeleteCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -994,10 +1024,10 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  ): Observable<HttpResponse<InvoiceForceDeleteResponse>>;
   public invoicesForceDeleteCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1005,10 +1035,10 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  ): Observable<HttpEvent<InvoiceForceDeleteResponse>>;
   public invoicesForceDeleteCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1070,16 +1100,20 @@ export class InvoicesService extends BaseService {
 
     let localVarPath = `/api/invoices/${this.configuration.encodeParam({ name: 'id', value: id, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/force-delete/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: requestBody,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<InvoiceForceDeleteResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: invoiceForceDeleteRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -1098,7 +1132,7 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceFromApplicationPrefillResponse>;
   public invoicesFromApplicationPrefillRetrieve(
     applicationId: number,
     observe?: 'response',
@@ -1108,7 +1142,7 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  ): Observable<HttpResponse<InvoiceFromApplicationPrefillResponse>>;
   public invoicesFromApplicationPrefillRetrieve(
     applicationId: number,
     observe?: 'events',
@@ -1118,7 +1152,7 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  ): Observable<HttpEvent<InvoiceFromApplicationPrefillResponse>>;
   public invoicesFromApplicationPrefillRetrieve(
     applicationId: number,
     observe: any = 'body',
@@ -1170,28 +1204,40 @@ export class InvoicesService extends BaseService {
 
     let localVarPath = `/api/invoices/from_application_prefill/${this.configuration.encodeParam({ name: 'applicationId', value: applicationId, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('get', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<InvoiceFromApplicationPrefillResponse>(
+      'get',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
    * @endpoint get /api/invoices/get_billable_products/{customerId}/
    * @param customerId
    * @param currentInvoiceId Include already linked applications for this invoice in pending groups.
+   * @param ordering Which field to use when ordering the results.
+   * @param page A page number within the paginated result set.
+   * @param pageSize Number of results to return per page.
+   * @param search A search term.
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
-  public invoicesGetBillableProductsRetrieve(
+  public invoicesGetBillableProductsList(
     customerId: number,
     currentInvoiceId?: number,
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1199,10 +1245,14 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
-  public invoicesGetBillableProductsRetrieve(
+  ): Observable<PaginatedBillableProductRowList>;
+  public invoicesGetBillableProductsList(
     customerId: number,
     currentInvoiceId?: number,
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1210,10 +1260,14 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
-  public invoicesGetBillableProductsRetrieve(
+  ): Observable<HttpResponse<PaginatedBillableProductRowList>>;
+  public invoicesGetBillableProductsList(
     customerId: number,
     currentInvoiceId?: number,
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1221,10 +1275,14 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
-  public invoicesGetBillableProductsRetrieve(
+  ): Observable<HttpEvent<PaginatedBillableProductRowList>>;
+  public invoicesGetBillableProductsList(
     customerId: number,
     currentInvoiceId?: number,
+    ordering?: string,
+    page?: number,
+    pageSize?: number,
+    search?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1235,7 +1293,7 @@ export class InvoicesService extends BaseService {
   ): Observable<any> {
     if (customerId === null || customerId === undefined) {
       throw new Error(
-        'Required parameter customerId was null or undefined when calling invoicesGetBillableProductsRetrieve.',
+        'Required parameter customerId was null or undefined when calling invoicesGetBillableProductsList.',
       );
     }
 
@@ -1245,6 +1303,38 @@ export class InvoicesService extends BaseService {
       localVarQueryParameters,
       'current_invoice_id',
       <any>currentInvoiceId,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'ordering',
+      <any>ordering,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'page',
+      <any>page,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'page_size',
+      <any>pageSize,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'search',
+      <any>search,
       QueryParamStyle.Form,
       true,
     );
@@ -1284,16 +1374,20 @@ export class InvoicesService extends BaseService {
 
     let localVarPath = `/api/invoices/get_billable_products/${this.configuration.encodeParam({ name: 'customerId', value: customerId, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('get', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      params: localVarQueryParameters.toHttpParams(),
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<PaginatedBillableProductRowList>(
+      'get',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        params: localVarQueryParameters.toHttpParams(),
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -2362,14 +2456,14 @@ export class InvoicesService extends BaseService {
   /**
    * @endpoint post /api/invoices/{id}/mark-as-paid/
    * @param id A unique integer value identifying this invoice.
-   * @param requestBody
+   * @param invoiceMarkAsPaidRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesMarkAsPaidCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2377,10 +2471,10 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<InvoiceList>;
+  ): Observable<InvoiceMarkAsPaidResponse>;
   public invoicesMarkAsPaidCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2388,10 +2482,10 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<InvoiceList>>;
+  ): Observable<HttpResponse<InvoiceMarkAsPaidResponse>>;
   public invoicesMarkAsPaidCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2399,10 +2493,10 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<InvoiceList>>;
+  ): Observable<HttpEvent<InvoiceMarkAsPaidResponse>>;
   public invoicesMarkAsPaidCreate(
     id: number,
-    requestBody?: { [key: string]: any },
+    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2414,6 +2508,11 @@ export class InvoicesService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling invoicesMarkAsPaidCreate.',
+      );
+    }
+    if (invoiceMarkAsPaidRequestRequest === null || invoiceMarkAsPaidRequestRequest === undefined) {
+      throw new Error(
+        'Required parameter invoiceMarkAsPaidRequestRequest was null or undefined when calling invoicesMarkAsPaidCreate.',
       );
     }
 
@@ -2464,29 +2563,33 @@ export class InvoicesService extends BaseService {
 
     let localVarPath = `/api/invoices/${this.configuration.encodeParam({ name: 'id', value: id, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/mark-as-paid/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<InvoiceList>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: requestBody,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<InvoiceMarkAsPaidResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: invoiceMarkAsPaidRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
    * @endpoint patch /api/invoices/{id}/
    * @param id A unique integer value identifying this invoice.
-   * @param invoiceCreateUpdate
+   * @param invoiceCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesPartialUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2497,7 +2600,7 @@ export class InvoicesService extends BaseService {
   ): Observable<InvoiceCreateUpdate>;
   public invoicesPartialUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2508,7 +2611,7 @@ export class InvoicesService extends BaseService {
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public invoicesPartialUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2519,7 +2622,7 @@ export class InvoicesService extends BaseService {
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public invoicesPartialUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2533,9 +2636,9 @@ export class InvoicesService extends BaseService {
         'Required parameter id was null or undefined when calling invoicesPartialUpdate.',
       );
     }
-    if (invoiceCreateUpdate === null || invoiceCreateUpdate === undefined) {
+    if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter invoiceCreateUpdate was null or undefined when calling invoicesPartialUpdate.',
+        'Required parameter invoiceCreateUpdateRequest was null or undefined when calling invoicesPartialUpdate.',
       );
     }
 
@@ -2588,7 +2691,7 @@ export class InvoicesService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<InvoiceCreateUpdate>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: invoiceCreateUpdate,
+      body: invoiceCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -2615,7 +2718,7 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<InvoiceList>;
+  ): Observable<InvoiceProposalResponse>;
   public invoicesProposeRetrieve(
     invoiceDate?: string,
     observe?: 'response',
@@ -2625,7 +2728,7 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<InvoiceList>>;
+  ): Observable<HttpResponse<InvoiceProposalResponse>>;
   public invoicesProposeRetrieve(
     invoiceDate?: string,
     observe?: 'events',
@@ -2635,7 +2738,7 @@ export class InvoicesService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<InvoiceList>>;
+  ): Observable<HttpEvent<InvoiceProposalResponse>>;
   public invoicesProposeRetrieve(
     invoiceDate?: string,
     observe: any = 'body',
@@ -2691,7 +2794,7 @@ export class InvoicesService extends BaseService {
 
     let localVarPath = `/api/invoices/propose/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<InvoiceList>('get', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<InvoiceProposalResponse>('get', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
@@ -2803,14 +2906,14 @@ export class InvoicesService extends BaseService {
   /**
    * @endpoint put /api/invoices/{id}/
    * @param id A unique integer value identifying this invoice.
-   * @param invoiceCreateUpdate
+   * @param invoiceCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2821,7 +2924,7 @@ export class InvoicesService extends BaseService {
   ): Observable<InvoiceCreateUpdate>;
   public invoicesUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2832,7 +2935,7 @@ export class InvoicesService extends BaseService {
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public invoicesUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2843,7 +2946,7 @@ export class InvoicesService extends BaseService {
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public invoicesUpdate(
     id: number,
-    invoiceCreateUpdate: InvoiceCreateUpdate,
+    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2855,9 +2958,9 @@ export class InvoicesService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling invoicesUpdate.');
     }
-    if (invoiceCreateUpdate === null || invoiceCreateUpdate === undefined) {
+    if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter invoiceCreateUpdate was null or undefined when calling invoicesUpdate.',
+        'Required parameter invoiceCreateUpdateRequest was null or undefined when calling invoicesUpdate.',
       );
     }
 
@@ -2910,7 +3013,7 @@ export class InvoicesService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<InvoiceCreateUpdate>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: invoiceCreateUpdate,
+      body: invoiceCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

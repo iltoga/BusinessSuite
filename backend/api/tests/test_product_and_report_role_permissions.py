@@ -2,9 +2,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
 from django.urls import reverse
-from rest_framework.test import APIClient
-
 from products.models import Product
+from rest_framework.test import APIClient
 
 TEST_CACHES = {
     "default": {
@@ -76,17 +75,19 @@ class ProductAndReportRolePermissionsTests(TestCase):
         self.assertNotIn("required_documents", response.data)
         self.assertNotIn("optional_documents", response.data)
 
-    def test_regular_user_cannot_retrieve_product_detail(self):
+    def test_regular_user_can_retrieve_product_detail(self):
         response = self.regular_client.get(reverse("products-detail", kwargs={"pk": self.product.id}))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], self.product.id)
 
-    def test_regular_user_cannot_create_products(self):
+    def test_regular_user_can_create_products(self):
         response = self.regular_client.post(
             reverse("products-list"),
             data={"name": "Blocked", "code": "BLOCKED-1", "productType": "visa"},
             format="json",
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["code"], "BLOCKED-1")
 
     def test_regular_user_cannot_quick_create_products(self):
         response = self.regular_client.post(reverse("api-product-quick-create"), data={}, format="json")

@@ -34,9 +34,7 @@ describe('resolveOtlpTracesConfig', () => {
     expect(config.enabled).toBe(true);
     expect(config.source).toBe('grafana-cloud-endpoint');
     expect(config.endpoint).toBe('https://otlp-gateway-prod.grafana.net/otlp/v1/traces');
-    expect(config.headers['Authorization']).toBe(
-      `Basic ${Buffer.from('123:secret-key').toString('base64')}`,
-    );
+    expect(config.headers['Authorization']).toBe(`Basic ${btoa('123:secret-key')}`);
     expect(config.timeoutMs).toBe(10000);
   });
 

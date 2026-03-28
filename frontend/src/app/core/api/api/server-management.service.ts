@@ -22,7 +22,7 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
-import { MediaCleanupRequest } from '../model/media-cleanup-request';
+import { MediaCleanupRequestRequest } from '../model/media-cleanup-request-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -1329,13 +1329,13 @@ export class ServerManagementService extends BaseService {
    * Clean unlinked media files
    * Delete unlinked media files from the active media store.
    * @endpoint post /api/server-management/media-cleanup/
-   * @param mediaCleanupRequest
+   * @param mediaCleanupRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public serverManagementMediaCleanupCreate(
-    mediaCleanupRequest?: MediaCleanupRequest,
+    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1345,7 +1345,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public serverManagementMediaCleanupCreate(
-    mediaCleanupRequest?: MediaCleanupRequest,
+    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1355,7 +1355,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public serverManagementMediaCleanupCreate(
-    mediaCleanupRequest?: MediaCleanupRequest,
+    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1365,7 +1365,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public serverManagementMediaCleanupCreate(
-    mediaCleanupRequest?: MediaCleanupRequest,
+    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1423,7 +1423,7 @@ export class ServerManagementService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: mediaCleanupRequest,
+      body: mediaCleanupRequestRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

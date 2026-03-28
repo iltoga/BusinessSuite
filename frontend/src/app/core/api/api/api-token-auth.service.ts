@@ -22,7 +22,7 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
-import { CustomTokenObtain } from '../model/custom-token-obtain';
+import { CustomTokenObtainRequest } from '../model/custom-token-obtain-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -44,61 +44,45 @@ export class ApiTokenAuthService extends BaseService {
   /**
    * Takes a set of user credentials and returns an access and refresh JSON web token pair to prove the authentication of those credentials.
    * @endpoint post /api/api-token-auth/
-   * @param customTokenObtain
+   * @param customTokenObtainRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public apiTokenAuthCreate(
-    customTokenObtain: CustomTokenObtain,
+    customTokenObtainRequest: CustomTokenObtainRequest,
     observe?: 'body',
     reportProgress?: boolean,
-    options?: {
-      httpHeaderAccept?: 'application/json';
-      context?: HttpContext;
-      transferCache?: boolean;
-    },
-  ): Observable<CustomTokenObtain>;
+    options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
+  ): Observable<any>;
   public apiTokenAuthCreate(
-    customTokenObtain: CustomTokenObtain,
+    customTokenObtainRequest: CustomTokenObtainRequest,
     observe?: 'response',
     reportProgress?: boolean,
-    options?: {
-      httpHeaderAccept?: 'application/json';
-      context?: HttpContext;
-      transferCache?: boolean;
-    },
-  ): Observable<HttpResponse<CustomTokenObtain>>;
+    options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
+  ): Observable<HttpResponse<any>>;
   public apiTokenAuthCreate(
-    customTokenObtain: CustomTokenObtain,
+    customTokenObtainRequest: CustomTokenObtainRequest,
     observe?: 'events',
     reportProgress?: boolean,
-    options?: {
-      httpHeaderAccept?: 'application/json';
-      context?: HttpContext;
-      transferCache?: boolean;
-    },
-  ): Observable<HttpEvent<CustomTokenObtain>>;
+    options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
+  ): Observable<HttpEvent<any>>;
   public apiTokenAuthCreate(
-    customTokenObtain: CustomTokenObtain,
+    customTokenObtainRequest: CustomTokenObtainRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
-    options?: {
-      httpHeaderAccept?: 'application/json';
-      context?: HttpContext;
-      transferCache?: boolean;
-    },
+    options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
-    if (customTokenObtain === null || customTokenObtain === undefined) {
+    if (customTokenObtainRequest === null || customTokenObtainRequest === undefined) {
       throw new Error(
-        'Required parameter customTokenObtain was null or undefined when calling apiTokenAuthCreate.',
+        'Required parameter customTokenObtainRequest was null or undefined when calling apiTokenAuthCreate.',
       );
     }
 
     let localVarHeaders = this.defaultHeaders;
 
     const localVarHttpHeaderAcceptSelected: string | undefined =
-      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([]);
     if (localVarHttpHeaderAcceptSelected !== undefined) {
       localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
     }
@@ -132,9 +116,9 @@ export class ApiTokenAuthService extends BaseService {
 
     let localVarPath = `/api/api-token-auth/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<CustomTokenObtain>('post', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<any>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customTokenObtain,
+      body: customTokenObtainRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

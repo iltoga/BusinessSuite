@@ -42,6 +42,8 @@ export * from './products.service';
 import { ProductsService } from './products.service';
 export * from './push-notifications.service';
 import { PushNotificationsService } from './push-notifications.service';
+export * from './rbac.service';
+import { RbacService } from './rbac.service';
 export * from './server-management.service';
 import { ServerManagementService } from './server-management.service';
 export * from './sync.service';
@@ -81,6 +83,7 @@ export const APIS = [
   PaymentsService,
   ProductsService,
   PushNotificationsService,
+  RbacService,
   ServerManagementService,
   SyncService,
   TasksService,

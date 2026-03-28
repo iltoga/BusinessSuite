@@ -81,6 +81,7 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     search_fields = ["recipient", "subject", "status", "doc_application__id"]
     ordering = ["-id"]
 
+    @extend_schema(request=None, responses={200: WorkflowNotificationSerializer})
     @action(detail=True, methods=["post"], url_path="resend")
     def resend(self, request, pk=None):
         from customer_applications.tasks import schedule_whatsapp_status_poll
@@ -158,6 +159,7 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         return Response(self.get_serializer(notification).data)
 
+    @extend_schema(request=None, responses={200: WorkflowNotificationSerializer})
     @action(detail=True, methods=["post"], url_path="cancel")
     def cancel(self, request, pk=None):
         notification = self.get_object()
@@ -448,6 +450,20 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             }
         )
 
+    @extend_schema(
+        responses=inline_serializer(
+            name="PushNotificationUser",
+            fields={
+                "id": serializers.IntegerField(),
+                "username": serializers.CharField(),
+                "email": serializers.CharField(allow_blank=True),
+                "full_name": serializers.CharField(),
+                "active_push_subscriptions": serializers.IntegerField(),
+                "total_push_subscriptions": serializers.IntegerField(),
+            },
+            many=True,
+        )
+    )
     @action(detail=False, methods=["get"], url_path="users")
     def users(self, request):
         user_query = (request.query_params.get("q") or request.query_params.get("search") or "").strip()
@@ -597,6 +613,7 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
         return DocApplication.objects.order_by("-updated_at", "-id").first()
 
     @action(detail=False, methods=["get"], url_path="subscriptions")
+    @extend_schema(responses={200: WebPushSubscriptionSerializer(many=True)})
     def subscriptions(self, request):
         queryset = WebPushSubscription.objects.filter(user=request.user).order_by("-updated_at")
         return Response(WebPushSubscriptionSerializer(queryset, many=True).data)
@@ -625,6 +642,13 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
         payload["created"] = created
         return Response(payload, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
+    @extend_schema(
+        request=WebPushSubscriptionDeleteSerializer,
+        responses=inline_serializer(
+            name="PushNotificationUnregisterResponse",
+            fields={"updated": serializers.IntegerField()},
+        ),
+    )
     @action(detail=False, methods=["post"], url_path="unregister")
     def unregister(self, request):
         serializer = WebPushSubscriptionDeleteSerializer(data=request.data)
@@ -635,6 +659,18 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
         updated = WebPushSubscription.objects.filter(user=request.user, token=token).update(is_active=False)
         return Response({"updated": updated})
 
+    @extend_schema(
+        request=PushNotificationTestSerializer,
+        responses=inline_serializer(
+            name="PushNotificationDispatchResult",
+            fields={
+                "sent": serializers.IntegerField(),
+                "failed": serializers.IntegerField(),
+                "skipped": serializers.IntegerField(),
+                "total": serializers.IntegerField(),
+            },
+        ),
+    )
     @action(detail=False, methods=["post"], url_path="test")
     def test(self, request):
         serializer = PushNotificationTestSerializer(data=request.data or {})
@@ -671,6 +707,20 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
             )
         return Response(payload)
 
+    @extend_schema(
+        responses=inline_serializer(
+            name="AdminPushNotificationUser",
+            fields={
+                "id": serializers.IntegerField(),
+                "username": serializers.CharField(),
+                "email": serializers.CharField(allow_blank=True),
+                "full_name": serializers.CharField(),
+                "active_push_subscriptions": serializers.IntegerField(),
+                "total_push_subscriptions": serializers.IntegerField(),
+            },
+            many=True,
+        )
+    )
     @action(detail=False, methods=["get"], url_path="users")
     def users(self, request):
         forbidden = self._ensure_admin(request)
@@ -705,6 +755,18 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
         ]
         return Response(payload)
 
+    @extend_schema(
+        request=AdminPushNotificationSendSerializer,
+        responses=inline_serializer(
+            name="AdminPushNotificationDispatchResult",
+            fields={
+                "sent": serializers.IntegerField(),
+                "failed": serializers.IntegerField(),
+                "skipped": serializers.IntegerField(),
+                "total": serializers.IntegerField(),
+            },
+        ),
+    )
     @action(detail=False, methods=["post"], url_path="send-test")
     def send_test(self, request):
         forbidden = self._ensure_admin(request)
@@ -754,6 +816,20 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
             )
         return Response(payload)
 
+    @extend_schema(
+        request=AdminWhatsappTestSendSerializer,
+        responses=inline_serializer(
+            name="AdminWhatsappTestSendResponse",
+            fields={
+                "recipient": serializers.CharField(),
+                "used_default_recipient": serializers.BooleanField(),
+                "message_id": serializers.CharField(),
+                "workflow_notification_id": serializers.IntegerField(),
+                "workflow_notification_status": serializers.CharField(),
+                "workflow_notification_application_id": serializers.IntegerField(),
+            },
+        ),
+    )
     @action(detail=False, methods=["post"], url_path="send-test-whatsapp")
     def send_test_whatsapp(self, request):
         forbidden = self._ensure_admin(request)

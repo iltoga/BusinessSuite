@@ -8,6 +8,9 @@
  * Do not edit the class manually.
  */
 
+/**
+ * Generic mixin to dynamically redact fields from the serializer if the requesting user lacks read/write access based on RBAC rules.
+ */
 export interface Product {
   readonly id: number;
   name: string;

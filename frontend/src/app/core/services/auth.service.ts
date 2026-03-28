@@ -25,8 +25,11 @@ import {
   tap,
   throwError,
   timeout,
+  switchMap,
 } from 'rxjs';
 
+import { RbacService } from '@/core/api/api/rbac.service';
+import { RBAC_RULES } from '@/core/tokens/rbac.token';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
@@ -102,6 +105,8 @@ export class AuthService {
   private readonly configService = inject(ConfigService);
   private readonly desktopBridge = inject(DesktopBridgeService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly rbacApi = inject(RbacService);
+  private readonly rbacRulesSignal = inject(RBAC_RULES);
 
   private _token = signal<string | null>(null);
   private _claims = signal<AuthClaims | null>(null);
@@ -226,8 +231,19 @@ export class AuthService {
       })
       .pipe(
         timeout(LOGIN_REQUEST_TIMEOUT_MS),
-        tap((response) => {
+        switchMap((response) => {
           this.applyAuthSession(response);
+          if (this.mockAuthEnabled) {
+             this.rbacRulesSignal.set({ menus: {}, fields: {} });
+             return of(response);
+          }
+          return this.rbacApi.rbacMyPermissionsRetrieve().pipe(
+             catchError(() => of({ menus: {}, fields: {} })),
+             tap(rules => this.rbacRulesSignal.set(rules)),
+             map(() => response)
+          );
+        }),
+        tap(() => {
           this._isLoading.set(false);
         }),
         catchError((error) => {
@@ -283,6 +299,7 @@ export class AuthService {
   private clearToken(): void {
     this._token.set(null);
     this._claims.set(null);
+    this.rbacRulesSignal.set({ menus: {}, fields: {} });
     this.desktopBridge.publishAuthToken(null);
   }
 

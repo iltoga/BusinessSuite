@@ -1,9 +1,10 @@
-import { PLATFORM_ID } from '@angular/core';
+import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 
 import { ProductsService } from '@/core/api';
+import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 
 import { ProductDetailComponent } from './product-detail.component';
@@ -19,12 +20,17 @@ describe('ProductDetailComponent', () => {
     error: () => undefined,
   };
 
+  const mockAuthService: Pick<AuthService, 'isAdminOrManager'> = {
+    isAdminOrManager: signal(false),
+  };
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: Router, useValue: { navigate: () => Promise.resolve(true) } },
         { provide: ProductsService, useValue: mockProductsService },
+        { provide: AuthService, useValue: mockAuthService },
         { provide: GlobalToastService, useValue: mockToastService },
         {
           provide: ActivatedRoute,

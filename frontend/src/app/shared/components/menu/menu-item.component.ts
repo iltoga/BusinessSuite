@@ -2,11 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   HostBinding,
+  computed,
   inject,
   input,
   OnDestroy,
 } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 
 import { ZardIconComponent } from '@/shared/components/icon';
 import { MenuItem } from '@/shared/models/menu-item.model';
@@ -15,7 +18,7 @@ import { MenuService } from '@/shared/services/menu.service';
 @Component({
   selector: 'app-menu-item',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, ZardIconComponent],
+  imports: [RouterLink, ZardIconComponent],
   templateUrl: './menu-item.component.html',
   styleUrl: './menu-item.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -26,8 +29,34 @@ export class MenuItemComponent implements OnDestroy {
   readonly mode = input<'sidebar' | 'overlay'>('sidebar');
 
   readonly menuService = inject(MenuService);
+  private readonly router = inject(Router);
 
   private collapseTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(() => this.router.url),
+      startWith(this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
+  readonly isActive = computed(() => {
+    const menuItem = this.item();
+    const route = menuItem.route;
+    if (!route) {
+      return false;
+    }
+
+    // Track router state reactively so active menu styling updates after imperative navigation.
+    this.currentUrl();
+
+    return this.router.isActive(route, {
+      paths: menuItem.children?.length ? 'subset' : 'exact',
+      queryParams: 'ignored',
+      fragment: 'ignored',
+      matrixParams: 'ignored',
+    });
+  });
 
   @HostBinding('attr.role')
   role = 'none';

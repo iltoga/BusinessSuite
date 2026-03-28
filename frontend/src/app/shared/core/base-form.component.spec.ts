@@ -162,6 +162,7 @@ describe('BaseFormComponent', () => {
         value: {
           searchQuery: 'test search',
           page: 5,
+          returnToList: true,
         },
         writable: true,
       });
@@ -169,6 +170,7 @@ describe('BaseFormComponent', () => {
       const state = component.testGetNavigationState();
       expect(state.searchQuery).toBe('test search');
       expect(state.page).toBe(5);
+      expect(state.returnToList).toBe(true);
     });
   });
 
@@ -287,6 +289,35 @@ describe('BaseFormComponent', () => {
 
       expect(component.isSaving()).toBe(false);
       expect(toastSpy).toHaveBeenCalledWith('Test Item save timed out. Please try again.');
+    });
+
+    it('should return list-origin edits back to the list after save', () => {
+      Object.defineProperty(window.history, 'state', {
+        value: {
+          searchQuery: 'test search',
+          page: 2,
+          returnToList: true,
+        },
+        writable: true,
+      });
+
+      const router = TestBed.inject(Router);
+      const navigateSpy = vi.spyOn(router, 'navigate').mockImplementation(() => Promise.resolve(true));
+
+      component.isEditMode.set(true);
+      (component as any).itemId = 7;
+      component.form.patchValue({ name: 'Updated Item' });
+
+      component.onSubmit();
+
+      expect(navigateSpy).toHaveBeenCalledWith(['/test-items'], {
+        state: {
+          focusTable: true,
+          focusId: 7,
+          searchQuery: 'test search',
+          page: 2,
+        },
+      });
     });
   });
 

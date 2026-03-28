@@ -44,15 +44,19 @@
               <z-badge zType="destructive">Deprecated</z-badge>
             }
             <span class="base-price-chip">Currency: {{ currencyCode() }}</span>
-            <span class="base-price-chip"
-              >Base price: {{ formatCurrency(product()?.basePrice) }}</span
-            >
+            @if (isAdminOrManager()) {
+              <span class="base-price-chip"
+                >Base price: {{ formatCurrency(product()?.basePrice) }}</span
+              >
+            }
             <span class="base-price-chip"
               >Retail price: {{ formatCurrency(retailPriceValue()) }}</span
             >
-            <span class="base-price-chip"
-              >Unit profit: {{ formatCurrency(unitProfitValue()) }}</span
-            >
+            @if (isAdminOrManager()) {
+              <span class="base-price-chip"
+                >Unit profit: {{ formatCurrency(unitProfitValue()) }}</span
+              >
+            }
           </div>
           <div class="text-sm text-muted-foreground">
             {{ product()?.description || 'No description provided.' }}

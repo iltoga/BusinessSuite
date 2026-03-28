@@ -109,9 +109,17 @@ describe('ThemeService', () => {
     expect(service.currentTheme()).toBe('revis');
   });
 
-  it('uses the default theme on the server without touching storage', () => {
-    const originalWindow = window;
-    vi.stubGlobal('window', undefined as unknown as Window);
+  it('uses the default theme when storage is unavailable', () => {
+    const getStorageSpy = vi.spyOn(service as any, 'getStorage').mockReturnValue(null);
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn(() => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
 
     service.initializeTheme('legacy');
 
@@ -119,6 +127,10 @@ describe('ThemeService', () => {
     expect(service.isDarkMode()).toBe(false);
     expect(localStorage.getItem('theme')).toBeNull();
 
-    vi.stubGlobal('window', originalWindow);
+    getStorageSpy.mockRestore();
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: originalMatchMedia,
+    });
   });
 });

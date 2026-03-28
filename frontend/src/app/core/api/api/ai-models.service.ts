@@ -23,6 +23,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
 import { AiModel } from '../model/ai-model';
+// @ts-ignore
+import { AiModelRequest } from '../model/ai-model-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -131,13 +133,13 @@ export class AiModelsService extends BaseService {
 
   /**
    * @endpoint post /api/ai-models/
-   * @param aiModel
+   * @param aiModelRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public aiModelsCreate(
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -147,7 +149,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<AiModel>;
   public aiModelsCreate(
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -157,7 +159,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public aiModelsCreate(
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -167,7 +169,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public aiModelsCreate(
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -176,9 +178,9 @@ export class AiModelsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (aiModel === null || aiModel === undefined) {
+    if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
-        'Required parameter aiModel was null or undefined when calling aiModelsCreate.',
+        'Required parameter aiModelRequest was null or undefined when calling aiModelsCreate.',
       );
     }
 
@@ -231,7 +233,7 @@ export class AiModelsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<AiModel>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: aiModel,
+      body: aiModelRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -559,14 +561,14 @@ export class AiModelsService extends BaseService {
   /**
    * @endpoint patch /api/ai-models/{id}/
    * @param id A unique integer value identifying this ai model.
-   * @param aiModel
+   * @param aiModelRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public aiModelsPartialUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -577,7 +579,7 @@ export class AiModelsService extends BaseService {
   ): Observable<AiModel>;
   public aiModelsPartialUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -588,7 +590,7 @@ export class AiModelsService extends BaseService {
   ): Observable<HttpResponse<AiModel>>;
   public aiModelsPartialUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -599,7 +601,7 @@ export class AiModelsService extends BaseService {
   ): Observable<HttpEvent<AiModel>>;
   public aiModelsPartialUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -613,9 +615,9 @@ export class AiModelsService extends BaseService {
         'Required parameter id was null or undefined when calling aiModelsPartialUpdate.',
       );
     }
-    if (aiModel === null || aiModel === undefined) {
+    if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
-        'Required parameter aiModel was null or undefined when calling aiModelsPartialUpdate.',
+        'Required parameter aiModelRequest was null or undefined when calling aiModelsPartialUpdate.',
       );
     }
 
@@ -668,7 +670,7 @@ export class AiModelsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<AiModel>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: aiModel,
+      body: aiModelRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -778,14 +780,14 @@ export class AiModelsService extends BaseService {
   /**
    * @endpoint put /api/ai-models/{id}/
    * @param id A unique integer value identifying this ai model.
-   * @param aiModel
+   * @param aiModelRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public aiModelsUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -796,7 +798,7 @@ export class AiModelsService extends BaseService {
   ): Observable<AiModel>;
   public aiModelsUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -807,7 +809,7 @@ export class AiModelsService extends BaseService {
   ): Observable<HttpResponse<AiModel>>;
   public aiModelsUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -818,7 +820,7 @@ export class AiModelsService extends BaseService {
   ): Observable<HttpEvent<AiModel>>;
   public aiModelsUpdate(
     id: number,
-    aiModel: AiModel,
+    aiModelRequest: AiModelRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -830,9 +832,9 @@ export class AiModelsService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling aiModelsUpdate.');
     }
-    if (aiModel === null || aiModel === undefined) {
+    if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
-        'Required parameter aiModel was null or undefined when calling aiModelsUpdate.',
+        'Required parameter aiModelRequest was null or undefined when calling aiModelsUpdate.',
       );
     }
 
@@ -885,7 +887,7 @@ export class AiModelsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<AiModel>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: aiModel,
+      body: aiModelRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

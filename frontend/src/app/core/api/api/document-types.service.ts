@@ -23,6 +23,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
 import { DocumentType } from '../model/document-type';
+// @ts-ignore
+import { DocumentTypeRequest } from '../model/document-type-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -144,13 +146,13 @@ export class DocumentTypesService extends BaseService {
 
   /**
    * @endpoint post /api/document-types/
-   * @param documentType
+   * @param documentTypeRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesCreate(
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -160,7 +162,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<DocumentType>;
   public documentTypesCreate(
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -170,7 +172,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public documentTypesCreate(
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -180,7 +182,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public documentTypesCreate(
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -189,9 +191,9 @@ export class DocumentTypesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (documentType === null || documentType === undefined) {
+    if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
-        'Required parameter documentType was null or undefined when calling documentTypesCreate.',
+        'Required parameter documentTypeRequest was null or undefined when calling documentTypesCreate.',
       );
     }
 
@@ -244,7 +246,7 @@ export class DocumentTypesService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<DocumentType>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: documentType,
+      body: documentTypeRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -595,14 +597,14 @@ export class DocumentTypesService extends BaseService {
   /**
    * @endpoint patch /api/document-types/{id}/
    * @param id A unique integer value identifying this document type.
-   * @param documentType
+   * @param documentTypeRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesPartialUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -613,7 +615,7 @@ export class DocumentTypesService extends BaseService {
   ): Observable<DocumentType>;
   public documentTypesPartialUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -624,7 +626,7 @@ export class DocumentTypesService extends BaseService {
   ): Observable<HttpResponse<DocumentType>>;
   public documentTypesPartialUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -635,7 +637,7 @@ export class DocumentTypesService extends BaseService {
   ): Observable<HttpEvent<DocumentType>>;
   public documentTypesPartialUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -649,9 +651,9 @@ export class DocumentTypesService extends BaseService {
         'Required parameter id was null or undefined when calling documentTypesPartialUpdate.',
       );
     }
-    if (documentType === null || documentType === undefined) {
+    if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
-        'Required parameter documentType was null or undefined when calling documentTypesPartialUpdate.',
+        'Required parameter documentTypeRequest was null or undefined when calling documentTypesPartialUpdate.',
       );
     }
 
@@ -704,7 +706,7 @@ export class DocumentTypesService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<DocumentType>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: documentType,
+      body: documentTypeRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -816,14 +818,14 @@ export class DocumentTypesService extends BaseService {
   /**
    * @endpoint put /api/document-types/{id}/
    * @param id A unique integer value identifying this document type.
-   * @param documentType
+   * @param documentTypeRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -834,7 +836,7 @@ export class DocumentTypesService extends BaseService {
   ): Observable<DocumentType>;
   public documentTypesUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -845,7 +847,7 @@ export class DocumentTypesService extends BaseService {
   ): Observable<HttpResponse<DocumentType>>;
   public documentTypesUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -856,7 +858,7 @@ export class DocumentTypesService extends BaseService {
   ): Observable<HttpEvent<DocumentType>>;
   public documentTypesUpdate(
     id: number,
-    documentType: DocumentType,
+    documentTypeRequest: DocumentTypeRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -870,9 +872,9 @@ export class DocumentTypesService extends BaseService {
         'Required parameter id was null or undefined when calling documentTypesUpdate.',
       );
     }
-    if (documentType === null || documentType === undefined) {
+    if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
-        'Required parameter documentType was null or undefined when calling documentTypesUpdate.',
+        'Required parameter documentTypeRequest was null or undefined when calling documentTypesUpdate.',
       );
     }
 
@@ -925,7 +927,7 @@ export class DocumentTypesService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<DocumentType>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: documentType,
+      body: documentTypeRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
