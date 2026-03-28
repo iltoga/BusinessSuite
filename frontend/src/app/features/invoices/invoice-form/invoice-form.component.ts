@@ -20,6 +20,7 @@ import {
   InvoicesService,
   type DocApplicationInvoice,
   type InvoiceCreateUpdate,
+  type InvoiceCreateUpdateRequest,
   type InvoiceDetail,
   type Product,
 } from '@/core/api';
@@ -331,12 +332,19 @@ export class InvoiceFormComponent implements OnInit {
 
     this.isSaving.set(true);
     const raw = this.form.getRawValue();
+    const invoiceDate = this.toIsoDate(raw.invoiceDate);
+    const dueDate = this.toIsoDate(raw.dueDate);
+    if (!invoiceDate || !dueDate) {
+      this.toast.error('Invoice and due dates are required.');
+      this.isSaving.set(false);
+      return;
+    }
 
-    const payload = {
+    const payload: InvoiceCreateUpdateRequest = {
       customer: raw.customer!,
       invoiceNo: raw.invoiceNo ?? undefined,
-      invoiceDate: this.toIsoDate(raw.invoiceDate),
-      dueDate: this.toIsoDate(raw.dueDate),
+      invoiceDate,
+      dueDate,
       notes: raw.notes ?? '',
       sent: raw.sent ?? false,
       invoiceApplications: (raw.invoiceApplications ?? []).map((item: any) => ({
@@ -345,7 +353,7 @@ export class InvoiceFormComponent implements OnInit {
         customerApplication: item.customerApplication ? Number(item.customerApplication) : null,
         amount: String(item.amount ?? 0),
       })),
-    } as InvoiceCreateUpdate;
+    };
 
     const fromState = history.state?.from;
     const returnUrl = history.state?.returnUrl;
@@ -359,12 +367,24 @@ export class InvoiceFormComponent implements OnInit {
       searchQuery,
       page: Number.isFinite(page) && page > 0 ? Math.floor(page) : undefined,
     };
+    const shouldReturnToList = history.state?.returnToList === true;
+    const focusState: Record<string, unknown> = {
+      focusTable: true,
+      searchQuery,
+      page: Number.isFinite(page) && page > 0 ? Math.floor(page) : undefined,
+    };
 
     if (this.isEditMode() && this.invoice()) {
       this.invoicesApi.invoicesUpdate(this.invoice()!.id, payload).subscribe({
         next: (invoice: InvoiceCreateUpdate) => {
           this.toast.success('Invoice updated');
-          this.router.navigate(['/invoices', invoice.id], { state: detailState });
+          if (shouldReturnToList) {
+            this.router.navigate(['/invoices'], {
+              state: { ...focusState, focusId: invoice.id },
+            });
+          } else {
+            this.router.navigate(['/invoices', invoice.id], { state: detailState });
+          }
         },
         error: (error) => {
           applyServerErrorsToForm(this.form, error);
@@ -382,7 +402,13 @@ export class InvoiceFormComponent implements OnInit {
     this.invoicesApi.invoicesCreate(payload).subscribe({
       next: (invoice: InvoiceCreateUpdate) => {
         this.toast.success('Invoice created');
-        this.router.navigate(['/invoices', invoice.id], { state: detailState });
+        if (shouldReturnToList) {
+          this.router.navigate(['/invoices'], {
+            state: { ...focusState, focusId: invoice.id },
+          });
+        } else {
+          this.router.navigate(['/invoices', invoice.id], { state: detailState });
+        }
       },
       error: (error) => {
         applyServerErrorsToForm(this.form, error);
@@ -584,7 +610,7 @@ export class InvoiceFormComponent implements OnInit {
         this.form.get('customer')?.disable({ emitEvent: false });
 
         this.fetchBillableProducts(customerId).subscribe({
-          next: (rows) => {
+          next: (rows: BillableProductRow[]) => {
             this.billableProducts.set(
               this.ensureSourceApplicationIncluded(rows, sourceApplication),
             );
@@ -601,7 +627,7 @@ export class InvoiceFormComponent implements OnInit {
             this.isLoading.set(false);
             this.cdr.markForCheck();
           },
-          error: (error) => {
+          error: (error: unknown) => {
             const message = extractServerErrorMessage(error);
             this.toast.error(
               message
@@ -654,7 +680,7 @@ export class InvoiceFormComponent implements OnInit {
         }
 
         this.fetchBillableProducts(customerId, invoice.id).subscribe({
-          next: (rows) => {
+          next: (rows: BillableProductRow[]) => {
             this.billableProducts.set(rows);
             this.invoiceApplications.clear();
 
@@ -678,7 +704,7 @@ export class InvoiceFormComponent implements OnInit {
             this.isLoading.set(false);
             this.cdr.markForCheck();
           },
-          error: (error) => {
+          error: (error: unknown) => {
             const message = extractServerErrorMessage(error);
             this.toast.error(
               message
@@ -701,11 +727,11 @@ export class InvoiceFormComponent implements OnInit {
 
   private loadBillableProducts(customerId: number, currentInvoiceId?: number): void {
     this.fetchBillableProducts(customerId, currentInvoiceId).subscribe({
-      next: (rows) => {
+      next: (rows: BillableProductRow[]) => {
         this.billableProducts.set(rows);
         this.cdr.markForCheck();
       },
-      error: (error) => {
+      error: (error: unknown) => {
         const message = extractServerErrorMessage(error);
         this.toast.error(
           message
@@ -718,7 +744,7 @@ export class InvoiceFormComponent implements OnInit {
 
   private fetchBillableProducts(customerId: number, currentInvoiceId?: number) {
     return this.invoicesApi
-      .invoicesGetBillableProductsRetrieve(customerId, currentInvoiceId)
+      .invoicesGetBillableProductsList(customerId, currentInvoiceId)
       .pipe(map((rows) => this.normalizeBillableRows(rows)));
   }
 

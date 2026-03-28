@@ -24,6 +24,12 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 // @ts-ignore
 import { Customer } from '../model/customer';
 // @ts-ignore
+import { CustomerRequest } from '../model/customer-request';
+// @ts-ignore
+import { CustomersBulkDeleteRequestRequest } from '../model/customers-bulk-delete-request-request';
+// @ts-ignore
+import { CustomersBulkDeleteResponse } from '../model/customers-bulk-delete-response';
+// @ts-ignore
 import { PaginatedCustomerApplicationHistoryList } from '../model/paginated-customer-application-history-list';
 // @ts-ignore
 import { PaginatedCustomerList } from '../model/paginated-customer-list';
@@ -207,13 +213,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint post /api/customers/bulk-delete/
-   * @param customer
+   * @param customersBulkDeleteRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersBulkDeleteCreate(
-    customer?: Customer,
+    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -221,9 +227,9 @@ export class CustomersService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<Customer>;
+  ): Observable<CustomersBulkDeleteResponse>;
   public customersBulkDeleteCreate(
-    customer?: Customer,
+    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -231,9 +237,9 @@ export class CustomersService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<Customer>>;
+  ): Observable<HttpResponse<CustomersBulkDeleteResponse>>;
   public customersBulkDeleteCreate(
-    customer?: Customer,
+    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -241,9 +247,9 @@ export class CustomersService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<Customer>>;
+  ): Observable<HttpEvent<CustomersBulkDeleteResponse>>;
   public customersBulkDeleteCreate(
-    customer?: Customer,
+    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -299,16 +305,20 @@ export class CustomersService extends BaseService {
 
     let localVarPath = `/api/customers/bulk-delete/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<Customer>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: customer,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<CustomersBulkDeleteResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: customersBulkDeleteRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -321,28 +331,28 @@ export class CustomersService extends BaseService {
    * @param options additional options
    */
   public customersCheckPassportCreate(
-    file: string,
+    file: Blob,
     method?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public customersCheckPassportCreate(
-    file: string,
+    file: Blob,
     method?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public customersCheckPassportCreate(
-    file: string,
+    file: Blob,
     method?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public customersCheckPassportCreate(
-    file: string,
+    file: Blob,
     method?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
@@ -384,6 +394,9 @@ export class CustomersService extends BaseService {
     let localVarFormParams: { append(param: string, value: any): any };
     let localVarUseForm = false;
     let localVarConvertFormParamsToString = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+    localVarUseForm = canConsumeForm;
     if (localVarUseForm) {
       localVarFormParams = new FormData();
     } else {
@@ -426,13 +439,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint post /api/customers/
-   * @param customer
+   * @param customerRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersCreate(
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -442,7 +455,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<Customer>;
   public customersCreate(
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -452,7 +465,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public customersCreate(
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -462,7 +475,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public customersCreate(
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -520,7 +533,7 @@ export class CustomersService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Customer>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customer,
+      body: customerRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -757,14 +770,14 @@ export class CustomersService extends BaseService {
   /**
    * @endpoint patch /api/customers/{id}/
    * @param id
-   * @param customer
+   * @param customerRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersPartialUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -775,7 +788,7 @@ export class CustomersService extends BaseService {
   ): Observable<Customer>;
   public customersPartialUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -786,7 +799,7 @@ export class CustomersService extends BaseService {
   ): Observable<HttpResponse<Customer>>;
   public customersPartialUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -797,7 +810,7 @@ export class CustomersService extends BaseService {
   ): Observable<HttpEvent<Customer>>;
   public customersPartialUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -861,7 +874,7 @@ export class CustomersService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Customer>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customer,
+      body: customerRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -1061,14 +1074,14 @@ export class CustomersService extends BaseService {
   /**
    * @endpoint post /api/customers/{id}/toggle-active/
    * @param id A unique integer value identifying this customer.
-   * @param customer
+   * @param customerRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersToggleActiveCreate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1079,7 +1092,7 @@ export class CustomersService extends BaseService {
   ): Observable<Customer>;
   public customersToggleActiveCreate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1090,7 +1103,7 @@ export class CustomersService extends BaseService {
   ): Observable<HttpResponse<Customer>>;
   public customersToggleActiveCreate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1101,7 +1114,7 @@ export class CustomersService extends BaseService {
   ): Observable<HttpEvent<Customer>>;
   public customersToggleActiveCreate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1165,7 +1178,7 @@ export class CustomersService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Customer>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customer,
+      body: customerRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -1336,14 +1349,14 @@ export class CustomersService extends BaseService {
   /**
    * @endpoint put /api/customers/{id}/
    * @param id
-   * @param customer
+   * @param customerRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1354,7 +1367,7 @@ export class CustomersService extends BaseService {
   ): Observable<Customer>;
   public customersUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1365,7 +1378,7 @@ export class CustomersService extends BaseService {
   ): Observable<HttpResponse<Customer>>;
   public customersUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1376,7 +1389,7 @@ export class CustomersService extends BaseService {
   ): Observable<HttpEvent<Customer>>;
   public customersUpdate(
     id: number,
-    customer?: Customer,
+    customerRequest?: CustomerRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1438,7 +1451,7 @@ export class CustomersService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Customer>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: customer,
+      body: customerRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

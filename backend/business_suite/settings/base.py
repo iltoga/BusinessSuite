@@ -660,6 +660,7 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "CAMELIZE_NAMES": True,
+    "COMPONENT_SPLIT_REQUEST": True,
     "COMPONENT_SPLIT_PATCH": False,
     # Preprocessing hooks help filter out endpoints that are hard to auto-discover
     # We add a hook that excludes APIView endpoints without serializer declarations
@@ -732,7 +733,14 @@ try:
 except Exception:  # pragma: no cover - optional package
     CORS_ALLOW_HEADERS = None
 else:
-    CORS_ALLOW_HEADERS = list(default_headers) + ["authorization"]
+    CORS_ALLOW_HEADERS = list(
+        {
+            *default_headers,
+            "authorization",
+            "x-request-id",
+            "idempotency-key",
+        }
+    )
 
 CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 # Expose Content-Disposition so the frontend can read filename from responses

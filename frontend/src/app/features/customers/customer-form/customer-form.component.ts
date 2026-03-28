@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule, Validators, type FormGroup } from '@angular/forms';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, tap } from 'rxjs';
 
 import { AsyncJob, type CountryCode, type Customer } from '@/core/api';
 import { CustomersService } from '@/core/services/customers.service';
@@ -65,6 +65,15 @@ interface CustomerCreateDto {
 
 interface CustomerUpdateDto extends CustomerCreateDto {
   id?: number;
+}
+
+interface CustomerListNavigationState {
+  searchQuery?: string;
+  page?: number | string;
+}
+
+interface AsyncJobResultPayload extends Record<string, unknown> {
+  errorMessage?: string;
 }
 
 /**
@@ -143,6 +152,8 @@ export class CustomerFormComponent
 
   // OCR tracking
   private pollSub: Subscription | null = null;
+  private previousUrl: string | null = null;
+  private createdCustomerId: number | null = null;
 
   // Form error labels
   override readonly formErrorLabels: Record<string, string> = {
@@ -285,25 +296,33 @@ export class CustomerFormComponent
   /**
    * Save new customer
    */
-  protected override saveCreate(dto: CustomerCreateDto): Observable<any> {
+  protected override saveCreate(dto: CustomerCreateDto): Observable<Customer> {
     const file = this.passportFile();
     const requestPayload = file ? this.buildFormData(dto, file) : dto;
-    return this.customersService.createCustomer(requestPayload);
+    return this.customersService.createCustomer(requestPayload).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap((customer) => {
+        const createdId = Number(customer?.id);
+        this.createdCustomerId = Number.isFinite(createdId) && createdId > 0 ? createdId : null;
+      }),
+    );
   }
 
   /**
    * Update existing customer
    */
-  protected override saveUpdate(dto: CustomerUpdateDto): Observable<any> {
+  protected override saveUpdate(dto: CustomerUpdateDto): Observable<Customer> {
     const file = this.passportFile();
     const requestPayload = file ? this.buildFormData(dto, file) : dto;
-    return this.customersService.updateCustomer(this.itemId!, requestPayload as any);
+    return this.customersService.updateCustomer(this.itemId!, requestPayload);
   }
 
   /**
    * Initialize component
    */
   override ngOnInit(): void {
+    this.capturePreviousUrl();
+
     // Call base ngOnInit for standard initialization
     super.ngOnInit();
 
@@ -396,7 +415,10 @@ export class CustomerFormComponent
    */
   override onCancel(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
-    const st = (history.state as any) || {};
+    const st: CustomerListNavigationState =
+      typeof history !== 'undefined' && history.state && typeof history.state === 'object'
+        ? (history.state as CustomerListNavigationState)
+        : {};
     const state: Record<string, unknown> = { focusTable: true };
     if (idParam) {
       const id = Number(idParam);
@@ -408,6 +430,24 @@ export class CustomerFormComponent
       state['page'] = Math.floor(page);
     }
     this.router.navigate(['/customers'], { state });
+  }
+
+  protected override goBack(): void {
+    if (!this.cameFromCustomersList() && this.createdCustomerId) {
+      this.navigateToCustomerDetail(this.createdCustomerId);
+      return;
+    }
+
+    this.onCancel();
+  }
+
+  protected override navigateToEdit(id: number): void {
+    if (!this.cameFromCustomersList()) {
+      this.navigateToCustomerDetail(id);
+      return;
+    }
+
+    super.navigateToEdit(id);
   }
 
   /**
@@ -542,6 +582,71 @@ export class CustomerFormComponent
       });
   }
 
+  private capturePreviousUrl(): void {
+    const nav = this.router.getCurrentNavigation();
+    const previousUrl = nav?.previousNavigation?.finalUrl?.toString() ?? null;
+    this.previousUrl = previousUrl?.startsWith('/') ? previousUrl : null;
+  }
+
+  private cameFromCustomersList(): boolean {
+    const state = this.getSourceState();
+    if (state['returnToList'] === true) {
+      return true;
+    }
+
+    if (this.previousUrl !== null) {
+      return this.isCustomersListUrl(this.previousUrl);
+    }
+
+    return state['from'] === 'customers' && !state['returnUrl'] && !state['customerId'];
+  }
+
+  private isCustomersListUrl(url: string): boolean {
+    return /^\/customers(?:[?#].*)?$/.test(url);
+  }
+
+  private getSourceState(): Record<string, unknown> {
+    const navState = this.router.getCurrentNavigation()?.extras?.state;
+    const historyState =
+      typeof history !== 'undefined' ? (history.state as Record<string, unknown>) : {};
+
+    return {
+      ...((navState as Record<string, unknown> | undefined) ?? {}),
+      ...(historyState ?? {}),
+    };
+  }
+
+  private navigateToCustomerDetail(id: number): void {
+    const sourceState = this.getSourceState();
+    const state: Record<string, unknown> = {
+      searchQuery:
+        typeof sourceState['searchQuery'] === 'string' ? sourceState['searchQuery'] : null,
+      page: this.toPositiveInteger(sourceState['page']),
+    };
+
+    const returnUrl =
+      this.previousUrl && !this.isCustomersListUrl(this.previousUrl)
+        ? this.previousUrl
+        : typeof sourceState['returnUrl'] === 'string' && sourceState['returnUrl'].startsWith('/')
+          ? sourceState['returnUrl']
+          : null;
+
+    if (returnUrl) {
+      state['returnUrl'] = returnUrl;
+    }
+
+    if (sourceState['returnState'] && typeof sourceState['returnState'] === 'object') {
+      state['returnState'] = sourceState['returnState'];
+    }
+
+    this.router.navigate(['/customers', id], { state });
+  }
+
+  private toPositiveInteger(value: unknown): number | null {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
+  }
+
   private setPassportFilePreview(file: File): void {
     this.clearPassportFilePreview();
     const preview = buildLocalFilePreview(file);
@@ -625,7 +730,7 @@ export class CustomerFormComponent
       next: (jobStatus: AsyncJob) => {
         if (jobStatus.status === 'completed') {
           // Job is complete, get the final result mapping it as OcrStatusResponse
-          const jobResult = (jobStatus.result as Record<string, any>) || {};
+          const jobResult = (jobStatus.result as AsyncJobResultPayload) || {};
           const result: OcrStatusResponse = {
             ...jobResult,
             status: 'completed',
@@ -639,8 +744,10 @@ export class CustomerFormComponent
         if (jobStatus.status === 'failed') {
           this.clearOcrAsyncTracking();
           this.ocrProcessing.set(false);
-          const jobResult = (jobStatus.result as Record<string, any>) || {};
-          this.ocrMessage.set((jobResult['errorMessage'] as string) || 'OCR failed');
+          const jobResult = (jobStatus.result as AsyncJobResultPayload) || {};
+          this.ocrMessage.set(
+            typeof jobResult.errorMessage === 'string' ? jobResult.errorMessage : 'OCR failed',
+          );
           this.ocrMessageTone.set('error');
           return;
         }
@@ -652,7 +759,7 @@ export class CustomerFormComponent
         }
         this.ocrMessageTone.set('info');
       },
-      error: (error: any) => {
+      error: (error: unknown) => {
         this.pollSub = null;
         this.ocrProcessing.set(false);
         this.ocrMessage.set(this.extractOcrError(error) || 'Realtime OCR updates failed');

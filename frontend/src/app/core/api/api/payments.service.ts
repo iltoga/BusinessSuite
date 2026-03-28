@@ -25,6 +25,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 import { PaginatedPaymentList } from '../model/paginated-payment-list';
 // @ts-ignore
 import { Payment } from '../model/payment';
+// @ts-ignore
+import { PaymentRequest } from '../model/payment-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -45,13 +47,13 @@ export class PaymentsService extends BaseService {
 
   /**
    * @endpoint post /api/payments/
-   * @param payment
+   * @param paymentRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public paymentsCreate(
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -61,7 +63,7 @@ export class PaymentsService extends BaseService {
     },
   ): Observable<Payment>;
   public paymentsCreate(
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -71,7 +73,7 @@ export class PaymentsService extends BaseService {
     },
   ): Observable<HttpResponse<Payment>>;
   public paymentsCreate(
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -81,7 +83,7 @@ export class PaymentsService extends BaseService {
     },
   ): Observable<HttpEvent<Payment>>;
   public paymentsCreate(
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -90,9 +92,9 @@ export class PaymentsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (payment === null || payment === undefined) {
+    if (paymentRequest === null || paymentRequest === undefined) {
       throw new Error(
-        'Required parameter payment was null or undefined when calling paymentsCreate.',
+        'Required parameter paymentRequest was null or undefined when calling paymentsCreate.',
       );
     }
 
@@ -145,7 +147,7 @@ export class PaymentsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Payment>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: payment,
+      body: paymentRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -356,14 +358,14 @@ export class PaymentsService extends BaseService {
   /**
    * @endpoint patch /api/payments/{id}/
    * @param id A unique integer value identifying this payment.
-   * @param payment
+   * @param paymentRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public paymentsPartialUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -374,7 +376,7 @@ export class PaymentsService extends BaseService {
   ): Observable<Payment>;
   public paymentsPartialUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -385,7 +387,7 @@ export class PaymentsService extends BaseService {
   ): Observable<HttpResponse<Payment>>;
   public paymentsPartialUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -396,7 +398,7 @@ export class PaymentsService extends BaseService {
   ): Observable<HttpEvent<Payment>>;
   public paymentsPartialUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -410,9 +412,9 @@ export class PaymentsService extends BaseService {
         'Required parameter id was null or undefined when calling paymentsPartialUpdate.',
       );
     }
-    if (payment === null || payment === undefined) {
+    if (paymentRequest === null || paymentRequest === undefined) {
       throw new Error(
-        'Required parameter payment was null or undefined when calling paymentsPartialUpdate.',
+        'Required parameter paymentRequest was null or undefined when calling paymentsPartialUpdate.',
       );
     }
 
@@ -465,7 +467,7 @@ export class PaymentsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Payment>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: payment,
+      body: paymentRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -575,14 +577,14 @@ export class PaymentsService extends BaseService {
   /**
    * @endpoint put /api/payments/{id}/
    * @param id A unique integer value identifying this payment.
-   * @param payment
+   * @param paymentRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public paymentsUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -593,7 +595,7 @@ export class PaymentsService extends BaseService {
   ): Observable<Payment>;
   public paymentsUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -604,7 +606,7 @@ export class PaymentsService extends BaseService {
   ): Observable<HttpResponse<Payment>>;
   public paymentsUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -615,7 +617,7 @@ export class PaymentsService extends BaseService {
   ): Observable<HttpEvent<Payment>>;
   public paymentsUpdate(
     id: number,
-    payment: Payment,
+    paymentRequest: PaymentRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -627,9 +629,9 @@ export class PaymentsService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling paymentsUpdate.');
     }
-    if (payment === null || payment === undefined) {
+    if (paymentRequest === null || paymentRequest === undefined) {
       throw new Error(
-        'Required parameter payment was null or undefined when calling paymentsUpdate.',
+        'Required parameter paymentRequest was null or undefined when calling paymentsUpdate.',
       );
     }
 
@@ -682,7 +684,7 @@ export class PaymentsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Payment>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: payment,
+      body: paymentRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

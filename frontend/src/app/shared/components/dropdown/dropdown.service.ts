@@ -81,6 +81,13 @@ export class ZardDropdownService {
     this.portal = new TemplatePortal(template, viewContainerRef);
     this.overlayRef.attach(this.portal);
 
+    // Force position recalculation after the DOM has settled (fixes SSR hydration offset)
+    if (isPlatformBrowser(this.platformId)) {
+      requestAnimationFrame(() => {
+        this.overlayRef?.updatePosition();
+      });
+    }
+
     // Setup keyboard navigation
     setTimeout(() => {
       this.setupKeyboardNavigation();

@@ -99,3 +99,70 @@ describe('CustomerFormComponent OCR flow', () => {
     );
   });
 });
+
+describe('CustomerFormComponent navigation after save', () => {
+  type CustomerFormHarness = any;
+
+  const createNavigationHarness = (): CustomerFormHarness => {
+    const component = Object.create(CustomerFormComponent.prototype) as CustomerFormHarness;
+
+    component.previousUrl = null;
+    component.createdCustomerId = null;
+    component.router = {
+      navigate: vi.fn(),
+      getCurrentNavigation: vi.fn().mockReturnValue(null),
+    };
+    component.config = {
+      entityType: 'customers',
+      entityLabel: 'Customer',
+    };
+
+    return component;
+  };
+
+  it('redirects updated customers to detail when opened from a non-list route', () => {
+    const component = createNavigationHarness();
+    component.previousUrl = '/utils/passport-check';
+
+    component['navigateToEdit'](42);
+
+    expect(component.router.navigate).toHaveBeenCalledWith(['/customers', 42], {
+      state: {
+        searchQuery: null,
+        page: null,
+        returnUrl: '/utils/passport-check',
+      },
+    });
+  });
+
+  it('keeps list-origin edit redirects unchanged', () => {
+    const component = createNavigationHarness();
+    component.previousUrl = '/customers';
+
+    component['navigateToEdit'](42);
+
+    expect(component.router.navigate).toHaveBeenCalledWith(['/customers/42/edit'], {
+      state: {
+        from: 'customers',
+        searchQuery: null,
+        page: null,
+      },
+    });
+  });
+
+  it('redirects created customers to detail when opened from a non-list route', () => {
+    const component = createNavigationHarness();
+    component.previousUrl = '/applications/7';
+    component.createdCustomerId = 55;
+
+    component['goBack']();
+
+    expect(component.router.navigate).toHaveBeenCalledWith(['/customers', 55], {
+      state: {
+        searchQuery: null,
+        page: null,
+        returnUrl: '/applications/7',
+      },
+    });
+  });
+});

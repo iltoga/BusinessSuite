@@ -14,7 +14,7 @@
       }
       <a
         routerLink="/customers/new"
-        [state]="{ from: 'customers', searchQuery: query(), page: page() }"
+        [state]="{ from: 'customers', returnToList: true, searchQuery: query(), page: page() }"
         [contextHelp]="'/customers/new'"
       >
         <z-button zType="default" zSize="default"> New Customer </z-button>

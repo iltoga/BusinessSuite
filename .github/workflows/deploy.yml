@@ -167,7 +167,7 @@ jobs:
             echo "✅  db is healthy."
 
             echo "🚀  Starting application containers …"
-            docker compose up -d --remove-orphans $APP_SERVICES
+            docker compose up -d $APP_SERVICES
 
             # Optionally run initial data seeding if explicitly requested via .env (INITIALIZE_DB=true)
             if [ "${INITIALIZE_DB:-false}" = "true" ]; then

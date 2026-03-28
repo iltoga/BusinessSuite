@@ -13,6 +13,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, EMPTY, finalize, map, type Observable } from 'rxjs';
 
 import { DocumentTypesService } from '@/core/api';
+import type { DocumentTypeRequest } from '@/core/api/model/document-type-request';
 import { DocumentType } from '@/core/api/model/document-type';
 import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -87,7 +88,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
   readonly confirmDeleteMessage = signal('');
   readonly showDeprecationConfirm = signal(false);
   readonly deprecationConfirmMessage = signal('');
-  readonly pendingDeprecationPayload = signal<DocumentType | null>(null);
+  readonly pendingDeprecationPayload = signal<DocumentTypeRequest | null>(null);
   readonly pendingEditId = signal<number | null>(null);
 
   // Columns configuration
@@ -362,8 +363,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
 
     this.isSaving.set(true);
     const formValue = this.documentTypeForm.getRawValue();
-    const documentTypeData: DocumentType = {
-      id: this.editingDocumentType()?.id ?? 0,
+    const documentTypeData: DocumentTypeRequest = {
       name: formValue.name!,
       description: formValue.description || '',
       validationRuleRegex: formValue.validationRuleRegex || '',
@@ -409,7 +409,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
    */
   private updateDocumentType(
     documentTypeId: number,
-    payload: DocumentType,
+    payload: DocumentTypeRequest,
     deprecateRelatedProducts: boolean,
   ): void {
     let params = new HttpParams();

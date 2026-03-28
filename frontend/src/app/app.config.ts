@@ -31,6 +31,10 @@ import { firstValueFrom, timeout } from 'rxjs';
 import { routes } from './app.routes';
 
 import { provideApi } from '@/core/api';
+import { RbacService } from '@/core/api/api/rbac.service';
+import { RbacPermissions } from '@/core/api/model/rbac-permissions';
+import { RBAC_RULES } from '@/core/tokens/rbac.token';
+import { WritableSignal } from '@angular/core';
 import { provideServiceWorker } from '@angular/service-worker';
 import { ThemeName } from './core/theme.config';
 
@@ -46,6 +50,8 @@ export type InitializeApplicationDeps = {
   userSettingsApi: UserSettingsApiService;
   titleService: Title;
   isBrowser: boolean;
+  rbacService: RbacService;
+  rbacRulesSignal: WritableSignal<RbacPermissions>;
 };
 
 /** Max time (ms) to wait for userSettingsApi.getMe() during init. */
@@ -62,6 +68,8 @@ export async function initializeApplication({
   userSettingsApi,
   titleService,
   isBrowser,
+  rbacService,
+  rbacRulesSignal,
 }: InitializeApplicationDeps): Promise<void> {
   // Initialize browser logging as early as possible
   loggerService.init();
@@ -99,15 +107,17 @@ export async function initializeApplication({
 
     if (authService.isAuthenticated()) {
       try {
-        console.debug('[AppInit] Fetching user settings…');
-        const settings = (await firstValueFrom(
-          userSettingsApi.getMe().pipe(timeout(USER_SETTINGS_TIMEOUT_MS)),
-        )) as ThemePreferencePayload;
+        console.debug('[AppInit] Fetching user settings and RBAC rules…');
+        const [settings, rbacRules] = await Promise.all([
+          firstValueFrom(userSettingsApi.getMe().pipe(timeout(USER_SETTINGS_TIMEOUT_MS))) as Promise<ThemePreferencePayload>,
+          firstValueFrom(rbacService.rbacMyPermissionsRetrieve().pipe(timeout(USER_SETTINGS_TIMEOUT_MS)))
+        ]);
         themeService.applyUserPreferences(settings, defaultTheme);
-        console.debug('[AppInit] User settings applied');
-      } catch {
+        rbacRulesSignal.set(rbacRules);
+        console.debug('[AppInit] User settings and RBAC rules applied');
+      } catch (e) {
         // Baseline theme is already applied synchronously above.
-        console.debug('[AppInit] User settings fetch failed or timed out — using defaults');
+        console.debug('[AppInit] Fetching settings or RBAC failed or timed out — using defaults', e);
       }
     }
 
@@ -174,6 +184,8 @@ export const appConfig: ApplicationConfig = {
       const platformId = inject(PLATFORM_ID);
       const userSettingsApi = inject(UserSettingsApiService);
       const titleService = inject(Title);
+      const rbacService = inject(RbacService);
+      const rbacRulesSignal = inject(RBAC_RULES);
 
       return initializeApplication({
         configService,
@@ -182,6 +194,8 @@ export const appConfig: ApplicationConfig = {
         loggerService,
         userSettingsApi,
         titleService,
+        rbacService,
+        rbacRulesSignal,
         isBrowser: isPlatformBrowser(platformId),
       });
     }),

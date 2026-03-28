@@ -323,6 +323,20 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
         return Response(self._serialize_application_detail(application), status=status.HTTP_200_OK)
 
+    @extend_schema(
+        request=inline_serializer(
+            name="CustomerApplicationsBulkDeleteRequest",
+            fields={
+                "searchQuery": serializers.CharField(required=False, allow_blank=True),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="CustomerApplicationsBulkDeleteResponse",
+                fields={"deletedCount": serializers.IntegerField()},
+            )
+        },
+    )
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
         if not is_superuser_or_admin_group(request.user):

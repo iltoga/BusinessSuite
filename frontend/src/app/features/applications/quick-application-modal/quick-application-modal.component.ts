@@ -1,4 +1,4 @@
-import { CustomerApplicationsService } from '@/core/api';
+import { CustomerApplicationsService, type DocApplicationCreateUpdateRequest } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
@@ -122,8 +122,13 @@ export class QuickApplicationModalComponent {
 
     const raw = this.form.getRawValue();
     const docDateStr = this.toApiDate(raw.docDate);
+    if (!docDateStr) {
+      this.toast.error('Application submission date is required.');
+      this.isSaving.set(false);
+      return;
+    }
 
-    const payload = {
+    const payload: DocApplicationCreateUpdateRequest = {
       customer: this.customerId()!,
       product: Number(raw.product),
       docDate: docDateStr,
@@ -135,7 +140,7 @@ export class QuickApplicationModalComponent {
     // 2. Force close only when still needed
     // 3. Emit saved event
     this.applicationsApi
-      .customerApplicationsCreate(payload as any)
+      .customerApplicationsCreate(payload)
       .pipe(
         switchMap((newApp: any) => {
           const status = String(newApp?.status ?? '').toLowerCase();
@@ -144,15 +149,8 @@ export class QuickApplicationModalComponent {
             return of({ application: newApp, forceClosed: false });
           }
 
-          // Prepare a minimal payload for force-close that matches the expected serializer
-          const forceClosePayload = {
-            ...newApp,
-            customer: newApp.customer?.id ?? newApp.customer,
-            product: newApp.product?.id ?? newApp.product,
-          };
-
           return this.applicationsApi
-            .customerApplicationsForceCloseCreate(newApp.id, forceClosePayload)
+            .customerApplicationsForceCloseCreate(newApp.id)
             .pipe(
               map((forceClosedDetail: any) => ({
                 application: forceClosedDetail ?? newApp,

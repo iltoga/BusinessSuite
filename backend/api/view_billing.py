@@ -180,7 +180,20 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
         serializer.instance = invoice
 
-    @extend_schema(responses=OpenApiTypes.OBJECT)
+    @extend_schema(
+        responses=inline_serializer(
+            name="InvoiceDeletePreviewResponse",
+            fields={
+                "invoiceNoDisplay": serializers.CharField(),
+                "customerName": serializers.CharField(),
+                "totalAmount": serializers.CharField(),
+                "statusDisplay": serializers.CharField(),
+                "invoiceApplicationsCount": serializers.IntegerField(),
+                "customerApplicationsCount": serializers.IntegerField(),
+                "paymentsCount": serializers.IntegerField(),
+            },
+        )
+    )
     @action(detail=True, methods=["get"], url_path="delete-preview")
     def delete_preview(self, request, pk=None):
         if not is_superuser_or_admin_group(request.user):
@@ -207,7 +220,25 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
         )
 
-    @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+    @extend_schema(
+        request=inline_serializer(
+            name="InvoiceForceDeleteRequest",
+            fields={
+                "forceDeleteConfirmed": serializers.BooleanField(required=False),
+                "deleteCustomerApplications": serializers.BooleanField(required=False),
+            },
+        ),
+        responses=inline_serializer(
+            name="InvoiceForceDeleteResponse",
+            fields={
+                "deleted": serializers.BooleanField(),
+                "invoiceApplicationsCount": serializers.IntegerField(),
+                "customerApplicationsCount": serializers.IntegerField(),
+                "paymentsCount": serializers.IntegerField(),
+                "deletedCustomerApplications": serializers.IntegerField(),
+            },
+        ),
+    )
     @action(detail=True, methods=["post"], url_path="force-delete")
     def force_delete(self, request, pk=None):
         if not is_superuser_or_admin_group(request.user):
@@ -232,7 +263,23 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         return Response(build_success_payload({"deleted": True, **result}, request=request))
 
-    @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+    @extend_schema(
+        request=inline_serializer(
+            name="InvoicesBulkDeleteRequest",
+            fields={
+                "searchQuery": serializers.CharField(required=False, allow_blank=True),
+                "hidePaid": serializers.BooleanField(required=False),
+                "deleteCustomerApplications": serializers.BooleanField(required=False),
+            },
+        ),
+        responses=inline_serializer(
+            name="InvoicesBulkDeleteResponse",
+            fields={
+                "deletedInvoices": serializers.IntegerField(),
+                "deletedCustomerApplications": serializers.IntegerField(),
+            },
+        ),
+    )
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
         if not is_superuser_or_admin_group(request.user):
@@ -755,7 +802,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 description="Include already linked applications for this invoice in pending groups.",
             ),
         ],
-        responses=OpenApiTypes.OBJECT,
+        responses=inline_serializer(
+            name="BillableProductRow",
+            fields={
+                "product": ProductSerializer(),
+                "pendingApplications": DocApplicationInvoiceSerializer(many=True),
+                "pendingApplicationsCount": serializers.IntegerField(),
+                "hasPendingApplications": serializers.BooleanField(),
+            },
+            many=True,
+        ),
     )
     @action(detail=False, methods=["get"], url_path="get_billable_products/(?P<customer_id>[^/.]+)")
     def get_billable_products(self, request, customer_id=None):
@@ -822,7 +878,28 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 required=True,
             ),
         ],
-        responses=OpenApiTypes.OBJECT,
+        responses=inline_serializer(
+            name="InvoiceFromApplicationPrefillResponse",
+            fields={
+                "customer": CustomerSerializer(),
+                "sourceApplication": DocApplicationInvoiceSerializer(),
+                "invoiceApplication": inline_serializer(
+                    name="InvoiceFromApplicationPrefillLine",
+                    fields={
+                        "product": serializers.IntegerField(),
+                        "customerApplication": serializers.IntegerField(),
+                        "amount": serializers.CharField(),
+                    },
+                ),
+                "locks": inline_serializer(
+                    name="InvoiceFromApplicationPrefillLocks",
+                    fields={
+                        "customer": serializers.BooleanField(),
+                        "sourceLine": serializers.BooleanField(),
+                    },
+                ),
+            },
+        ),
     )
     @action(detail=False, methods=["get"], url_path="from_application_prefill/(?P<application_id>[^/.]+)")
     def from_application_prefill(self, request, application_id=None):
@@ -906,7 +983,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 location=OpenApiParameter.QUERY,
                 required=False,
             )
-        ]
+        ],
+        responses=inline_serializer(
+            name="InvoiceProposalResponse",
+            fields={"invoiceNo": serializers.IntegerField()},
+        ),
     )
     @action(detail=False, methods=["get"], url_path="propose", url_name="propose")
     def propose_invoice(self, request):
@@ -929,7 +1010,19 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         proposed = Invoice.get_next_invoice_no_for_year(year)
         return Response(build_success_payload({"invoiceNo": proposed}, request=request))
 
-    @extend_schema(request=OpenApiTypes.OBJECT)
+    @extend_schema(
+        request=inline_serializer(
+            name="InvoiceMarkAsPaidRequest",
+            fields={
+                "paymentType": serializers.CharField(),
+                "paymentDate": serializers.DateField(required=False),
+            },
+        ),
+        responses=inline_serializer(
+            name="InvoiceMarkAsPaidResponse",
+            fields={"created": serializers.IntegerField()},
+        ),
+    )
     @action(detail=True, methods=["post"], url_path="mark-as-paid")
     def mark_as_paid(self, request, pk=None):
         invoice = self.get_object()

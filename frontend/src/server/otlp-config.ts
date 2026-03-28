@@ -15,6 +15,19 @@ export type ResolvedOtlpTracesConfig = {
 
 const DEFAULT_OTLP_TIMEOUT_MS = 10_000;
 
+const encodeBase64 = (value: string): string => {
+  const bufferCtor = (globalThis as { Buffer?: typeof Buffer }).Buffer;
+  if (bufferCtor) {
+    return bufferCtor.from(value).toString('base64');
+  }
+
+  if (typeof btoa === 'function') {
+    return btoa(value);
+  }
+
+  throw new Error('No base64 encoder available in this environment.');
+};
+
 const parseKvCsv = (rawValue: string | undefined): Record<string, string> => {
   const parsed: Record<string, string> = {};
   for (const item of (rawValue || '').split(',')) {
@@ -79,7 +92,7 @@ const buildGrafanaCloudAuthorization = (env: NodeJS.ProcessEnv): string | null =
     return null;
   }
 
-  return `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
+  return `Basic ${encodeBase64(`${username}:${password}`)}`;
 };
 
 export const resolveOtlpTracesConfig = (env: NodeJS.ProcessEnv): ResolvedOtlpTracesConfig => {

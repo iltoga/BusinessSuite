@@ -30,11 +30,19 @@ import { ProductCategoryFilterOption } from '../model/product-category-filter-op
 // @ts-ignore
 import { ProductCreateUpdate } from '../model/product-create-update';
 // @ts-ignore
+import { ProductCreateUpdateRequest } from '../model/product-create-update-request';
+// @ts-ignore
 import { ProductDetail } from '../model/product-detail';
 // @ts-ignore
 import { ProductImportStartResponse } from '../model/product-import-start-response';
 // @ts-ignore
 import { ProductPriceListPrintStartResponse } from '../model/product-price-list-print-start-response';
+// @ts-ignore
+import { ProductRequest } from '../model/product-request';
+// @ts-ignore
+import { ProductsBulkDeleteRequestRequest } from '../model/products-bulk-delete-request-request';
+// @ts-ignore
+import { ProductsBulkDeleteResponse } from '../model/products-bulk-delete-response';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -55,13 +63,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint post /api/products/bulk-delete/
-   * @param product
+   * @param productsBulkDeleteRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsBulkDeleteCreate(
-    product: Product,
+    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -69,9 +77,9 @@ export class ProductsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<Product>;
+  ): Observable<ProductsBulkDeleteResponse>;
   public productsBulkDeleteCreate(
-    product: Product,
+    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -79,9 +87,9 @@ export class ProductsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<Product>>;
+  ): Observable<HttpResponse<ProductsBulkDeleteResponse>>;
   public productsBulkDeleteCreate(
-    product: Product,
+    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -89,9 +97,9 @@ export class ProductsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<Product>>;
+  ): Observable<HttpEvent<ProductsBulkDeleteResponse>>;
   public productsBulkDeleteCreate(
-    product: Product,
+    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -100,12 +108,6 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (product === null || product === undefined) {
-      throw new Error(
-        'Required parameter product was null or undefined when calling productsBulkDeleteCreate.',
-      );
-    }
-
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -153,16 +155,20 @@ export class ProductsService extends BaseService {
 
     let localVarPath = `/api/products/bulk-delete/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<Product>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: product,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<ProductsBulkDeleteResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: productsBulkDeleteRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -413,13 +419,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint post /api/products/
-   * @param productCreateUpdate
+   * @param productCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsCreate(
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -429,7 +435,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<ProductCreateUpdate>;
   public productsCreate(
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -439,7 +445,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public productsCreate(
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -449,7 +455,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public productsCreate(
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -458,9 +464,9 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (productCreateUpdate === null || productCreateUpdate === undefined) {
+    if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter productCreateUpdate was null or undefined when calling productsCreate.',
+        'Required parameter productCreateUpdateRequest was null or undefined when calling productsCreate.',
       );
     }
 
@@ -513,7 +519,7 @@ export class ProductsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<ProductCreateUpdate>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: productCreateUpdate,
+      body: productCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -804,13 +810,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint post /api/products/export/start/
-   * @param product
+   * @param productRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsExportStartCreate(
-    product: Product,
+    productRequest: ProductRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -820,7 +826,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<Product>;
   public productsExportStartCreate(
-    product: Product,
+    productRequest: ProductRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -830,7 +836,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public productsExportStartCreate(
-    product: Product,
+    productRequest: ProductRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -840,7 +846,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public productsExportStartCreate(
-    product: Product,
+    productRequest: ProductRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -849,9 +855,9 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (product === null || product === undefined) {
+    if (productRequest === null || productRequest === undefined) {
       throw new Error(
-        'Required parameter product was null or undefined when calling productsExportStartCreate.',
+        'Required parameter productRequest was null or undefined when calling productsExportStartCreate.',
       );
     }
 
@@ -904,7 +910,7 @@ export class ProductsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Product>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: product,
+      body: productRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -1237,7 +1243,7 @@ export class ProductsService extends BaseService {
    * @param options additional options
    */
   public productsImportStartCreate(
-    file: string,
+    file: Blob,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1247,7 +1253,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<ProductImportStartResponse>;
   public productsImportStartCreate(
-    file: string,
+    file: Blob,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1257,7 +1263,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<ProductImportStartResponse>>;
   public productsImportStartCreate(
-    file: string,
+    file: Blob,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1267,7 +1273,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<ProductImportStartResponse>>;
   public productsImportStartCreate(
-    file: string,
+    file: Blob,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1312,6 +1318,9 @@ export class ProductsService extends BaseService {
     let localVarFormParams: { append(param: string, value: any): any };
     let localVarUseForm = false;
     let localVarConvertFormParamsToString = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+    localVarUseForm = canConsumeForm;
     if (localVarUseForm) {
       localVarFormParams = new FormData();
     } else {
@@ -1552,14 +1561,14 @@ export class ProductsService extends BaseService {
   /**
    * @endpoint patch /api/products/{id}/
    * @param id A unique integer value identifying this product.
-   * @param productCreateUpdate
+   * @param productCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsPartialUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1570,7 +1579,7 @@ export class ProductsService extends BaseService {
   ): Observable<ProductCreateUpdate>;
   public productsPartialUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1581,7 +1590,7 @@ export class ProductsService extends BaseService {
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public productsPartialUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1592,7 +1601,7 @@ export class ProductsService extends BaseService {
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public productsPartialUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1606,9 +1615,9 @@ export class ProductsService extends BaseService {
         'Required parameter id was null or undefined when calling productsPartialUpdate.',
       );
     }
-    if (productCreateUpdate === null || productCreateUpdate === undefined) {
+    if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter productCreateUpdate was null or undefined when calling productsPartialUpdate.',
+        'Required parameter productCreateUpdateRequest was null or undefined when calling productsPartialUpdate.',
       );
     }
 
@@ -1661,7 +1670,7 @@ export class ProductsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<ProductCreateUpdate>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: productCreateUpdate,
+      body: productCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -1951,14 +1960,14 @@ export class ProductsService extends BaseService {
   /**
    * @endpoint put /api/products/{id}/
    * @param id A unique integer value identifying this product.
-   * @param productCreateUpdate
+   * @param productCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1969,7 +1978,7 @@ export class ProductsService extends BaseService {
   ): Observable<ProductCreateUpdate>;
   public productsUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1980,7 +1989,7 @@ export class ProductsService extends BaseService {
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public productsUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1991,7 +2000,7 @@ export class ProductsService extends BaseService {
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public productsUpdate(
     id: number,
-    productCreateUpdate: ProductCreateUpdate,
+    productCreateUpdateRequest: ProductCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2003,9 +2012,9 @@ export class ProductsService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling productsUpdate.');
     }
-    if (productCreateUpdate === null || productCreateUpdate === undefined) {
+    if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
-        'Required parameter productCreateUpdate was null or undefined when calling productsUpdate.',
+        'Required parameter productCreateUpdateRequest was null or undefined when calling productsUpdate.',
       );
     }
 
@@ -2058,7 +2067,7 @@ export class ProductsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<ProductCreateUpdate>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: productCreateUpdate,
+      body: productCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

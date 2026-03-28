@@ -177,8 +177,14 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
       return;
     }
 
-    // P --> Print Preview from invoice download control
-    if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    // P (without Shift) --> Print Preview from invoice download control
+    if (
+      !event.shiftKey &&
+      event.key.toLowerCase() === 'p' &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
       const dropdown = this.downloadDropdown();
       if (!dropdown) {
         return;

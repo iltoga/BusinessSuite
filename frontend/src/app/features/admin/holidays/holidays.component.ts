@@ -13,6 +13,7 @@ import { catchError, EMPTY, finalize, map, type Observable } from 'rxjs';
 
 import { HolidaysService } from '@/core/api/api/holidays.service';
 import { Holiday } from '@/core/api/model/holiday';
+import type { HolidayRequest } from '@/core/api/model/holiday-request';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
@@ -308,12 +309,12 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
       return;
     }
 
-    const payload = {
+    const payload: HolidayRequest = {
       name: this.holidayForm.value.name!,
       date: normalizedDate,
       country: this.holidayForm.value.country!,
       description: this.holidayForm.value.description || '',
-    } as Holiday;
+    };
 
     const current = this.editingHoliday();
     const request = current

@@ -22,17 +22,29 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
-import { AdminPushNotificationSend } from '../model/admin-push-notification-send';
+import { AdminPushNotificationDispatchResult } from '../model/admin-push-notification-dispatch-result';
 // @ts-ignore
-import { AdminWhatsappTestSend } from '../model/admin-whatsapp-test-send';
+import { AdminPushNotificationSendRequest } from '../model/admin-push-notification-send-request';
 // @ts-ignore
-import { PushNotificationTest } from '../model/push-notification-test';
+import { AdminPushNotificationUser } from '../model/admin-push-notification-user';
+// @ts-ignore
+import { AdminWhatsappTestSendRequest } from '../model/admin-whatsapp-test-send-request';
+// @ts-ignore
+import { AdminWhatsappTestSendResponse } from '../model/admin-whatsapp-test-send-response';
+// @ts-ignore
+import { PushNotificationDispatchResult } from '../model/push-notification-dispatch-result';
+// @ts-ignore
+import { PushNotificationTestRequest } from '../model/push-notification-test-request';
+// @ts-ignore
+import { PushNotificationUnregisterResponse } from '../model/push-notification-unregister-response';
 // @ts-ignore
 import { WebPushSubscription } from '../model/web-push-subscription';
 // @ts-ignore
-import { WebPushSubscriptionDelete } from '../model/web-push-subscription-delete';
+import { WebPushSubscriptionDeleteRequest } from '../model/web-push-subscription-delete-request';
 // @ts-ignore
 import { WebPushSubscriptionUpsert } from '../model/web-push-subscription-upsert';
+// @ts-ignore
+import { WebPushSubscriptionUpsertRequest } from '../model/web-push-subscription-upsert-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -54,13 +66,11 @@ export class PushNotificationsService extends BaseService {
   /**
    * Server-side proxy for Firebase Cloud Messaging registration.  The browser-side Firebase SDK calls fcmregistrations.googleapis.com to exchange a Web Push subscription for an FCM token.  On some networks / Chrome configurations that endpoint is unreachable from the browser (e.g. QUIC / HTTP3 issues) even though the Django server can reach it fine via TCP.  This action forwards the registration request from the browser to the real FCM endpoint server-side so the browser never needs to reach googleapis.com directly.
    * @endpoint post /api/push-notifications/fcm-register-proxy/
-   * @param webPushSubscription
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public pushNotificationsFcmRegisterProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -70,7 +80,6 @@ export class PushNotificationsService extends BaseService {
     },
   ): Observable<WebPushSubscription>;
   public pushNotificationsFcmRegisterProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -80,7 +89,6 @@ export class PushNotificationsService extends BaseService {
     },
   ): Observable<HttpResponse<WebPushSubscription>>;
   public pushNotificationsFcmRegisterProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -90,7 +98,6 @@ export class PushNotificationsService extends BaseService {
     },
   ): Observable<HttpEvent<WebPushSubscription>>;
   public pushNotificationsFcmRegisterProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -120,18 +127,6 @@ export class PushNotificationsService extends BaseService {
     const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
 
     const localVarTransferCache: boolean = options?.transferCache ?? true;
-
-    // to determine the Content-Type header
-    const consumes: string[] = [
-      'application/json',
-      'application/x-www-form-urlencoded',
-      'multipart/form-data',
-    ];
-    const httpContentTypeSelected: string | undefined =
-      this.configuration.selectHeaderContentType(consumes);
-    if (httpContentTypeSelected !== undefined) {
-      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-    }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
     if (localVarHttpHeaderAcceptSelected) {
@@ -148,7 +143,6 @@ export class PushNotificationsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WebPushSubscription>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: webPushSubscription,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -161,13 +155,11 @@ export class PushNotificationsService extends BaseService {
   /**
    * Server-side proxy for Firebase Installations API.  Handles both FID creation (POST .../installations) and auth-token refresh (POST .../installations/{fid}/authTokens:generate) so the browser is never required to reach firebaseinstallations.googleapis.com directly.
    * @endpoint post /api/push-notifications/firebase-install-proxy/
-   * @param webPushSubscription
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public pushNotificationsFirebaseInstallProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -177,7 +169,6 @@ export class PushNotificationsService extends BaseService {
     },
   ): Observable<WebPushSubscription>;
   public pushNotificationsFirebaseInstallProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -187,7 +178,6 @@ export class PushNotificationsService extends BaseService {
     },
   ): Observable<HttpResponse<WebPushSubscription>>;
   public pushNotificationsFirebaseInstallProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -197,7 +187,6 @@ export class PushNotificationsService extends BaseService {
     },
   ): Observable<HttpEvent<WebPushSubscription>>;
   public pushNotificationsFirebaseInstallProxyCreate(
-    webPushSubscription?: WebPushSubscription,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -228,18 +217,6 @@ export class PushNotificationsService extends BaseService {
 
     const localVarTransferCache: boolean = options?.transferCache ?? true;
 
-    // to determine the Content-Type header
-    const consumes: string[] = [
-      'application/json',
-      'application/x-www-form-urlencoded',
-      'multipart/form-data',
-    ];
-    const httpContentTypeSelected: string | undefined =
-      this.configuration.selectHeaderContentType(consumes);
-    if (httpContentTypeSelected !== undefined) {
-      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
-    }
-
     let responseType_: 'text' | 'json' | 'blob' = 'json';
     if (localVarHttpHeaderAcceptSelected) {
       if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
@@ -255,7 +232,6 @@ export class PushNotificationsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<WebPushSubscription>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: webPushSubscription,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -267,13 +243,13 @@ export class PushNotificationsService extends BaseService {
 
   /**
    * @endpoint post /api/push-notifications/register/
-   * @param webPushSubscriptionUpsert
+   * @param webPushSubscriptionUpsertRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public pushNotificationsRegisterCreate(
-    webPushSubscriptionUpsert: WebPushSubscriptionUpsert,
+    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -283,7 +259,7 @@ export class PushNotificationsService extends BaseService {
     },
   ): Observable<WebPushSubscriptionUpsert>;
   public pushNotificationsRegisterCreate(
-    webPushSubscriptionUpsert: WebPushSubscriptionUpsert,
+    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -293,7 +269,7 @@ export class PushNotificationsService extends BaseService {
     },
   ): Observable<HttpResponse<WebPushSubscriptionUpsert>>;
   public pushNotificationsRegisterCreate(
-    webPushSubscriptionUpsert: WebPushSubscriptionUpsert,
+    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -303,7 +279,7 @@ export class PushNotificationsService extends BaseService {
     },
   ): Observable<HttpEvent<WebPushSubscriptionUpsert>>;
   public pushNotificationsRegisterCreate(
-    webPushSubscriptionUpsert: WebPushSubscriptionUpsert,
+    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -312,9 +288,12 @@ export class PushNotificationsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (webPushSubscriptionUpsert === null || webPushSubscriptionUpsert === undefined) {
+    if (
+      webPushSubscriptionUpsertRequest === null ||
+      webPushSubscriptionUpsertRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter webPushSubscriptionUpsert was null or undefined when calling pushNotificationsRegisterCreate.',
+        'Required parameter webPushSubscriptionUpsertRequest was null or undefined when calling pushNotificationsRegisterCreate.',
       );
     }
 
@@ -370,7 +349,7 @@ export class PushNotificationsService extends BaseService {
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: webPushSubscriptionUpsert,
+        body: webPushSubscriptionUpsertRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -383,13 +362,13 @@ export class PushNotificationsService extends BaseService {
 
   /**
    * @endpoint post /api/push-notifications/send-test/
-   * @param adminPushNotificationSend
+   * @param adminPushNotificationSendRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public pushNotificationsSendTestCreate(
-    adminPushNotificationSend: AdminPushNotificationSend,
+    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -397,9 +376,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<AdminPushNotificationSend>;
+  ): Observable<AdminPushNotificationDispatchResult>;
   public pushNotificationsSendTestCreate(
-    adminPushNotificationSend: AdminPushNotificationSend,
+    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -407,9 +386,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<AdminPushNotificationSend>>;
+  ): Observable<HttpResponse<AdminPushNotificationDispatchResult>>;
   public pushNotificationsSendTestCreate(
-    adminPushNotificationSend: AdminPushNotificationSend,
+    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -417,9 +396,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<AdminPushNotificationSend>>;
+  ): Observable<HttpEvent<AdminPushNotificationDispatchResult>>;
   public pushNotificationsSendTestCreate(
-    adminPushNotificationSend: AdminPushNotificationSend,
+    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -428,9 +407,12 @@ export class PushNotificationsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (adminPushNotificationSend === null || adminPushNotificationSend === undefined) {
+    if (
+      adminPushNotificationSendRequest === null ||
+      adminPushNotificationSendRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter adminPushNotificationSend was null or undefined when calling pushNotificationsSendTestCreate.',
+        'Required parameter adminPushNotificationSendRequest was null or undefined when calling pushNotificationsSendTestCreate.',
       );
     }
 
@@ -481,12 +463,12 @@ export class PushNotificationsService extends BaseService {
 
     let localVarPath = `/api/push-notifications/send-test/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<AdminPushNotificationSend>(
+    return this.httpClient.request<AdminPushNotificationDispatchResult>(
       'post',
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: adminPushNotificationSend,
+        body: adminPushNotificationSendRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -499,13 +481,13 @@ export class PushNotificationsService extends BaseService {
 
   /**
    * @endpoint post /api/push-notifications/send-test-whatsapp/
-   * @param adminWhatsappTestSend
+   * @param adminWhatsappTestSendRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public pushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSend?: AdminWhatsappTestSend,
+    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -513,9 +495,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<AdminWhatsappTestSend>;
+  ): Observable<AdminWhatsappTestSendResponse>;
   public pushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSend?: AdminWhatsappTestSend,
+    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -523,9 +505,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<AdminWhatsappTestSend>>;
+  ): Observable<HttpResponse<AdminWhatsappTestSendResponse>>;
   public pushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSend?: AdminWhatsappTestSend,
+    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -533,9 +515,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<AdminWhatsappTestSend>>;
+  ): Observable<HttpEvent<AdminWhatsappTestSendResponse>>;
   public pushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSend?: AdminWhatsappTestSend,
+    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -591,16 +573,20 @@ export class PushNotificationsService extends BaseService {
 
     let localVarPath = `/api/push-notifications/send-test-whatsapp/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<AdminWhatsappTestSend>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: adminWhatsappTestSend,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<AdminWhatsappTestSendResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: adminWhatsappTestSendRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -693,13 +679,13 @@ export class PushNotificationsService extends BaseService {
 
   /**
    * @endpoint post /api/push-notifications/test/
-   * @param pushNotificationTest
+   * @param pushNotificationTestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public pushNotificationsTestCreate(
-    pushNotificationTest?: PushNotificationTest,
+    pushNotificationTestRequest?: PushNotificationTestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -707,9 +693,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<PushNotificationTest>;
+  ): Observable<PushNotificationDispatchResult>;
   public pushNotificationsTestCreate(
-    pushNotificationTest?: PushNotificationTest,
+    pushNotificationTestRequest?: PushNotificationTestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -717,9 +703,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<PushNotificationTest>>;
+  ): Observable<HttpResponse<PushNotificationDispatchResult>>;
   public pushNotificationsTestCreate(
-    pushNotificationTest?: PushNotificationTest,
+    pushNotificationTestRequest?: PushNotificationTestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -727,9 +713,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<PushNotificationTest>>;
+  ): Observable<HttpEvent<PushNotificationDispatchResult>>;
   public pushNotificationsTestCreate(
-    pushNotificationTest?: PushNotificationTest,
+    pushNotificationTestRequest?: PushNotificationTestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -785,27 +771,31 @@ export class PushNotificationsService extends BaseService {
 
     let localVarPath = `/api/push-notifications/test/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<PushNotificationTest>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: pushNotificationTest,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<PushNotificationDispatchResult>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: pushNotificationTestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
    * @endpoint post /api/push-notifications/unregister/
-   * @param webPushSubscriptionDelete
+   * @param webPushSubscriptionDeleteRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public pushNotificationsUnregisterCreate(
-    webPushSubscriptionDelete: WebPushSubscriptionDelete,
+    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -813,9 +803,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<WebPushSubscriptionDelete>;
+  ): Observable<PushNotificationUnregisterResponse>;
   public pushNotificationsUnregisterCreate(
-    webPushSubscriptionDelete: WebPushSubscriptionDelete,
+    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -823,9 +813,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<WebPushSubscriptionDelete>>;
+  ): Observable<HttpResponse<PushNotificationUnregisterResponse>>;
   public pushNotificationsUnregisterCreate(
-    webPushSubscriptionDelete: WebPushSubscriptionDelete,
+    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -833,9 +823,9 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<WebPushSubscriptionDelete>>;
+  ): Observable<HttpEvent<PushNotificationUnregisterResponse>>;
   public pushNotificationsUnregisterCreate(
-    webPushSubscriptionDelete: WebPushSubscriptionDelete,
+    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -844,9 +834,12 @@ export class PushNotificationsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (webPushSubscriptionDelete === null || webPushSubscriptionDelete === undefined) {
+    if (
+      webPushSubscriptionDeleteRequest === null ||
+      webPushSubscriptionDeleteRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter webPushSubscriptionDelete was null or undefined when calling pushNotificationsUnregisterCreate.',
+        'Required parameter webPushSubscriptionDeleteRequest was null or undefined when calling pushNotificationsUnregisterCreate.',
       );
     }
 
@@ -897,12 +890,12 @@ export class PushNotificationsService extends BaseService {
 
     let localVarPath = `/api/push-notifications/unregister/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<WebPushSubscriptionDelete>(
+    return this.httpClient.request<PushNotificationUnregisterResponse>(
       'post',
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: webPushSubscriptionDelete,
+        body: webPushSubscriptionDeleteRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -919,7 +912,7 @@ export class PushNotificationsService extends BaseService {
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
-  public pushNotificationsUsersRetrieve(
+  public pushNotificationsUsersList(
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -927,8 +920,8 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<WebPushSubscription>;
-  public pushNotificationsUsersRetrieve(
+  ): Observable<Array<AdminPushNotificationUser>>;
+  public pushNotificationsUsersList(
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -936,8 +929,8 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<WebPushSubscription>>;
-  public pushNotificationsUsersRetrieve(
+  ): Observable<HttpResponse<Array<AdminPushNotificationUser>>>;
+  public pushNotificationsUsersList(
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -945,8 +938,8 @@ export class PushNotificationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<WebPushSubscription>>;
-  public pushNotificationsUsersRetrieve(
+  ): Observable<HttpEvent<Array<AdminPushNotificationUser>>>;
+  public pushNotificationsUsersList(
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -990,14 +983,18 @@ export class PushNotificationsService extends BaseService {
 
     let localVarPath = `/api/push-notifications/users/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<WebPushSubscription>('get', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      responseType: <any>responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.httpClient.request<Array<AdminPushNotificationUser>>(
+      'get',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 }

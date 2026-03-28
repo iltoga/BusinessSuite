@@ -3,7 +3,7 @@ import { FormBuilder } from '@angular/forms';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 
-import { type ProductCreateUpdate, type ProductDetail } from '@/core/api';
+import { type ProductCreateUpdateRequest, type ProductDetail } from '@/core/api';
 
 import { ProductFormComponent } from './product-form.component';
 
@@ -15,6 +15,8 @@ describe('ProductFormComponent', () => {
 
     component.fb = new FormBuilder();
     component.configService = { settings: { baseCurrency: 'IDR' } };
+    component.authService = { isAdminOrManager: () => false };
+    component.isAdminOrManager = component.authService.isAdminOrManager;
     component.config = { entityType: 'products', entityLabel: 'Product' };
     component.router = {
       navigate: vi.fn(),
@@ -96,9 +98,25 @@ describe('ProductFormComponent', () => {
     expect(component.product()).toBe(item);
   });
 
+  it('zeros hidden base price data for non-admin users', () => {
+    const component = createHarness();
+
+    component.form.patchValue({ basePrice: 1450, retailPrice: 2200 });
+    component.patchForm({
+      id: 3,
+      name: 'KITAS',
+      code: 'KITAS-1',
+      basePrice: '1450.00',
+      retailPrice: '2200.00',
+    } as ProductDetail);
+
+    expect(component.form.get('basePrice')?.value).toBe(0);
+    expect(component.updateDto().basePrice).toBe('0');
+  });
+
   it('uses PATCH for product updates', () => {
     const component = createHarness();
-    const dto = { name: 'KITAS' } as ProductCreateUpdate;
+    const dto = { name: 'KITAS' } as ProductCreateUpdateRequest;
 
     component.saveUpdate(dto).subscribe();
 
@@ -150,7 +168,7 @@ describe('ProductFormComponent', () => {
     } as unknown as ProductDetail;
     component.productsApi.productsRetrieve.mockReturnValue(of(refreshedItem));
 
-    component.saveUpdate({ name: 'KITAS' } as ProductCreateUpdate).subscribe();
+    component.saveUpdate({ name: 'KITAS' } as ProductCreateUpdateRequest).subscribe();
 
     expect(component.tasksArray.length).toBe(2);
     expect(component.tasksArray.at(1).get('id')?.value).toBe(11);

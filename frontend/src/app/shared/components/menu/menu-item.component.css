@@ -18,6 +18,12 @@
     color 140ms ease;
 }
 
+.menu-entry-active {
+  background-color: color-mix(in oklab, var(--accent) 80%, transparent);
+  color: var(--foreground);
+  font-weight: 600;
+}
+
 button.menu-entry:disabled {
   opacity: 0.6;
   cursor: not-allowed;

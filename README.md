@@ -40,6 +40,7 @@ BusinessSuite is built for agencies that process visa/stay-permit applications a
 - Invoice generation (sync/async) and payment reconciliation
 - Reports, admin tools, backups/restore utilities, feature flags (waffle)
 - Hybrid caching (cacheops + per-user namespace) with optional browser caching
+- **Dynamic Role-Based Access Control (RBAC)**: Fine-grained menu visibility and field-level permissions (redaction/masking) controlled directly via the Django Admin UI.
 
 ---
 
@@ -102,6 +103,8 @@ More detail: `docs/architecture.md`.
 
 - Angular calls DRF endpoints using a generated OpenAPI client.
 - JWT (`Authorization: Bearer ...`) is attached by an interceptor; refresh happens on 401.
+- **RBAC Matrix Sync**: Upon authentication, the frontend fetches a fully evaluated permission matrix (`menus`, `fields`) specific to the user's groups and roles, caching it heavily via Angular Signals.
+- Backend DRF ViewSets automatically sanitize responses via `RbacFieldFilterMixin` (scrubbing restricted fields), and the Angular UI natively auto-masks these fields in lists and forms without destroying layouts.
 - Writes happen in Django services/models; external IO is queued to Dramatiq.
 - Workers run task actors with retries + tracing; long jobs persist progress to DB.
 - Caching layers: IndexedDB (frontend) → per-user namespace (backend) → cacheops → Postgres.

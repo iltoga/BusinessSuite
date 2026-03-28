@@ -23,6 +23,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
 import { GoogleCalendarEvent } from '../model/google-calendar-event';
+// @ts-ignore
+import { GoogleCalendarEventRequest } from '../model/google-calendar-event-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -44,13 +46,13 @@ export class CalendarService extends BaseService {
   /**
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint post /api/calendar/
-   * @param googleCalendarEvent
+   * @param googleCalendarEventRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarCreate(
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -60,7 +62,7 @@ export class CalendarService extends BaseService {
     },
   ): Observable<GoogleCalendarEvent>;
   public calendarCreate(
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -70,7 +72,7 @@ export class CalendarService extends BaseService {
     },
   ): Observable<HttpResponse<GoogleCalendarEvent>>;
   public calendarCreate(
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -80,7 +82,7 @@ export class CalendarService extends BaseService {
     },
   ): Observable<HttpEvent<GoogleCalendarEvent>>;
   public calendarCreate(
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -89,9 +91,9 @@ export class CalendarService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (googleCalendarEvent === null || googleCalendarEvent === undefined) {
+    if (googleCalendarEventRequest === null || googleCalendarEventRequest === undefined) {
       throw new Error(
-        'Required parameter googleCalendarEvent was null or undefined when calling calendarCreate.',
+        'Required parameter googleCalendarEventRequest was null or undefined when calling calendarCreate.',
       );
     }
 
@@ -144,7 +146,7 @@ export class CalendarService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<GoogleCalendarEvent>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: googleCalendarEvent,
+      body: googleCalendarEventRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -333,14 +335,14 @@ export class CalendarService extends BaseService {
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint patch /api/calendar/{id}/
    * @param id
-   * @param googleCalendarEvent
+   * @param googleCalendarEventRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarPartialUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -351,7 +353,7 @@ export class CalendarService extends BaseService {
   ): Observable<GoogleCalendarEvent>;
   public calendarPartialUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -362,7 +364,7 @@ export class CalendarService extends BaseService {
   ): Observable<HttpResponse<GoogleCalendarEvent>>;
   public calendarPartialUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -373,7 +375,7 @@ export class CalendarService extends BaseService {
   ): Observable<HttpEvent<GoogleCalendarEvent>>;
   public calendarPartialUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -387,9 +389,9 @@ export class CalendarService extends BaseService {
         'Required parameter id was null or undefined when calling calendarPartialUpdate.',
       );
     }
-    if (googleCalendarEvent === null || googleCalendarEvent === undefined) {
+    if (googleCalendarEventRequest === null || googleCalendarEventRequest === undefined) {
       throw new Error(
-        'Required parameter googleCalendarEvent was null or undefined when calling calendarPartialUpdate.',
+        'Required parameter googleCalendarEventRequest was null or undefined when calling calendarPartialUpdate.',
       );
     }
 
@@ -442,7 +444,7 @@ export class CalendarService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<GoogleCalendarEvent>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: googleCalendarEvent,
+      body: googleCalendarEventRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -554,14 +556,14 @@ export class CalendarService extends BaseService {
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint put /api/calendar/{id}/
    * @param id
-   * @param googleCalendarEvent
+   * @param googleCalendarEventRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -572,7 +574,7 @@ export class CalendarService extends BaseService {
   ): Observable<GoogleCalendarEvent>;
   public calendarUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -583,7 +585,7 @@ export class CalendarService extends BaseService {
   ): Observable<HttpResponse<GoogleCalendarEvent>>;
   public calendarUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -594,7 +596,7 @@ export class CalendarService extends BaseService {
   ): Observable<HttpEvent<GoogleCalendarEvent>>;
   public calendarUpdate(
     id: string,
-    googleCalendarEvent: GoogleCalendarEvent,
+    googleCalendarEventRequest: GoogleCalendarEventRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -606,9 +608,9 @@ export class CalendarService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling calendarUpdate.');
     }
-    if (googleCalendarEvent === null || googleCalendarEvent === undefined) {
+    if (googleCalendarEventRequest === null || googleCalendarEventRequest === undefined) {
       throw new Error(
-        'Required parameter googleCalendarEvent was null or undefined when calling calendarUpdate.',
+        'Required parameter googleCalendarEventRequest was null or undefined when calling calendarUpdate.',
       );
     }
 
@@ -661,7 +663,7 @@ export class CalendarService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<GoogleCalendarEvent>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: googleCalendarEvent,
+      body: googleCalendarEventRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

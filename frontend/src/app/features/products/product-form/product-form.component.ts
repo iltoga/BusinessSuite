@@ -14,9 +14,10 @@ import {
   DocumentTypesService,
   ProductsService,
   type DocumentType,
-  type ProductCreateUpdate,
+  type ProductCreateUpdateRequest,
   type ProductDetail,
 } from '@/core/api';
+import { AuthService } from '@/core/services/auth.service';
 import { ConfigService } from '@/core/services/config.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -37,6 +38,7 @@ type ProductNavigationState = {
   page: number | null;
   focusId: number | null;
   returnToList: boolean;
+  returnToDetail: boolean;
 };
 
 /**
@@ -67,15 +69,17 @@ type ProductNavigationState = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProductFormComponent
-  extends BaseFormComponent<ProductDetail, ProductCreateUpdate, ProductCreateUpdate>
+  extends BaseFormComponent<ProductDetail, ProductCreateUpdateRequest, ProductCreateUpdateRequest>
   implements OnInit
 {
   private readonly productsApi = inject(ProductsService);
   private readonly documentTypesApi = inject(DocumentTypesService);
   private readonly configService = inject(ConfigService);
+  private readonly authService = inject(AuthService);
 
   // Product-specific state
   readonly documentTypes = signal<DocumentType[]>([]);
+  readonly isAdminOrManager = this.authService.isAdminOrManager;
 
   readonly requiredOptions = computed<SortableOption[]>(() =>
     this.documentTypes()
@@ -153,7 +157,8 @@ export class ProductFormComponent
     this.config = {
       entityType: 'products',
       entityLabel: 'Product',
-    } as BaseFormConfig<ProductDetail, ProductCreateUpdate, ProductCreateUpdate>;
+      rbacModel: 'product',
+    } as BaseFormConfig<ProductDetail, ProductCreateUpdateRequest, ProductCreateUpdateRequest>;
   }
 
   /**
@@ -200,21 +205,21 @@ export class ProductFormComponent
   /**
    * Create DTO from form value
    */
-  protected override createDto(): ProductCreateUpdate {
+  protected override createDto(): ProductCreateUpdateRequest {
     return this.buildPayload();
   }
 
   /**
    * Update DTO from form value
    */
-  protected override updateDto(): ProductCreateUpdate {
+  protected override updateDto(): ProductCreateUpdateRequest {
     return this.buildPayload();
   }
 
   /**
    * Save new product
    */
-  protected override saveCreate(dto: ProductCreateUpdate): Observable<any> {
+  protected override saveCreate(dto: ProductCreateUpdateRequest): Observable<any> {
     return this.productsApi.productsCreate(dto).pipe(
       tap((item) => {
         const createdId = this.parsePositiveInteger(item?.id);
@@ -228,7 +233,7 @@ export class ProductFormComponent
   /**
    * Update existing product
    */
-  protected override saveUpdate(dto: ProductCreateUpdate): Observable<any> {
+  protected override saveUpdate(dto: ProductCreateUpdateRequest): Observable<any> {
     return this.productsApi.productsPartialUpdate(this.itemId!, dto).pipe(
       switchMap(() => this.productsApi.productsRetrieve(this.itemId!)),
       tap((item) => {
@@ -287,6 +292,11 @@ export class ProductFormComponent
       return;
     }
 
+    if (this.getNavigationState().returnToDetail) {
+      this.navigateToDetail(id);
+      return;
+    }
+
     super.navigateToEdit(id);
   }
 
@@ -296,14 +306,18 @@ export class ProductFormComponent
 
   protected override patchForm(item: ProductDetail): void {
     this.product.set(item);
+    const canViewBasePrice = this.isAdminOrManager();
 
     this.form.patchValue(
       {
         name: item.name ?? '',
         code: item.code ?? '',
         description: item.description ?? '',
-        basePrice:
-          item.basePrice !== null && item.basePrice !== undefined ? Number(item.basePrice) : 0,
+        basePrice: canViewBasePrice
+          ? item.basePrice !== null && item.basePrice !== undefined
+            ? Number(item.basePrice)
+            : 0
+          : 0,
         retailPrice:
           item.retailPrice !== null && item.retailPrice !== undefined
             ? Number(item.retailPrice)
@@ -447,15 +461,15 @@ export class ProductFormComponent
 
   // Private methods
 
-  private buildPayload(): ProductCreateUpdate {
+  private buildPayload(): ProductCreateUpdateRequest {
     const rawValue = this.form.getRawValue();
+    const basePrice = this.isAdminOrManager() ? rawValue.basePrice : 0;
     return {
-      id: this.product()?.id ?? 0,
       name: rawValue.name ?? '',
       code: rawValue.code ?? '',
       description: rawValue.description ?? '',
-      productType: rawValue.productType as ProductCreateUpdate.ProductTypeEnum,
-      basePrice: rawValue.basePrice !== null ? String(rawValue.basePrice) : null,
+      productType: rawValue.productType as ProductCreateUpdateRequest.ProductTypeEnum,
+      basePrice: basePrice !== null ? String(basePrice) : null,
       retailPrice: rawValue.retailPrice !== null ? String(rawValue.retailPrice) : undefined,
       currency:
         String(rawValue.currency ?? '')
@@ -571,6 +585,7 @@ export class ProductFormComponent
       page: this.parsePositiveInteger(mergedState['page']),
       focusId: this.parsePositiveInteger(mergedState['focusId']),
       returnToList: mergedState['returnToList'] === true,
+      returnToDetail: mergedState['returnToDetail'] === true,
     };
   }
 

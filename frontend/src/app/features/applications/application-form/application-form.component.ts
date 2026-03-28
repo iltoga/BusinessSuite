@@ -4,7 +4,7 @@ import { CustomersService } from '@/core/api/api/customers.service';
 import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { ProductsService } from '@/core/api/api/products.service';
 import type { Customer } from '@/core/api/model/customer';
-import type { DocApplicationCreateUpdate } from '@/core/api/model/doc-application-create-update';
+import type { DocApplicationCreateUpdateRequest } from '@/core/api/model/doc-application-create-update-request';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { FormNavigationFacadeService } from '@/features/shared/services/form-navigation-facade.service';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -90,6 +90,7 @@ interface ApplicationFormNavigationState {
   returnUrl?: string;
   customerId?: number;
   page?: number;
+  returnToList?: boolean;
   awaitPassportImport?: boolean;
 }
 
@@ -650,10 +651,16 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       returnUrl: sourceState.returnUrl,
       customerId: sourceState.customerId,
     };
+    const shouldReturnToList = sourceState.returnToList === true;
     const sourcePage = Number(sourceState.page);
     if (Number.isFinite(sourcePage) && sourcePage > 0) {
       detailState['page'] = Math.floor(sourcePage);
     }
+    const focusState: Record<string, unknown> = {
+      focusTable: true,
+      searchQuery: sourceState.searchQuery ?? null,
+      page: Number.isFinite(sourcePage) && sourcePage > 0 ? Math.floor(sourcePage) : undefined,
+    };
 
     const docDateStr = this.toApiDate(this.form.value.docDate);
     if (!docDateStr) {
@@ -665,7 +672,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     if (this.isEditMode() && this.applicationId()) {
       // Update mode
       const dueDateStr = this.toApiDate(this.form.value.dueDate);
-      const payload: Omit<DocApplicationCreateUpdate, 'id'> = {
+      const payload: DocApplicationCreateUpdateRequest = {
         customer: Number(this.form.getRawValue().customer),
         product: Number(this.form.value.product),
         docDate: docDateStr,
@@ -681,13 +688,19 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       this.customerApplicationsService
         .customerApplicationsPartialUpdate(
           this.applicationId()!,
-          payload as unknown as DocApplicationCreateUpdate,
+          payload,
         )
         .subscribe({
           next: (application) => {
             this.toast.success('Application updated');
             const id = application?.id ?? this.applicationId();
-            this.router.navigate(['/applications', id], { state: detailState });
+            if (shouldReturnToList) {
+              this.router.navigate(['/applications'], {
+                state: { ...focusState, focusId: id ?? undefined },
+              });
+            } else {
+              this.router.navigate(['/applications', id], { state: detailState });
+            }
             this.isSubmitting.set(false);
           },
           error: (error) => {
@@ -703,7 +716,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     } else {
       // Create mode
       const dueDateStr = this.toApiDate(this.form.value.dueDate);
-      const payload: Omit<DocApplicationCreateUpdate, 'id'> = {
+      const payload: DocApplicationCreateUpdateRequest = {
         customer: Number(this.form.getRawValue().customer),
         product: Number(this.form.value.product),
         docDate: docDateStr,
@@ -717,25 +730,22 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         documentTypes: this.form.value.documents as Array<Record<string, unknown>>,
       };
 
-      this.customerApplicationsService
-        .customerApplicationsCreate(payload as unknown as DocApplicationCreateUpdate)
-        .subscribe({
+      this.customerApplicationsService.customerApplicationsCreate(payload).subscribe({
           next: (application) => {
             this.toast.success('Application created');
             const id = application?.id;
             if (id) {
-              detailState['awaitPassportImport'] = this.shouldAwaitPassportImport(application);
-              this.router.navigate(['/applications', id], { state: detailState });
+              if (shouldReturnToList) {
+                this.router.navigate(['/applications'], {
+                  state: { ...focusState, focusId: id },
+                });
+              } else {
+                detailState['awaitPassportImport'] = this.shouldAwaitPassportImport(application);
+                this.router.navigate(['/applications', id], { state: detailState });
+              }
             } else {
               this.router.navigate(['/applications'], {
-                state: {
-                  focusTable: true,
-                  searchQuery: sourceState.searchQuery ?? null,
-                  page:
-                    Number.isFinite(sourcePage) && sourcePage > 0
-                      ? Math.floor(sourcePage)
-                      : undefined,
-                },
+                state: focusState,
               });
             }
             this.isSubmitting.set(false);

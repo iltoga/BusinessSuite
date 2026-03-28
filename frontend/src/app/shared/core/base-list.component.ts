@@ -364,6 +364,7 @@ export abstract class BaseListComponent<T> implements OnInit {
     this.router.navigate([this.getNewRoute()], {
       state: {
         from: this.config.entityType,
+        returnToList: true,
         searchQuery: this.query(),
         page: this.page(),
         filters: this.columnFilters(),
@@ -379,6 +380,7 @@ export abstract class BaseListComponent<T> implements OnInit {
     this.router.navigate([this.getEditRoute(id)], {
       state: {
         from: this.config.entityType,
+        returnToList: true,
         focusId: id,
         searchQuery: this.query(),
         page: this.page(),

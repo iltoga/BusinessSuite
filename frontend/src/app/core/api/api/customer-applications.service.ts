@@ -22,11 +22,19 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
+import { CustomerApplicationsBulkDeleteRequestRequest } from '../model/customer-applications-bulk-delete-request-request';
+// @ts-ignore
+import { CustomerApplicationsBulkDeleteResponse } from '../model/customer-applications-bulk-delete-response';
+// @ts-ignore
 import { DocApplicationCreateUpdate } from '../model/doc-application-create-update';
+// @ts-ignore
+import { DocApplicationCreateUpdateRequest } from '../model/doc-application-create-update-request';
 // @ts-ignore
 import { DocApplicationDetail } from '../model/doc-application-detail';
 // @ts-ignore
 import { DocApplicationSerializerWithRelations } from '../model/doc-application-serializer-with-relations';
+// @ts-ignore
+import { DocApplicationSerializerWithRelationsRequest } from '../model/doc-application-serializer-with-relations-request';
 // @ts-ignore
 import { DocWorkflow } from '../model/doc-workflow';
 // @ts-ignore
@@ -53,14 +61,14 @@ export class CustomerApplicationsService extends BaseService {
    * Complete current workflow synchronously and queue calendar sync in Dramatiq.
    * @endpoint post /api/customer-applications/{id}/advance-workflow/
    * @param id A unique integer value identifying this doc application.
-   * @param docApplicationSerializerWithRelations
+   * @param docApplicationSerializerWithRelationsRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customerApplicationsAdvanceWorkflowCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -71,7 +79,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<DocApplicationSerializerWithRelations>;
   public customerApplicationsAdvanceWorkflowCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -82,7 +90,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<HttpResponse<DocApplicationSerializerWithRelations>>;
   public customerApplicationsAdvanceWorkflowCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -93,7 +101,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<HttpEvent<DocApplicationSerializerWithRelations>>;
   public customerApplicationsAdvanceWorkflowCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -108,11 +116,11 @@ export class CustomerApplicationsService extends BaseService {
       );
     }
     if (
-      docApplicationSerializerWithRelations === null ||
-      docApplicationSerializerWithRelations === undefined
+      docApplicationSerializerWithRelationsRequest === null ||
+      docApplicationSerializerWithRelationsRequest === undefined
     ) {
       throw new Error(
-        'Required parameter docApplicationSerializerWithRelations was null or undefined when calling customerApplicationsAdvanceWorkflowCreate.',
+        'Required parameter docApplicationSerializerWithRelationsRequest was null or undefined when calling customerApplicationsAdvanceWorkflowCreate.',
       );
     }
 
@@ -168,7 +176,7 @@ export class CustomerApplicationsService extends BaseService {
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: docApplicationSerializerWithRelations,
+        body: docApplicationSerializerWithRelationsRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -181,13 +189,13 @@ export class CustomerApplicationsService extends BaseService {
 
   /**
    * @endpoint post /api/customer-applications/bulk-delete/
-   * @param docApplicationSerializerWithRelations
+   * @param customerApplicationsBulkDeleteRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customerApplicationsBulkDeleteCreate(
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -195,9 +203,9 @@ export class CustomerApplicationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<DocApplicationSerializerWithRelations>;
+  ): Observable<CustomerApplicationsBulkDeleteResponse>;
   public customerApplicationsBulkDeleteCreate(
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -205,9 +213,9 @@ export class CustomerApplicationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<DocApplicationSerializerWithRelations>>;
+  ): Observable<HttpResponse<CustomerApplicationsBulkDeleteResponse>>;
   public customerApplicationsBulkDeleteCreate(
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -215,9 +223,9 @@ export class CustomerApplicationsService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<DocApplicationSerializerWithRelations>>;
+  ): Observable<HttpEvent<CustomerApplicationsBulkDeleteResponse>>;
   public customerApplicationsBulkDeleteCreate(
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -226,15 +234,6 @@ export class CustomerApplicationsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (
-      docApplicationSerializerWithRelations === null ||
-      docApplicationSerializerWithRelations === undefined
-    ) {
-      throw new Error(
-        'Required parameter docApplicationSerializerWithRelations was null or undefined when calling customerApplicationsBulkDeleteCreate.',
-      );
-    }
-
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -282,12 +281,12 @@ export class CustomerApplicationsService extends BaseService {
 
     let localVarPath = `/api/customer-applications/bulk-delete/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<DocApplicationSerializerWithRelations>(
+    return this.httpClient.request<CustomerApplicationsBulkDeleteResponse>(
       'post',
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: docApplicationSerializerWithRelations,
+        body: customerApplicationsBulkDeleteRequestRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -301,13 +300,13 @@ export class CustomerApplicationsService extends BaseService {
   /**
    * Create application synchronously and queue calendar sync in Dramatiq.
    * @endpoint post /api/customer-applications/
-   * @param docApplicationCreateUpdate
+   * @param docApplicationCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customerApplicationsCreate(
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -317,7 +316,7 @@ export class CustomerApplicationsService extends BaseService {
     },
   ): Observable<DocApplicationDetail>;
   public customerApplicationsCreate(
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -327,7 +326,7 @@ export class CustomerApplicationsService extends BaseService {
     },
   ): Observable<HttpResponse<DocApplicationDetail>>;
   public customerApplicationsCreate(
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -337,7 +336,7 @@ export class CustomerApplicationsService extends BaseService {
     },
   ): Observable<HttpEvent<DocApplicationDetail>>;
   public customerApplicationsCreate(
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -346,9 +345,12 @@ export class CustomerApplicationsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (docApplicationCreateUpdate === null || docApplicationCreateUpdate === undefined) {
+    if (
+      docApplicationCreateUpdateRequest === null ||
+      docApplicationCreateUpdateRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter docApplicationCreateUpdate was null or undefined when calling customerApplicationsCreate.',
+        'Required parameter docApplicationCreateUpdateRequest was null or undefined when calling customerApplicationsCreate.',
       );
     }
 
@@ -401,7 +403,7 @@ export class CustomerApplicationsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<DocApplicationDetail>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: docApplicationCreateUpdate,
+      body: docApplicationCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -774,14 +776,14 @@ export class CustomerApplicationsService extends BaseService {
   /**
    * @endpoint patch /api/customer-applications/{id}/
    * @param id A unique integer value identifying this doc application.
-   * @param docApplicationCreateUpdate
+   * @param docApplicationCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customerApplicationsPartialUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -792,7 +794,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<DocApplicationCreateUpdate>;
   public customerApplicationsPartialUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -803,7 +805,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<HttpResponse<DocApplicationCreateUpdate>>;
   public customerApplicationsPartialUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -814,7 +816,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<HttpEvent<DocApplicationCreateUpdate>>;
   public customerApplicationsPartialUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -828,9 +830,12 @@ export class CustomerApplicationsService extends BaseService {
         'Required parameter id was null or undefined when calling customerApplicationsPartialUpdate.',
       );
     }
-    if (docApplicationCreateUpdate === null || docApplicationCreateUpdate === undefined) {
+    if (
+      docApplicationCreateUpdateRequest === null ||
+      docApplicationCreateUpdateRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter docApplicationCreateUpdate was null or undefined when calling customerApplicationsPartialUpdate.',
+        'Required parameter docApplicationCreateUpdateRequest was null or undefined when calling customerApplicationsPartialUpdate.',
       );
     }
 
@@ -886,7 +891,7 @@ export class CustomerApplicationsService extends BaseService {
       `${basePath}${localVarPath}`,
       {
         context: localVarHttpContext,
-        body: docApplicationCreateUpdate,
+        body: docApplicationCreateUpdateRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -901,14 +906,14 @@ export class CustomerApplicationsService extends BaseService {
    * Re-open a completed application.
    * @endpoint post /api/customer-applications/{id}/reopen/
    * @param id A unique integer value identifying this doc application.
-   * @param docApplicationSerializerWithRelations
+   * @param docApplicationSerializerWithRelationsRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customerApplicationsReopenCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -919,7 +924,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<{ [key: string]: any }>;
   public customerApplicationsReopenCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -930,7 +935,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public customerApplicationsReopenCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -941,7 +946,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public customerApplicationsReopenCreate(
     id: number,
-    docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations,
+    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -956,11 +961,11 @@ export class CustomerApplicationsService extends BaseService {
       );
     }
     if (
-      docApplicationSerializerWithRelations === null ||
-      docApplicationSerializerWithRelations === undefined
+      docApplicationSerializerWithRelationsRequest === null ||
+      docApplicationSerializerWithRelationsRequest === undefined
     ) {
       throw new Error(
-        'Required parameter docApplicationSerializerWithRelations was null or undefined when calling customerApplicationsReopenCreate.',
+        'Required parameter docApplicationSerializerWithRelationsRequest was null or undefined when calling customerApplicationsReopenCreate.',
       );
     }
 
@@ -1013,7 +1018,7 @@ export class CustomerApplicationsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: docApplicationSerializerWithRelations,
+      body: docApplicationSerializerWithRelationsRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -1126,14 +1131,14 @@ export class CustomerApplicationsService extends BaseService {
    * Update application synchronously and queue calendar sync in Dramatiq.
    * @endpoint put /api/customer-applications/{id}/
    * @param id A unique integer value identifying this doc application.
-   * @param docApplicationCreateUpdate
+   * @param docApplicationCreateUpdateRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customerApplicationsUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1144,7 +1149,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<DocApplicationDetail>;
   public customerApplicationsUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1155,7 +1160,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<HttpResponse<DocApplicationDetail>>;
   public customerApplicationsUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1166,7 +1171,7 @@ export class CustomerApplicationsService extends BaseService {
   ): Observable<HttpEvent<DocApplicationDetail>>;
   public customerApplicationsUpdate(
     id: number,
-    docApplicationCreateUpdate: DocApplicationCreateUpdate,
+    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1180,9 +1185,12 @@ export class CustomerApplicationsService extends BaseService {
         'Required parameter id was null or undefined when calling customerApplicationsUpdate.',
       );
     }
-    if (docApplicationCreateUpdate === null || docApplicationCreateUpdate === undefined) {
+    if (
+      docApplicationCreateUpdateRequest === null ||
+      docApplicationCreateUpdateRequest === undefined
+    ) {
       throw new Error(
-        'Required parameter docApplicationCreateUpdate was null or undefined when calling customerApplicationsUpdate.',
+        'Required parameter docApplicationCreateUpdateRequest was null or undefined when calling customerApplicationsUpdate.',
       );
     }
 
@@ -1235,7 +1243,7 @@ export class CustomerApplicationsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<DocApplicationDetail>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: docApplicationCreateUpdate,
+      body: docApplicationCreateUpdateRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

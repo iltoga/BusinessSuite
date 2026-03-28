@@ -49,7 +49,7 @@ const createAuthService = (
 
 describe('AuthService logout', () => {
   let service: AuthService;
-  let httpClientMock: { post: ReturnType<typeof vi.fn> };
+  let httpClientMock: { post: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn> };
   let routerMock: { navigate: ReturnType<typeof vi.fn> };
   let configServiceMock: { config: () => { MOCK_AUTH_ENABLED: boolean } };
   let desktopBridgeMock: { publishAuthToken: ReturnType<typeof vi.fn> };
@@ -66,6 +66,7 @@ describe('AuthService logout', () => {
 
     httpClientMock = {
       post: vi.fn(() => of(null)),
+      request: vi.fn(() => of({ menus: {}, fields: {} })),
     };
     routerMock = { navigate: vi.fn() };
     configServiceMock = {
@@ -169,7 +170,7 @@ describe('AuthService logout', () => {
 
 describe('AuthService auth flow', () => {
   let service: AuthService;
-  let httpClientMock: { post: ReturnType<typeof vi.fn> };
+  let httpClientMock: { post: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn> };
   let routerMock: { navigate: ReturnType<typeof vi.fn> };
   let configServiceMock: { config: () => { MOCK_AUTH_ENABLED: boolean } };
   let desktopBridgeMock: { publishAuthToken: ReturnType<typeof vi.fn> };
@@ -185,6 +186,7 @@ describe('AuthService auth flow', () => {
 
     httpClientMock = {
       post: vi.fn(),
+      request: vi.fn(() => of({ menus: {}, fields: {} })),
     };
     routerMock = { navigate: vi.fn() };
     configServiceMock = {

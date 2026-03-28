@@ -114,27 +114,30 @@
               />
               <p class="text-xs text-muted-foreground">Use 2-3 letters (e.g. IDR, USD, EUR).</p>
             </div>
-            <div class="md:col-span-3 space-y-2">
-              <label class="text-sm font-medium inline-flex items-center gap-1"
-                >Base price
-                <z-icon
-                  zType="info"
-                  class="h-3.5 w-3.5 text-muted-foreground"
-                  [zTooltip]="fieldTooltips['basePrice']"
-              /></label>
-              <input
-                z-input
-                formControlName="basePrice"
-                type="number"
-                min="0"
-                [zStatus]="
-                  (form.get('basePrice')?.invalid && form.get('basePrice')?.touched) ||
-                  form.errors?.['retailPriceBelowBase']
-                    ? 'error'
-                    : undefined
-                "
-              />
-            </div>
+            @if (isAdminOrManager()) {
+              <div class="md:col-span-3 space-y-2">
+                <label class="text-sm font-medium inline-flex items-center gap-1"
+                  >Base price
+                  <z-icon
+                    zType="info"
+                    class="h-3.5 w-3.5 text-muted-foreground"
+                    [zTooltip]="fieldTooltips['basePrice']"
+                /></label>
+                <input
+                  z-input
+                  type="number"
+                  formControlName="basePrice"
+                  placeholder="0"
+                  min="0"
+                  [zStatus]="
+                    (form.get('basePrice')?.invalid && form.get('basePrice')?.touched) ||
+                    form.errors?.['retailPriceBelowBase']
+                      ? 'error'
+                      : undefined
+                  "
+                />
+              </div>
+            }
             <div class="md:col-span-3 space-y-2">
               <label class="text-sm font-medium inline-flex items-center gap-1"
                 >Retail price
@@ -274,7 +277,9 @@
               /></label>
               <div>
                 <z-checkbox formControlName="deprecated">
-                  <span class="text-sm text-muted-foreground">Mark as deprecated (hide from new applications)</span>
+                  <span class="text-sm text-muted-foreground"
+                    >Mark as deprecated (hide from new applications)</span
+                  >
                 </z-checkbox>
               </div>
             </div>

@@ -13,6 +13,7 @@ import { Observable } from 'rxjs';
 
 import { AiModelsService } from '@/core/api/api/ai-models.service';
 import { AiModel } from '@/core/api/model/ai-model';
+import { AiModelRequest } from '@/core/api/model/ai-model-request';
 import type { AiModelPricingDisplay } from '@/core/api/model/ai-model-pricing-display';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
@@ -52,7 +53,7 @@ interface OpenRouterModelResult {
 }
 
 interface AiModelDto {
-  provider: AiModel['provider'];
+  provider: AiModelRequest['provider'];
   modelId: string;
   name: string;
   description: string;
@@ -103,7 +104,7 @@ interface ModelOption extends ZardComboboxOption {
   styleUrls: ['./ai-model-form.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiModelDto> {
+export class AiModelFormComponent extends BaseFormComponent<any, AiModelRequest, AiModelRequest> {
   private readonly aiModelsApi = inject(AiModelsService);
 
   // AI Model-specific state
@@ -150,7 +151,7 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
     this.config = {
       entityType: 'admin/ai-models',
       entityLabel: 'AI Model',
-    } as BaseFormConfig<any, AiModelDto, AiModelDto>;
+    } as BaseFormConfig<any, AiModelRequest, AiModelRequest>;
 
     this.destroyRef.onDestroy(() => {
       if (this.searchTimer && this.isBrowser) {
@@ -193,10 +194,11 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
   /**
    * Create DTO from form value - converts display prices (per 1M tokens) back to per-token for API
    */
-  protected override createDto(): AiModelDto {
+  protected override createDto(): AiModelRequest {
     const formValue = this.form.getRawValue();
     return {
-      provider: (formValue.provider as AiModel['provider']) ?? AiModel.ProviderEnum.Openrouter,
+      provider:
+        (formValue.provider as AiModelRequest['provider']) ?? AiModelRequest.ProviderEnum.Openrouter,
       modelId: formValue.model_id ?? '',
       name: formValue.name ?? '',
       description: formValue.description ?? '',
@@ -226,10 +228,11 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
   /**
    * Update DTO from form value - converts display prices (per 1M tokens) back to per-token for API
    */
-  protected override updateDto(): AiModelDto {
+  protected override updateDto(): AiModelRequest {
     const formValue = this.form.getRawValue();
     return {
-      provider: (formValue.provider as AiModel['provider']) ?? AiModel.ProviderEnum.Openrouter,
+      provider:
+        (formValue.provider as AiModelRequest['provider']) ?? AiModelRequest.ProviderEnum.Openrouter,
       modelId: formValue.model_id ?? '',
       name: formValue.name ?? '',
       description: formValue.description ?? '',
@@ -325,15 +328,15 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
   /**
    * Save new AI model
    */
-  protected override saveCreate(dto: AiModelDto): Observable<any> {
-    return this.aiModelsApi.aiModelsCreate(dto as AiModel);
+  protected override saveCreate(dto: AiModelRequest): Observable<any> {
+    return this.aiModelsApi.aiModelsCreate(dto);
   }
 
   /**
    * Update existing AI model
    */
-  protected override saveUpdate(dto: AiModelDto): Observable<any> {
-    return this.aiModelsApi.aiModelsUpdate(this.itemId!, dto as AiModel);
+  protected override saveUpdate(dto: AiModelRequest): Observable<any> {
+    return this.aiModelsApi.aiModelsUpdate(this.itemId!, dto);
   }
 
   /**
@@ -461,7 +464,7 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
     this.saveError.set(null);
     this.isSaving.set(true);
 
-    const payload = (this.itemId ? this.updateDto() : this.createDto()) as AiModel;
+    const payload = this.itemId ? this.updateDto() : this.createDto();
     const id = this.itemId;
     const req = id
       ? this.aiModelsApi.aiModelsUpdate(id, payload)

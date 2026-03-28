@@ -1,5 +1,9 @@
 import {
+  type AdminPushNotificationUser,
+  type AdminPushNotificationSendRequest,
+  type AdminWhatsappTestSendRequest,
   PushNotificationsService as PushNotificationsApiService,
+  type WorkflowNotification,
   WorkflowNotificationsService,
 } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
@@ -65,7 +69,7 @@ export class WorkflowNotificationsComponent {
   private reconnectAttempt = 0;
   private readonly reconnectBaseDelayMs = 2000;
   private readonly reconnectMaxDelayMs = 30000;
-  readonly notifications = signal<any[]>([]);
+  readonly notifications = signal<WorkflowNotification[]>([]);
   readonly lastUpdatedAt = signal<Date | null>(null);
   readonly loading = signal(false);
   readonly liveConnected = signal(false);
@@ -83,7 +87,7 @@ export class WorkflowNotificationsComponent {
   readonly sendingPush = signal(false);
   readonly sendingWhatsapp = signal(false);
   readonly resendingIds = signal<number[]>([]);
-  readonly users = signal<any[]>([]);
+  readonly users = signal<AdminPushNotificationUser[]>([]);
   readonly userOptions = signal<ZardComboboxOption[]>([]);
   dialogRef: any = null;
 
@@ -123,9 +127,9 @@ export class WorkflowNotificationsComponent {
         switchMap((showError) => {
           this.loading.set(true);
           return this.workflowNotificationsApi
-            .workflowNotificationsList(undefined, undefined, 'body' as any)
+            .workflowNotificationsList()
             .pipe(
-              map((res: any) => res?.results ?? res ?? []),
+              map((res) => res ?? []),
               catchError((error) => {
                 if (showError) {
                   const message = error?.error?.error || 'Failed to load notifications';
@@ -217,9 +221,7 @@ export class WorkflowNotificationsComponent {
     }
 
     this.setResending(id, true);
-    this.workflowNotificationsApi
-      .workflowNotificationsResendCreate(id, {} as any, 'body' as any)
-      .subscribe({
+    this.workflowNotificationsApi.workflowNotificationsResendCreate(id).subscribe({
         next: (response: any) => {
           this.setResending(id, false);
           const status = String(response?.status || 'updated');
@@ -242,16 +244,14 @@ export class WorkflowNotificationsComponent {
   }
 
   cancel(id: number): void {
-    this.workflowNotificationsApi
-      .workflowNotificationsCancelCreate(id, {} as any, 'body' as any)
-      .subscribe({
+    this.workflowNotificationsApi.workflowNotificationsCancelCreate(id).subscribe({
         next: () => this.load(false),
         error: () => this.toast.error('Failed to cancel notification'),
       });
   }
 
   remove(id: number): void {
-    this.workflowNotificationsApi.workflowNotificationsDestroy(id, 'body' as any).subscribe({
+    this.workflowNotificationsApi.workflowNotificationsDestroy(id).subscribe({
       next: () => this.load(false),
       error: () => this.toast.error('Failed to delete notification'),
     });
@@ -299,23 +299,18 @@ export class WorkflowNotificationsComponent {
   }
 
   private loadUsersForPushDialog(): void {
-    this.pushNotificationsApi.pushNotificationsUsersRetrieve('body' as any).subscribe({
-      next: (res) => {
+    this.pushNotificationsApi.pushNotificationsUsersList().subscribe({
+      next: (res: AdminPushNotificationUser[]) => {
         const list = Array.isArray(res) ? res : [];
-        const normalized = list.map((user) => {
-          const activeCount = Number(
-            user.active_push_subscriptions ?? user.activePushSubscriptions ?? 0,
-          );
-          return {
-            ...user,
-            activePushSubscriptions: activeCount,
-          };
-        });
+        const normalized = list.map((user) => ({
+          ...user,
+          activePushSubscriptions: Number(user.activePushSubscriptions ?? 0),
+        }));
         this.users.set(normalized);
         this.userOptions.set(
           normalized.map((user) => ({
             value: String(user.id),
-            label: `${user.full_name || user.fullName || user.username} (${user.email || user.username}) - ${user.activePushSubscriptions} active device${user.activePushSubscriptions === 1 ? '' : 's'}`,
+            label: `${user.fullName || user.username} (${user.email || user.username}) - ${user.activePushSubscriptions} active device${user.activePushSubscriptions === 1 ? '' : 's'}`,
           })),
         );
       },
@@ -366,8 +361,8 @@ export class WorkflowNotificationsComponent {
       return;
     }
 
-    const payload = {
-      user_id: selectedUserId,
+    const payload: AdminPushNotificationSendRequest = {
+      userId: selectedUserId,
       title: raw.title?.trim() || 'Revis Bali CRM Notification',
       body: raw.body?.trim() || 'Push notification test completed.',
       link: raw.link?.trim() || '/',
@@ -376,7 +371,7 @@ export class WorkflowNotificationsComponent {
 
     this.sendingPush.set(true);
     this.pushNotificationsApi
-      .pushNotificationsSendTestCreate(payload as any, 'body' as any)
+      .pushNotificationsSendTestCreate(payload)
       .subscribe({
         next: (response: any) => {
           this.sendingPush.set(false);
@@ -408,7 +403,7 @@ export class WorkflowNotificationsComponent {
     }
 
     const raw = this.whatsappTestForm.getRawValue();
-    const payload = {
+    const payload: AdminWhatsappTestSendRequest = {
       to: raw.to?.trim() || '',
       subject: raw.subject?.trim() || 'Revis Bali CRM WhatsApp Test',
       body: raw.body?.trim() || 'WhatsApp test message from Revis Bali CRM.',
@@ -416,7 +411,7 @@ export class WorkflowNotificationsComponent {
 
     this.sendingWhatsapp.set(true);
     this.pushNotificationsApi
-      .pushNotificationsSendTestWhatsappCreate(payload as any, 'body' as any)
+      .pushNotificationsSendTestWhatsappCreate(payload)
       .subscribe({
         next: (response: any) => {
           this.sendingWhatsapp.set(false);

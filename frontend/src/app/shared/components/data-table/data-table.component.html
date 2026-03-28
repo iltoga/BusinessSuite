@@ -8,16 +8,16 @@
 >
   <cdk-virtual-scroll-viewport itemSize="50" class="data-table-scroll h-[calc(100vh-280px)] w-full">
     <table z-table class="w-full relative">
-      @if (columns().some(c => c.width)) {
+      @if (visibleColumns().some(c => c.width)) {
         <colgroup>
-          @for (column of columns(); track column.key) {
+          @for (column of visibleColumns(); track column.key) {
             <col [style.width]="column.width || ''" />
           }
         </colgroup>
       }
       <thead z-table-header class="sticky top-0 z-10 bg-background shadow-sm border-b">
         <tr z-table-row>
-          @for (column of columns(); track column.key) {
+          @for (column of visibleColumns(); track column.key) {
             <th z-table-head [class]="'col-' + (column.sortKey ?? column.key)">
               <div class="flex items-center gap-2" [class.justify-end]="column.key === 'actions'">
                 <button
@@ -151,7 +151,7 @@
         @if (isLoading()) {
           @for (i of [].constructor(skeletonRows()); track $index) {
             <tr z-table-row>
-              @for (column of columns(); track column.key) {
+              @for (column of visibleColumns(); track column.key) {
                 <td z-table-cell [attr.data-column-label]="column.header">
                   <z-skeleton class="h-8 w-full" />
                 </td>
@@ -162,7 +162,7 @@
           <tr z-table-row>
             <td
               z-table-cell
-              [attr.colspan]="columns().length"
+              [attr.colspan]="visibleColumns().length"
               class="text-center text-foreground/70"
             >
               No results
@@ -182,7 +182,7 @@
           (click)="selectRow(row, $event)"
           (keydown)="handleRowKeydown($event, row); handleRowNavigationKeydown($event)"
         >
-          @for (column of columns(); track column.key) {
+          @for (column of visibleColumns(); track column.key) {
             <td
               z-table-cell
               [attr.data-column-label]="column.header"

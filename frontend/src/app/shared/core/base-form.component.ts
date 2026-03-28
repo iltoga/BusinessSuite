@@ -8,9 +8,10 @@ import {
   PLATFORM_ID,
   signal,
   type OnInit,
+  type AfterViewChecked,
   type WritableSignal,
 } from '@angular/core';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder, FormGroup, FormControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   catchError,
@@ -27,6 +28,7 @@ import {
 
 import { GlobalToastService } from '@/core/services/toast.service';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
+import { RBAC_RULES } from '@/core/tokens/rbac.token';
 
 /**
  * Configuration for form component behavior
@@ -47,6 +49,8 @@ export interface BaseFormConfig<T, CreateDto, UpdateDto> {
     loadError?: string;
     saveError?: string;
   };
+  /** Optional model name for dynamic RBAC field-level evaluation (e.g. 'product') */
+  rbacModel?: string;
 }
 
 /**
@@ -112,7 +116,7 @@ export interface BaseFormConfig<T, CreateDto, UpdateDto> {
   template: '',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnInit {
+export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnInit, AfterViewChecked {
   private static readonly SAVE_TIMEOUT_MS = 30_000;
 
   protected readonly fb = inject(FormBuilder);
@@ -122,6 +126,7 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
   protected readonly platformId = inject(PLATFORM_ID);
   protected readonly destroyRef = inject(DestroyRef);
   protected readonly isBrowser = isPlatformBrowser(this.platformId);
+  protected readonly rbacRulesSignal = inject(RBAC_RULES);
 
   // State signals
   readonly isLoading: WritableSignal<boolean> = signal(false);
@@ -134,6 +139,9 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
 
   // Item ID from route
   protected itemId: number | null = null;
+  
+  // Track disabled controls to permanently mask them on view updates
+  protected restrictedControls = new Set<string>();
 
   // Error labels for form error display
   readonly formErrorLabels: Record<string, string> = {};
@@ -248,15 +256,20 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
   /**
    * Get navigation state from window.history
    */
-  protected getNavigationState(): { searchQuery: string | null; page: number | null } {
+  protected getNavigationState(): {
+    searchQuery: string | null;
+    page: number | null;
+    returnToList: boolean;
+  } {
     if (!this.isBrowser) {
-      return { searchQuery: null, page: null };
+      return { searchQuery: null, page: null, returnToList: false };
     }
 
     const state = window.history.state || {};
     return {
       searchQuery: state.searchQuery ?? null,
       page: state.page ? Number(state.page) : null,
+      returnToList: state.returnToList === true,
     };
   }
 
@@ -308,9 +321,16 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
 
     this.isSaving.set(true);
 
+    let rawDto = this.isEditMode()
+      ? this.updateDto()
+      : this.createDto();
+      
+    // Strip restricted RBAC fields before transacting them
+    rawDto = this.sanitizePayload(rawDto);
+
     const save$ = this.isEditMode()
-      ? this.saveUpdate(this.updateDto())
-      : this.saveCreate(this.createDto());
+      ? this.saveUpdate(rawDto as UpdateDto)
+      : this.saveCreate(rawDto as CreateDto);
 
     save$
       .pipe(
@@ -329,7 +349,11 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
         switchMap((id) => {
           // Navigate after successful save
           if (id) {
-            this.navigateToEdit(id);
+            if (this.getNavigationState().returnToList) {
+              this.goBack();
+            } else {
+              this.navigateToEdit(id);
+            }
           } else {
             this.goBack();
           }
@@ -365,10 +389,19 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
   }
 
   /**
-   * Patch form with loaded item data
+   * Patch form with loaded item data.
+   * Skips RBAC-restricted fields so their masked state is never overwritten.
    */
   protected patchForm(item: T): void {
-    this.form.patchValue(item as any, { emitEvent: false });
+    if (this.restrictedControls.size > 0) {
+      const safeItem = { ...(item as any) };
+      this.restrictedControls.forEach((name) => {
+        delete safeItem[name];
+      });
+      this.form.patchValue(safeItem, { emitEvent: false });
+    } else {
+      this.form.patchValue(item as any, { emitEvent: false });
+    }
   }
 
   /**
@@ -385,6 +418,9 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
   ngOnInit(): void {
     // Initialize form
     this.form = this.buildForm();
+
+    // Apply DB RBAC rules if explicitly defined
+    this.applyRbacRules();
 
     // Check if we're in edit mode
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -430,5 +466,137 @@ export abstract class BaseFormComponent<T, CreateDto, UpdateDto> implements OnIn
         finalize(() => this.isLoading.set(false)),
       )
       .subscribe();
+  }
+
+  /**
+   * Applies RBAC restrictions to the constructed form.
+   * If a field has can_write=false or can_read=false, the form control is disabled.
+   */
+  private applyRbacRules(): void {
+    if (!this.config.rbacModel) return;
+
+    const rules = this.rbacRulesSignal();
+    const modelRules = rules.fields;
+    if (!modelRules) return;
+
+    Object.keys(this.form.controls).forEach(controlName => {
+      const rbacKey = `${this.config.rbacModel}.${controlName}`;
+      // Also check snake_case mapping for backend field names (e.g. basePrice -> base_price)
+      const snakeCaseControlName = controlName.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      const rbacKeySnake = `${this.config.rbacModel}.${snakeCaseControlName}`;
+      
+      const rule = modelRules[rbacKey] || modelRules[rbacKeySnake];
+      
+      if (rule) {
+        const canWrite = rule.canWrite ?? rule['can_write' as keyof typeof rule] ?? true;
+        const canRead = rule.canRead ?? rule['can_read' as keyof typeof rule] ?? true;
+
+        if (canWrite === false || canRead === false) {
+          const control = this.form.get(controlName);
+          if (control) {
+            if (canRead === false) {
+              // Recreate the control as explicitly nullable to override nonNullable constructs (so it defaults to empty/null instead of e.g. 0)
+              const newControl = new FormControl({ value: null, disabled: true });
+              this.form.setControl(controlName, newControl as any, { emitEvent: false });
+              this.restrictedControls.add(controlName);
+            } else {
+              control.disable({ emitEvent: false });
+            }
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Enforces visual masking on DOM elements for RBAC-restricted fields.
+   * Replaces value with '***', converts number inputs to text, disables the element,
+   * and marks it with a data attribute so work is only done once per element.
+   */
+  ngAfterViewChecked(): void {
+    if (!this.isBrowser || this.restrictedControls.size === 0) return;
+
+    this.restrictedControls.forEach((controlName) => {
+      const nodes = document.querySelectorAll(`[formControlName="${controlName}"]`);
+      nodes.forEach((node) => {
+        const el = node as HTMLElement;
+        // Skip if already masked
+        if (el.dataset['rbacMasked'] === '1') return;
+
+        if (el instanceof HTMLInputElement) {
+          el.type = 'text';
+          el.value = '***';
+          el.placeholder = '***';
+          el.disabled = true;
+          el.readOnly = true;
+          el.style.opacity = '0.6';
+        } else if (el instanceof HTMLTextAreaElement) {
+          el.value = '***';
+          el.placeholder = '***';
+          el.disabled = true;
+          el.readOnly = true;
+          el.style.opacity = '0.6';
+        } else if (el instanceof HTMLSelectElement) {
+          // For selects, disable and clear value
+          el.disabled = true;
+          el.style.opacity = '0.6';
+        }
+
+        el.dataset['rbacMasked'] = '1';
+      });
+    });
+  }
+
+  /**
+   * Cleans the payload by permanently stripping out fields that the user lacks permissions for.
+   */
+  protected sanitizePayload(payload: any): any {
+    if (!this.config.rbacModel || !payload) return payload;
+
+    const rules = this.rbacRulesSignal();
+    const modelRules = rules.fields;
+    if (!modelRules) return payload;
+
+    const sanitized = { ...payload };
+
+    Object.keys(this.form.controls).forEach((controlName) => {
+      const rbacKey = `${this.config.rbacModel}.${controlName}`;
+      const snakeCaseControlName = controlName.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      const rbacKeySnake = `${this.config.rbacModel}.${snakeCaseControlName}`;
+      
+      const rule = modelRules[rbacKey] || modelRules[rbacKeySnake];
+      
+      if (rule) {
+        const canWrite = rule.canWrite ?? rule['can_write' as keyof typeof rule] ?? true;
+        const canRead = rule.canRead ?? rule['can_read' as keyof typeof rule] ?? true;
+
+        if (canWrite === false || canRead === false) {
+          delete sanitized[controlName];
+          delete sanitized[snakeCaseControlName];
+        }
+      }
+    });
+
+    return sanitized;
+  }
+
+  isFieldReadable(fieldName: string): boolean {
+    if (!this.config.rbacModel) return true;
+    
+    const rules = this.rbacRulesSignal();
+    const modelRules = rules.fields;
+    if (!modelRules) return true;
+
+    const rbacKey = `${this.config.rbacModel}.${fieldName}`;
+    const snakeCaseFieldName = fieldName.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+    const rbacKeySnake = `${this.config.rbacModel}.${snakeCaseFieldName}`;
+    
+    const rule = modelRules[rbacKey] || modelRules[rbacKeySnake];
+    if (rule) {
+        const canRead = rule.canRead ?? rule['can_read' as keyof typeof rule] ?? true;
+        return canRead;
+    }
+    
+    return true;
   }
 }

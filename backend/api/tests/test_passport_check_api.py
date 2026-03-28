@@ -46,3 +46,21 @@ class PassportCheckApiTests(TestCase):
         self.assertEqual(called_job_id, "job-123")
         self.assertEqual(called_path, "tmp/passport_checks/passport.jpg")
         self.assertEqual(called_method, "hybrid")
+
+    def test_check_passport_cors_preflight_allows_request_metadata_headers(self):
+        response = self.client.options(
+            "/api/customers/check-passport/",
+            HTTP_ORIGIN="http://localhost:4200",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST",
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS="x-request-id,idempotency-key,content-type",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "http://localhost:4200")
+        allowed_headers = {
+            header.strip().lower()
+            for header in (response.headers.get("Access-Control-Allow-Headers") or "").split(",")
+            if header.strip()
+        }
+        self.assertIn("x-request-id", allowed_headers)
+        self.assertIn("idempotency-key", allowed_headers)

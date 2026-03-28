@@ -9,6 +9,9 @@
  */
 import { TaskNested } from './task-nested';
 
+/**
+ * Generic mixin to dynamically redact fields from the serializer if the requesting user lacks read/write access based on RBAC rules.
+ */
 export interface ProductCreateUpdate {
   readonly id: number;
   name: string;
@@ -19,23 +22,10 @@ export interface ProductCreateUpdate {
   retailPrice?: string;
   currency?: string;
   productCategory?: number | null;
-  /**
-   * * `visa` - Visa * `other` - Other
-   */
-  productType?: ProductCreateUpdate.ProductTypeEnum | null;
   validity?: number | null;
   documentsMinValidity?: number | null;
   applicationWindowDays?: number | null;
   validationPrompt?: string;
   deprecated?: boolean;
   tasks?: Array<TaskNested>;
-  requiredDocumentIds?: Array<number>;
-  optionalDocumentIds?: Array<number>;
-}
-export namespace ProductCreateUpdate {
-  export const ProductTypeEnum = {
-    Visa: 'visa',
-    Other: 'other',
-  } as const;
-  export type ProductTypeEnum = (typeof ProductTypeEnum)[keyof typeof ProductTypeEnum];
 }

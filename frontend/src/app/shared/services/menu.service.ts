@@ -1,17 +1,21 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { AuthService } from '@/core/services/auth.service';
+import { RBAC_RULES } from '@/core/tokens/rbac.token';
 import { MenuItem } from '@/shared/models/menu-item.model';
 
 @Injectable({ providedIn: 'root' })
 export class MenuService {
   private readonly authService = inject(AuthService);
+  private readonly rbacRulesSignal = inject(RBAC_RULES);
   private readonly collapsed = signal<Record<string, boolean>>({
     utilities: true,
     reports: true,
     letters: true,
     admin: true,
   });
+
+  // We don't need this helper anymore if we build it into isVisible directly
 
   readonly menuItems = computed<MenuItem[]>(() => [
     { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard', route: '/dashboard' },
@@ -23,7 +27,6 @@ export class MenuService {
       label: 'Products',
       icon: 'folder',
       route: '/products',
-      visible: () => this.authService.isAdminOrManager(),
     },
     {
       id: 'letters',
@@ -84,56 +87,47 @@ export class MenuService {
       label: 'Admin',
       icon: 'settings',
       collapsible: true,
-      visible: () => this.canAccessAdminSection(),
       accessibility: { ariaHasPopup: 'menu' },
       children: [
         {
           id: 'admin-document-types',
           label: 'Document Types',
           route: '/admin/document-types',
-          visible: () => this.canAccessStaffAdminItems(),
         },
         {
           id: 'admin-ai-models',
           label: 'AI Models',
           route: '/admin/ai-models',
-          visible: () => this.authService.isSuperuser(),
         },
         {
           id: 'admin-holidays',
           label: 'National Holidays',
           route: '/admin/holidays',
-          visible: () => this.canAccessStaffAdminItems(),
         },
         {
           id: 'admin-notifications',
           label: 'Notifications Center',
           route: '/admin/workflow-notifications',
-          visible: () => this.canAccessStaffAdminItems(),
         },
         {
           id: 'admin-backups',
           label: 'Backups',
           route: '/admin/backups',
-          visible: () => this.canAccessBackups(),
         },
         {
           id: 'admin-server',
           label: 'Server Management',
           route: '/admin/server',
-          visible: () => this.authService.isInAdminGroup(),
         },
         {
           id: 'admin-application-settings',
           label: 'Application Settings',
           route: '/admin/application-settings',
-          visible: () => this.authService.isInAdminGroup(),
         },
         {
           id: 'admin-system-costs',
           label: 'System Costs',
           route: '/admin/systemcosts',
-          visible: () => this.authService.isInAdminGroup(),
         },
       ],
     },
@@ -176,6 +170,13 @@ export class MenuService {
   }
 
   isVisible(item: MenuItem): boolean {
+    const rules = this.rbacRulesSignal();
+    const rbacVisible = rules.menus?.[item.id];
+    
+    if (rbacVisible !== undefined) {
+      return rbacVisible;
+    }
+
     return this.resolveCondition(item.visible, true);
   }
 
@@ -203,21 +204,5 @@ export class MenuService {
     return this.menuItems()
       .filter((item) => item.collapsible)
       .map((item) => item.id);
-  }
-
-  private canAccessStaffAdminItems(): boolean {
-    return this.authService.isStaff() || this.authService.isInAdminGroup();
-  }
-
-  private canAccessBackups(): boolean {
-    return this.authService.isSuperuser() || this.authService.isInAdminGroup();
-  }
-
-  private canAccessAdminSection(): boolean {
-    return (
-      this.canAccessStaffAdminItems() ||
-      this.canAccessBackups() ||
-      this.authService.isInAdminGroup()
-    );
   }
 }

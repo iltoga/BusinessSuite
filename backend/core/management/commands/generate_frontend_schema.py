@@ -15,9 +15,21 @@ class Command(BaseCommand):
             default="schema.yaml",
             help="Output path for the generated schema (relative to project base dir)",
         )
+        parser.add_argument(
+            "--validate",
+            action="store_true",
+            help="Validate the generated schema using drf-spectacular checks",
+        )
+        parser.add_argument(
+            "--fail-on-warn",
+            action="store_true",
+            help="Treat schema generation warnings as errors",
+        )
 
     def handle(self, *args, **options):
         output = options["output"]
+        validate = bool(options["validate"])
+        fail_on_warn = bool(options["fail_on_warn"])
         # settings.BASE_DIR points to the Django project dir (business_suite/). We want
         # the repository root (one level up) so default frontend/ resolves to the repo-level frontend folder.
         project_root = Path(settings.BASE_DIR).parent
@@ -31,7 +43,12 @@ class Command(BaseCommand):
         self.stdout.write(f"Generating OpenAPI schema to {out_path} ...")
         try:
             # Use drf-spectacular management command to write the schema (YAML inferred from file extension)
-            call_command("spectacular", "--file", str(out_path))
+            spectacular_args = ["--file", str(out_path)]
+            if validate:
+                spectacular_args.append("--validate")
+            if fail_on_warn:
+                spectacular_args.append("--fail-on-warn")
+            call_command("spectacular", *spectacular_args)
         except Exception as exc:
             raise CommandError(f"Error while running spectacular: {exc}")
 

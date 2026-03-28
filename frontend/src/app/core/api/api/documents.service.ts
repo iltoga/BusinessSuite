@@ -23,10 +23,6 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
 import { Document } from '../model/document';
-// @ts-ignore
-import { DocumentAction } from '../model/document-action';
-// @ts-ignore
-import { DocumentType } from '../model/document-type';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -50,23 +46,6 @@ export class DocumentsService extends BaseService {
    * @endpoint post /api/documents/{id}/actions/{actionName}/
    * @param actionName
    * @param id A unique integer value identifying this document.
-   * @param id2
-   * @param docApplication
-   * @param docType
-   * @param file Return file URL while allowing detail responses to skip expensive storage URL generation.  When &#x60;prefer_cached_file_url&#x60; is enabled in serializer context, use the persisted &#x60;file_link&#x60; first and only fall back to storage-generated URLs if needed.
-   * @param fileLink
-   * @param thumbnailLink
-   * @param completed
-   * @param aiValidation
-   * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
-   * @param aiValidationResult
-   * @param createdAt
-   * @param updatedAt
-   * @param createdBy
-   * @param updatedBy
-   * @param updatedByUsername Return the username of the user who last updated the document.
-   * @param createdByUsername Return the username of the user who created the document.
-   * @param extraActions
    * @param docTypeId
    * @param docNumber
    * @param expirationDate
@@ -82,23 +61,6 @@ export class DocumentsService extends BaseService {
   public documentsActionsCreate(
     actionName: string,
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -118,23 +80,6 @@ export class DocumentsService extends BaseService {
   public documentsActionsCreate(
     actionName: string,
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -154,23 +99,6 @@ export class DocumentsService extends BaseService {
   public documentsActionsCreate(
     actionName: string,
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -190,23 +118,6 @@ export class DocumentsService extends BaseService {
   public documentsActionsCreate(
     actionName: string,
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -231,91 +142,6 @@ export class DocumentsService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (id2 === null || id2 === undefined) {
-      throw new Error(
-        'Required parameter id2 was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (docApplication === null || docApplication === undefined) {
-      throw new Error(
-        'Required parameter docApplication was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (docType === null || docType === undefined) {
-      throw new Error(
-        'Required parameter docType was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (file === null || file === undefined) {
-      throw new Error(
-        'Required parameter file was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (fileLink === null || fileLink === undefined) {
-      throw new Error(
-        'Required parameter fileLink was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (thumbnailLink === null || thumbnailLink === undefined) {
-      throw new Error(
-        'Required parameter thumbnailLink was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (completed === null || completed === undefined) {
-      throw new Error(
-        'Required parameter completed was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (aiValidation === null || aiValidation === undefined) {
-      throw new Error(
-        'Required parameter aiValidation was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (aiValidationStatus === null || aiValidationStatus === undefined) {
-      throw new Error(
-        'Required parameter aiValidationStatus was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (aiValidationResult === null || aiValidationResult === undefined) {
-      throw new Error(
-        'Required parameter aiValidationResult was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (createdAt === null || createdAt === undefined) {
-      throw new Error(
-        'Required parameter createdAt was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (updatedAt === null || updatedAt === undefined) {
-      throw new Error(
-        'Required parameter updatedAt was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (createdBy === null || createdBy === undefined) {
-      throw new Error(
-        'Required parameter createdBy was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (updatedBy === null || updatedBy === undefined) {
-      throw new Error(
-        'Required parameter updatedBy was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (updatedByUsername === null || updatedByUsername === undefined) {
-      throw new Error(
-        'Required parameter updatedByUsername was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (createdByUsername === null || createdByUsername === undefined) {
-      throw new Error(
-        'Required parameter createdByUsername was null or undefined when calling documentsActionsCreate.',
-      );
-    }
-    if (extraActions === null || extraActions === undefined) {
-      throw new Error(
-        'Required parameter extraActions was null or undefined when calling documentsActionsCreate.',
       );
     }
 
@@ -359,23 +185,6 @@ export class DocumentsService extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id2 !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id2) as any) || localVarFormParams;
-    }
-    if (docApplication !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('doc_application', <any>docApplication) as any) ||
-        localVarFormParams;
-    }
-    if (docType !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append(
-          'doc_type',
-          localVarUseForm
-            ? new Blob([JSON.stringify(docType)], { type: 'application/json' })
-            : <any>docType,
-        ) as any) || localVarFormParams;
-    }
     if (docTypeId !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('doc_type_id', <any>docTypeId) as any) || localVarFormParams;
@@ -389,49 +198,17 @@ export class DocumentsService extends BaseService {
         (localVarFormParams.append('expiration_date', <any>expirationDate) as any) ||
         localVarFormParams;
     }
-    if (file !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file', <any>file) as any) || localVarFormParams;
-    }
-    if (fileLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file_link', <any>fileLink) as any) || localVarFormParams;
-    }
-    if (thumbnailLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('thumbnail_link', <any>thumbnailLink) as any) ||
-        localVarFormParams;
-    }
     if (details !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('details', <any>details) as any) || localVarFormParams;
-    }
-    if (completed !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('completed', <any>completed) as any) || localVarFormParams;
     }
     if (metadata !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('metadata', <any>metadata) as any) || localVarFormParams;
     }
-    if (aiValidation !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation', <any>aiValidation) as any) ||
-        localVarFormParams;
-    }
     if (required !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('required', <any>required) as any) || localVarFormParams;
-    }
-    if (aiValidationStatus !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any) ||
-        localVarFormParams;
-    }
-    if (aiValidationResult !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any) ||
-        localVarFormParams;
     }
     if (aiValidationStatusOverride !== undefined) {
       localVarFormParams =
@@ -446,46 +223,6 @@ export class DocumentsService extends BaseService {
           'ai_validation_result_override',
           <any>aiValidationResultOverride,
         ) as any) || localVarFormParams;
-    }
-    if (createdAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_at', <any>createdAt) as any) || localVarFormParams;
-    }
-    if (updatedAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_at', <any>updatedAt) as any) || localVarFormParams;
-    }
-    if (createdBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by', <any>createdBy) as any) || localVarFormParams;
-    }
-    if (updatedBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by', <any>updatedBy) as any) || localVarFormParams;
-    }
-    if (updatedByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (createdByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by_username', <any>createdByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (extraActions) {
-      if (localVarUseForm) {
-        extraActions.forEach((element) => {
-          localVarFormParams =
-            (localVarFormParams.append('extra_actions', <any>element) as any) || localVarFormParams;
-        });
-      } else {
-        localVarFormParams =
-          (localVarFormParams.append(
-            'extra_actions',
-            [...extraActions].join(COLLECTION_FORMATS['csv']),
-          ) as any) || localVarFormParams;
-      }
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -515,23 +252,6 @@ export class DocumentsService extends BaseService {
 
   /**
    * @endpoint post /api/documents/
-   * @param id
-   * @param docApplication
-   * @param docType
-   * @param file Return file URL while allowing detail responses to skip expensive storage URL generation.  When &#x60;prefer_cached_file_url&#x60; is enabled in serializer context, use the persisted &#x60;file_link&#x60; first and only fall back to storage-generated URLs if needed.
-   * @param fileLink
-   * @param thumbnailLink
-   * @param completed
-   * @param aiValidation
-   * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
-   * @param aiValidationResult
-   * @param createdAt
-   * @param updatedAt
-   * @param createdBy
-   * @param updatedBy
-   * @param updatedByUsername Return the username of the user who last updated the document.
-   * @param createdByUsername Return the username of the user who created the document.
-   * @param extraActions
    * @param docTypeId
    * @param docNumber
    * @param expirationDate
@@ -545,23 +265,6 @@ export class DocumentsService extends BaseService {
    * @param options additional options
    */
   public documentsCreate(
-    id: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -579,23 +282,6 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<Document>;
   public documentsCreate(
-    id: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -613,23 +299,6 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public documentsCreate(
-    id: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -647,23 +316,6 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public documentsCreate(
-    id: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -680,90 +332,6 @@ export class DocumentsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (id === null || id === undefined) {
-      throw new Error('Required parameter id was null or undefined when calling documentsCreate.');
-    }
-    if (docApplication === null || docApplication === undefined) {
-      throw new Error(
-        'Required parameter docApplication was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (docType === null || docType === undefined) {
-      throw new Error(
-        'Required parameter docType was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (file === null || file === undefined) {
-      throw new Error(
-        'Required parameter file was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (fileLink === null || fileLink === undefined) {
-      throw new Error(
-        'Required parameter fileLink was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (thumbnailLink === null || thumbnailLink === undefined) {
-      throw new Error(
-        'Required parameter thumbnailLink was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (completed === null || completed === undefined) {
-      throw new Error(
-        'Required parameter completed was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (aiValidation === null || aiValidation === undefined) {
-      throw new Error(
-        'Required parameter aiValidation was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (aiValidationStatus === null || aiValidationStatus === undefined) {
-      throw new Error(
-        'Required parameter aiValidationStatus was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (aiValidationResult === null || aiValidationResult === undefined) {
-      throw new Error(
-        'Required parameter aiValidationResult was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (createdAt === null || createdAt === undefined) {
-      throw new Error(
-        'Required parameter createdAt was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (updatedAt === null || updatedAt === undefined) {
-      throw new Error(
-        'Required parameter updatedAt was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (createdBy === null || createdBy === undefined) {
-      throw new Error(
-        'Required parameter createdBy was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (updatedBy === null || updatedBy === undefined) {
-      throw new Error(
-        'Required parameter updatedBy was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (updatedByUsername === null || updatedByUsername === undefined) {
-      throw new Error(
-        'Required parameter updatedByUsername was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (createdByUsername === null || createdByUsername === undefined) {
-      throw new Error(
-        'Required parameter createdByUsername was null or undefined when calling documentsCreate.',
-      );
-    }
-    if (extraActions === null || extraActions === undefined) {
-      throw new Error(
-        'Required parameter extraActions was null or undefined when calling documentsCreate.',
-      );
-    }
-
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -804,23 +372,6 @@ export class DocumentsService extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id) as any) || localVarFormParams;
-    }
-    if (docApplication !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('doc_application', <any>docApplication) as any) ||
-        localVarFormParams;
-    }
-    if (docType !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append(
-          'doc_type',
-          localVarUseForm
-            ? new Blob([JSON.stringify(docType)], { type: 'application/json' })
-            : <any>docType,
-        ) as any) || localVarFormParams;
-    }
     if (docTypeId !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('doc_type_id', <any>docTypeId) as any) || localVarFormParams;
@@ -834,49 +385,17 @@ export class DocumentsService extends BaseService {
         (localVarFormParams.append('expiration_date', <any>expirationDate) as any) ||
         localVarFormParams;
     }
-    if (file !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file', <any>file) as any) || localVarFormParams;
-    }
-    if (fileLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file_link', <any>fileLink) as any) || localVarFormParams;
-    }
-    if (thumbnailLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('thumbnail_link', <any>thumbnailLink) as any) ||
-        localVarFormParams;
-    }
     if (details !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('details', <any>details) as any) || localVarFormParams;
-    }
-    if (completed !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('completed', <any>completed) as any) || localVarFormParams;
     }
     if (metadata !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('metadata', <any>metadata) as any) || localVarFormParams;
     }
-    if (aiValidation !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation', <any>aiValidation) as any) ||
-        localVarFormParams;
-    }
     if (required !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('required', <any>required) as any) || localVarFormParams;
-    }
-    if (aiValidationStatus !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any) ||
-        localVarFormParams;
-    }
-    if (aiValidationResult !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any) ||
-        localVarFormParams;
     }
     if (aiValidationStatusOverride !== undefined) {
       localVarFormParams =
@@ -891,46 +410,6 @@ export class DocumentsService extends BaseService {
           'ai_validation_result_override',
           <any>aiValidationResultOverride,
         ) as any) || localVarFormParams;
-    }
-    if (createdAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_at', <any>createdAt) as any) || localVarFormParams;
-    }
-    if (updatedAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_at', <any>updatedAt) as any) || localVarFormParams;
-    }
-    if (createdBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by', <any>createdBy) as any) || localVarFormParams;
-    }
-    if (updatedBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by', <any>updatedBy) as any) || localVarFormParams;
-    }
-    if (updatedByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (createdByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by_username', <any>createdByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (extraActions) {
-      if (localVarUseForm) {
-        extraActions.forEach((element) => {
-          localVarFormParams =
-            (localVarFormParams.append('extra_actions', <any>element) as any) || localVarFormParams;
-        });
-      } else {
-        localVarFormParams =
-          (localVarFormParams.append(
-            'extra_actions',
-            [...extraActions].join(COLLECTION_FORMATS['csv']),
-          ) as any) || localVarFormParams;
-      }
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -1273,23 +752,6 @@ export class DocumentsService extends BaseService {
    * Override to trigger AI validation when requested.
    * @endpoint patch /api/documents/{id}/
    * @param id A unique integer value identifying this document.
-   * @param id2
-   * @param docApplication
-   * @param docType
-   * @param file Return file URL while allowing detail responses to skip expensive storage URL generation.  When &#x60;prefer_cached_file_url&#x60; is enabled in serializer context, use the persisted &#x60;file_link&#x60; first and only fall back to storage-generated URLs if needed.
-   * @param fileLink
-   * @param thumbnailLink
-   * @param completed
-   * @param aiValidation
-   * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
-   * @param aiValidationResult
-   * @param createdAt
-   * @param updatedAt
-   * @param createdBy
-   * @param updatedBy
-   * @param updatedByUsername Return the username of the user who last updated the document.
-   * @param createdByUsername Return the username of the user who created the document.
-   * @param extraActions
    * @param docTypeId
    * @param docNumber
    * @param expirationDate
@@ -1304,23 +766,6 @@ export class DocumentsService extends BaseService {
    */
   public documentsPartialUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -1339,23 +784,6 @@ export class DocumentsService extends BaseService {
   ): Observable<Document>;
   public documentsPartialUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -1374,23 +802,6 @@ export class DocumentsService extends BaseService {
   ): Observable<HttpResponse<Document>>;
   public documentsPartialUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -1409,23 +820,6 @@ export class DocumentsService extends BaseService {
   ): Observable<HttpEvent<Document>>;
   public documentsPartialUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -1445,91 +839,6 @@ export class DocumentsService extends BaseService {
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (id2 === null || id2 === undefined) {
-      throw new Error(
-        'Required parameter id2 was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (docApplication === null || docApplication === undefined) {
-      throw new Error(
-        'Required parameter docApplication was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (docType === null || docType === undefined) {
-      throw new Error(
-        'Required parameter docType was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (file === null || file === undefined) {
-      throw new Error(
-        'Required parameter file was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (fileLink === null || fileLink === undefined) {
-      throw new Error(
-        'Required parameter fileLink was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (thumbnailLink === null || thumbnailLink === undefined) {
-      throw new Error(
-        'Required parameter thumbnailLink was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (completed === null || completed === undefined) {
-      throw new Error(
-        'Required parameter completed was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (aiValidation === null || aiValidation === undefined) {
-      throw new Error(
-        'Required parameter aiValidation was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (aiValidationStatus === null || aiValidationStatus === undefined) {
-      throw new Error(
-        'Required parameter aiValidationStatus was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (aiValidationResult === null || aiValidationResult === undefined) {
-      throw new Error(
-        'Required parameter aiValidationResult was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (createdAt === null || createdAt === undefined) {
-      throw new Error(
-        'Required parameter createdAt was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (updatedAt === null || updatedAt === undefined) {
-      throw new Error(
-        'Required parameter updatedAt was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (createdBy === null || createdBy === undefined) {
-      throw new Error(
-        'Required parameter createdBy was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (updatedBy === null || updatedBy === undefined) {
-      throw new Error(
-        'Required parameter updatedBy was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (updatedByUsername === null || updatedByUsername === undefined) {
-      throw new Error(
-        'Required parameter updatedByUsername was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (createdByUsername === null || createdByUsername === undefined) {
-      throw new Error(
-        'Required parameter createdByUsername was null or undefined when calling documentsPartialUpdate.',
-      );
-    }
-    if (extraActions === null || extraActions === undefined) {
-      throw new Error(
-        'Required parameter extraActions was null or undefined when calling documentsPartialUpdate.',
       );
     }
 
@@ -1573,23 +882,6 @@ export class DocumentsService extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id2 !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id2) as any) || localVarFormParams;
-    }
-    if (docApplication !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('doc_application', <any>docApplication) as any) ||
-        localVarFormParams;
-    }
-    if (docType !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append(
-          'doc_type',
-          localVarUseForm
-            ? new Blob([JSON.stringify(docType)], { type: 'application/json' })
-            : <any>docType,
-        ) as any) || localVarFormParams;
-    }
     if (docTypeId !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('doc_type_id', <any>docTypeId) as any) || localVarFormParams;
@@ -1603,49 +895,17 @@ export class DocumentsService extends BaseService {
         (localVarFormParams.append('expiration_date', <any>expirationDate) as any) ||
         localVarFormParams;
     }
-    if (file !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file', <any>file) as any) || localVarFormParams;
-    }
-    if (fileLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file_link', <any>fileLink) as any) || localVarFormParams;
-    }
-    if (thumbnailLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('thumbnail_link', <any>thumbnailLink) as any) ||
-        localVarFormParams;
-    }
     if (details !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('details', <any>details) as any) || localVarFormParams;
-    }
-    if (completed !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('completed', <any>completed) as any) || localVarFormParams;
     }
     if (metadata !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('metadata', <any>metadata) as any) || localVarFormParams;
     }
-    if (aiValidation !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation', <any>aiValidation) as any) ||
-        localVarFormParams;
-    }
     if (required !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('required', <any>required) as any) || localVarFormParams;
-    }
-    if (aiValidationStatus !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any) ||
-        localVarFormParams;
-    }
-    if (aiValidationResult !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any) ||
-        localVarFormParams;
     }
     if (aiValidationStatusOverride !== undefined) {
       localVarFormParams =
@@ -1660,46 +920,6 @@ export class DocumentsService extends BaseService {
           'ai_validation_result_override',
           <any>aiValidationResultOverride,
         ) as any) || localVarFormParams;
-    }
-    if (createdAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_at', <any>createdAt) as any) || localVarFormParams;
-    }
-    if (updatedAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_at', <any>updatedAt) as any) || localVarFormParams;
-    }
-    if (createdBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by', <any>createdBy) as any) || localVarFormParams;
-    }
-    if (updatedBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by', <any>updatedBy) as any) || localVarFormParams;
-    }
-    if (updatedByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (createdByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by_username', <any>createdByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (extraActions) {
-      if (localVarUseForm) {
-        extraActions.forEach((element) => {
-          localVarFormParams =
-            (localVarFormParams.append('extra_actions', <any>element) as any) || localVarFormParams;
-        });
-      } else {
-        localVarFormParams =
-          (localVarFormParams.append(
-            'extra_actions',
-            [...extraActions].join(COLLECTION_FORMATS['csv']),
-          ) as any) || localVarFormParams;
-      }
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -1929,23 +1149,6 @@ export class DocumentsService extends BaseService {
   /**
    * @endpoint put /api/documents/{id}/
    * @param id A unique integer value identifying this document.
-   * @param id2
-   * @param docApplication
-   * @param docType
-   * @param file Return file URL while allowing detail responses to skip expensive storage URL generation.  When &#x60;prefer_cached_file_url&#x60; is enabled in serializer context, use the persisted &#x60;file_link&#x60; first and only fall back to storage-generated URLs if needed.
-   * @param fileLink
-   * @param thumbnailLink
-   * @param completed
-   * @param aiValidation
-   * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
-   * @param aiValidationResult
-   * @param createdAt
-   * @param updatedAt
-   * @param createdBy
-   * @param updatedBy
-   * @param updatedByUsername Return the username of the user who last updated the document.
-   * @param createdByUsername Return the username of the user who created the document.
-   * @param extraActions
    * @param docTypeId
    * @param docNumber
    * @param expirationDate
@@ -1960,23 +1163,6 @@ export class DocumentsService extends BaseService {
    */
   public documentsUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -1995,23 +1181,6 @@ export class DocumentsService extends BaseService {
   ): Observable<Document>;
   public documentsUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -2030,23 +1199,6 @@ export class DocumentsService extends BaseService {
   ): Observable<HttpResponse<Document>>;
   public documentsUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -2065,23 +1217,6 @@ export class DocumentsService extends BaseService {
   ): Observable<HttpEvent<Document>>;
   public documentsUpdate(
     id: number,
-    id2: number,
-    docApplication: number,
-    docType: DocumentType,
-    file: string,
-    fileLink: string,
-    thumbnailLink: string,
-    completed: boolean,
-    aiValidation: boolean,
-    aiValidationStatus: string,
-    aiValidationResult: any,
-    createdAt: string,
-    updatedAt: string,
-    createdBy: number,
-    updatedBy: number,
-    updatedByUsername: string,
-    createdByUsername: string,
-    extraActions: Array<DocumentAction>,
     docTypeId?: number,
     docNumber?: string,
     expirationDate?: string,
@@ -2100,89 +1235,6 @@ export class DocumentsService extends BaseService {
   ): Observable<any> {
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling documentsUpdate.');
-    }
-    if (id2 === null || id2 === undefined) {
-      throw new Error('Required parameter id2 was null or undefined when calling documentsUpdate.');
-    }
-    if (docApplication === null || docApplication === undefined) {
-      throw new Error(
-        'Required parameter docApplication was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (docType === null || docType === undefined) {
-      throw new Error(
-        'Required parameter docType was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (file === null || file === undefined) {
-      throw new Error(
-        'Required parameter file was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (fileLink === null || fileLink === undefined) {
-      throw new Error(
-        'Required parameter fileLink was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (thumbnailLink === null || thumbnailLink === undefined) {
-      throw new Error(
-        'Required parameter thumbnailLink was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (completed === null || completed === undefined) {
-      throw new Error(
-        'Required parameter completed was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (aiValidation === null || aiValidation === undefined) {
-      throw new Error(
-        'Required parameter aiValidation was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (aiValidationStatus === null || aiValidationStatus === undefined) {
-      throw new Error(
-        'Required parameter aiValidationStatus was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (aiValidationResult === null || aiValidationResult === undefined) {
-      throw new Error(
-        'Required parameter aiValidationResult was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (createdAt === null || createdAt === undefined) {
-      throw new Error(
-        'Required parameter createdAt was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (updatedAt === null || updatedAt === undefined) {
-      throw new Error(
-        'Required parameter updatedAt was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (createdBy === null || createdBy === undefined) {
-      throw new Error(
-        'Required parameter createdBy was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (updatedBy === null || updatedBy === undefined) {
-      throw new Error(
-        'Required parameter updatedBy was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (updatedByUsername === null || updatedByUsername === undefined) {
-      throw new Error(
-        'Required parameter updatedByUsername was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (createdByUsername === null || createdByUsername === undefined) {
-      throw new Error(
-        'Required parameter createdByUsername was null or undefined when calling documentsUpdate.',
-      );
-    }
-    if (extraActions === null || extraActions === undefined) {
-      throw new Error(
-        'Required parameter extraActions was null or undefined when calling documentsUpdate.',
-      );
     }
 
     let localVarHeaders = this.defaultHeaders;
@@ -2225,23 +1277,6 @@ export class DocumentsService extends BaseService {
       localVarFormParams = new HttpParams({ encoder: this.encoder });
     }
 
-    if (id2 !== undefined) {
-      localVarFormParams = (localVarFormParams.append('id', <any>id2) as any) || localVarFormParams;
-    }
-    if (docApplication !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('doc_application', <any>docApplication) as any) ||
-        localVarFormParams;
-    }
-    if (docType !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append(
-          'doc_type',
-          localVarUseForm
-            ? new Blob([JSON.stringify(docType)], { type: 'application/json' })
-            : <any>docType,
-        ) as any) || localVarFormParams;
-    }
     if (docTypeId !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('doc_type_id', <any>docTypeId) as any) || localVarFormParams;
@@ -2255,49 +1290,17 @@ export class DocumentsService extends BaseService {
         (localVarFormParams.append('expiration_date', <any>expirationDate) as any) ||
         localVarFormParams;
     }
-    if (file !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file', <any>file) as any) || localVarFormParams;
-    }
-    if (fileLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('file_link', <any>fileLink) as any) || localVarFormParams;
-    }
-    if (thumbnailLink !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('thumbnail_link', <any>thumbnailLink) as any) ||
-        localVarFormParams;
-    }
     if (details !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('details', <any>details) as any) || localVarFormParams;
-    }
-    if (completed !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('completed', <any>completed) as any) || localVarFormParams;
     }
     if (metadata !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('metadata', <any>metadata) as any) || localVarFormParams;
     }
-    if (aiValidation !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation', <any>aiValidation) as any) ||
-        localVarFormParams;
-    }
     if (required !== undefined) {
       localVarFormParams =
         (localVarFormParams.append('required', <any>required) as any) || localVarFormParams;
-    }
-    if (aiValidationStatus !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any) ||
-        localVarFormParams;
-    }
-    if (aiValidationResult !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any) ||
-        localVarFormParams;
     }
     if (aiValidationStatusOverride !== undefined) {
       localVarFormParams =
@@ -2312,46 +1315,6 @@ export class DocumentsService extends BaseService {
           'ai_validation_result_override',
           <any>aiValidationResultOverride,
         ) as any) || localVarFormParams;
-    }
-    if (createdAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_at', <any>createdAt) as any) || localVarFormParams;
-    }
-    if (updatedAt !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_at', <any>updatedAt) as any) || localVarFormParams;
-    }
-    if (createdBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by', <any>createdBy) as any) || localVarFormParams;
-    }
-    if (updatedBy !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by', <any>updatedBy) as any) || localVarFormParams;
-    }
-    if (updatedByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (createdByUsername !== undefined) {
-      localVarFormParams =
-        (localVarFormParams.append('created_by_username', <any>createdByUsername) as any) ||
-        localVarFormParams;
-    }
-    if (extraActions) {
-      if (localVarUseForm) {
-        extraActions.forEach((element) => {
-          localVarFormParams =
-            (localVarFormParams.append('extra_actions', <any>element) as any) || localVarFormParams;
-        });
-      } else {
-        localVarFormParams =
-          (localVarFormParams.append(
-            'extra_actions',
-            [...extraActions].join(COLLECTION_FORMATS['csv']),
-          ) as any) || localVarFormParams;
-      }
     }
 
     let responseType_: 'text' | 'json' | 'blob' = 'json';

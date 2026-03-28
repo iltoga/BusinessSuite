@@ -1,5 +1,6 @@
 import { adminOrManagerGuard } from '@/core/guards/admin-or-manager.guard';
 import { authGuard } from '@/core/guards/auth.guard';
+import { rbacMenuGuard } from '@/core/guards/rbac-menu.guard';
 import { Routes } from '@angular/router';
 import { ApplicationDetailComponent } from './features/applications/application-detail/application-detail.component';
 import { ApplicationFormComponent } from './features/applications/application-form/application-form.component';
@@ -40,10 +41,10 @@ export const routes: Routes = [
       { path: 'customers/new', component: CustomerFormComponent },
       { path: 'customers/:id/edit', component: CustomerFormComponent },
       { path: 'customers/:id', component: CustomerDetailComponent },
-      { path: 'products', component: ProductListComponent, canActivate: [adminOrManagerGuard] },
-      { path: 'products/new', component: ProductFormComponent, canActivate: [adminOrManagerGuard] },
-      { path: 'products/:id/edit', component: ProductFormComponent, canActivate: [adminOrManagerGuard] },
-      { path: 'products/:id', component: ProductDetailComponent, canActivate: [adminOrManagerGuard] },
+      { path: 'products', component: ProductListComponent },
+      { path: 'products/new', component: ProductFormComponent },
+      { path: 'products/:id/edit', component: ProductFormComponent },
+      { path: 'products/:id', component: ProductDetailComponent },
       { path: 'applications', component: ApplicationListComponent },
       { path: 'applications/new', component: ApplicationFormComponent },
       { path: 'customers/:id/applications/new', component: ApplicationFormComponent },
@@ -57,8 +58,18 @@ export const routes: Routes = [
       { path: 'utils/reminders', component: RemindersComponent },
       { path: 'letters/surat-permohonan', component: SuratPermohonanComponent },
       { path: 'profile', component: ProfileComponent },
-      { path: 'reports', component: ReportsComponent, canActivate: [adminOrManagerGuard] },
-      { path: 'reports/:slug', component: ReportsComponent, canActivate: [adminOrManagerGuard] },
+      { 
+        path: 'reports', 
+        component: ReportsComponent, 
+        canActivate: [rbacMenuGuard],
+        data: { menuId: 'reports' } 
+      },
+      { 
+        path: 'reports/:slug', 
+        component: ReportsComponent, 
+        canActivate: [rbacMenuGuard],
+        data: { menuId: 'reports' } 
+      },
       { path: 'utils/passport-check', component: PassportCheckComponent },
       {
         path: 'admin',

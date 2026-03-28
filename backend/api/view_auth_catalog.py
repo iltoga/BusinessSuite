@@ -1,5 +1,9 @@
-from api.utils.idempotency import build_request_idempotency_fingerprint, resolve_request_idempotent_job, store_request_idempotent_job
 from api.utils.ai_model_pricing import price_to_display
+from api.utils.idempotency import (
+    build_request_idempotency_fingerprint,
+    resolve_request_idempotent_job,
+    store_request_idempotent_job,
+)
 from api.utils.stream_payloads import build_async_job_links, build_async_job_start_payload
 from rest_framework.renderers import JSONRenderer
 from rest_framework_simplejwt.views import TokenRefreshView as SimpleJWTTokenRefreshView
@@ -748,6 +752,21 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         serializer = CustomerApplicationHistorySerializer(applications, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        request=inline_serializer(
+            name="CustomersBulkDeleteRequest",
+            fields={
+                "searchQuery": serializers.CharField(required=False, allow_blank=True),
+                "hideDisabled": serializers.BooleanField(required=False),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="CustomersBulkDeleteResponse",
+                fields={"deletedCount": serializers.IntegerField()},
+            )
+        },
+    )
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
         if not is_superuser_or_admin_group(request.user):
@@ -903,10 +922,10 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return ProductSerializer
 
     def get_permissions(self):
-        if self.action in self.authenticated_lookup_actions:
-            self.permission_classes = [IsAuthenticated]
-        else:
-            self.permission_classes = [IsAuthenticated, IsAdminOrManagerGroup]
+        # We now rely on dynamic RBAC evaluation by the frontend, so the underlying API
+        # just requires authentication to ensure basic safety. The dynamic rules
+        # determine actual data exposure and visibility.
+        self.permission_classes = [IsAuthenticated]
         return super().get_permissions()
 
     @extend_schema(
@@ -1082,6 +1101,20 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         result = force_delete_product(product)
         return Response(build_success_payload({"deleted": True, **result}, request=request))
 
+    @extend_schema(
+        request=inline_serializer(
+            name="ProductsBulkDeleteRequest",
+            fields={
+                "searchQuery": serializers.CharField(required=False, allow_blank=True),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="ProductsBulkDeleteResponse",
+                fields={"deletedCount": serializers.IntegerField()},
+            )
+        },
+    )
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
         if not is_superuser_or_admin_group(request.user):

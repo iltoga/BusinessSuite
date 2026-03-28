@@ -17,7 +17,7 @@
       </a>
       <a
         routerLink="/invoices/new"
-        [state]="{ from: 'invoices', searchQuery: query(), page: page() }"
+        [state]="{ from: 'invoices', returnToList: true, searchQuery: query(), page: page() }"
         [contextHelp]="'/invoices/new'"
       >
         <z-button zType="default" zSize="default">New Invoice</z-button>

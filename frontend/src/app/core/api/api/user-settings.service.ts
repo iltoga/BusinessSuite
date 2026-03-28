@@ -23,6 +23,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
 import { UserSettings } from '../model/user-settings';
+// @ts-ignore
+import { UserSettingsRequest } from '../model/user-settings-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -44,13 +46,13 @@ export class UserSettingsService extends BaseService {
   /**
    * Retrieve or partially update current user\&#39;s settings.  Supports GET and PATCH on the same URL &#x60;/me/&#x60;.
    * @endpoint patch /api/user-settings/me/
-   * @param userSettings
+   * @param userSettingsRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public userSettingsMePartialUpdate(
-    userSettings?: UserSettings,
+    userSettingsRequest?: UserSettingsRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -60,7 +62,7 @@ export class UserSettingsService extends BaseService {
     },
   ): Observable<UserSettings>;
   public userSettingsMePartialUpdate(
-    userSettings?: UserSettings,
+    userSettingsRequest?: UserSettingsRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -70,7 +72,7 @@ export class UserSettingsService extends BaseService {
     },
   ): Observable<HttpResponse<UserSettings>>;
   public userSettingsMePartialUpdate(
-    userSettings?: UserSettings,
+    userSettingsRequest?: UserSettingsRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -80,7 +82,7 @@ export class UserSettingsService extends BaseService {
     },
   ): Observable<HttpEvent<UserSettings>>;
   public userSettingsMePartialUpdate(
-    userSettings?: UserSettings,
+    userSettingsRequest?: UserSettingsRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -138,7 +140,7 @@ export class UserSettingsService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<UserSettings>('patch', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: userSettings,
+      body: userSettingsRequest,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

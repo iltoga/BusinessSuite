@@ -24,7 +24,7 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 // @ts-ignore
 import { SuratPermohonanCustomerData } from '../model/surat-permohonan-customer-data';
 // @ts-ignore
-import { SuratPermohonanRequest } from '../model/surat-permohonan-request';
+import { SuratPermohonanRequestRequest } from '../model/surat-permohonan-request-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -148,13 +148,13 @@ export class LettersService extends BaseService {
 
   /**
    * @endpoint post /api/letters/surat-permohonan/
-   * @param suratPermohonanRequest
+   * @param suratPermohonanRequestRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public lettersSuratPermohonanCreate(
-    suratPermohonanRequest: SuratPermohonanRequest,
+    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -164,7 +164,7 @@ export class LettersService extends BaseService {
     },
   ): Observable<Blob>;
   public lettersSuratPermohonanCreate(
-    suratPermohonanRequest: SuratPermohonanRequest,
+    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -174,7 +174,7 @@ export class LettersService extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public lettersSuratPermohonanCreate(
-    suratPermohonanRequest: SuratPermohonanRequest,
+    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -184,7 +184,7 @@ export class LettersService extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public lettersSuratPermohonanCreate(
-    suratPermohonanRequest: SuratPermohonanRequest,
+    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -193,9 +193,9 @@ export class LettersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
-    if (suratPermohonanRequest === null || suratPermohonanRequest === undefined) {
+    if (suratPermohonanRequestRequest === null || suratPermohonanRequestRequest === undefined) {
       throw new Error(
-        'Required parameter suratPermohonanRequest was null or undefined when calling lettersSuratPermohonanCreate.',
+        'Required parameter suratPermohonanRequestRequest was null or undefined when calling lettersSuratPermohonanCreate.',
       );
     }
 
@@ -237,7 +237,7 @@ export class LettersService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: suratPermohonanRequest,
+      body: suratPermohonanRequestRequest,
       responseType: 'blob',
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

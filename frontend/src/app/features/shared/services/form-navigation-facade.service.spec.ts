@@ -128,32 +128,56 @@ describe('FormNavigationFacadeService', () => {
   it('falls back to the customer detail route when a customer id is available', () => {
     routerMock.getCurrentNavigation.mockReturnValue({ extras: { state: {} } });
     routeMock.snapshot.paramMap.get.mockReturnValue('42');
-
-    service.goBackFromApplicationForm({
-      router: routerMock as any,
-      route: routeMock as any,
-      location: locationMock as any,
-      applicationId: 17,
-      isEditMode: true,
-      selectedCustomerId: null,
+    const originalHistory = window.history;
+    Object.defineProperty(window, 'history', {
+      configurable: true,
+      value: { length: 1 },
     });
 
-    expect(routerMock.navigate).toHaveBeenCalledWith(['/customers', 42]);
+    try {
+      service.goBackFromApplicationForm({
+        router: routerMock as any,
+        route: routeMock as any,
+        location: locationMock as any,
+        applicationId: 17,
+        isEditMode: true,
+        selectedCustomerId: null,
+      });
+
+      expect(routerMock.navigate).toHaveBeenCalledWith(['/customers', 42]);
+    } finally {
+      Object.defineProperty(window, 'history', {
+        configurable: true,
+        value: originalHistory,
+      });
+    }
   });
 
   it('falls back to the application detail route when editing and no return path is available', () => {
     routerMock.getCurrentNavigation.mockReturnValue({ extras: { state: {} } });
-
-    service.goBackFromApplicationForm({
-      router: routerMock as any,
-      route: routeMock as any,
-      location: locationMock as any,
-      applicationId: 17,
-      isEditMode: true,
-      selectedCustomerId: null,
+    const originalHistory = window.history;
+    Object.defineProperty(window, 'history', {
+      configurable: true,
+      value: { length: 1 },
     });
 
-    expect(routerMock.navigate).toHaveBeenCalledWith(['/applications', 17]);
+    try {
+      service.goBackFromApplicationForm({
+        router: routerMock as any,
+        route: routeMock as any,
+        location: locationMock as any,
+        applicationId: 17,
+        isEditMode: true,
+        selectedCustomerId: null,
+      });
+
+      expect(routerMock.navigate).toHaveBeenCalledWith(['/applications', 17]);
+    } finally {
+      Object.defineProperty(window, 'history', {
+        configurable: true,
+        value: originalHistory,
+      });
+    }
   });
 
   it('uses returnUrl for invoice forms and preserves search/page state', () => {
