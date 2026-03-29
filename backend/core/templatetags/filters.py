@@ -1,9 +1,29 @@
+"""
+FILE_ROLE: Provides template filters and tags for document display and formatting helpers.
+
+KEY_COMPONENTS:
+- pretty_json: Formats values as indented JSON for templates.
+- endswith: Checks string suffixes in templates.
+- slice_after: Returns the string prefix up to a marker.
+- get_incomplete_documents: Returns incomplete documents for a DocApplication.
+- get_completed_documents: Returns completed documents for a DocApplication.
+- as_currency: Formats numeric values as currency.
+- as_date_str: Formats values as date strings.
+- split: Splits and trims a delimited string.
+
+INTERACTIONS:
+- Depends on: core.utils.formatutils, django.template, django.conf.settings, DocApplication methods.
+
+AI_GUIDELINES:
+- Keep these helpers presentation-focused and side-effect free.
+- Prefer delegating formatting rules to utility functions rather than embedding them in templates.
+"""
+
 import json
 
+import core.utils.formatutils as formatutils
 from django import template
 from django.conf import settings
-
-import core.utils.formatutils as formatutils
 
 register = template.Library()
 

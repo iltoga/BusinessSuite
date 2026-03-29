@@ -1,13 +1,14 @@
-from datetime import date
+"""Tests for deleting customer applications and dependent records."""
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from rest_framework.test import APIClient
+from datetime import date
 
 from customer_applications.models import DocApplication
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase
 from invoices.models.invoice import Invoice, InvoiceApplication
 from products.models import Product
+from rest_framework.test import APIClient
 
 User = get_user_model()
 

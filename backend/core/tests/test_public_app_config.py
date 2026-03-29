@@ -1,3 +1,5 @@
+"""Tests for the public app configuration endpoint."""
+
 from core.models import AppSetting
 from core.models.ui_settings import UiSettings
 from django.test import Client, TestCase, override_settings
@@ -19,7 +21,6 @@ class PublicAppConfigTests(TestCase):
         self.assertIn("baseCurrency", payload)
         self.assertIsInstance(payload["baseCurrency"], str)
 
-
     @override_settings(MOCK_AUTH_ENABLED=False)
     def test_public_app_config_returns_mock_auth_disabled_flag(self):
         response = self.client.get(self.url)
@@ -28,7 +29,6 @@ class PublicAppConfigTests(TestCase):
         payload = response.json()
         self.assertIn("MOCK_AUTH_ENABLED", payload)
         self.assertIs(payload["MOCK_AUTH_ENABLED"], False)
-
 
     def test_public_app_config_returns_overlay_menu_setting(self):
         settings_obj = UiSettings.get_solo()

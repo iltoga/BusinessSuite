@@ -1,3 +1,5 @@
+"""Regression tests for Google Calendar request-mocking behavior."""
+
 from unittest.mock import patch
 
 import pytest

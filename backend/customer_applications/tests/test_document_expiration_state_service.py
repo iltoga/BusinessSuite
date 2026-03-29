@@ -1,12 +1,11 @@
+"""Tests for the document expiration state service."""
+
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from customer_applications.services.document_expiration_state_service import DocumentExpirationStateService
 from django.test import SimpleTestCase
-
-from customer_applications.services.document_expiration_state_service import (
-    DocumentExpirationStateService,
-)
 
 
 class DocumentExpirationStateServiceTests(SimpleTestCase):

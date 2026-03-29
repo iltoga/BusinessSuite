@@ -1,3 +1,5 @@
+"""View helpers for monthly invoice detail report responses."""
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -5,7 +7,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.views.generic import TemplateView
-
 from invoices.models import Invoice
 from reports.utils import format_currency
 

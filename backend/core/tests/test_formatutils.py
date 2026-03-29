@@ -1,8 +1,9 @@
+"""Tests for core formatting utility helpers."""
+
 from datetime import date
 
-from django.test import SimpleTestCase, override_settings
-
 from core.utils.formatutils import as_currency, as_currency_no_symbol, as_date_dash_str, as_date_str, as_long_date_str
+from django.test import SimpleTestCase, override_settings
 
 
 @override_settings(CURRENCY_SYMBOL="IDR", CURRENCY_DECIMAL_PLACES=2)

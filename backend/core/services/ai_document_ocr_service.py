@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- extract_document_structured_output: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from typing import Optional
 
 from core.services.ai_client import AIClient
@@ -9,6 +23,7 @@ from core.utils.document_type_ai_fields import (
     build_strict_structured_schema,
     format_fields_for_prompt,
 )
+
 
 def extract_document_structured_output(
     *,

@@ -1,10 +1,31 @@
+"""
+FILE_ROLE: Async task entry points for the core app.
+
+KEY_COMPONENTS:
+- _is_google_not_found_error: Private helper.
+- _is_google_conflict_error: Private helper.
+- _is_retryable_google_error: Private helper.
+- _preferred_google_event_id: Private helper.
+- _create_missing_remote_event: Private helper.
+- _private_properties_for_sync: Private helper.
+- _extended_properties_for_sync: Private helper.
+- _google_payload_from_event: Private helper.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 import logging
 from hashlib import sha1
 
 from core.models.calendar_event import CalendarEvent
+from core.tasks.runtime import QUEUE_DEFAULT, db_task
 from core.utils.google_client import GoogleClient
 from django.utils import timezone
-from core.tasks.runtime import QUEUE_DEFAULT, db_task
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +105,9 @@ def _create_missing_remote_event(
     return remote_event
 
 
-def _private_properties_for_sync(*, local_event_id: str | None = None, extended_properties: dict | None = None) -> dict[str, str]:
+def _private_properties_for_sync(
+    *, local_event_id: str | None = None, extended_properties: dict | None = None
+) -> dict[str, str]:
     private_props = dict(((extended_properties or {}).get("private") or {}))
     if local_event_id:
         private_props.setdefault(LOCAL_EVENT_ID_PRIVATE_PROP, str(local_event_id))
@@ -146,7 +169,7 @@ def _select_remote_event_candidate(
     expected_event_kind = private_props.get(EVENT_KIND_PRIVATE_PROP)
 
     for candidate in candidates:
-        candidate_private = ((candidate.get("extendedProperties") or {}).get("private") or {})
+        candidate_private = (candidate.get("extendedProperties") or {}).get("private") or {}
         if normalized_title and (candidate.get("summary") or "").strip() != normalized_title:
             continue
         if start_date and _remote_event_start_date(candidate) != start_date:
@@ -160,7 +183,9 @@ def _select_remote_event_candidate(
 
         return candidate
 
-    if not strict_match or (not normalized_title and not start_date and not expected_task_id and not expected_event_kind):
+    if not strict_match or (
+        not normalized_title and not start_date and not expected_task_id and not expected_event_kind
+    ):
         return candidates[0] if candidates else None
 
     return None

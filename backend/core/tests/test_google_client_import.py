@@ -1,3 +1,5 @@
+"""Tests for Google client import and bootstrap helpers."""
+
 import importlib
 import sys
 from unittest.mock import patch

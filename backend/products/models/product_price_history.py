@@ -1,3 +1,5 @@
+"""Historical product price tracking model for pricing audits and lookups."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta

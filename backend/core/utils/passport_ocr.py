@@ -1,3 +1,5 @@
+"""Passport OCR parsing and normalization helpers."""
+
 import json
 import logging
 import os
@@ -8,17 +10,16 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import pytesseract
+from core.services.logger_service import Logger
+from core.utils.check_country import check_country_by_code
+from core.utils.imgutils import convert_and_resize_image
+from core.utils.storage_helpers import get_local_file_path
 from django.conf import settings
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.utils import timezone
 from passporteye import read_mrz
 from PIL import Image, ImageFilter, ImageOps, ImageStat
 from skimage import filters
-
-from core.services.logger_service import Logger
-from core.utils.check_country import check_country_by_code
-from core.utils.imgutils import convert_and_resize_image
-from core.utils.storage_helpers import get_local_file_path
 
 pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
 

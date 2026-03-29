@@ -1,3 +1,5 @@
+"""Regression tests for passport check API endpoints."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -6,7 +8,6 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework.test import APIClient
-
 
 User = get_user_model()
 

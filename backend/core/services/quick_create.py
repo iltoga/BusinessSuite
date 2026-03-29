@@ -1,43 +1,23 @@
 """
-core.services.quick_create
-==========================
-Convenience factory functions used by the "quick-create" API endpoints to
-create domain objects with sensible defaults from a minimal payload.
+FILE_ROLE: Service-layer logic for the core app.
 
-Creation chain for ``create_quick_customer_application()``
-----------------------------------------------------------
-1. Validate that the chosen product uses the customer-application workflow
-   (``product.uses_customer_app_workflow``).  Invoice-only products raise a
-   ``ValidationError`` immediately.
-2. Validate the document date against the product's submission window via
-   ``StayPermitSubmissionWindowService``.
-3. Inside ``transaction.atomic()``:
-   a. Create the ``DocApplication`` record.
-   b. Create ``Document`` rows for every required and optional document type
-      listed on the product (``required_documents`` / ``optional_documents``
-      name-lists).
-   c. Create the first ``DocWorkflow`` step, computing its ``due_date`` from
-      the task's ``duration`` / ``duration_is_business_days`` settings via
-      ``calculate_due_date()``.
+KEY_COMPONENTS:
+- create_quick_customer: Module symbol.
+- create_quick_product: Module symbol.
+- create_quick_customer_application: Module symbol.
 
-Side effects
-------------
-- ``Document.completed`` is auto-calculated in ``Document.save()`` based on
-  ``DocumentType.requires_verification`` — no explicit flag is set here.
-- The first ``DocWorkflow`` step is created in ``STATUS_PENDING``; subsequent
-  steps are created by the workflow progression service when each step is
-  completed.
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
 """
 
-from core.utils.dateutils import calculate_due_date
 from customer_applications.models import DocApplication
-from customer_applications.models.doc_workflow import DocWorkflow
-from customer_applications.models.document import Document
-from customer_applications.services.stay_permit_submission_window_service import StayPermitSubmissionWindowService
+from customer_applications.services.application_creation_service import CustomerApplicationCreationService
 from customers.models import Customer
-from django.db import transaction
-from products.models import Product, ProductCategory
-from products.models.document_type import DocumentType
+from products.models import Product
 
 
 def create_quick_customer(*, validated_data) -> Customer:
@@ -56,23 +36,16 @@ def create_quick_customer(*, validated_data) -> Customer:
 def create_quick_product(*, validated_data, user=None) -> Product:
     """Create a ``Product`` with automatic defaults for optional fields.
 
-    Fills in ``product_category`` from ``ProductCategory.get_default_for_type()``
-    when absent, mirrors ``base_price`` → ``retail_price`` when retail price is
-    omitted, and stamps ``created_by`` / ``updated_by`` when *user* is provided.
+    Assumes serializer validation already applied product defaults and only
+    stamps ``created_by`` / ``updated_by`` when *user* is provided.
 
     Args:
-        validated_data: Pre-validated field dict.  ``product_type`` is consumed
-            (popped) when ``product_category`` is absent.
+        validated_data: Pre-validated field dict ready for ``Product.objects.create()``.
         user: Optional request user; used to set audit fields.
 
     Returns:
         The newly created ``Product`` instance.
     """
-    if not validated_data.get("product_category"):
-        product_type = validated_data.pop("product_type", None)
-        validated_data["product_category"] = ProductCategory.get_default_for_type(product_type)
-    if validated_data.get("retail_price") is None:
-        validated_data["retail_price"] = validated_data.get("base_price")
     if user:
         validated_data["created_by"] = user
         validated_data["updated_by"] = user
@@ -102,82 +75,13 @@ def create_quick_customer_application(*, customer, product, doc_date, notes, cre
             invoice-only or ``doc_date`` falls outside the product's submission
             window.
     """
-    if not getattr(product, "uses_customer_app_workflow", False):
-        from rest_framework.exceptions import ValidationError
-
-        raise ValidationError("Selected product is invoice-only and cannot create a customer application.")
-
-    StayPermitSubmissionWindowService().validate_doc_date(
-        product=product,
-        doc_date=doc_date,
-        application=None,
-    )
-
-    with transaction.atomic():
-        doc_app = DocApplication.objects.create(
-            customer=customer,
-            product=product,
-            doc_date=doc_date,
-            notes=notes or "",
-            created_by=created_by,
-        )
-        _create_documents_for_product(doc_app=doc_app, product=product, created_by=created_by)
-        _create_initial_workflow(doc_app=doc_app, product=product, created_by=created_by)
-    return doc_app
-
-
-def _create_documents_for_product(*, doc_app, product, created_by) -> None:
-    required_doc_names = _split_document_names(product.required_documents)
-    optional_doc_names = _split_document_names(product.optional_documents)
-
-    document_names = list(dict.fromkeys(required_doc_names + optional_doc_names))
-    doc_types = DocumentType.objects.filter(name__in=document_names)
-    doc_type_map = {doc_type.name: doc_type for doc_type in doc_types}
-
-    for doc_name in required_doc_names:
-        doc_type = doc_type_map.get(doc_name)
-        if doc_type:
-            Document.objects.create(
-                doc_application=doc_app,
-                doc_type=doc_type,
-                required=True,
-                created_by=created_by,
-            )
-
-    for doc_name in optional_doc_names:
-        doc_type = doc_type_map.get(doc_name)
-        if doc_type:
-            Document.objects.create(
-                doc_application=doc_app,
-                doc_type=doc_type,
-                required=False,
-                created_by=created_by,
-            )
-
-
-def _create_initial_workflow(*, doc_app, product, created_by) -> None:
-    first_task = product.tasks.order_by("step").first()
-    if not first_task:
-        return
-    start_date = doc_app.get_first_task_start_date()
-    if not start_date:
-        return
-    due_date = calculate_due_date(
-        start_date=start_date,
-        days_to_complete=first_task.duration,
-        business_days_only=first_task.duration_is_business_days,
-    )
-    DocWorkflow.objects.create(
-        doc_application=doc_app,
-        task=first_task,
-        start_date=start_date,
-        due_date=due_date,
-        status=DocApplication.STATUS_PENDING,
+    return CustomerApplicationCreationService().create(
+        validated_data={
+            "customer": customer,
+            "product": product,
+            "doc_date": doc_date,
+            "notes": notes or "",
+        },
         created_by=created_by,
+        document_type_specs=None,
     )
-
-
-def _split_document_names(value: str) -> list[str]:
-    if not value:
-        return []
-    return [name.strip() for name in value.split(",") if name.strip()]

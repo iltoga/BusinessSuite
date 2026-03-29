@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Cache backend configuration helpers for the backend settings package.
+
+KEY_COMPONENTS:
+- build_prod_redis_caches: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for middleware, scripts, or migrations because other code depends on them.
+"""
+
 import os
 
 

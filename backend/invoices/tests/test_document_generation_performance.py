@@ -1,3 +1,5 @@
+"""Performance tests for invoice document generation."""
+
 from datetime import timedelta
 from decimal import Decimal
 

@@ -1,8 +1,25 @@
+"""
+FILE_ROLE: Serializer and payload-shaping helpers for the API app.
+
+KEY_COMPONENTS:
+- AiModelCapabilitiesSerializer: Serializer class.
+- AiModelPricingSerializer: Serializer class.
+- AiModelPricingDisplaySerializer: Serializer class.
+- AiModelArchitectureSerializer: Serializer class.
+- AiModelSerializer: Serializer class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on serializer validation and representation only.
+- Preserve the existing API contract because client code and views depend on these field names.
+"""
+
+from api.utils.ai_model_pricing import price_to_display
 from core.models import AiModel
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
-
-from api.utils.ai_model_pricing import price_to_display
 
 
 class AiModelCapabilitiesSerializer(serializers.Serializer):
@@ -129,12 +146,12 @@ class AiModelSerializer(serializers.ModelSerializer):
     @extend_schema_field(AiModelPricingSerializer)
     def get_pricing(self, obj: AiModel) -> dict:
         return {
-            "prompt_price_per_token": str(obj.prompt_price_per_token)
-            if obj.prompt_price_per_token is not None
-            else None,
-            "completion_price_per_token": str(obj.completion_price_per_token)
-            if obj.completion_price_per_token is not None
-            else None,
+            "prompt_price_per_token": (
+                str(obj.prompt_price_per_token) if obj.prompt_price_per_token is not None else None
+            ),
+            "completion_price_per_token": (
+                str(obj.completion_price_per_token) if obj.completion_price_per_token is not None else None
+            ),
             "image_price": str(obj.image_price) if obj.image_price is not None else None,
             "request_price": str(obj.request_price) if obj.request_price is not None else None,
         }

@@ -1,9 +1,11 @@
+"""Django app configuration for the customer applications module."""
+
 from django.apps import AppConfig
 
 
 class DocsWorkflowConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'customer_applications'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "customer_applications"
 
     def ready(self):
         # Import signals to connect them when the app is ready.

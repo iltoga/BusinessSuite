@@ -1,3 +1,6 @@
+"""General-purpose helper functions used across the core package."""
+
+
 def whitespaces_to_underscores(name):
     """Replaces white spaces in a person name with underscores.
 

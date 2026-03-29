@@ -1,3 +1,18 @@
+"""
+FILE_ROLE: Handles Google Calendar and Google integration API endpoints.
+
+KEY_COMPONENTS:
+- GoogleCalendarViewSet: Module symbol.
+- GoogleTasksViewSet: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby API/core services and DRF helpers used in this module.
+
+AI_GUIDELINES:
+- Keep this module focused on reusable API infrastructure rather than domain orchestration.
+- Preserve the existing contract so split view modules can import these helpers safely.
+"""
+
 from datetime import timedelta
 from typing import Any, cast
 

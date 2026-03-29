@@ -1,10 +1,11 @@
+"""Tests for the OCR preview migration management command."""
+
 from io import StringIO
 from unittest.mock import patch
 
+from core.models import OCRJob
 from django.core.management import call_command
 from django.test import TestCase
-
-from core.models import OCRJob
 
 
 class MigrateOcrPreviewsCommandTests(TestCase):
@@ -40,7 +41,9 @@ class MigrateOcrPreviewsCommandTests(TestCase):
             result={"b64_resized_image": "aGVsbG8=", "mrz_data": {"number": "ABC123"}},
         )
 
-        with patch("core.management.commands.migrate_ocr_previews_to_storage.upload_ocr_preview_from_base64") as mock_upload:
+        with patch(
+            "core.management.commands.migrate_ocr_previews_to_storage.upload_ocr_preview_from_base64"
+        ) as mock_upload:
             stdout = StringIO()
             call_command("migrate_ocr_previews_to_storage", "--dry-run", stdout=stdout)
 

@@ -1,3 +1,5 @@
+"""Serializers for document application data, uploads, and derived fields."""
+
 import os
 
 from api.serializers.customer_serializer import CustomerSerializer
@@ -576,102 +578,29 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        from customer_applications.models.doc_workflow import DocWorkflow
-        from customer_applications.models.document import Document
-        from customer_applications.services.stay_permit_workflow_schedule_service import (
-            StayPermitWorkflowScheduleService,
+        from customer_applications.services.application_creation_service import (
+            CustomerApplicationCreationService,
+            DocumentTypeSpec,
         )
-        from django.db import transaction
-        from django.utils import timezone
-        from products.models.document_type import DocumentType
-        from products.models.task import Task
 
         document_types = validated_data.pop("document_types", [])
         user = self.context["request"].user
-
-        # Create application
-        if not validated_data.get("due_date"):
-            validated_data["due_date"] = self._calculate_due_date_for_doc_date(
-                doc_date=validated_data.get("doc_date"),
-                product=validated_data.get("product"),
-            )
-
-        validated_data["created_by"] = user
-        application = DocApplication.objects.create(**validated_data)
-
-        # Pre-check if passport can be auto-imported to avoid creating placeholder
-        has_auto_passport = self._can_auto_import_passport(application)
-
-        # Resolve document types once to avoid per-item queries.
-        normalized_doc_type_ids = []
+        specs: list[DocumentTypeSpec] = []
         for dt in document_types:
             raw_id = dt.get("doc_type_id") or dt.get("id")
             try:
                 normalized_id = int(raw_id)
             except (TypeError, ValueError):
                 normalized_id = None
-            normalized_doc_type_ids.append(normalized_id)
-        document_types_by_id = DocumentType.objects.in_bulk(
-            [doc_type_id for doc_type_id in normalized_doc_type_ids if doc_type_id]
-        )
-
-        # Create provided placeholder documents in one query.
-        placeholder_documents = []
-        now = timezone.now()
-        for dt, doc_type_id in zip(document_types, normalized_doc_type_ids):
-            required = dt.get("required", True)
-            doc_type = document_types_by_id.get(doc_type_id)
-            if not doc_type:
-                raise serializers.ValidationError({"document_types": f"Invalid document type id: {doc_type_id}"})
-
-            # Skip creating placeholder if passport will be auto-imported
-            if doc_type.name == "Passport" and has_auto_passport:
+            if normalized_id is None:
                 continue
+            specs.append(DocumentTypeSpec(doc_type_id=normalized_id, required=bool(dt.get("required", True))))
 
-            placeholder_documents.append(
-                Document(
-                    doc_application=application,
-                    doc_type=doc_type,
-                    required=required,
-                    created_by=user,
-                    created_at=now,
-                    updated_at=now,
-                )
-            )
-
-        if placeholder_documents:
-            Document.objects.bulk_create(placeholder_documents)
-
-        # Create the first workflow step immediately only when the application can already start.
-        task = Task.objects.filter(product=application.product, step=1).first()
-        if task:
-            start_date = application.get_first_task_start_date()
-            if start_date:
-                step1 = DocWorkflow(
-                    start_date=start_date,
-                    task=task,
-                    doc_application=application,
-                    created_by=user,
-                    status=DocApplication.STATUS_PENDING,
-                )
-                step1.due_date = application.calculate_next_calendar_due_date(start_date=start_date) or start_date
-                step1.save()
-
-        StayPermitWorkflowScheduleService().sync(application=application, actor_user_id=user.id)
-
-        if has_auto_passport:
-            from customer_applications.tasks import auto_import_passport_task
-
-            transaction.on_commit(
-                lambda: auto_import_passport_task(
-                    application_id=application.id,
-                    user_id=user.id,
-                )
-            )
-
-        self._prime_detail_caches(application)
-
-        return application
+        return CustomerApplicationCreationService().create(
+            validated_data=validated_data,
+            created_by=user,
+            document_type_specs=specs,
+        )
 
     def update(self, instance, validated_data):
         from customer_applications.models.doc_workflow import DocWorkflow
@@ -780,40 +709,3 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         application.completed_required_documents = sum(
             1 for document in documents if document.required and document.completed
         )
-
-    def _can_auto_import_passport(self, application) -> bool:
-        """Check if passport can be auto-imported for this application."""
-        from customer_applications.models.document import Document
-        from django.core.files.storage import default_storage
-        from products.models.document_type import DocumentType
-
-        try:
-            passport_doc_type = DocumentType.objects.get(name="Passport")
-        except DocumentType.DoesNotExist:
-            return False
-
-        # Check if product has Passport in required or optional documents
-        product = application.product
-        all_docs = (product.required_documents or "") + "," + (product.optional_documents or "")
-        doc_names = [d.strip() for d in all_docs.split(",") if d.strip()]
-
-        if passport_doc_type.name not in doc_names:
-            return False
-
-        # Option 1: Customer has passport file
-        customer = application.customer
-        if customer.passport_file and customer.passport_number:
-            if default_storage.exists(customer.passport_file.name):
-                return True
-
-        # Option 2: Previous valid passport document exists
-        previous_doc = (
-            Document.objects.filter(doc_application__customer=customer, doc_type=passport_doc_type)
-            .exclude(doc_application=application)
-            .order_by("-created_at")
-            .first()
-        )
-        if previous_doc and previous_doc.file and not previous_doc.is_expired:
-            return True
-
-        return False

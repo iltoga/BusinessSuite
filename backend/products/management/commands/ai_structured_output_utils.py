@@ -1,3 +1,5 @@
+"""Helpers for AI structured output management commands."""
+
 import json
 import re
 

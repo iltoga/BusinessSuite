@@ -1,45 +1,16 @@
 """
-core.services.sync_service
-==========================
-Local-resilience data-synchronisation utilities for the offline / multi-node
-deployment of BusinessSuite (e.g. a local Bali server that periodically syncs
-with a remote hub).
+FILE_ROLE: Service-layer logic for the core app.
 
-Sync lifecycle overview
------------------------
-1. **Capture** — After every model ``save()`` / ``delete()``, signal handlers
-   call ``capture_model_upsert()`` / ``capture_model_delete()`` to write a
-   ``SyncChangeLog`` row containing the serialised field payload, a SHA-256
-   ``checksum``, and the ``source_node`` identifier.
-2. **Identify the node** — ``get_local_node_id()`` returns
-   ``settings.LOCAL_SYNC_NODE_ID`` when set, falling back to
-   ``socket.gethostname()``.
-3. **Guard re-entrant applies** — ``sync_apply_context()`` (a context manager)
-   sets a ``ContextVar`` so that signal handlers can detect that a sync apply
-   is in progress and skip re-logging the incoming change, preventing
-   infinite replication loops.
-4. **Serialise** — ``_serialize_instance()`` converts all concrete model fields
-   to JSON-safe primitives via ``_json_safe()``, which handles ``datetime``,
-   ``Decimal``, ``UUID``, ``bytes`` (base-64 encoded), and nested
-   collections.
-5. **Diff/apply** — ``capture_model_upsert()`` computes a checksum and writes
-   a ``SyncChangeLog``; the corresponding apply function (in the sync apply
-   module) uses ``_coerce_field_value()`` to deserialise raw JSON back to the
-   correct Python types before calling
-   ``Model.objects.update_or_create()``.
-6. **Conflict resolution** — Last-write-wins by ``source_timestamp``; ties
-   broken by ``source_node`` string comparison.  Conflicts are recorded in
-   ``SyncConflict`` for manual review.
-7. **Media manifest** — ``MediaManifestEntry`` tracks which media files need to
-   be transferred alongside a sync payload.
+KEY_COMPONENTS:
+- sync_model_data: Module symbol.
+- SyncRequestResult: Result/dataclass helper.
 
-Public API
-----------
-- ``get_local_node_id()`` — returns the node identifier string.
-- ``is_sync_apply_in_progress()`` — check if currently inside a sync apply.
-- ``sync_apply_context()`` — context manager; set during remote change apply.
-- ``capture_model_upsert(instance)`` — record an upsert event.
-- ``capture_model_delete(model_label, object_pk)`` — record a delete event.
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
 """
 
 from __future__ import annotations

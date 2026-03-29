@@ -1,3 +1,5 @@
+"""Regression tests for document categorization SSE streaming."""
+
 from unittest.mock import patch
 
 from customer_applications.models import DocApplication, Document, DocumentCategorizationJob
@@ -9,7 +11,6 @@ from django.utils import timezone
 from products.models import DocumentType, Product
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
-
 
 User = get_user_model()
 
@@ -87,9 +88,7 @@ class DocumentCategorizationStreamSseTests(TestCase):
             created_by=self.user,
         )
 
-        response = self.client.get(
-            reverse("api-document-validation-stream", kwargs={"document_id": document.id})
-        )
+        response = self.client.get(reverse("api-document-validation-stream", kwargs={"document_id": document.id}))
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response["Content-Type"].startswith("text/event-stream"))

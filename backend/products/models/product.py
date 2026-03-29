@@ -1,3 +1,5 @@
+"""Core product model and pricing metadata used throughout the product app."""
+
 from decimal import Decimal
 
 from django.conf import settings

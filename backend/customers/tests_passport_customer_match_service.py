@@ -1,9 +1,12 @@
-from django.db import connection
-from django.db.utils import ProgrammingError
-from django.test import TestCase
+"""Tests for the passport-to-customer matching service."""
+
+"""Tests for the passport-to-customer matching service."""
 
 from customers.models import Customer
 from customers.services import PassportCustomerMatchService
+from django.db import connection
+from django.db.utils import ProgrammingError
+from django.test import TestCase
 
 
 class PassportCustomerMatchServiceTestCase(TestCase):

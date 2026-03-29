@@ -1,6 +1,7 @@
+"""Admin registrations for invoice, job, and related billing models."""
+
 from django.contrib import admin
 from nested_admin import NestedModelAdmin, NestedTabularInline
-
 from payments.models import Payment
 
 from .models import Invoice, InvoiceApplication

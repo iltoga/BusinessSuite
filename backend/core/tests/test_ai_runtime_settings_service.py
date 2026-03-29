@@ -1,17 +1,17 @@
-from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+"""Tests for AI runtime settings resolution and overrides."""
 
 from core.models import AiModel, AppSetting
-from core.services.app_setting_service import AppSettingService
 from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.ai_usage_service import AIUsageFeature
+from core.services.app_setting_service import AppSettingService
+from django.contrib.auth import get_user_model
+from django.test import TestCase, override_settings
 
 
 class AIRuntimeSettingsServiceTests(TestCase):
     def setUp(self):
         AppSetting.objects.all().delete()
         AppSettingService.invalidate_cache()
-
 
     @override_settings(
         LLM_PROVIDER="openrouter",
@@ -119,9 +119,7 @@ class AIRuntimeSettingsServiceTests(TestCase):
         )
 
         with self.assertRaises(ValueError):
-            AIRuntimeSettingsService.update_runtime_settings(
-                {"LLM_FALLBACK_MODEL_ORDER": ["missing/not-real-model"]}
-            )
+            AIRuntimeSettingsService.update_runtime_settings({"LLM_FALLBACK_MODEL_ORDER": ["missing/not-real-model"]})
 
     def test_update_runtime_settings_persists_fallback_model_chain_with_per_step_timeout(self):
         AIRuntimeSettingsService.update_runtime_settings(
@@ -188,6 +186,3 @@ class AIRuntimeSettingsServiceTests(TestCase):
 
         AIRuntimeSettingsService.update_runtime_settings({"INVOICE_IMPORT_MODEL": "gpt-5-mini"})
         self.assertEqual(AIRuntimeSettingsService.get_invoice_import_model(), "gpt-5-mini")
-
-
-

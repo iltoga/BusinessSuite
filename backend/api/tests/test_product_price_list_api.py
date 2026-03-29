@@ -1,3 +1,5 @@
+"""Regression tests for product price-list generation endpoints."""
+
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 

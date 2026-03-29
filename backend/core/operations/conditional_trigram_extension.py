@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Provides a conditional PostgreSQL trigram extension migration helper.
+
+KEY_COMPONENTS:
+- ConditionalTrigramExtension: RunSQL helper that enables pg_trgm unless the database is SQLite.
+
+INTERACTIONS:
+- Depends on: django.db.connections, django.db.migrations.
+
+AI_GUIDELINES:
+- Keep this helper migration-safe and database-vendor aware.
+- Do not add unrelated schema behavior here; the class should stay narrowly focused on the pg_trgm extension.
+"""
+
 from django.db import connections, migrations
 
 

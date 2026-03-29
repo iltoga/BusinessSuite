@@ -1,3 +1,5 @@
+"""Tests for the storage assets migration management command."""
+
 from io import StringIO
 from unittest.mock import patch
 

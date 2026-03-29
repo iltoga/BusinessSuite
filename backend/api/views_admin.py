@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Handles admin-oriented API helpers and endpoints.
+
+KEY_COMPONENTS:
+- BackupsPlaceholderSerializer: Module symbol.
+- ServerManagementPlaceholderSerializer: Module symbol.
+- _clear_cacheops_query_store: Module symbol.
+- _build_sse_response: Module symbol.
+- _success_response: Module symbol.
+- _error_response: Module symbol.
+- _query_param: Module symbol.
+- _as_bool: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby API/core services and DRF helpers used in this module.
+
+AI_GUIDELINES:
+- Keep this module focused on reusable API infrastructure rather than domain orchestration.
+- Preserve the existing contract so split view modules can import these helpers safely.
+"""
+
 # Admin Tools API ViewSets
 import ast
 import datetime
@@ -202,9 +223,9 @@ def backup_start_sse(request):
                 code="forbidden",
                 message=SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
                 request=request,
-        ),
-        status=403,
-    )
+            ),
+            status=403,
+        )
 
     include_users = _as_bool(_query_param(request, "include_users", "0"))
     replay_mode = _as_bool(_query_param(request, "replay", "0"))
@@ -272,7 +293,7 @@ def media_cleanup_start_sse(request):
                 request=request,
             ),
             status=403,
-    )
+        )
 
     dry_run = _as_bool(_query_param(request, "dry_run", "1"))
     replay_mode = _as_bool(_query_param(request, "replay", "0"))

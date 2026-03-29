@@ -1,3 +1,5 @@
+"""Tests for the document OCR task workflow and state updates."""
+
 from contextlib import contextmanager
 from unittest.mock import patch
 

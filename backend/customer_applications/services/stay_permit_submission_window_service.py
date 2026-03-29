@@ -1,11 +1,24 @@
+"""
+FILE_ROLE: Service-layer logic for the customer applications app.
+
+KEY_COMPONENTS:
+- StayPermitSubmissionWindowService: Service class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from django.core.exceptions import ValidationError
-
 from customer_applications.models.document import Document
+from django.core.exceptions import ValidationError
 from products.models.document_type import DocumentType
 from products.models.product import Product
 
@@ -19,6 +32,11 @@ class StayPermitSubmissionWindow:
 class StayPermitSubmissionWindowService:
     """Compute and validate submission windows derived from stay permit expirations."""
 
+    def _prefetched_documents(self, application) -> list[Document] | None:
+        prefetched = getattr(application, "_prefetched_objects_cache", None) or {}
+        documents = prefetched.get("documents")
+        return list(documents) if documents is not None else None
+
     @staticmethod
     def _split_document_names(value: str | None) -> set[str]:
         if not value:
@@ -31,18 +49,24 @@ class StayPermitSubmissionWindowService:
         if product.product_category.product_type != "visa":
             return set()
 
+        cached = getattr(product, "_stay_permit_document_names_cache", None)
+        if cached is not None:
+            return set(cached)
+
         configured_doc_names = self._split_document_names(product.required_documents) | self._split_document_names(
             product.optional_documents
         )
         if not configured_doc_names:
             return set()
 
-        return set(
+        stay_permit_names = set(
             DocumentType.objects.filter(name__in=configured_doc_names, is_stay_permit=True).values_list(
                 "name",
                 flat=True,
             )
         )
+        product._stay_permit_document_names_cache = tuple(sorted(stay_permit_names))
+        return stay_permit_names
 
     def product_requires_submission_window(self, product: Product | None) -> bool:
         return bool(self.stay_permit_document_names_for_product(product))
@@ -57,17 +81,31 @@ class StayPermitSubmissionWindowService:
         if not stay_permit_doc_names or application is None:
             return None
 
-        # When multiple stay permit documents exist, use the earliest expiration date.
-        stay_permit_document = (
-            Document.objects.filter(
-                doc_application=application,
-                doc_type__name__in=stay_permit_doc_names,
-                doc_type__is_stay_permit=True,
-                expiration_date__isnull=False,
+        prefetched_documents = self._prefetched_documents(application)
+        if prefetched_documents is not None:
+            matching_documents = [
+                document
+                for document in prefetched_documents
+                if getattr(document, "expiration_date", None)
+                and getattr(document, "doc_type", None)
+                and document.doc_type.is_stay_permit
+                and document.doc_type.name in stay_permit_doc_names
+            ]
+            stay_permit_document = (
+                min(matching_documents, key=lambda document: document.expiration_date) if matching_documents else None
             )
-            .order_by("expiration_date")
-            .first()
-        )
+        else:
+            # When multiple stay permit documents exist, use the earliest expiration date.
+            stay_permit_document = (
+                Document.objects.filter(
+                    doc_application=application,
+                    doc_type__name__in=stay_permit_doc_names,
+                    doc_type__is_stay_permit=True,
+                    expiration_date__isnull=False,
+                )
+                .order_by("expiration_date")
+                .first()
+            )
         if not stay_permit_document or not stay_permit_document.expiration_date:
             return None
 

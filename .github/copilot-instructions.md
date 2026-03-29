@@ -1,18 +1,21 @@
 # GitHub Copilot Instructions - BusinessSuite
 
 ## Overview / Purpose
+
 BusinessSuite is a Django 6 + DRF backend and Angular 21 frontend for visa/document-service workflows.
 Use the dominant pattern in the file you are editing. If the repo has a legacy exception, keep it local and do not normalize it away unless the task explicitly asks for a refactor.
 If codebase patterns conflict, prefer the most common implementation and match the surrounding file.
 
 Current stack:
-- Backend: Django 6, DRF, SimpleJWT, `djangorestframework-camel-case`, Dramatiq, Redis, PostgreSQL, `django-cacheops`, `django-auditlog`, and `django-waffle`.
+
+- Backend: Django 6, DRF, SimpleJWT, `djangorestframework-camel-case`, Dramatiq, Redis, PostgreSQL, `django-cacheops`, and `django-auditlog`.
 - Frontend: Angular 21 standalone components, signals, SSR, Bun, and an OpenAPI-generated client.
 - Data/cache: PostgreSQL is the source of truth, Redis is used for broker/cache, and browser IndexedDB is only used where an existing service already uses it.
 
 Cross-check against `README.md`, `docs/architecture.md`, `docs/backend.md`, `docs/frontend.md`, `docs/coding-standards.md`, `docs/shared_components.md`, and `docs/API_ENDPOINTS.md`.
 
 ## Backend Guidelines
+
 - DO keep DRF views thin. Standard CRUD lives in `ModelViewSet` classes with `get_queryset()`, `get_serializer_class()`, `perform_create()`, and `perform_update()`.
 - DO keep real controller code in the split modules under `backend/api/` such as `view_billing.py`, `view_applications.py`, `view_auth_catalog.py`, `view_notifications.py`, and `view_realtime.py`.
 - DO treat `backend/api/views.py` as a compatibility facade only. Add new controller logic in the split module for the domain.
@@ -41,6 +44,7 @@ Cross-check against `README.md`, `docs/architecture.md`, `docs/backend.md`, `doc
 - DON'T force one service style globally. Use the style that matches the module you are editing.
 
 Example backend controller pattern:
+
 ```python
 class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
@@ -51,6 +55,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 ```
 
 ## Frontend Guidelines
+
 - DO build new UI as standalone components with `ChangeDetectionStrategy.OnPush`. NgModules are not used for new code.
 - DO use signals for local mutable state, `computed()` for derived state, `effect()` for side effects, and `rxResource()` for reactive list loading and reloading.
 - DO extend `BaseListComponent`, `BaseFormComponent`, or `BaseDetailComponent` for new list/form/detail screens instead of reimplementing navigation, keyboard shortcuts, loading, and delete behavior.
@@ -70,6 +75,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 - DON'T touch `window`, `document`, `localStorage`, `indexedDB`, or DOM APIs without a browser guard.
 
 Example frontend state pattern:
+
 ```ts
 protected readonly listResource = rxResource({
   params: () => ({
@@ -84,6 +90,7 @@ protected readonly listResource = rxResource({
 ```
 
 ## Shared Conventions
+
 - Python modules use snake_case. Classes use PascalCase. Legacy CamelCase modules exist (`backend/invoices/services/InvoiceService.py`, `backend/letters/services/LetterService.py`); do not introduce new ones.
 - Angular filenames use kebab-case. Selectors follow the existing split: `app-...` for app/shared screens and `z-...` for low-level wrappers and primitives.
 - Shared UI components live under `frontend/src/app/shared/components/`. Use `index.ts` barrels and `*.variants.ts` when the component already follows that pattern. Do not edit Zard primitives directly; compose wrappers around them.
@@ -96,6 +103,7 @@ protected readonly listResource = rxResource({
 - Use `docs/API_ENDPOINTS.md` to verify exact endpoint names before inventing a new route or action.
 
 ## Testing Expectations
+
 - Backend tests use `uv run pytest` as the normal runner.
 - Backend test files use the `test_*.py` naming convention and live under `backend/<app>/tests/` or `backend/api/tests/`.
 - Use `TestCase` for DB-backed integration tests, `SimpleTestCase` for pure logic, `APIClient` and `APIRequestFactory` for view tests, and `patch()` for external IO, AI, storage, or subprocess calls.
@@ -107,6 +115,7 @@ protected readonly listResource = rxResource({
 - When changing API contracts, add or update both backend tests and the frontend test that consumes the changed response shape.
 
 Common commands:
+
 ```bash
 cd backend && uv run pytest
 cd frontend && bun run test:unit
@@ -115,7 +124,9 @@ cd frontend && bun run dev:mock
 ```
 
 ## Example Files to Follow
+
 ### Backend
+
 - `backend/api/view_billing.py` - CRUD viewset with custom actions, service delegation, and canonical envelopes.
 - `backend/api/view_applications.py` - queryset shaping, nested prefetching, serializer switching, and OCR/SSE flows.
 - `backend/api/view_auth_catalog.py` - token/cookie auth flow, profile actions, and bootstrap endpoints.
@@ -131,6 +142,7 @@ cd frontend && bun run dev:mock
 - `backend/api/views.py` - compatibility facade only.
 
 ### Frontend
+
 - `frontend/src/app/app.config.ts` - bootstrap flow, runtime config, theme initialization, auth restore, and hydration.
 - `frontend/src/app/core/services/auth.service.ts` - in-memory JWT auth, refresh-cookie restore, and mock mode.
 - `frontend/src/app/core/services/config.service.ts` - bootstrap config fetch via `HttpBackend`.
@@ -149,6 +161,7 @@ cd frontend && bun run dev:mock
 - `docs/shared_components.md` - canonical registry for reusable UI.
 
 ## Anti-patterns to Avoid
+
 - Don't add new controller code to `backend/api/views.py` when a split `view_*.py` module is the established home.
 - Don't wrap standard CRUD endpoints in a success envelope just for consistency.
 - Don't move shared query logic out of managers/querysets into serializers or UI code.

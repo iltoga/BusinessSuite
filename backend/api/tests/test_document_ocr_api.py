@@ -1,3 +1,5 @@
+"""Regression tests for document OCR API endpoints and flows."""
+
 from unittest.mock import patch
 
 from core.models import DocumentOCRJob

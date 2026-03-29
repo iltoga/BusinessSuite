@@ -1,3 +1,5 @@
+"""Tests for AI structured output management commands."""
+
 import io
 import json
 

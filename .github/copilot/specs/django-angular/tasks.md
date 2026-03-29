@@ -21,7 +21,7 @@
 - [ ] Verify backend endpoint exists and matches OpenAPI schema
 - [ ] Preserve existing routes and views; if a new API is required for Angular, add a new endpoint and tag the old one with: "TO BE REMOVED WHEN ANGULAR FRONTEND IS COMPLETE"
 - [ ] Run `bun run generate:api` if schema changed
-- [ ] Create feature flag in Django Waffle if needed
+- [ ] Create a runtime toggle in Django if needed
 - [ ] Review anti-patterns in Design Doc section 7
 
 ### After Completing Implementation
@@ -1819,9 +1819,8 @@
 ## Phase 11: Integration & Finalization
 
 - [x] **11.1 Feature Flagging**
-  - [x] Install `django-waffle`
-  - [x] Create `DISABLE_DJANGO_VIEWS` flag django settings (base.py)
-  - [x] Wrap legacy Django views with flag checks (all views in `urls.py` other than 'admin' and 'nested_admin' and all API views from `api/urls.py`). the flag should default to False (meaning django views are enabled). the goal is to disable django views when the flag is set to True, other than admin and api views.
+  - [x] Create backend runtime toggle settings for legacy view handling
+  - [x] Wrap legacy Django views with settings-based checks in `urls.py` and `api/urls.py`
   - [x] Add backend logic to prevent access to disabled views (403 Forbidden)
 
 - [x] **11.2 Production Build & Deployment**

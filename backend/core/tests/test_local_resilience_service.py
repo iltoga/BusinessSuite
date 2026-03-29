@@ -1,9 +1,10 @@
-from unittest.mock import patch
+"""Tests for the local resilience service and recovery state."""
 
-from django.test import TestCase
+from unittest.mock import patch
 
 from core.models.local_resilience import LocalResilienceSettings, SyncChangeLog
 from core.services.local_resilience_service import LocalResilienceService
+from django.test import TestCase
 
 
 class LocalResilienceServiceTests(TestCase):

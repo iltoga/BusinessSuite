@@ -1,3 +1,5 @@
+"""Regression tests for async enqueue guard indexes and lookups."""
+
 from datetime import date
 
 from core.models import AsyncJob, DocumentOCRJob, OCRJob
@@ -85,7 +87,9 @@ class AsyncEnqueueIndexTests(TestCase):
             InvoiceDocumentJob.STATUS_PROCESSING,
             InvoiceDocumentJob.STATUS_COMPLETED,
         ):
-            InvoiceDocumentJob.objects.create(created_by=cls.user, status=status, format_type=InvoiceDocumentJob.FORMAT_DOCX)
+            InvoiceDocumentJob.objects.create(
+                created_by=cls.user, status=status, format_type=InvoiceDocumentJob.FORMAT_DOCX
+            )
         InvoiceDocumentJob.objects.create(
             created_by=cls.other_user,
             status=InvoiceDocumentJob.STATUS_QUEUED,
@@ -128,32 +132,28 @@ class AsyncEnqueueIndexTests(TestCase):
                     task_name="products_export_excel",
                     created_by=self.user,
                     status__in=[AsyncJob.STATUS_PENDING, AsyncJob.STATUS_PROCESSING],
-                )
-                .order_by("-created_at", "-id")[:1],
+                ).order_by("-created_at", "-id")[:1],
             ),
             "ocr_job": (
                 "core_ocrjob_guard_idx",
                 OCRJob.objects.filter(
                     created_by=self.user,
                     status__in=[OCRJob.STATUS_QUEUED, OCRJob.STATUS_PROCESSING],
-                )
-                .order_by("-created_at", "-id")[:1],
+                ).order_by("-created_at", "-id")[:1],
             ),
             "document_ocr_job": (
                 "core_dococr_guard_idx",
                 DocumentOCRJob.objects.filter(
                     created_by=self.user,
                     status__in=[DocumentOCRJob.STATUS_QUEUED, DocumentOCRJob.STATUS_PROCESSING],
-                )
-                .order_by("-created_at", "-id")[:1],
+                ).order_by("-created_at", "-id")[:1],
             ),
             "invoice_import_job": (
                 "inv_import_guard_idx",
                 InvoiceImportJob.objects.filter(
                     created_by=self.user,
                     status__in=[InvoiceImportJob.STATUS_QUEUED, InvoiceImportJob.STATUS_PROCESSING],
-                )
-                .order_by("-created_at", "-id")[:1],
+                ).order_by("-created_at", "-id")[:1],
             ),
             "invoice_download_job": (
                 "inv_dl_guard_lookup_idx",
@@ -162,16 +162,14 @@ class AsyncEnqueueIndexTests(TestCase):
                     format_type=InvoiceDownloadJob.FORMAT_PDF,
                     created_by=self.user,
                     status__in=[InvoiceDownloadJob.STATUS_QUEUED, InvoiceDownloadJob.STATUS_PROCESSING],
-                )
-                .order_by("-created_at", "-id")[:1],
+                ).order_by("-created_at", "-id")[:1],
             ),
             "invoice_document_job": (
                 "inv_doc_guard_lookup_idx",
                 InvoiceDocumentJob.objects.filter(
                     created_by=self.user,
                     status__in=[InvoiceDocumentJob.STATUS_QUEUED, InvoiceDocumentJob.STATUS_PROCESSING],
-                )
-                .order_by("-created_at", "-id")[:1],
+                ).order_by("-created_at", "-id")[:1],
             ),
         }
 

@@ -1,3 +1,5 @@
+"""Regression tests for calendar reminder API behavior and permissions."""
+
 import json
 import signal
 from datetime import datetime, timedelta
@@ -39,22 +41,24 @@ class CalendarReminderApiTests(TestCase):
 
     def _sse_iter(self, stream):
         """Return a per-stream SyncAsyncIter that runs in a dedicated event loop thread.
-        
+
         NOTE: For tests that also do ORM writes between reads, use the async_to_sync
         pattern (wrapping the whole test body) instead, which guarantees the main
         thread handles all DB access.
         """
         key = id(stream)
-        if not hasattr(self, '_sync_iters'):
+        if not hasattr(self, "_sync_iters"):
             self._sync_iters = {}
         if key not in self._sync_iters:
             from api.tests.async_iter_helper import SyncAsyncIter
+
             self._sync_iters[key] = SyncAsyncIter(stream)
         return self._sync_iters[key]
 
     async def _next_sse_payload_with_timeout(self, stream, timeout_seconds: int = 5):
         """Consume chunks from the stream, skipping keepalive lines, and return the first JSON payload."""
         import asyncio
+
         from asgiref.sync import sync_to_async
 
         while True:
@@ -74,6 +78,7 @@ class CalendarReminderApiTests(TestCase):
     async def _next_sse_chunk_with_timeout(self, stream, timeout_seconds: int = 5):
         """Read the next raw chunk from the stream."""
         import asyncio
+
         from asgiref.sync import sync_to_async
 
         try:

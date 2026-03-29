@@ -1,3 +1,5 @@
+"""Add invoice application price history tracking fields."""
+
 from __future__ import annotations
 
 import django.db.models.deletion

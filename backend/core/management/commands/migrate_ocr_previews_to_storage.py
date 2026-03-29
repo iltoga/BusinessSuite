@@ -1,7 +1,20 @@
-from django.core.management.base import BaseCommand
+"""
+FILE_ROLE: Django management command for the core app.
+
+KEY_COMPONENTS:
+- Command: Module symbol.
+
+INTERACTIONS:
+- Depends on: core models, Django migration/management machinery, and related app services imported by this module.
+
+AI_GUIDELINES:
+- Keep command logic thin and delegate real work to services when possible.
+- Keep migrations schema-only and reversible; do not add runtime business logic here.
+"""
 
 from core.models import OCRJob
 from core.services.ocr_preview_storage import upload_ocr_preview_from_base64
+from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):

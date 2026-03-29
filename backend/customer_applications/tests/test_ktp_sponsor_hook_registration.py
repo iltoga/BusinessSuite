@@ -1,3 +1,5 @@
+"""Tests for KTP sponsor hook registration behavior."""
+
 from importlib import import_module
 
 from customer_applications.hooks import PassportSponsorHook, hook_registry

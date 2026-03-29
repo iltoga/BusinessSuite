@@ -1,10 +1,23 @@
-import logging
+"""
+FILE_ROLE: Django management command for the core app.
 
-from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+KEY_COMPONENTS:
+- Command: Module symbol.
+
+INTERACTIONS:
+- Depends on: core models, Django migration/management machinery, and related app services imported by this module.
+
+AI_GUIDELINES:
+- Keep command logic thin and delegate real work to services when possible.
+- Keep migrations schema-only and reversible; do not add runtime business logic here.
+"""
+
+import logging
 
 # file logger in prod and console in dev
 from core.services.logger_service import Logger
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 
 logger = Logger.get_logger(__name__)
 

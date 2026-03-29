@@ -1,3 +1,5 @@
+"""Regression tests for the API health check endpoint."""
+
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 

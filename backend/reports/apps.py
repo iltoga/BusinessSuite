@@ -1,3 +1,7 @@
+"""Django app configuration for the reports module."""
+
+"""Django app configuration for the reports module."""
+
 from django.apps import AppConfig
 
 

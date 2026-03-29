@@ -1,25 +1,28 @@
+"""
+FILE_ROLE: Async task entry points for the core app.
+
+KEY_COMPONENTS:
+- calendar reminder task helpers: Module symbols.
+
+INTERACTIONS:
+- Depends on: core reminder services and task runtime infrastructure.
+
+AI_GUIDELINES:
+- Keep the module focused on task orchestration wrappers.
+- Preserve the existing enqueue contract because reminders and streams rely on it.
+"""
+
 import logging
 
-from django.conf import settings
-from core.tasks.runtime import (
-    QUEUE_DEFAULT,
-    QUEUE_SCHEDULED,
-    crontab,
-    db_periodic_task,
-    db_task,
-)
-
 from core.services.calendar_reminder_service import CalendarReminderService
+from core.tasks.runtime import QUEUE_DEFAULT, QUEUE_SCHEDULED, crontab, db_periodic_task, db_task
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 
 def _dispatch_due_calendar_reminders(*, limit: int | None = None) -> dict[str, int]:
-    effective_limit = int(
-        limit
-        if limit is not None
-        else getattr(settings, "CALENDAR_REMINDER_DISPATCH_LIMIT", 200)
-    )
+    effective_limit = int(limit if limit is not None else getattr(settings, "CALENDAR_REMINDER_DISPATCH_LIMIT", 200))
     stats = CalendarReminderService().dispatch_due_reminders(limit=effective_limit)
     payload = {
         "sent": int(stats.sent),

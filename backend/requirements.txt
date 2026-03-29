@@ -53,7 +53,6 @@ django==6.0.2
     #   django-http-compression
     #   django-redis
     #   django-storages
-    #   django-waffle
     #   djangorestframework
     #   djangorestframework-simplejwt
     #   drf-spectacular
@@ -74,8 +73,6 @@ django-nested-admin==4.1.6
 django-redis==6.0.0
     # via business-suite (pyproject.toml)
 django-storages==1.14.6
-    # via business-suite (pyproject.toml)
-django-waffle==5.0.0
     # via business-suite (pyproject.toml)
 djangorestframework==3.16.1
     # via

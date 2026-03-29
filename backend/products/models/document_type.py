@@ -1,3 +1,5 @@
+"""Document type model and helpers for product-driven workflows."""
+
 from django.db import models
 
 

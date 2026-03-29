@@ -1,8 +1,25 @@
+"""
+FILE_ROLE: Handles synchronization API endpoints and helpers.
+
+KEY_COMPONENTS:
+- SyncPlaceholderSerializer: Module symbol.
+- SyncViewSet: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby API/core services and DRF helpers used in this module.
+
+AI_GUIDELINES:
+- Keep this module focused on reusable API infrastructure rather than domain orchestration.
+- Preserve the existing contract so split view modules can import these helpers safely.
+"""
+
 from __future__ import annotations
 
 import secrets
 
 from api.permissions import is_superuser_or_admin_group
+from api.utils.contracts import build_error_payload, build_success_payload
+from api.utils.stream_payloads import camelize_payload
 from core.models.local_resilience import LocalResilienceSettings, SyncChangeLog, SyncConflict, SyncCursor
 from core.services.sync_service import (
     fetch_media_entries,
@@ -23,9 +40,6 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
-
-from api.utils.contracts import build_error_payload, build_success_payload
-from api.utils.stream_payloads import camelize_payload
 
 User = get_user_model()
 
@@ -142,9 +156,7 @@ class SyncViewSet(viewsets.ViewSet):
                         ),
                         "lastError": remote_cursor.last_error if remote_cursor else "",
                         "updatedAt": (
-                            remote_cursor.updated_at.isoformat()
-                            if remote_cursor and remote_cursor.updated_at
-                            else None
+                            remote_cursor.updated_at.isoformat() if remote_cursor and remote_cursor.updated_at else None
                         ),
                     },
                 },
@@ -253,6 +265,4 @@ class SyncViewSet(viewsets.ViewSet):
             include_content=include_content,
             content_size_limit=max(1024, content_size_limit),
         )
-        return Response(
-            build_success_payload({"items": camelize_payload(items), "count": len(items)}, request=request)
-        )
+        return Response(build_success_payload({"items": camelize_payload(items), "count": len(items)}, request=request))

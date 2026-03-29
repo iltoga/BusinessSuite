@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Service-layer logic for the customer applications app.
+
+KEY_COMPONENTS:
+- ApplicationCalendarService: Service class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 import logging
 import uuid
 from datetime import datetime, time, timedelta
@@ -178,7 +192,9 @@ class ApplicationCalendarService:
             "end_date": (due_date + timedelta(days=1)).isoformat(),
             "color_id": GoogleCalendarEventColors.todo_color_id(),
             "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": reminder_minutes}]},
-            "extended_properties": {"private": self._private_properties(application, task, self.EVENT_KIND_TASK_DEADLINE)},
+            "extended_properties": {
+                "private": self._private_properties(application, task, self.EVENT_KIND_TASK_DEADLINE)
+            },
         }
 
     def _upsert_calendar_event(self, *, application, task, due_date, payload):
@@ -371,9 +387,7 @@ class ApplicationCalendarService:
             "end_date": end_date,
             "color_id": color_id,
             "notifications": notifications or {},
-            "extended_properties": {
-                "private": self._private_properties(application, task=None, event_kind=event_kind)
-            },
+            "extended_properties": {"private": self._private_properties(application, task=None, event_kind=event_kind)},
         }
 
         if existing_event:

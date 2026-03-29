@@ -1,9 +1,22 @@
+"""
+FILE_ROLE: Django forms for the payments app.
+
+KEY_COMPONENTS:
+- PaymentForm: Form class.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for app routing, model behavior, and service boundaries.
+"""
+
 import time
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-
 from invoices.models.invoice import InvoiceApplication
 
 from .models import Payment

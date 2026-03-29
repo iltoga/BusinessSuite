@@ -1,3 +1,5 @@
+"""View helpers for invoice status dashboard report responses."""
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 from reports.services import build_invoice_status_dashboard_context

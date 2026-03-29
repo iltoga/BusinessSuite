@@ -1,13 +1,14 @@
+"""Tests for sync service media manifest generation and handling."""
+
 from __future__ import annotations
 
 import os
 import tempfile
 from pathlib import Path
 
-from django.test import TestCase, override_settings
-
 from core.models.local_resilience import MediaManifestEntry
 from core.services.sync_service import refresh_media_manifest
+from django.test import TestCase, override_settings
 
 
 class RefreshMediaManifestTests(TestCase):

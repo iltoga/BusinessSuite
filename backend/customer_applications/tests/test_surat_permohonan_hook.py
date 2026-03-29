@@ -1,3 +1,5 @@
+"""Tests for the surat permohonan hook registration and execution."""
+
 import os
 from datetime import date
 from io import BytesIO

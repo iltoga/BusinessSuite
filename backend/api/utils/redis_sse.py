@@ -1,3 +1,5 @@
+"""Redis-backed SSE helper utilities for event streaming endpoints."""
+
 from __future__ import annotations
 
 import logging
@@ -7,7 +9,6 @@ from collections.abc import Generator
 from core.services.redis_streams import StreamEvent, read_stream_blocking, read_stream_replay
 
 logger = logging.getLogger(__name__)
-
 
 
 def iter_replay_and_live_events(
@@ -51,6 +52,7 @@ def iter_replay_and_live_events(
 import asyncio
 from collections.abc import AsyncGenerator
 
+
 async def iter_replay_and_live_events_async(
     *,
     stream_key: str,
@@ -72,6 +74,7 @@ async def iter_replay_and_live_events_async(
                 yield event
 
     from core.services.redis_streams import read_stream_blocking_async
+
     while True:
         try:
             events = await read_stream_blocking_async(stream_key, last_event_id=cursor, block_ms=block_ms, count=200)
@@ -83,7 +86,7 @@ async def iter_replay_and_live_events_async(
             await asyncio.sleep(min(max(block_ms, 250), 1000) / 1000.0)
             yield None
             continue
-            
+
         if not events:
             yield None
             continue

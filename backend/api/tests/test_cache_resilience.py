@@ -1,11 +1,13 @@
+"""Regression tests for cache resilience helpers and fallbacks."""
+
 from __future__ import annotations
 
 from unittest.mock import Mock, patch
 
 from api.async_controls import acquire_enqueue_guard, increment_guard_counter, release_enqueue_guard
 from api.cache_resilience import is_transient_cache_backend_error
-from api.views_shared import ApiErrorHandlingMixin, ResilientAnonRateThrottle
 from api.views_admin import ServerManagementViewSet
+from api.views_shared import ApiErrorHandlingMixin, ResilientAnonRateThrottle
 from django.test import SimpleTestCase
 from rest_framework import status
 

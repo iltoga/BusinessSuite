@@ -1,13 +1,16 @@
-from django.test import SimpleTestCase
+"""Tests for AI document validation reasoning helpers."""
 
 from core.services.ai_document_categorizer import VALIDATION_SCHEMA, format_validation_reasoning
+from django.test import SimpleTestCase
 
 
 class ValidationReasoningFormatTests(SimpleTestCase):
     def test_validation_schema_reasoning_object_branch_disallows_extra_keys(self):
         reasoning_schema = VALIDATION_SCHEMA["properties"]["reasoning"]
         object_branch = next(
-            branch for branch in reasoning_schema["anyOf"] if isinstance(branch, dict) and branch.get("type") == "object"
+            branch
+            for branch in reasoning_schema["anyOf"]
+            if isinstance(branch, dict) and branch.get("type") == "object"
         )
 
         self.assertEqual(object_branch["additionalProperties"], False)

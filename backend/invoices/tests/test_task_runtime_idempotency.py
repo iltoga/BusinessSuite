@@ -1,3 +1,5 @@
+"""Tests for invoice task runtime idempotency behavior."""
+
 from types import SimpleNamespace
 from unittest.mock import patch
 

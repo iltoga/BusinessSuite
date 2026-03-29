@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Async task entry points for the core app.
+
+KEY_COMPONENTS:
+- local resilience task helpers: Module symbols.
+
+INTERACTIONS:
+- Depends on: core local resilience services and task runtime infrastructure.
+
+AI_GUIDELINES:
+- Keep the module focused on task orchestration wrappers.
+- Preserve the existing enqueue contract because sync workflows rely on it.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -5,9 +19,9 @@ import logging
 import requests
 from core.models.local_resilience import LocalResilienceSettings, SyncChangeLog, SyncCursor
 from core.services.sync_service import get_local_node_id, ingest_remote_changes
+from core.tasks.runtime import QUEUE_LOW, QUEUE_SCHEDULED, crontab, db_periodic_task, db_task
 from django.conf import settings
 from django.utils import timezone
-from core.tasks.runtime import QUEUE_LOW, QUEUE_SCHEDULED, crontab, db_periodic_task, db_task
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +66,9 @@ def _push_once(*, limit: int) -> dict[str, int]:
 
     cursor = _cursor()
     local_node_id = get_local_node_id()
-    queryset = (
-        SyncChangeLog.objects.filter(source_node=local_node_id, seq__gt=cursor.last_pushed_seq)
-        .order_by("seq")[: max(1, int(limit))]
-    )
+    queryset = SyncChangeLog.objects.filter(source_node=local_node_id, seq__gt=cursor.last_pushed_seq).order_by("seq")[
+        : max(1, int(limit))
+    ]
     rows = list(queryset)
     if not rows:
         return {"pushed": 0, "skipped": 0}

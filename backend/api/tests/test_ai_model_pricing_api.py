@@ -1,3 +1,5 @@
+"""Regression tests for AI model pricing API endpoints."""
+
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 

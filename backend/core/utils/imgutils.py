@@ -1,11 +1,12 @@
+"""Image utility helpers for resizing, validation, and inspection."""
+
 import base64
 import os
 from io import BytesIO
 
+from core.utils.storage_helpers import get_local_file_path
 from pdf2image.pdf2image import convert_from_bytes, convert_from_path
 from PIL import Image
-
-from core.utils.storage_helpers import get_local_file_path
 
 
 def convert_and_resize_image(file, file_type, return_encoded=True, resize=False, base_width=400, dpi=300):

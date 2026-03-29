@@ -1,3 +1,5 @@
+"""Regression tests for the WhatsApp webhook endpoint."""
+
 import hashlib
 import hmac
 import json

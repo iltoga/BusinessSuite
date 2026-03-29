@@ -1,11 +1,12 @@
-from unittest.mock import patch
+"""Regression tests for OCR status preview URL generation."""
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from rest_framework.test import APIRequestFactory, force_authenticate
+from unittest.mock import patch
 
 from api.views import OCRViewSet
 from core.models import OCRJob
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from rest_framework.test import APIRequestFactory, force_authenticate
 
 
 class OCRStatusPreviewUrlTests(TestCase):

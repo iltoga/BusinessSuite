@@ -1,12 +1,13 @@
+"""View helpers for KPI dashboard report responses."""
+
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from customer_applications.models import DocApplication
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from django.views.generic import TemplateView
-
-from customer_applications.models import DocApplication
 from invoices.models import Invoice, InvoiceApplication
 from payments.models import Payment
 from reports.utils import format_currency, get_trend_indicator

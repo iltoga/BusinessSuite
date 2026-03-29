@@ -1,10 +1,24 @@
+"""
+FILE_ROLE: Signal handlers that sync core data into related subsystems.
+
+KEY_COMPONENTS:
+- _on_tracked_save: Module symbol.
+- _on_tracked_delete: Module symbol.
+- register_sync_signals: Module symbol.
+
+INTERACTIONS:
+- Depends on: core.models, core.services, Django signal machinery, or middleware hooks as appropriate.
+
+AI_GUIDELINES:
+- Keep this module focused on framework integration and small hook functions.
+- Do not move domain orchestration here when a service already owns the workflow.
+"""
+
 from __future__ import annotations
 
+from core.services.sync_service import capture_model_delete, capture_model_upsert, is_sync_apply_in_progress
 from django.apps import apps
 from django.db.models.signals import post_delete, post_save
-
-from core.services.sync_service import capture_model_delete, capture_model_upsert, is_sync_apply_in_progress
-
 
 TRACKED_MODELS: list[tuple[str, str]] = [
     ("core", "LocalResilienceSettings"),

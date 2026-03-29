@@ -1,14 +1,10 @@
+"""Async tasks for customer application workflows and follow-up actions."""
+
 import logging
 import os
 import posixpath
 from datetime import datetime, time, timedelta
 
-from customer_applications.models import DocApplication
-from django.contrib.auth import get_user_model
-from django.conf import settings
-from django.core.files.storage import FileSystemStorage, default_storage
-from django.db import IntegrityError, transaction
-from django.utils import timezone
 from core.tasks.runtime import (
     QUEUE_DEFAULT,
     QUEUE_LOW,
@@ -18,6 +14,12 @@ from core.tasks.runtime import (
     db_periodic_task,
     db_task,
 )
+from customer_applications.models import DocApplication
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.files.storage import FileSystemStorage, default_storage
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -312,7 +314,9 @@ def _try_auto_import_passport(*, application_id: int, user_id: int | None = None
             _save_document(document)
             return {"status": "ok", "source": "previous_application"}
         except Exception:
-            logger.exception("Passport auto-import from previous application failed for application #%s", application_id)
+            logger.exception(
+                "Passport auto-import from previous application failed for application #%s", application_id
+            )
 
     return {"status": "skipped", "reason": "no_import_source"}
 
@@ -337,7 +341,7 @@ def _is_meta_status_lookup_unsupported(exc: Exception) -> bool:
         and (
             '"error_subcode":33' in lowered
             or "'error_subcode': 33" in lowered
-            or "subcode\":33" in lowered
+            or 'subcode":33' in lowered
             or "subcode=33" in lowered
         )
     )
@@ -348,7 +352,9 @@ def schedule_whatsapp_status_poll(*, notification_id: int, delay_seconds: int = 
         return
 
     def _enqueue():
-        poll_whatsapp_delivery_statuses_task.schedule(kwargs={"notification_ids": [notification_id]}, delay=delay_seconds)
+        poll_whatsapp_delivery_statuses_task.schedule(
+            kwargs={"notification_ids": [notification_id]}, delay=delay_seconds
+        )
 
     try:
         transaction.on_commit(_enqueue)
@@ -495,9 +501,7 @@ def _send_due_tomorrow_notification_for_application(
     scheduled_for,
 ):
     from customer_applications.models import WorkflowNotification
-    from notifications.services.customer_deadline_messages import (
-        build_customer_deadline_notification_payload,
-    )
+    from notifications.services.customer_deadline_messages import build_customer_deadline_notification_payload
     from notifications.services.providers import is_queued_provider_result
 
     task = application.get_next_calendar_task()
@@ -691,11 +695,15 @@ def poll_whatsapp_delivery_statuses(*, notification_ids=None, limit=None):
     provider = WhatsappNotificationProvider()
     poll_limit = int(getattr(settings, "WHATSAPP_STATUS_POLL_LIMIT", 500)) if limit is None else int(limit)
     cutoff = timezone.now() - timedelta(days=1)
-    notifications = WorkflowNotification.objects.filter(
-        channel=WorkflowNotification.CHANNEL_WHATSAPP,
-        status__in=[WorkflowNotification.STATUS_PENDING, WorkflowNotification.STATUS_SENT],
-        created_at__gte=cutoff,
-    ).exclude(provider_message__contains=WHATSAPP_POLL_UNSUPPORTED_MARKER).order_by("id")
+    notifications = (
+        WorkflowNotification.objects.filter(
+            channel=WorkflowNotification.CHANNEL_WHATSAPP,
+            status__in=[WorkflowNotification.STATUS_PENDING, WorkflowNotification.STATUS_SENT],
+            created_at__gte=cutoff,
+        )
+        .exclude(provider_message__contains=WHATSAPP_POLL_UNSUPPORTED_MARKER)
+        .order_by("id")
+    )
 
     if notification_ids is not None:
         notifications = notifications.filter(id__in=list(notification_ids))

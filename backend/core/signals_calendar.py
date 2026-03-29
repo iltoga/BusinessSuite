@@ -1,3 +1,21 @@
+"""
+FILE_ROLE: Signal handlers for calendar lifecycle events.
+
+KEY_COMPONENTS:
+- _send_calendar_task: Module symbol.
+- _log_dispatched_message: Module symbol.
+- _mark_calendar_sync_dispatch_failed: Module symbol.
+- queue_calendar_event_sync: Module symbol.
+- queue_calendar_event_delete: Module symbol.
+
+INTERACTIONS:
+- Depends on: core.models, core.services, Django signal machinery, or middleware hooks as appropriate.
+
+AI_GUIDELINES:
+- Keep this module focused on framework integration and small hook functions.
+- Do not move domain orchestration here when a service already owns the workflow.
+"""
+
 import logging
 
 import dramatiq

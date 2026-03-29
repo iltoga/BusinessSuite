@@ -1,3 +1,7 @@
+"""Invoice download job model used to track file delivery and cleanup."""
+
+"""Invoice download job model used to track file delivery and cleanup."""
+
 import uuid
 
 from django.conf import settings

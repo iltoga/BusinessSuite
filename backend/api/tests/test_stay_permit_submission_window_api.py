@@ -1,3 +1,5 @@
+"""Regression tests for stay-permit submission window API logic."""
+
 import json
 from datetime import date
 

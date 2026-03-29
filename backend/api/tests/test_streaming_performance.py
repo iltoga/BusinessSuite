@@ -1,3 +1,5 @@
+"""Performance regression tests for streaming and SSE response paths."""
+
 import json
 from datetime import date
 from unittest.mock import MagicMock, patch
@@ -42,9 +44,11 @@ class StreamingPerformanceTests(TestCase):
     @staticmethod
     def _sync_iter(*items):
         """Return a sync iterable from the given items, for mocking stream functions."""
+
         def _gen():
             for item in items:
                 yield item
+
         return _gen()
 
     def test_async_job_sse_progress_event_uses_stream_payload_without_db_query(self):
@@ -77,9 +81,7 @@ class StreamingPerformanceTests(TestCase):
             "api.utils.redis_sse.iter_replay_and_live_events",
             side_effect=_mock_progress_events,
         ):
-            response = self.client.get(
-                reverse("api-async-job-status-sse", kwargs={"job_id": str(job.id)})
-            )
+            response = self.client.get(reverse("api-async-job-status-sse", kwargs={"job_id": str(job.id)}))
             self.assertEqual(response.status_code, 200)
 
             stream = response.streaming_content
@@ -93,7 +95,6 @@ class StreamingPerformanceTests(TestCase):
             progress_payload = self._decode_sse_payload(progress_chunk)
             self.assertEqual(progress_payload["progress"], 45)
             self.assertEqual(progress_payload["message"], "Halfway there")
-
 
     def test_async_job_sse_terminal_event_verifies_final_state_from_db(self):
         job = AsyncJob.objects.create(
@@ -125,9 +126,7 @@ class StreamingPerformanceTests(TestCase):
             "api.utils.redis_sse.iter_replay_and_live_events",
             side_effect=_mock_terminal_events,
         ):
-            response = self.client.get(
-                reverse("api-async-job-status-sse", kwargs={"job_id": str(job.id)})
-            )
+            response = self.client.get(reverse("api-async-job-status-sse", kwargs={"job_id": str(job.id)}))
             stream = response.streaming_content
             _ = next(stream)  # consume initial snapshot
 
@@ -139,7 +138,6 @@ class StreamingPerformanceTests(TestCase):
             self.assertEqual(terminal_payload["status"], AsyncJob.STATUS_COMPLETED)
             self.assertEqual(terminal_payload["result"], {"downloadUrl": "/final.pdf"})
             self.assertEqual(terminal_payload["message"], "Completed")
-
 
     @patch("api.view_applications.iter_replay_and_live_events")
     def test_ocr_stream_progress_event_uses_stream_payload_without_db_query(self, iter_events_mock):
@@ -289,7 +287,7 @@ class StreamingPerformanceTests(TestCase):
         mock_job.status = job.status
         mock_job.progress = job.progress
         mock_job.total_files = job.total_files
-        
+
         mock_item = MagicMock()
         mock_item.id = item.id
         mock_item.job_id = job.id

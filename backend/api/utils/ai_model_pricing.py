@@ -1,3 +1,5 @@
+"""Helpers for resolving AI model pricing data for API responses."""
+
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation

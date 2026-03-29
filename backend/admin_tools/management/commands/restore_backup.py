@@ -1,8 +1,21 @@
+"""
+FILE_ROLE: Management command for the admin tools app backup restore workflow.
+
+KEY_COMPONENTS:
+- Command: Django management command entrypoint.
+
+INTERACTIONS:
+- Depends on: admin_tools.services and Django management command machinery.
+
+AI_GUIDELINES:
+- Keep command orchestration thin and delegate the restore workflow to services.
+- Preserve command arguments and output contract because scripts and tests depend on them.
+"""
+
 from pathlib import Path
 
-from django.core.management.base import BaseCommand, CommandError
-
 from admin_tools import services
+from django.core.management.base import BaseCommand, CommandError
 
 
 class Command(BaseCommand):

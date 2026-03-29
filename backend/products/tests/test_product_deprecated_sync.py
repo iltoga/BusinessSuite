@@ -1,5 +1,6 @@
-from django.test import TestCase
+"""Tests for syncing deprecated product state across workflows."""
 
+from django.test import TestCase
 from products.models import DocumentType, Product
 
 

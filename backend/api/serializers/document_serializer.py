@@ -1,3 +1,19 @@
+"""
+FILE_ROLE: Serializer and payload-shaping helpers for the API app.
+
+KEY_COMPONENTS:
+- DocumentActionSerializer: Serializer class.
+- DocumentMergeSerializer: Serializer class.
+- DocumentSerializer: Serializer class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on serializer validation and representation only.
+- Preserve the existing API contract because client code and views depend on these field names.
+"""
+
 from api.serializers.document_type_serializer import DocumentTypeSerializer
 from customer_applications.hooks.registry import hook_registry
 from customer_applications.models import Document

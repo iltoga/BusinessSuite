@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Handles report dashboard API endpoints and aggregations.
+
+KEY_COMPONENTS:
+- _to_json_value: Module symbol.
+- _BaseReportAPIView: Module symbol.
+- ReportsIndexApiView: Module symbol.
+- RevenueReportApiView: Module symbol.
+- KPIDashboardApiView: Module symbol.
+- InvoiceStatusDashboardApiView: Module symbol.
+- MonthlyInvoiceDetailApiView: Module symbol.
+- CashFlowAnalysisApiView: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby API/core services and DRF helpers used in this module.
+
+AI_GUIDELINES:
+- Keep this module focused on reusable API infrastructure rather than domain orchestration.
+- Preserve the existing contract so split view modules can import these helpers safely.
+"""
+
 from __future__ import annotations
 
 import calendar

@@ -1,3 +1,5 @@
+"""Tests for customer application synchronization API behavior."""
+
 from datetime import date
 from unittest.mock import patch
 
@@ -79,6 +81,30 @@ class CustomerApplicationSyncApiTests(TestCase):
         self.assertEqual(kwargs["user_id"], self.user.id)
         self.assertEqual(kwargs["action"], "upsert")
         send_due_mock.assert_not_called()
+
+    @patch("customer_applications.tasks.sync_application_calendar_task")
+    def test_quick_create_queues_calendar_sync(self, sync_task_mock):
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                "/api/customer-applications/quick-create/",
+                {
+                    "customer": self.customer.id,
+                    "product": self.product.id,
+                    "doc_date": "2026-01-10",
+                    "notes": "Quick created sync",
+                },
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 201)
+        application_id = response.data["data"]["application"]["id"]
+        self.assertTrue(DocApplication.objects.filter(pk=application_id).exists())
+
+        sync_task_mock.assert_called_once()
+        kwargs = sync_task_mock.call_args.kwargs
+        self.assertEqual(kwargs["application_id"], application_id)
+        self.assertEqual(kwargs["user_id"], self.user.id)
+        self.assertEqual(kwargs["action"], "upsert")
 
     @patch("customer_applications.tasks.send_due_tomorrow_customer_notifications")
     @patch("customer_applications.tasks.sync_application_calendar_task")

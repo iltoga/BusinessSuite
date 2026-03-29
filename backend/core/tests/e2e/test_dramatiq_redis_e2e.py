@@ -1,3 +1,5 @@
+"""End-to-end tests for Dramatiq and Redis integration."""
+
 import os
 import uuid
 from pathlib import Path
@@ -40,9 +42,7 @@ def test_dramatiq_queue_roundtrip_uses_redis_backend_e2e():
     try:
         redis_client.ping()
     except Exception as exc:
-        pytest.skip(
-            f"Redis is not reachable for Dramatiq E2E on {redis_host}:{redis_port} (db {redis_db}): {exc}"
-        )
+        pytest.skip(f"Redis is not reachable for Dramatiq E2E on {redis_host}:{redis_port} (db {redis_db}): {exc}")
 
     namespace = f"dramatiq-e2e-{uuid.uuid4().hex}"
     broker = RedisBroker(

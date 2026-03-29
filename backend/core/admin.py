@@ -1,3 +1,20 @@
+"""
+FILE_ROLE: Django admin registrations for core models.
+
+KEY_COMPONENTS:
+- AppSettingAdmin: Module symbol.
+- RbacMenuRuleAdmin: Module symbol.
+- RbacFieldRuleAdmin: Module symbol.
+- AIRequestUsageAdmin: Module symbol.
+
+INTERACTIONS:
+- Depends on: core.models, core.services, Django signal machinery, or middleware hooks as appropriate.
+
+AI_GUIDELINES:
+- Keep this module focused on framework integration and small hook functions.
+- Do not move domain orchestration here when a service already owns the workflow.
+"""
+
 from django.contrib import admin
 
 from .models.ai_request_usage import AIRequestUsage
@@ -5,9 +22,9 @@ from .models.app_setting import AppSetting
 from .models.calendar_reminder import CalendarReminder
 from .models.country_code import CountryCode
 from .models.holiday import Holiday
+from .models.rbac_rule import RbacFieldRule, RbacMenuRule
 from .models.ui_settings import UiSettings
 from .models.user_settings import UserSettings
-from .models.rbac_rule import RbacMenuRule, RbacFieldRule
 
 admin.site.register(Holiday)
 admin.site.register(CountryCode)

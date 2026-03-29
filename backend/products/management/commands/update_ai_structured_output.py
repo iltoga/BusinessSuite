@@ -1,3 +1,5 @@
+"""Management command for updating AI structured output settings."""
+
 import json
 
 from django.core.management.base import BaseCommand

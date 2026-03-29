@@ -1,3 +1,5 @@
+"""Tests for the AI client wrapper and request helpers."""
+
 import json
 from unittest.mock import MagicMock, patch
 

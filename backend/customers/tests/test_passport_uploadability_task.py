@@ -1,8 +1,10 @@
+"""Tests for the passport uploadability task and related gating logic."""
+
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from io import BytesIO
-import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -62,7 +64,9 @@ class FakeUploadabilityResult:
 
 
 class FakePassportUploadabilityService:
-    def check_passport(self, file_content: bytes, method: str = "hybrid", progress_callback=None) -> FakeUploadabilityResult:
+    def check_passport(
+        self, file_content: bytes, method: str = "hybrid", progress_callback=None
+    ) -> FakeUploadabilityResult:
         if progress_callback is not None:
             progress_callback(35, "Fake Step 2/4: Stub validation setup...")
             progress_callback(60, "Fake Step 3/4: Stub AI validation...")

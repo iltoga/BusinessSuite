@@ -1,3 +1,22 @@
+"""
+FILE_ROLE: Implements AES-GCM encrypted local file storage for media blobs.
+
+KEY_COMPONENTS:
+- EncryptedLocalStorage: FileSystemStorage subclass that encrypts on write and decrypts on read.
+- _resolve_key: Loads and validates the 32-byte encryption key from settings.
+- _encrypt_bytes: Encrypts plaintext bytes into the stored payload format.
+- _decrypt_bytes: Decrypts payload bytes back into plaintext.
+- _save: Encrypts content before delegating to the base storage save.
+- open: Returns a decrypted file object for read-only access.
+
+INTERACTIONS:
+- Depends on: cryptography AESGCM, django.conf.settings, django.core.files.storage.FileSystemStorage, and media persistence.
+
+AI_GUIDELINES:
+- Keep the encryption header and key size contract stable because persisted blobs depend on it.
+- Use this adapter only for encrypted local media; do not mix it with unrelated storage behaviors.
+"""
+
 from __future__ import annotations
 
 import base64

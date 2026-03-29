@@ -1,3 +1,5 @@
+"""Tests for invoice application payment status calculations."""
+
 from datetime import timedelta
 from decimal import Decimal
 

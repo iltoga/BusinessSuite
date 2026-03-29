@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- StreamEvent: Module symbol.
+- _stream_maxlen: Private helper.
+- _stream_ttl_seconds: Private helper.
+- stream_user_key: Module symbol.
+- stream_file_key: Module symbol.
+- stream_job_key: Module symbol.
+- _utc_now_iso: Private helper.
+- _decode_dict: Private helper.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from __future__ import annotations
 
 import json
@@ -5,10 +26,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from django.conf import settings
-
 from api.utils.stream_payloads import camelize_payload
 from core.services.redis_client import get_redis_client
+from django.conf import settings
 
 STREAM_KEY_USER_PREFIX = "stream:user"
 STREAM_KEY_FILE_PREFIX = "stream:file"
@@ -25,35 +45,28 @@ class StreamEvent:
     raw: dict[str, str]
 
 
-
 def _stream_maxlen() -> int:
     return int(getattr(settings, "STREAM_MAXLEN", 10_000) or 10_000)
-
 
 
 def _stream_ttl_seconds() -> int:
     return int(getattr(settings, "STREAM_TTL_SECONDS", 7 * 24 * 60 * 60) or (7 * 24 * 60 * 60))
 
 
-
 def stream_user_key(user_id: int | str) -> str:
     return f"{STREAM_KEY_USER_PREFIX}:{user_id}"
-
 
 
 def stream_file_key(file_id: int | str) -> str:
     return f"{STREAM_KEY_FILE_PREFIX}:{file_id}"
 
 
-
 def stream_job_key(job_id: int | str) -> str:
     return f"{STREAM_KEY_JOB_PREFIX}:{job_id}"
 
 
-
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
-
 
 
 def _decode_dict(raw: dict[Any, Any]) -> dict[str, str]:
@@ -67,10 +80,8 @@ def _decode_dict(raw: dict[Any, Any]) -> dict[str, str]:
     return decoded
 
 
-
 def _decode_stream_id(raw_id: Any) -> str:
     return raw_id.decode("utf-8") if isinstance(raw_id, (bytes, bytearray)) else str(raw_id)
-
 
 
 def _to_stream_event(stream_id: Any, raw_fields: dict[Any, Any]) -> StreamEvent:
@@ -89,7 +100,6 @@ def _to_stream_event(stream_id: Any, raw_fields: dict[Any, Any]) -> StreamEvent:
         payload=payload if isinstance(payload, dict) else {"value": payload},
         raw=fields,
     )
-
 
 
 def publish_stream_event(
@@ -129,7 +139,6 @@ def publish_stream_event(
     return _decode_stream_id(stream_id)
 
 
-
 def read_stream_replay(
     stream_key: str,
     *,
@@ -140,7 +149,6 @@ def read_stream_replay(
     min_id = f"({last_event_id}" if last_event_id else "-"
     entries = client.xrange(stream_key, min=min_id, max="+", count=count)
     return [_to_stream_event(stream_id, raw_fields) for stream_id, raw_fields in entries]
-
 
 
 def read_stream_blocking(
@@ -174,6 +182,7 @@ async def read_stream_blocking_async(
     count: int = 200,
 ) -> list[StreamEvent]:
     from core.services.redis_client import get_async_redis_client
+
     socket_timeout = max(5.0, (block_ms / 1000.0) + 5.0)
     client = get_async_redis_client(socket_timeout=socket_timeout)
     cursor = last_event_id or "$"
@@ -188,13 +197,11 @@ async def read_stream_blocking_async(
     return events
 
 
-
 def resolve_last_event_id(request) -> str | None:
     last_event_id = request.headers.get("Last-Event-ID") or request.GET.get("last_event_id")
     if not last_event_id:
         return None
     return str(last_event_id).strip() or None
-
 
 
 def format_sse_event(*, data: dict[str, Any], event: str | None = None, event_id: str | None = None) -> str:

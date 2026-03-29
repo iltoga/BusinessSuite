@@ -1,3 +1,5 @@
+"""Template filters for formatting report values in Django templates."""
+
 import json
 
 from django import template

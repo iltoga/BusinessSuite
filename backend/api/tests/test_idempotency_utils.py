@@ -1,12 +1,13 @@
+"""Regression tests for idempotency utility helpers."""
+
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from django.http import QueryDict
-from django.test import SimpleTestCase
-
 from api.utils import idempotency
 from api.utils.idempotency import IdempotencyConflictError
+from django.http import QueryDict
+from django.test import SimpleTestCase
 
 
 class IdempotencyUtilsTests(SimpleTestCase):
@@ -122,9 +123,9 @@ class IdempotencyUtilsTests(SimpleTestCase):
             idempotency_key="idem-123",
         )
 
-        with patch.object(idempotency.cache, "get", return_value={"kind": "claim", "fingerprint": "fp-1"}), patch.object(
-            idempotency.cache, "add"
-        ) as cache_add:
+        with patch.object(
+            idempotency.cache, "get", return_value={"kind": "claim", "fingerprint": "fp-1"}
+        ), patch.object(idempotency.cache, "add") as cache_add:
             resolved_cache_key, deduplicated = idempotency.claim_request_idempotency(
                 request=request,
                 namespace="backup_start_sse",

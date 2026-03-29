@@ -1,3 +1,5 @@
+"""Add calendar event linkage to document applications."""
+
 from django.db import migrations, models
 
 

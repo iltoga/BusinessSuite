@@ -1,10 +1,11 @@
+"""Tests for audit and login signal handling."""
+
 from auditlog.models import LogEntry
 from auditlog.registry import auditlog
+from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from django.test import TestCase, override_settings
-
-from customers.models import Customer
 
 
 class AuditLoginSignalsTests(TestCase):

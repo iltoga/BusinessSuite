@@ -1,3 +1,5 @@
+"""Tests for image quality service scoring and validation."""
+
 import importlib.util
 
 import numpy as np

@@ -1,3 +1,5 @@
+"""Async jobs for generating and distributing product price lists."""
+
 import os
 import traceback
 

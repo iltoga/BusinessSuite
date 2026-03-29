@@ -1,3 +1,5 @@
+"""Service for building product price lists and related output artifacts."""
+
 from __future__ import annotations
 
 from collections import OrderedDict

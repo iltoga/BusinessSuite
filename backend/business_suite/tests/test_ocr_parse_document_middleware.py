@@ -1,10 +1,23 @@
+"""
+FILE_ROLE: Test coverage for business_suite.
+
+KEY_COMPONENTS:
+- OcrParseDocumentMiddlewareTests: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for middleware, scripts, or migrations because other code depends on them.
+"""
+
 from unittest.mock import Mock, patch
 
+from business_suite.middlewares.ocr_parse_document import OcrParseDocumentMiddleware
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase
-from django.core.files.uploadedfile import SimpleUploadedFile
-
-from business_suite.middlewares.ocr_parse_document import OcrParseDocumentMiddleware
 
 
 class OcrParseDocumentMiddlewareTests(SimpleTestCase):

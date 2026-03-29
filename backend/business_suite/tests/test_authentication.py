@@ -1,10 +1,24 @@
+"""
+FILE_ROLE: Test coverage for business_suite.
+
+KEY_COMPONENTS:
+- EnsureMockUserTests: Module symbol.
+- JwtOrMockAuthenticationTests: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for middleware, scripts, or migrations because other code depends on them.
+"""
+
 from unittest.mock import patch
 
+from business_suite.authentication import JwtOrMockAuthentication, ensure_mock_user
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import RequestFactory, TestCase, override_settings
-
-from business_suite.authentication import JwtOrMockAuthentication, ensure_mock_user
 
 User = get_user_model()
 

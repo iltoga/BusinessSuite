@@ -1,3 +1,21 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- _coerce_int: Private helper.
+- get_calendar_reminder_stream_cursor: Module symbol.
+- get_calendar_reminder_stream_last_event: Module symbol.
+- bump_calendar_reminder_stream_cursor: Module symbol.
+- reset_calendar_reminder_stream_state: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from __future__ import annotations
 
 from typing import Any

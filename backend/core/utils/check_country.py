@@ -1,7 +1,8 @@
-from rapidfuzz import process
-from rapidfuzz.fuzz import ratio
+"""Utilities for validating and checking country codes and records."""
 
 from core.models import CountryCode
+from rapidfuzz import process
+from rapidfuzz.fuzz import ratio
 
 
 def check_country_by_code(code) -> CountryCode:

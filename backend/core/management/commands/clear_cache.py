@@ -1,8 +1,21 @@
+"""
+FILE_ROLE: Django management command for the core app.
+
+KEY_COMPONENTS:
+- Command: Module symbol.
+
+INTERACTIONS:
+- Depends on: core models, Django migration/management machinery, and related app services imported by this module.
+
+AI_GUIDELINES:
+- Keep command logic thin and delegate real work to services when possible.
+- Keep migrations schema-only and reversible; do not add runtime business logic here.
+"""
+
+from cache.namespace import namespace_manager
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.management.base import BaseCommand
-
-from cache.namespace import namespace_manager
 
 User = get_user_model()
 
@@ -25,7 +38,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         user_id = options.get("user")
         all_users = options.get("all_users")
-        
+
         if user_id:
             # Per-user cache clearing
             try:
@@ -39,44 +52,34 @@ class Command(BaseCommand):
                     )
                 )
             except User.DoesNotExist:
-                self.stdout.write(
-                    self.style.ERROR(f"User with ID {user_id} does not exist")
-                )
+                self.stdout.write(self.style.ERROR(f"User with ID {user_id} does not exist"))
             except Exception as e:
-                self.stdout.write(
-                    self.style.ERROR(f"Error clearing cache for user {user_id}: {e}")
-                )
-        
+                self.stdout.write(self.style.ERROR(f"Error clearing cache for user {user_id}: {e}"))
+
         elif all_users:
             # Clear cache for all users
             users = User.objects.all()
             cleared_count = 0
             error_count = 0
-            
+
             for user in users:
                 try:
                     old_version = namespace_manager.get_user_version(user.id)
                     new_version = namespace_manager.increment_user_version(user.id)
                     self.stdout.write(
-                        f"Cleared cache for {user.username} (ID: {user.id}): "
-                        f"v{old_version} -> v{new_version}"
+                        f"Cleared cache for {user.username} (ID: {user.id}): " f"v{old_version} -> v{new_version}"
                     )
                     cleared_count += 1
                 except Exception as e:
                     self.stdout.write(
-                        self.style.WARNING(
-                            f"Error clearing cache for {user.username} (ID: {user.id}): {e}"
-                        )
+                        self.style.WARNING(f"Error clearing cache for {user.username} (ID: {user.id}): {e}")
                     )
                     error_count += 1
-            
+
             self.stdout.write(
-                self.style.SUCCESS(
-                    f"\nCleared cache for {cleared_count} users "
-                    f"({error_count} errors)"
-                )
+                self.style.SUCCESS(f"\nCleared cache for {cleared_count} users " f"({error_count} errors)")
             )
-        
+
         else:
             # Global cache clear (default behavior - backward compatible)
             cache.clear()

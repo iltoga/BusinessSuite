@@ -1,3 +1,5 @@
+"""Tests for the document categorization validation gate logic."""
+
 from unittest.mock import patch
 
 import dramatiq

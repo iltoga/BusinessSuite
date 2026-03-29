@@ -1,3 +1,5 @@
+"""Serializers for passport validation and document-check workflows."""
+
 from rest_framework import serializers
 
 

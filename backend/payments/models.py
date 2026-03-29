@@ -1,3 +1,20 @@
+"""
+FILE_ROLE: Primary data models for the payments app.
+
+KEY_COMPONENTS:
+- PaymentQuerySet: Module symbol.
+- PaymentManager: Module symbol.
+- Payment: Module symbol.
+- update_invoice_status: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for app routing, model behavior, and service boundaries.
+"""
+
 from customers.models import Customer
 from django.conf import settings
 from django.contrib.postgres.search import SearchVector, TrigramSimilarity

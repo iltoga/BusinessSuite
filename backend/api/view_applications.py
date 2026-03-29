@@ -61,6 +61,29 @@ from .views_imports import *
 logger = logging.getLogger(__name__)
 
 
+def _queue_application_calendar_sync(
+    *,
+    application_id: int,
+    user_id: int,
+    previous_due_date=None,
+    start_date=None,
+):
+    from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
+
+    previous_due_date_value = previous_due_date.isoformat() if previous_due_date else None
+    start_date_value = start_date.isoformat() if start_date else None
+
+    transaction.on_commit(
+        lambda: sync_application_calendar_task(
+            application_id=application_id,
+            user_id=user_id,
+            action=SYNC_ACTION_UPSERT,
+            previous_due_date=previous_due_date_value,
+            start_date=start_date_value,
+        )
+    )
+
+
 def _build_ocr_status_payload(job: OCRJob, request) -> dict[str, Any]:
     response_data = {
         "jobId": str(job.id),
@@ -257,19 +280,11 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         previous_due_date=None,
         start_date=None,
     ):
-        from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
-
-        previous_due_date_value = previous_due_date.isoformat() if previous_due_date else None
-        start_date_value = start_date.isoformat() if start_date else None
-
-        transaction.on_commit(
-            lambda: sync_application_calendar_task(
-                application_id=application_id,
-                user_id=user_id,
-                action=SYNC_ACTION_UPSERT,
-                previous_due_date=previous_due_date_value,
-                start_date=start_date_value,
-            )
+        _queue_application_calendar_sync(
+            application_id=application_id,
+            user_id=user_id,
+            previous_due_date=previous_due_date,
+            start_date=start_date,
         )
 
     def _get_application_workflow_or_none(self, *, application_id: int, workflow_id: int):
@@ -1648,6 +1663,7 @@ def customer_application_quick_create(request):
             notes=validated_data.get("notes", ""),
             created_by=request.user,
         )
+        _queue_application_calendar_sync(application_id=doc_app.id, user_id=request.user.id)
 
         return Response(
             build_success_payload(

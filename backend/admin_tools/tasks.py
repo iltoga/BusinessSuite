@@ -1,3 +1,20 @@
+"""
+FILE_ROLE: Async task entry points for the admin tools app.
+
+KEY_COMPONENTS:
+- _publish_user_event: Private helper.
+- run_backup_stream: Module symbol.
+- run_restore_stream: Module symbol.
+- run_media_cleanup_stream: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for app routing, model behavior, and service boundaries.
+"""
+
 from __future__ import annotations
 
 from admin_tools import services

@@ -1,3 +1,5 @@
+"""Serializers for dashboard summaries and aggregated reporting payloads."""
+
 from rest_framework import serializers
 
 

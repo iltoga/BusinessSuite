@@ -1,3 +1,5 @@
+"""Formatting utilities used by core templates and services."""
+
 from django.conf import settings
 from django.contrib.humanize.templatetags.humanize import intcomma
 from django.template.defaultfilters import floatformat

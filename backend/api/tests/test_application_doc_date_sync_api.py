@@ -1,3 +1,5 @@
+"""Regression tests for application document-date synchronization APIs."""
+
 import json
 from datetime import date
 

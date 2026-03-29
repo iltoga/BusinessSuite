@@ -556,16 +556,16 @@ The requirements are derived from the need to modernize the UI while strictly pr
     }
     ```
 
-- **NFR-08 (Feature Toggles):** New features **MUST** be guarded by feature flags (e.g., `django-waffle`).
+- **NFR-08 (Feature Toggles):** New features **MUST** be guarded by runtime configuration or environment-controlled toggles when needed.
   - _Acceptance:_ A flag `ENABLE_ANGULAR_DASHBOARD` determines whether the root URL redirects to the Angular app or the legacy template view.
   - _Implementation:_
 
     ```python
     # views.py
-    from waffle import flag_is_active
+    from django.conf import settings
 
     def index(request):
-        if flag_is_active(request, 'ENABLE_ANGULAR_DASHBOARD'):
+        if getattr(settings, 'ENABLE_ANGULAR_DASHBOARD', False):
             return render(request, 'angular_app/index.html')
         else:
             return render(request, 'legacy/dashboard.html')

@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Notification provider implementations for the notifications app.
+
+KEY_COMPONENTS:
+- MetaWhatsAppStatusLookupUnsupported: Module symbol.
+- NotificationProvider: Provider implementation.
+- EmailNotificationProvider: Provider implementation.
+- WhatsappNotificationProvider: Provider implementation.
+- NotificationDispatcher: Module symbol.
+- is_queued_provider_result: Module symbol.
+- process_whatsapp_webhook_payload: Module symbol.
+- _process_legacy_flat_payload: Private helper.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for app routing, model behavior, and service boundaries.
+"""
+
 import hashlib
 import hmac
 import logging
@@ -10,7 +31,6 @@ import requests
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
-
 from notifications.services.meta_access_token import get_meta_whatsapp_access_token
 
 logger = logging.getLogger(__name__)
@@ -535,11 +555,15 @@ def _apply_whatsapp_status_update(notification, *, message_status: str) -> None:
         notification.status = next_status
         update_fields.append("status")
 
-    if next_status in {
-        WorkflowNotification.STATUS_SENT,
-        WorkflowNotification.STATUS_DELIVERED,
-        WorkflowNotification.STATUS_READ,
-    } and not notification.sent_at:
+    if (
+        next_status
+        in {
+            WorkflowNotification.STATUS_SENT,
+            WorkflowNotification.STATUS_DELIVERED,
+            WorkflowNotification.STATUS_READ,
+        }
+        and not notification.sent_at
+    ):
         notification.sent_at = timezone.now()
         update_fields.append("sent_at")
 

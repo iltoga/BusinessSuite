@@ -1,13 +1,14 @@
-from datetime import date
+"""Tests for the force-close customer application API endpoint."""
 
-from django.contrib.auth.models import Permission, User
-from django.test import TestCase
-from rest_framework import status
-from rest_framework.test import APIClient
+from datetime import date
 
 from customer_applications.models import DocApplication
 from customers.models import Customer
+from django.contrib.auth.models import Permission, User
+from django.test import TestCase
 from products.models import Product
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 class ForceCloseAPITest(TestCase):

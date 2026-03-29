@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Service-layer logic for the customer applications app.
+
+KEY_COMPONENTS:
+- WorkflowStatusTransitionService: Service class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from dataclasses import dataclass
 
 from customer_applications.models import DocApplication

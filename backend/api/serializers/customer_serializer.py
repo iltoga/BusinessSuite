@@ -1,13 +1,26 @@
+"""
+FILE_ROLE: Serializer and payload-shaping helpers for the API app.
+
+KEY_COMPONENTS:
+- CustomerSerializer: Serializer class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on serializer validation and representation only.
+- Preserve the existing API contract because client code and views depend on these field names.
+"""
+
 from datetime import timedelta
 from typing import Optional
 
+from customers.models import Customer
+from customers.services.passport_file_processing import PassportFileProcessingError, normalize_passport_file
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
-
-from customers.models import Customer
-from customers.services.passport_file_processing import PassportFileProcessingError, normalize_passport_file
 
 
 class CustomerSerializer(serializers.ModelSerializer):

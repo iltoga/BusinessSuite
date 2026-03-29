@@ -1,14 +1,15 @@
+"""Service for matching passport data to existing customer records."""
+
 from __future__ import annotations
 
 import logging
 import re
 from typing import Any
 
+from customers.models import Customer
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import ExpressionWrapper, F, FloatField, Q, Value
 from django.db.models.functions import Coalesce, Greatest
-
-from customers.models import Customer
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +29,7 @@ class PassportCustomerMatchService:
 
         if passport_number:
             passport_match = (
-                Customer.objects.select_related("nationality")
-                .filter(passport_number__iexact=passport_number)
-                .first()
+                Customer.objects.select_related("nationality").filter(passport_number__iexact=passport_number).first()
             )
             if passport_match:
                 return {
@@ -57,12 +56,12 @@ class PassportCustomerMatchService:
             last_name__iexact=first_name,
         )
         exact_matches = list(
-            Customer.objects.select_related("nationality")
-            .filter(exact_filter)
-            .order_by("-updated_at")
+            Customer.objects.select_related("nationality").filter(exact_filter).order_by("-updated_at")
         )
         if exact_matches:
-            serialized_exact = [self._serialize_customer(customer, match_kind="name_exact") for customer in exact_matches]
+            serialized_exact = [
+                self._serialize_customer(customer, match_kind="name_exact") for customer in exact_matches
+            ]
             return {
                 "status": "exact_name_found",
                 "message": "Customer name match found.",

@@ -1,3 +1,23 @@
+"""
+FILE_ROLE: Dramatiq broker setup and actor registration for the backend.
+
+KEY_COMPONENTS:
+- _setting_or_env: Private helper.
+- _running_in_docker: Private helper.
+- _normalize_host: Private helper.
+- _normalize_redis_url: Private helper.
+- _build_redis_url: Private helper.
+- _build_results_redis_url: Private helper.
+- setup: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for middleware, scripts, or migrations because other code depends on them.
+"""
+
 from __future__ import annotations
 
 import importlib

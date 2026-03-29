@@ -61,7 +61,7 @@ Configuration: `WHATSAPP_*`, `FCM_*` env vars; see `docs/web-push-notifications.
 - Thin views/service layer keep logic testable and reusable.
 - Hybrid caching for per-user isolation + automatic invalidation.
 - Async-first for external IO to keep request latency predictable.
-- Feature flags via waffle for safe rollouts.
+- Feature controls via runtime settings for safe rollouts.
 - CSP nonce middleware (Django 6 built-in) toggleable via `CSP_ENABLED` / `CSP_MODE`; Cloudflare-compatible.
 - Local-resilience sync for offline/multi-node deployments; see `docs/sync-local-resilience.md`.
 

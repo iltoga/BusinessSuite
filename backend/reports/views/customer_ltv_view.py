@@ -1,10 +1,11 @@
+"""View helpers for customer lifetime value report responses."""
+
 from decimal import Decimal
 
+from customers.models import Customer
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Sum
 from django.views.generic import TemplateView
-
-from customers.models import Customer
 from reports.utils import format_currency
 
 

@@ -1,10 +1,14 @@
+"""Async tasks for customer maintenance and matching workflows."""
+
+"""Async tasks for customer maintenance and matching workflows."""
+
 import logging
 
 from core.models.async_job import AsyncJob
 from core.services.passport_uploadability_service import PassportUploadabilityService
-from django.core.files.storage import default_storage
 from core.tasks.runtime import QUEUE_REALTIME, db_task
 from customers.services import PassportCustomerMatchService
+from django.core.files.storage import default_storage
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +83,8 @@ def check_passport_uploadability_task(job_id: str, file_path: str, method: str):
                     "model_used": result.model_used,
                     "rejection_code": result.rejection_code,
                     "rejection_reason": result.rejection_reason,
-                    "rejection_reasons": result.rejection_reasons or ([] if not result.rejection_reason else [result.rejection_reason]),
+                    "rejection_reasons": result.rejection_reasons
+                    or ([] if not result.rejection_reason else [result.rejection_reason]),
                     "passport_data": result.passport_data,
                     "customer_match": customer_match,
                 },

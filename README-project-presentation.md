@@ -80,7 +80,7 @@ This is a real system solving real problems for a real business. Every feature e
 | **Realtime Updates**     | Redis Streams → SSE push to frontend with cursor-based replay on reconnect                               |
 | **Multi-Channel Alerts** | Email, WhatsApp (Meta Cloud API), FCM Web Push, Google Calendar events                                   |
 | **Reporting**            | Pipeline KPIs, finance summaries, and exportable reports                                                 |
-| **Feature Flags**        | django-waffle for progressive rollout and A/B testing                                                    |
+| **Feature Controls**     | Runtime settings and environment overrides for rollout and safe operational toggles                      |
 | **Hybrid Caching**       | Per-user cache namespaces (cacheops) + IndexedDB browser cache with version-aware invalidation           |
 
 ---
@@ -488,7 +488,7 @@ The platform is built for a visa agency, but the underlying architecture is doma
 | **Validation rules**      | Per-product validation prompts control what the AI checks on document upload                          |
 | **Notification channels** | Each workflow step configures whether to send calendar events, push notifications, or customer alerts |
 | **Document templates**    | DOCX templates with merge fields — update the template, change the output                             |
-| **Feature flags**         | django-waffle controls feature rollout without deployment                                             |
+| **Feature controls**      | Runtime settings control rollout without deployment                                                   |
 | **Pricing**               | Product prices tracked with history; invoice amounts can be overridden per line item                  |
 | **Queues & concurrency**  | Dramatiq queue assignment and worker thread counts are environment-configurable                       |
 
@@ -603,7 +603,7 @@ AI:         OpenRouter · OpenAI · Groq · PassportEye · OpenCV
 Messaging:  FCM · WhatsApp Meta API · Google Calendar · Email
 DevOps:     Docker Compose · Gunicorn · Nginx · Grafana/Loki
 Testing:    pytest · Hypothesis · Vitest · Playwright
-Tooling:    OpenAPI Generator · drf-spectacular · django-waffle · django-auditlog
+Tooling:    OpenAPI Generator · drf-spectacular · django-auditlog
 ```
 
 ---

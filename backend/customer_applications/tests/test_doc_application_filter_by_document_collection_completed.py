@@ -1,12 +1,13 @@
-from datetime import date
+"""Tests for filtering document applications by completed document collections."""
 
-from django.contrib.auth.models import User
-from django.test import TestCase
-from django.utils import timezone
+from datetime import date
 
 from core.models.country_code import CountryCode
 from customer_applications.models import DocApplication, Document
 from customers.models import Customer
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.utils import timezone
 from products.models import DocumentType, Product
 
 

@@ -1,5 +1,7 @@
-from django.db import migrations, models
+"""Refactor invoice application product relationships and references."""
+
 import django.db.models.deletion
+from django.db import migrations, models
 
 
 def backfill_invoice_application_product(apps, schema_editor):

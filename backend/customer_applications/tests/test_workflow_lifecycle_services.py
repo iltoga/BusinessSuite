@@ -1,12 +1,12 @@
+"""Tests for customer application workflow lifecycle services."""
+
 from contextlib import nullcontext
 from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
-from customer_applications.models import DocApplication, DocWorkflow, Document
+from customer_applications.models import DocApplication, Document, DocWorkflow
 from customer_applications.services.application_lifecycle_service import ApplicationLifecycleService
-from customer_applications.services.stay_permit_workflow_schedule_service import (
-    StayPermitWorkflowScheduleService,
-)
+from customer_applications.services.stay_permit_workflow_schedule_service import StayPermitWorkflowScheduleService
 from customer_applications.services.workflow_status_transition_service import (
     WorkflowStatusTransitionError,
     WorkflowStatusTransitionService,

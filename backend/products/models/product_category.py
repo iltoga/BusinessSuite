@@ -1,3 +1,5 @@
+"""Product category model used to group product and document type records."""
+
 from __future__ import annotations
 
 from django.db import models

@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Async task entry points for the core app.
+
+KEY_COMPONENTS:
+- run_ocr_job: Module symbol.
+
+INTERACTIONS:
+- Depends on: core OCR services and the task runtime infrastructure.
+
+AI_GUIDELINES:
+- Keep the module focused on task orchestration wrappers.
+- Preserve the existing enqueue contract because callers and progress streams depend on it.
+"""
+
 import mimetypes
 import os
 import traceback

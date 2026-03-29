@@ -1,3 +1,5 @@
+"""Adjust workflow notification status constraints and defaults."""
+
 from django.db import migrations, models
 
 

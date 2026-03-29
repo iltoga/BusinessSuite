@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Deadline message builders for the notifications app.
+
+KEY_COMPONENTS:
+- build_customer_deadline_notification_payload: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for app routing, model behavior, and service boundaries.
+"""
+
 from django.template.loader import render_to_string
 
 

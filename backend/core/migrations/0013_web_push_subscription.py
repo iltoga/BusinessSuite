@@ -1,6 +1,12 @@
+"""Create the web push subscription table for browser notification delivery.
+
+The migration adds the subscription storage used by the push notification
+workflow to persist endpoint and key material.
+"""
+
+import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
-import django.db.models.deletion
 
 
 class Migration(migrations.Migration):

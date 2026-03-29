@@ -1,10 +1,12 @@
+"""Regression tests for realtime SSE streaming endpoints."""
+
 from unittest.mock import patch
 
+from api.tests.async_iter_helper import SyncAsyncIter
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
-from api.tests.async_iter_helper import SyncAsyncIter
 
 User = get_user_model()
 

@@ -1,3 +1,5 @@
+"""Regression tests for Google Tasks integration behavior."""
+
 import pytest
 
 # Skip these tests gracefully if Django is not installed in this environment

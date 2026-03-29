@@ -1,3 +1,5 @@
+"""View helpers for revenue report responses and filters."""
+
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -5,7 +7,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum
 from django.utils import timezone
 from django.views.generic import TemplateView
-
 from invoices.models import Invoice
 from payments.models import Payment
 from reports.utils import format_currency, get_month_list

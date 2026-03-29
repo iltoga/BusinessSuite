@@ -1,3 +1,9 @@
+"""Add the runtime override flag to application settings.
+
+This migration marks whether a setting is supplied dynamically at runtime or
+persisted as the default configuration.
+"""
+
 from django.db import migrations, models
 
 
@@ -7,8 +13,7 @@ def add_is_runtime_override_if_missing(apps, schema_editor):
 
     with schema_editor.connection.cursor() as cursor:
         columns = {
-            column.name
-            for column in schema_editor.connection.introspection.get_table_description(cursor, table_name)
+            column.name for column in schema_editor.connection.introspection.get_table_description(cursor, table_name)
         }
 
     if "is_runtime_override" in columns:

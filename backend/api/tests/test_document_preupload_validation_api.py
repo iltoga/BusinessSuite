@@ -1,3 +1,5 @@
+"""Regression tests for document pre-upload validation endpoints."""
+
 from unittest.mock import patch
 
 from customer_applications.models import DocApplication, Document

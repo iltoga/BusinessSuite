@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Django app configuration for the core app.
+
+KEY_COMPONENTS:
+- CoreConfig: Module symbol.
+
+INTERACTIONS:
+- Depends on: core.models, core.services, Django signal machinery, or middleware hooks as appropriate.
+
+AI_GUIDELINES:
+- Keep this module focused on framework integration and small hook functions.
+- Do not move domain orchestration here when a service already owns the workflow.
+"""
+
 from core.services.logger_service import Logger
 from django.apps import AppConfig
 

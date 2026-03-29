@@ -1,3 +1,5 @@
+"""Shared serializer mixins for RBAC-aware admin and menu rule payloads."""
+
 from api.services.rbac_service import get_user_rbac_claims
 
 

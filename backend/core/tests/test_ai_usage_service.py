@@ -1,9 +1,10 @@
+"""Tests for AI usage accounting and aggregation helpers."""
+
 from decimal import Decimal
 from unittest.mock import patch
 
-from django.test import SimpleTestCase
-
 from core.services.ai_usage_service import AIUsageFeature, AIUsageService
+from django.test import SimpleTestCase
 
 
 class AIUsageServiceTests(SimpleTestCase):

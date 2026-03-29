@@ -1,10 +1,13 @@
+"""Regression tests for the customers app behavior and endpoints."""
+
+"""Regression tests for the customers app behavior and endpoints."""
+
 import datetime
 
+from customers.models import Customer
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-
-from customers.models import Customer
 
 
 class PassportFieldsTestCase(TestCase):

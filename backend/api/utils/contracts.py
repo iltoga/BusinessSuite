@@ -1,3 +1,5 @@
+"""Canonical success and error payload builders for API contract helpers."""
+
 from __future__ import annotations
 
 from typing import Any

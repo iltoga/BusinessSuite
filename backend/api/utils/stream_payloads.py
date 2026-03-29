@@ -1,11 +1,12 @@
+"""Helpers for normalizing stream payloads before SSE publication."""
+
 from __future__ import annotations
 
 import json
 from typing import Any
 
-from django.urls import reverse
-
 from core.services.ocr_preview_storage import get_ocr_preview_url
+from django.urls import reverse
 
 
 def first_present(payload: dict[str, Any] | None, *keys: str, default: Any = None) -> Any:

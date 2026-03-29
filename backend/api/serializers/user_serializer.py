@@ -1,12 +1,13 @@
+"""Serializers for user profile, settings, and account-facing payloads."""
+
 import logging
 from typing import Optional
 
+from core.models.user_profile import UserProfile
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
 from django.db.utils import DatabaseError
 from rest_framework import serializers
-
-from core.models.user_profile import UserProfile
 
 logger = logging.getLogger(__name__)
 

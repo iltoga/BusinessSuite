@@ -1,12 +1,13 @@
+"""View helpers for product revenue analysis report responses."""
+
 from decimal import Decimal
 
+from customer_applications.models import DocApplication
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.views.generic import TemplateView
-
-from customer_applications.models import DocApplication
 from invoices.models.invoice import Invoice, InvoiceApplication
 from products.models import Product
 from reports.utils import format_currency, get_month_list
@@ -60,9 +61,7 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
                     "product": product,
                     "code": product.code,
                     "name": product.name,
-                    "type": product.product_category.get_product_type_display()
-                    if product.product_category
-                    else "",
+                    "type": product.product_category.get_product_type_display() if product.product_category else "",
                     "product_type": product.product_category.product_type if product.product_category else None,
                     "application_count": product.application_count,
                     "invoiced_application_count": invoiced_count,
@@ -133,40 +132,35 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
 
             trends = {"label": month_data["label"]}
             for product in top_products:
-                revenue = (
-                    InvoiceApplication.objects.filter(
-                        product=product,
-                        invoice__invoice_date__gte=month_start,
-                        invoice__invoice_date__lt=month_end,
-                    ).aggregate(total=Coalesce(Sum("amount"), zero_value))
-                    .get("total")
-                    or Decimal("0.00")
-                )
+                revenue = InvoiceApplication.objects.filter(
+                    product=product,
+                    invoice__invoice_date__gte=month_start,
+                    invoice__invoice_date__lt=month_end,
+                ).aggregate(total=Coalesce(Sum("amount"), zero_value)).get("total") or Decimal("0.00")
                 trends[product.code] = float(revenue)
             monthly_trends.append(trends)
 
-            month_profit = (
-                InvoiceApplication.objects.filter(
-                    invoice__invoice_date__gte=month_start,
-                    invoice__invoice_date__lt=month_end,
+            month_profit = InvoiceApplication.objects.filter(
+                invoice__invoice_date__gte=month_start,
+                invoice__invoice_date__lt=month_end,
+            ).aggregate(
+                total=Coalesce(
+                    Sum(
+                        ExpressionWrapper(
+                            Coalesce(F("amount"), zero_value)
+                            - Coalesce(
+                                F("price_history__base_price"),
+                                Coalesce(F("product__base_price"), zero_value),
+                            ),
+                            output_field=money_field,
+                        )
+                    ),
+                    zero_value,
                 )
-                .aggregate(
-                    total=Coalesce(
-                        Sum(
-                            ExpressionWrapper(
-                                Coalesce(F("amount"), zero_value)
-                                - Coalesce(
-                                    F("price_history__base_price"),
-                                    Coalesce(F("product__base_price"), zero_value),
-                                ),
-                                output_field=money_field,
-                            )
-                        ),
-                        zero_value,
-                    )
-                )
-                .get("total")
-                or Decimal("0.00")
+            ).get(
+                "total"
+            ) or Decimal(
+                "0.00"
             )
             monthly_profit_trends.append(
                 {

@@ -1,3 +1,5 @@
+"""Helpers for storage path handling and file-system interactions."""
+
 from __future__ import annotations
 
 import os

@@ -1,14 +1,15 @@
+"""Regression tests for AI costing report API responses."""
+
 from datetime import datetime
 from decimal import Decimal
 
+from core.models.ai_request_usage import AIRequestUsage
+from core.services.ai_usage_service import AIUsageFeature
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
-
-from core.models.ai_request_usage import AIRequestUsage
-from core.services.ai_usage_service import AIUsageFeature
 
 TEST_CACHES = {
     "default": {

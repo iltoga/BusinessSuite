@@ -1,3 +1,5 @@
+"""Adjust the scheduled-for field used by workflow notifications."""
+
 from django.db import migrations, models
 
 

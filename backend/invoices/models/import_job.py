@@ -1,3 +1,7 @@
+"""Invoice import job model used for ingesting invoice source data."""
+
+"""Invoice import job model used for ingesting invoice source data."""
+
 import uuid
 
 from django.conf import settings

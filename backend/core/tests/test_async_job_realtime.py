@@ -1,3 +1,5 @@
+"""Tests for async job realtime state and stream updates."""
+
 from unittest.mock import patch
 
 from core.models import AsyncJob

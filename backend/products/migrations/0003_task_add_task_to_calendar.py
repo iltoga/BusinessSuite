@@ -1,3 +1,5 @@
+"""Add task calendar linkage used by product workflow automation."""
+
 from django.db import migrations, models
 
 

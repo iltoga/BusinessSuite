@@ -1,8 +1,9 @@
-from django.contrib.auth import get_user_model
-from django.test import TestCase
+"""Tests for push notification service behavior and delivery helpers."""
 
 from core.models import WebPushSubscription
 from core.services.push_notifications import FcmSendError, PushNotificationService
+from django.contrib.auth import get_user_model
+from django.test import TestCase
 
 User = get_user_model()
 

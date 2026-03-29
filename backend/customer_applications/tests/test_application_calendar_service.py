@@ -1,3 +1,5 @@
+"""Tests for the application calendar service."""
+
 from datetime import date
 from unittest.mock import patch
 

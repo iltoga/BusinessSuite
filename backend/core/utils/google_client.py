@@ -1,3 +1,5 @@
+"""Google client bootstrap helpers for core integrations."""
+
 import logging
 import os
 

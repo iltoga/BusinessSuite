@@ -1,7 +1,26 @@
+"""
+FILE_ROLE: Handles notification, webhook, and delivery API endpoints for the API app.
+
+KEY_COMPONENTS:
+- whatsapp_webhook: Meta WhatsApp webhook endpoint for verification and delivery status updates.
+- WorkflowNotificationViewSet: CRUD and resend actions for workflow notifications.
+- CalendarReminderViewSet: Calendar reminder API endpoints and actions.
+- PushNotificationViewSet: Push notification delivery and testing endpoints.
+- calendar_reminders_stream_sse: SSE helper for reminder delivery/stream updates.
+
+INTERACTIONS:
+- Depends on: api.utils.contracts, api.utils.stream_payloads, .views_imports
+- Consumed by: WhatsApp webhook callbacks, notification workflows, reminder screens, and realtime clients.
+
+AI_GUIDELINES:
+- Keep controller logic thin; delegate payload processing and provider logic to services.
+- Preserve the webhook signature and verification flow because external providers depend on it.
+- Do not move long-running notification orchestration into the view layer when a task/service already owns it.
+"""
+
 import logging
 
-from api.utils.contracts import get_request_id
-from api.utils.contracts import build_error_payload
+from api.utils.contracts import build_error_payload, get_request_id
 from api.utils.stream_payloads import normalize_async_job_payload, serialize_async_job_payload
 
 from .views_imports import *
@@ -1075,6 +1094,7 @@ def calendar_reminders_stream_sse(request):
         return payload
 
     from api.utils.redis_sse import iter_replay_and_live_events
+
     def event_stream():
         deadline = time.monotonic() + _SSE_MAX_DURATION_SECONDS
         stream_key = stream_user_key(user.id)
@@ -1161,10 +1181,11 @@ def workflow_notifications_stream_sse(request):
     """SSE endpoint for workflow notification center live updates."""
     user = request.user
     from api.views_imports import is_staff_or_admin_group
-    
+
     is_admin = is_staff_or_admin_group(user)
     if not is_admin:
         from api.views_imports import STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR
+
         return JsonResponse(
             build_error_payload(
                 code="forbidden",
@@ -1212,6 +1233,7 @@ def workflow_notifications_stream_sse(request):
         return payload
 
     from api.utils.redis_sse import iter_replay_and_live_events
+
     def event_stream():
         deadline = time.monotonic() + _SSE_MAX_DURATION_SECONDS
         stream_key = stream_job_key("workflow-notifications")
@@ -1302,10 +1324,10 @@ def workflow_notifications_stream_sse(request):
 def async_job_status_sse(request, job_id):
     """Generic SSE endpoint for tracking AsyncJob status."""
     from api.views_imports import restrict_to_owner_unless_privileged
-    
+
     def _get_job_queryset():
         return restrict_to_owner_unless_privileged(AsyncJob.objects.filter(id=job_id), request.user)
-    
+
     def _job_exists(job_queryset):
         return job_queryset.exists()
 
@@ -1315,6 +1337,7 @@ def async_job_status_sse(request, job_id):
         return JsonResponse(build_error_payload(code="not_found", message="Job not found", request=request), status=404)
 
     from api.utils.redis_sse import iter_replay_and_live_events
+
     def event_stream():
         deadline = time.monotonic() + _SSE_MAX_DURATION_SECONDS
         replay_cursor = resolve_last_event_id(request)
@@ -1330,9 +1353,10 @@ def async_job_status_sse(request, job_id):
 
         def _get_job():
             return job_queryset.get()
-            
+
         def _serialize_job(job):
             from api.utils.stream_payloads import serialize_async_job_payload
+
             return serialize_async_job_payload(job)
 
         try:
@@ -1354,6 +1378,7 @@ def async_job_status_sse(request, job_id):
             return
 
         from api.utils.stream_payloads import normalize_async_job_payload
+
         for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
             try:
                 if time.monotonic() >= deadline:

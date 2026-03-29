@@ -1,3 +1,5 @@
+"""Tests for product price list async jobs and outputs."""
+
 from decimal import Decimal
 from tempfile import TemporaryDirectory
 from unittest.mock import patch

@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Django management command for the core app.
+
+KEY_COMPONENTS:
+- Command: Module symbol.
+
+INTERACTIONS:
+- Depends on: core models, Django migration/management machinery, and related app services imported by this module.
+
+AI_GUIDELINES:
+- Keep command logic thin and delegate real work to services when possible.
+- Keep migrations schema-only and reversible; do not add runtime business logic here.
+"""
+
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
@@ -77,7 +91,9 @@ class Command(BaseCommand):
                 "batch_size": batch_size,
                 "keep_b64": keep_b64,
             }
-            call_command("migrate_ocr_previews_to_storage", stdout=self.stdout, stderr=self.stderr, **migrate_previews_kwargs)
+            call_command(
+                "migrate_ocr_previews_to_storage", stdout=self.stdout, stderr=self.stderr, **migrate_previews_kwargs
+            )
             self.stdout.write(self.style.SUCCESS("migrate_ocr_previews_to_storage completed."))
 
         self.stdout.write(self.style.SUCCESS("migrate_storage_assets completed successfully."))

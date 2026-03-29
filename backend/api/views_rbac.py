@@ -1,3 +1,19 @@
+"""
+FILE_ROLE: Handles role-based access control API helpers and endpoints.
+
+KEY_COMPONENTS:
+- FieldPermissionsSerializer: Module symbol.
+- RbacPermissionsSerializer: Module symbol.
+- RbacViewSet: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby API/core services and DRF helpers used in this module.
+
+AI_GUIDELINES:
+- Keep this module focused on reusable API infrastructure rather than domain orchestration.
+- Preserve the existing contract so split view modules can import these helpers safely.
+"""
+
 from api.services.rbac_service import get_user_rbac_claims
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status, viewsets
@@ -21,7 +37,7 @@ class RbacViewSet(viewsets.ViewSet):
     """
     Read-only viewset providing current user's evaluated RBAC permissions.
     """
-    
+
     permission_classes = [IsAuthenticated]
 
     @extend_schema(responses={200: RbacPermissionsSerializer})

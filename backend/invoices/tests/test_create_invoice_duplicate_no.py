@@ -1,3 +1,5 @@
+"""Tests for duplicate invoice number prevention logic."""
+
 from decimal import Decimal
 
 from core.services.invoice_service import create_invoice
