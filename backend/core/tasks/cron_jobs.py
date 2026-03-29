@@ -1,16 +1,30 @@
+"""
+FILE_ROLE: Async task entry points for the core app.
+
+KEY_COMPONENTS:
+- enqueue_clear_cache_now: Module symbol.
+- enqueue_full_backup_now: Module symbol.
+
+INTERACTIONS:
+- Depends on: core task runtime infrastructure and cron/backup services imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on task orchestration wrappers.
+- Preserve the existing enqueue contract because scheduled jobs and views rely on it.
+"""
+
 import datetime
 import uuid
 from typing import Iterable, Tuple
 
 import requests
-from django.conf import settings
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.app_setting_service import AppSettingService
+from core.services.logger_service import Logger
+from core.tasks.runtime import QUEUE_LOW, QUEUE_SCHEDULED, crontab, db_periodic_task, db_task
+from django.conf import settings
 from django.core.cache import cache
 from django.core.management import call_command
-from core.tasks.runtime import QUEUE_LOW, QUEUE_SCHEDULED, crontab, db_periodic_task, db_task
-
-from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
-from core.services.logger_service import Logger
 
 logger = Logger.get_logger(__name__)
 
@@ -274,7 +288,9 @@ def _perform_openrouter_health_check() -> bool:
         logger.warning("OpenRouter health check skipped: OPENROUTER_API_KEY is not configured.")
         return False
 
-    base_url = str(AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
+    base_url = str(AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1").rstrip(
+        "/"
+    )
     timeout = float(getattr(settings, "OPENROUTER_HEALTHCHECK_TIMEOUT", 10.0))
     endpoint = f"{base_url}/key"
 

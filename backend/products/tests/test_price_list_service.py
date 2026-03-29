@@ -1,3 +1,5 @@
+"""Tests for the product price list service."""
+
 from decimal import Decimal
 
 from django.test import TestCase

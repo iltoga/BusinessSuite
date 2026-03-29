@@ -1,9 +1,9 @@
+"""Tests for the stay permit submission window service."""
+
 from datetime import date
 
 from customer_applications.models import DocApplication, Document
-from customer_applications.services.stay_permit_submission_window_service import (
-    StayPermitSubmissionWindowService,
-)
+from customer_applications.services.stay_permit_submission_window_service import StayPermitSubmissionWindowService
 from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -31,7 +31,9 @@ class StayPermitSubmissionWindowServiceTests(TestCase):
             product_type="other",
             required_documents="Passport",
         )
-        self.itas = DocumentType.objects.create(name="ITAS", is_stay_permit=True, has_expiration_date=True, has_file=True)
+        self.itas = DocumentType.objects.create(
+            name="ITAS", is_stay_permit=True, has_expiration_date=True, has_file=True
+        )
         self.kitas = DocumentType.objects.create(
             name="KITAS", is_stay_permit=True, has_expiration_date=True, has_file=True
         )

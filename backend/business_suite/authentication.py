@@ -1,3 +1,20 @@
+"""
+FILE_ROLE: Provides JWT authentication plus optional mock-auth support for development and test flows.
+
+KEY_COMPONENTS:
+- _get_mock_user_settings: Reads the mock-auth user configuration from settings.
+- ensure_mock_user: Creates or updates the mock user and assigns configured groups.
+- JwtOrMockAuthentication: JWT authentication backend that accepts the mock token when enabled.
+
+INTERACTIONS:
+- Depends on: django.conf.settings, django.contrib.auth.models.Group/User/update_last_login, rest_framework_simplejwt.authentication.JWTAuthentication, core.services.app_setting_service.
+- Consumed by: authenticated API endpoints that need dev-only mock access behavior.
+
+AI_GUIDELINES:
+- Keep mock-auth logic behind the existing setting gate and preserve the explicit "mock-token" contract.
+- Do not widen this backend into a general-purpose auth abstraction; it is intentionally narrow.
+"""
+
 from django.conf import settings
 from django.contrib.auth.models import Group, User, update_last_login
 from rest_framework_simplejwt.authentication import JWTAuthentication

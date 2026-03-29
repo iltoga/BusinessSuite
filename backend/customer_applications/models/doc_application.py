@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Primary data models for the customer applications app.
+
+KEY_COMPONENTS:
+- DocApplication: Model class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on model definitions and local invariants.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 import logging
 
 # Get an instance of a logger

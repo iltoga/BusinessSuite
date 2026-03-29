@@ -1,3 +1,5 @@
+"""Add structured AI output fields for document type processing."""
+
 from django.db import migrations, models
 
 

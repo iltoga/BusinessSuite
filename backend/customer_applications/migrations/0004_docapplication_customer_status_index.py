@@ -1,3 +1,5 @@
+"""Add a customer status index for document application lookups."""
+
 from django.db import migrations, models
 
 

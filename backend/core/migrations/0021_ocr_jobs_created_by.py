@@ -1,3 +1,8 @@
+"""Record the creator of OCR jobs for audit and ownership tracking.
+
+The migration links OCR job rows back to the user who initiated them.
+"""
+
 from django.conf import settings
 from django.db import migrations, models
 

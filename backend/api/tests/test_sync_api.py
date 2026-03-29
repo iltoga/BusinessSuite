@@ -1,9 +1,10 @@
-from django.test import override_settings
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-from django.test import TestCase
+"""Regression tests for sync API behavior and response shaping."""
+
 from core.models.holiday import Holiday
 from core.models.local_resilience import LocalResilienceSettings, SyncChangeLog, SyncConflict
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 
@@ -128,7 +129,9 @@ class SyncApiTests(TestCase):
         session_client = APIClient(enforce_csrf_checks=True)
         self.assertTrue(session_client.login(username="sync-admin", password="password"))
 
-        response = session_client.post("/api/sync/changes/push/", {"source_node": "remote-node", "changes": []}, format="json")
+        response = session_client.post(
+            "/api/sync/changes/push/", {"source_node": "remote-node", "changes": []}, format="json"
+        )
         self.assertEqual(response.status_code, 401)
         body = response.json()
         self.assertEqual(body["error"]["code"], "authentication_required")

@@ -1,3 +1,5 @@
+"""Tests for the WhatsApp webhook tunnel management command."""
+
 import json
 import signal
 from io import StringIO

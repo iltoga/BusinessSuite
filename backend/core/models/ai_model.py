@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Primary data models for the core app.
+
+KEY_COMPONENTS:
+- AiModel: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on model definitions and local invariants.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from django.db import models
 
 
@@ -39,11 +53,11 @@ class AiModel(models.Model):
     # Provider info
     top_provider_id = models.CharField(max_length=255, blank=True)
     provider_name = models.CharField(max_length=255, blank=True)
-    
+
     # Endpoints and parameters
     supported_parameters = models.JSONField(default=list, blank=True)
     per_request_limits = models.JSONField(default=dict, blank=True)
-    
+
     # Source and metadata
     source = models.CharField(max_length=32, blank=True, default="manual")
     raw_metadata = models.JSONField(default=dict, blank=True)

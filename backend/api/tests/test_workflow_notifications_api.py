@@ -1,3 +1,5 @@
+"""Regression tests for workflow notification API behavior."""
+
 import json
 from datetime import date, timedelta
 from unittest.mock import patch
@@ -59,6 +61,7 @@ class WorkflowNotificationApiTests(TestCase):
     async def _next_sse_payload(self, stream, timeout_seconds: int = 5):
         """Skip keepalive lines and return the first JSON payload from the stream."""
         import asyncio
+
         from asgiref.sync import sync_to_async
 
         while True:
@@ -119,7 +122,6 @@ class WorkflowNotificationApiTests(TestCase):
             await sync_to_async(self.assertIn)(payload["reason"], {"signal", "db_state_change"})
 
         run_test()
-
 
     def test_stream_requires_staff_or_admin_permissions(self):
         plain_user = User.objects.create_user("workflow-viewer", "workflowviewer@example.com", "pass")

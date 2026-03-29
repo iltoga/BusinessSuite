@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Defines API permission groups and authorization helpers.
+
+KEY_COMPONENTS:
+- is_authenticated_user: Module symbol.
+- is_superuser: Module symbol.
+- is_admin_group_member: Module symbol.
+- is_manager_group_member: Module symbol.
+- is_staff_or_admin_group: Module symbol.
+- is_superuser_or_admin_group: Module symbol.
+- is_admin_or_manager_group: Module symbol.
+- IsStaffOrAdminGroup: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby API/core services and DRF helpers used in this module.
+
+AI_GUIDELINES:
+- Keep this module focused on reusable API infrastructure rather than domain orchestration.
+- Preserve the existing contract so split view modules can import these helpers safely.
+"""
+
 from __future__ import annotations
 
 from rest_framework.permissions import BasePermission

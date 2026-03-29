@@ -1,12 +1,13 @@
+"""Tests for storage cleanup when deleting applications."""
+
 from datetime import date
 from unittest.mock import call, patch
-
-from django.contrib.auth import get_user_model
-from django.test import TestCase
 
 from customer_applications.models import DocApplication, Document
 from customer_applications.tasks import cleanup_document_storage_task
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase
 from products.models import DocumentType, Product
 
 User = get_user_model()

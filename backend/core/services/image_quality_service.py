@@ -1,3 +1,18 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- ImageQualityResult: Result/dataclass helper.
+- ImageQualityService: Service class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -162,9 +177,8 @@ class ImageQualityService:
         )
         mrz_detected_line_count, mrz_bottom_touch_ratio = self._analyze_mrz_zone_structure(cv2, gray)
         mrz_zone_incomplete_suspected = (
-            (mrz_cutoff_suspected and mrz_bottom_touch_ratio > 0.15 and mrz_detected_line_count <= 2)
-            or (mrz_bottom_touch_ratio > 0.20 and mrz_detected_line_count <= 1)
-        )
+            mrz_cutoff_suspected and mrz_bottom_touch_ratio > 0.15 and mrz_detected_line_count <= 2
+        ) or (mrz_bottom_touch_ratio > 0.20 and mrz_detected_line_count <= 1)
 
         mean_arr, std_arr = cv2.meanStdDev(gray)
         brightness_mean = float(mean_arr[0][0])

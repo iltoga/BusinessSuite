@@ -1,3 +1,5 @@
+"""Tests for invoice task status aggregation helpers."""
+
 from contextlib import contextmanager
 from datetime import timedelta
 from decimal import Decimal

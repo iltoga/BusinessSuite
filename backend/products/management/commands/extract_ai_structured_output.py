@@ -1,3 +1,5 @@
+"""Management command for extracting AI structured output data."""
+
 import json
 
 from django.core.management.base import BaseCommand

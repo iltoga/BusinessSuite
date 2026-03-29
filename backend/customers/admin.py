@@ -1,3 +1,7 @@
+"""Admin registrations for customer data models."""
+
+"""Admin registrations for customer data models."""
+
 import csv
 
 import openpyxl

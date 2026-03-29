@@ -1,3 +1,18 @@
+"""
+FILE_ROLE: Test coverage for business_suite.
+
+KEY_COMPONENTS:
+- RedisCacheSettingsTests: Module symbol.
+- DramatiqSettingsTests: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for middleware, scripts, or migrations because other code depends on them.
+"""
+
 import hashlib
 import importlib
 import os

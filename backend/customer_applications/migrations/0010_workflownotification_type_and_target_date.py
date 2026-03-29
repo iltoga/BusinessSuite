@@ -1,3 +1,5 @@
+"""Add notification type and target date fields for workflow notifications."""
+
 from django.db import migrations, models
 from django.db.models import Q
 

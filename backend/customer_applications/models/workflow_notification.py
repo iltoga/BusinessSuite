@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Primary data models for the customer applications app.
+
+KEY_COMPONENTS:
+- WorkflowNotification: Model class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on model definitions and local invariants.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
@@ -37,7 +51,11 @@ class WorkflowNotification(models.Model):
         "customer_applications.DocApplication", related_name="notifications", on_delete=models.CASCADE
     )
     doc_workflow = models.ForeignKey(
-        "customer_applications.DocWorkflow", related_name="notifications", on_delete=models.SET_NULL, null=True, blank=True
+        "customer_applications.DocWorkflow",
+        related_name="notifications",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     scheduled_for = models.DateTimeField(null=True, blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)

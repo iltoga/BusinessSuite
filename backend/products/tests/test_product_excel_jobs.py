@@ -1,3 +1,5 @@
+"""Tests for product Excel import and export async jobs."""
+
 from decimal import Decimal
 from io import BytesIO
 from tempfile import TemporaryDirectory

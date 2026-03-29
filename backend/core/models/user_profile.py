@@ -1,10 +1,27 @@
+"""
+FILE_ROLE: Primary data models for the core app.
+
+KEY_COMPONENTS:
+- get_avatar_upload_to: Module symbol.
+- UserProfile: Module symbol.
+- create_user_profile: Module symbol.
+- save_user_profile: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 import os
 from logging import getLogger
 
 from django.contrib.auth.models import User
 from django.db import models
-from django.db.utils import DatabaseError
 from django.db.models.signals import post_save
+from django.db.utils import DatabaseError
 from django.dispatch import receiver
 
 logger = getLogger(__name__)
@@ -24,7 +41,7 @@ class UserProfile(models.Model):
     cache_enabled = models.BooleanField(
         default=True,
         db_index=True,
-        help_text="Whether caching is enabled for this user. When disabled, all cache operations are bypassed."
+        help_text="Whether caching is enabled for this user. When disabled, all cache operations are bypassed.",
     )
 
     def __str__(self):

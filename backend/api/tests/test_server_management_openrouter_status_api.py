@@ -1,5 +1,11 @@
+"""Regression tests for server management OpenRouter status checks."""
+
 from unittest.mock import MagicMock, patch
 
+from core.models import AppSetting
+from core.models.ai_request_usage import AIRequestUsage
+from core.services.ai_usage_service import AIUsageFeature
+from core.services.app_setting_service import AppSettingService
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.cache import cache
@@ -7,11 +13,6 @@ from django.db.utils import ProgrammingError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
-
-from core.models import AppSetting
-from core.models.ai_request_usage import AIRequestUsage
-from core.services.app_setting_service import AppSettingService
-from core.services.ai_usage_service import AIUsageFeature
 
 
 @override_settings(
@@ -41,7 +42,6 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         admin_group, _ = Group.objects.get_or_create(name="admin")
         self.user.groups.add(admin_group)
         self.client.force_authenticate(user=self.user)
-
 
     @override_settings(OPENROUTER_API_KEY="")
     def test_openrouter_status_handles_missing_usage_table(self):
@@ -156,7 +156,6 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
             ],
         )
 
-
     @override_settings(
         OPENROUTER_API_KEY="",
         LLM_PROVIDER="groq",
@@ -169,7 +168,9 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()["data"]
         passport_check_feature = next(
-            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.PASSPORT_CHECK_API
+            feature
+            for feature in payload["aiModels"]["features"]
+            if feature["feature"] == AIUsageFeature.PASSPORT_CHECK_API
         )
         self.assertEqual(passport_check_feature["provider"], "openrouter")
         self.assertEqual(passport_check_feature["primaryProvider"], "openrouter")
@@ -188,9 +189,7 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
                     "LLM_PROVIDER": "openai",
                     "LLM_DEFAULT_MODEL": "gpt-5-mini",
                     "LLM_FALLBACK_PROVIDER_ORDER": ["openrouter"],
-                    "LLM_FALLBACK_MODEL_CHAIN": [
-                        {"model": "google/gemini-3-flash-preview", "timeoutSeconds": 45}
-                    ],
+                    "LLM_FALLBACK_MODEL_CHAIN": [{"model": "google/gemini-3-flash-preview", "timeoutSeconds": 45}],
                     "DOCUMENT_VALIDATION_TIMEOUT": 15,
                 }
             },
@@ -224,9 +223,7 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
             "/api/server-management/openrouter-status/",
             data={
                 "settings": {
-                    "LLM_FALLBACK_MODEL_CHAIN": [
-                        {"model": "google/gemini-3-flash-preview", "timeoutSeconds": 45}
-                    ],
+                    "LLM_FALLBACK_MODEL_CHAIN": [{"model": "google/gemini-3-flash-preview", "timeoutSeconds": 45}],
                 }
             },
             format="json",
@@ -276,7 +273,9 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         payload = response.json()["data"]
         self.assertEqual(payload["aiModels"]["settingsMap"]["INVOICE_IMPORT_MODEL"], "gpt-5-mini")
         invoice_feature = next(
-            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
+            feature
+            for feature in payload["aiModels"]["features"]
+            if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
         )
         self.assertEqual(invoice_feature["primaryProvider"], "openai")
         self.assertEqual(invoice_feature["primaryModel"], "gpt-5-mini")
@@ -335,13 +334,12 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertEqual(payload["aiModels"]["settingsMap"]["INVOICE_IMPORT_MODEL"], "gpt-5-mini")
 
         invoice_feature = next(
-            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
+            feature
+            for feature in payload["aiModels"]["features"]
+            if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
         )
         self.assertEqual(invoice_feature["primaryProvider"], "openai")
         self.assertEqual(invoice_feature["primaryModel"], "gpt-5-mini")
-
-
-
 
     @override_settings(
         OPENROUTER_API_KEY="",

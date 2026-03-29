@@ -1,3 +1,22 @@
+"""
+FILE_ROLE: Exports OpenTelemetry spans to an OTLP endpoint for backend tracing.
+
+KEY_COMPONENTS:
+- _now_unix_nano: Returns nanosecond timestamps for span timing.
+- _parse_kv_csv: Parses comma-separated OTLP headers/resource attributes.
+- _to_otlp_value: Converts Python values into OTLP attribute payloads.
+- _to_otlp_attribute: Wraps a single OTLP attribute entry.
+- SpanContext: Holds trace/span identifiers and trace flags.
+- OtlpTraceExporter: Builds and exports spans to the configured OTLP endpoint.
+
+INTERACTIONS:
+- Depends on: requests, core.services.logger_service.Logger, environment variables, and OTLP HTTP endpoints.
+
+AI_GUIDELINES:
+- Keep export behavior non-blocking and log-rate-limited because tracing failures should not break request handling.
+- Preserve the OTLP payload and traceparent contract so upstream observability tooling continues to work.
+"""
+
 import os
 import queue
 import re

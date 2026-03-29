@@ -1,7 +1,21 @@
-from rest_framework import serializers
+"""
+FILE_ROLE: Serializer and payload-shaping helpers for the API app.
+
+KEY_COMPONENTS:
+- TaskSerializer: Serializer class.
+- DocWorkflowSerializer: Serializer class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on serializer validation and representation only.
+- Preserve the existing API contract because client code and views depend on these field names.
+"""
 
 from customer_applications.models import DocWorkflow
 from products.models.task import Task
+from rest_framework import serializers
 
 
 class TaskSerializer(serializers.ModelSerializer):

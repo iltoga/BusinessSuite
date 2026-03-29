@@ -1,3 +1,19 @@
+"""
+FILE_ROLE: Serves the public app configuration endpoint for the backend core app.
+
+KEY_COMPONENTS:
+- public_app_config: Returns runtime configuration consumed by the Angular frontend.
+
+INTERACTIONS:
+- Depends on: core.services.app_setting_service, core.services.google_calendar_event_colors, core.services.ui_settings_service, django.conf.settings
+- Consumed by: frontend bootstrap/config loading and feature-flag initialization.
+
+AI_GUIDELINES:
+- Keep this endpoint plain Django JSON, not DRF Response, because the frontend boot path expects a lightweight public config payload.
+- Do not add write operations or cross-model orchestration here; use services if the payload needs more computation.
+- Keep startup/migration error handling defensive so bootstrap can still succeed when tables are not ready.
+"""
+
 import logging
 
 from api.permissions import ADMIN_GROUP_NAME, MANAGER_GROUP_NAME

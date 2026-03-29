@@ -1,3 +1,5 @@
+"""Serializers for letter generation payloads and editable letter fields."""
+
 from rest_framework import serializers
 
 

@@ -1,3 +1,5 @@
+"""Tests for the file-to-S3 migration management command."""
+
 from io import BytesIO, StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory

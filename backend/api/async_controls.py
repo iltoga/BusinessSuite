@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Provides async enqueue guard helpers for API views.
+
+KEY_COMPONENTS:
+- _coerce_positive_int: Module symbol.
+- enqueue_guard_ttl_seconds: Module symbol.
+- observability_counter_ttl_seconds: Module symbol.
+- build_user_enqueue_guard_key: Module symbol.
+- acquire_enqueue_guard: Module symbol.
+- release_enqueue_guard: Module symbol.
+- build_guard_counter_key: Module symbol.
+- increment_guard_counter: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby API/core services and DRF helpers used in this module.
+
+AI_GUIDELINES:
+- Keep this module focused on reusable API infrastructure rather than domain orchestration.
+- Preserve the existing contract so split view modules can import these helpers safely.
+"""
+
 from __future__ import annotations
 
 import logging

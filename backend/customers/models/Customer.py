@@ -1,3 +1,5 @@
+"""Customer model and helper logic for identity and contact data."""
+
 import os
 import shutil
 

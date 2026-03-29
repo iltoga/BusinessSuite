@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- LocalResilienceService: Service class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from __future__ import annotations
 
 from core.models.local_resilience import LocalResilienceSettings, MediaManifestEntry, SyncCursor
@@ -10,7 +24,9 @@ class LocalResilienceService:
         return LocalResilienceSettings.get_solo()
 
     @staticmethod
-    def update_settings(*, enabled: bool | None = None, desktop_mode: str | None = None, updated_by=None) -> LocalResilienceSettings:
+    def update_settings(
+        *, enabled: bool | None = None, desktop_mode: str | None = None, updated_by=None
+    ) -> LocalResilienceSettings:
         settings_obj = LocalResilienceSettings.get_solo()
         was_enabled = bool(settings_obj.enabled)
         if enabled is not None:

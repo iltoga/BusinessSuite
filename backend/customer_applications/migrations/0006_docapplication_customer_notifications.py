@@ -1,3 +1,5 @@
+"""Add customer notification fields to the document application model."""
+
 from django.db import migrations, models
 
 

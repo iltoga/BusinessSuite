@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- GoogleCalendarEventColors: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from django.conf import settings
 from rest_framework.exceptions import ValidationError
 

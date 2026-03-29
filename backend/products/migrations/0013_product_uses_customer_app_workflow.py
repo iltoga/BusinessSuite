@@ -1,3 +1,5 @@
+"""Add product flags for customer application workflow integration."""
+
 from django.db import migrations, models
 
 
@@ -14,10 +16,11 @@ def backfill_uses_customer_app_workflow(apps, schema_editor):
     product_ids_with_tasks = set(Task.objects.values_list("product_id", flat=True))
 
     updates = []
-    for product in Product.objects.all().only("id", "required_documents", "optional_documents", "uses_customer_app_workflow"):
+    for product in Product.objects.all().only(
+        "id", "required_documents", "optional_documents", "uses_customer_app_workflow"
+    ):
         has_documents = bool(
-            _split_document_names(product.required_documents)
-            or _split_document_names(product.optional_documents)
+            _split_document_names(product.required_documents) or _split_document_names(product.optional_documents)
         )
         desired = has_documents or (product.id in product_ids_with_tasks)
         if product.uses_customer_app_workflow != desired:

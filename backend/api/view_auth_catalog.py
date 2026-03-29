@@ -1,3 +1,25 @@
+"""
+FILE_ROLE: Handles authentication, profile, and catalog API endpoints for the API app.
+
+KEY_COMPONENTS:
+- _set_refresh_cookie: Sets the JWT refresh and session-hint cookies.
+- _clear_refresh_cookie: Clears the JWT auth cookies on logout.
+- TokenAuthView: Issues access/refresh tokens and persists refresh state in cookies.
+- TokenRefreshView: Refreshes access tokens and rotates the refresh cookies.
+- UserProfileViewSet: Exposes current-user profile actions such as me, logout, avatar upload, and password change.
+- UserSettingsViewSet: Reads and updates per-user settings through /me.
+- CountryCodeViewSet: Read-only country list for dropdown use.
+
+INTERACTIONS:
+- Depends on: api.utils.ai_model_pricing, api.utils.idempotency, api.utils.stream_payloads, .views_imports
+- Consumed by: frontend auth bootstrap, profile screens, and dropdown/catalog consumers.
+
+AI_GUIDELINES:
+- Keep HTTP/auth-cookie handling thin and consistent with the JWT settings contract.
+- Do not move business orchestration or persistence-heavy logic into these view classes when a service already owns it.
+- Preserve the canonical refresh-cookie names, paths, domains, and session-hint behavior.
+"""
+
 from api.utils.ai_model_pricing import price_to_display
 from api.utils.idempotency import (
     build_request_idempotency_fingerprint,
@@ -655,8 +677,8 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = self._with_case_insensitive_name_sorting(Customer.objects.select_related("nationality").all())
 
-        # Only apply search and active filters for the list action
-        if self.action == "list":
+        # Keep list and explicit search action behavior aligned.
+        if self.action in {"list", "search"}:
             query = self.request.query_params.get("q") or self.request.query_params.get("search")
             if query:
                 queryset = self._with_case_insensitive_name_sorting(
@@ -695,10 +717,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="search")
     def search(self, request):
-        query = request.query_params.get("q", "")
-        customers = self.get_queryset().filter(
-            Q(first_name__icontains=query) | Q(last_name__icontains=query) | Q(email__icontains=query)
-        )
+        customers = self.get_queryset()
         page = self.paginate_queryset(customers)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -739,16 +758,31 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         customer = self.get_object()
         applications = (
             customer.doc_applications.filter(product__uses_customer_app_workflow=True)
-            .select_related("customer", "product")
+            .select_related(
+                "customer",
+                "customer__nationality",
+                "product",
+                "product__product_category",
+                "product__created_by",
+                "product__updated_by",
+            )
             .prefetch_related(
+                Prefetch(
+                    "documents",
+                    queryset=Document.objects.select_related("doc_type"),
+                ),
                 Prefetch(
                     "invoice_applications",
                     queryset=InvoiceApplication.objects.select_related("invoice"),
-                )
+                ),
             )
             .order_by("-id")
             .distinct()
         )
+        page = self.paginate_queryset(applications)
+        if page is not None:
+            serializer = CustomerApplicationHistorySerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = CustomerApplicationHistorySerializer(applications, many=True)
         return Response(serializer.data)
 

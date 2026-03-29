@@ -1,11 +1,24 @@
+"""
+FILE_ROLE: Middleware for request performance logging.
+
+KEY_COMPONENTS:
+- PerformanceLoggingMiddleware: Module symbol.
+
+INTERACTIONS:
+- Depends on: core.models, core.services, Django signal machinery, or middleware hooks as appropriate.
+
+AI_GUIDELINES:
+- Keep this module focused on framework integration and small hook functions.
+- Do not move domain orchestration here when a service already owns the workflow.
+"""
+
 import logging
 import time
 
-from django.conf import settings
-from django.db import connection
-
 from core.services.logger_service import Logger
 from core.telemetry.otlp_exporter import current_unix_nano, trace_exporter
+from django.conf import settings
+from django.db import connection
 
 logger = Logger.get_logger("performance")
 

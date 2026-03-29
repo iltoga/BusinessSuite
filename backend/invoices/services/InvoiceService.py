@@ -1,3 +1,7 @@
+"""Invoice service utilities for billing workflows and invoice creation."""
+
+"""Invoice service utilities for billing workflows and invoice creation."""
+
 import os
 from io import BytesIO
 

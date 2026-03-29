@@ -1,7 +1,17 @@
 """
-AI Invoice Parser Service
-Uses AI vision to extract structured invoice data from documents.
-Supports multimodal vision for PDF/images and text extraction for Excel/Word documents.
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- parse_invoice_text: Module symbol.
+- parse_invoice_file: Module symbol.
+- parse_invoice_with_ai: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
 """
 
 import logging
@@ -10,11 +20,10 @@ from datetime import datetime
 from io import BytesIO
 from typing import List, Optional, Union
 
-from django.core.files.uploadedfile import UploadedFile
-
 from core.services.ai_client import AIClient
 from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.ai_usage_service import AIUsageFeature
+from django.core.files.uploadedfile import UploadedFile
 
 logger = logging.getLogger(__name__)
 

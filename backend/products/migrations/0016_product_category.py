@@ -1,5 +1,7 @@
-from django.db import migrations, models
+"""Add product category models and references for grouping products."""
+
 import django.db.models.deletion
+from django.db import migrations, models
 
 
 def create_product_categories(apps, schema_editor):
@@ -33,7 +35,10 @@ class Migration(migrations.Migration):
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("name", models.CharField(db_index=True, max_length=100, unique=True)),
-                ("product_type", models.CharField(choices=[("visa", "Visa"), ("other", "Other")], db_index=True, max_length=50)),
+                (
+                    "product_type",
+                    models.CharField(choices=[("visa", "Visa"), ("other", "Other")], db_index=True, max_length=50),
+                ),
                 ("description", models.TextField(blank=True)),
             ],
             options={

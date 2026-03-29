@@ -1,3 +1,5 @@
+"""Add automatic document generation flags to document types."""
+
 from django.db import migrations, models
 
 

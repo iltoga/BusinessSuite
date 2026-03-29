@@ -1,6 +1,7 @@
+"""Admin registrations for product and document type models."""
+
 from django.contrib import admin
 from nested_admin import NestedModelAdmin, NestedTabularInline
-
 from products.models import DocumentType, Product, ProductCategory, Task
 
 

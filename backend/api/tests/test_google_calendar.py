@@ -1,3 +1,5 @@
+"""Regression tests for Google Calendar integration behavior."""
+
 import datetime
 from unittest.mock import patch
 

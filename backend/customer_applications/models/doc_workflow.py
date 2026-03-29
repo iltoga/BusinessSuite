@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Primary data models for the customer applications app.
+
+KEY_COMPONENTS:
+- DocWorkflow: Model class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on model definitions and local invariants.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from core.utils.dateutils import calculate_due_date
 from django.conf import settings
 from django.db import models

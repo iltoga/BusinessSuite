@@ -1,7 +1,8 @@
-from django.contrib.auth import get_user_model
-from django.test import TestCase
+"""Tests for core user settings behavior and persistence."""
 
 from core.models import UserSettings
+from django.contrib.auth import get_user_model
+from django.test import TestCase
 
 
 class UserSettingsModelTests(TestCase):

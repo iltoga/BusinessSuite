@@ -1,3 +1,5 @@
+"""Regression tests for parallel document categorization uploads."""
+
 from unittest.mock import patch
 
 from api.views_categorization import _upload_files_to_job

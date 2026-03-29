@@ -1,3 +1,23 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- _normalize_base64_payload: Private helper.
+- decode_base64_image: Module symbol.
+- get_ocr_preview_storage_prefix: Module symbol.
+- build_ocr_preview_storage_path: Module symbol.
+- upload_ocr_preview_bytes: Module symbol.
+- upload_ocr_preview_from_base64: Module symbol.
+- get_ocr_preview_url: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 import base64
 import binascii
 
@@ -56,9 +76,7 @@ def upload_ocr_preview_bytes(job_id: str, image_bytes: bytes, extension: str = "
     return default_storage.save(target_path, ContentFile(image_bytes))
 
 
-def upload_ocr_preview_from_base64(
-    job_id: str, payload: str, extension: str = "png", overwrite: bool = True
-) -> str:
+def upload_ocr_preview_from_base64(job_id: str, payload: str, extension: str = "png", overwrite: bool = True) -> str:
     return upload_ocr_preview_bytes(
         job_id=str(job_id),
         image_bytes=decode_base64_image(payload),

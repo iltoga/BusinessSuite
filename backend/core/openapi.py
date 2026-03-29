@@ -1,3 +1,21 @@
+"""
+FILE_ROLE: OpenAPI schema helpers and custom schema configuration.
+
+KEY_COMPONENTS:
+- JwtOrMockAuthenticationScheme: Module symbol.
+- preprocess_exclude_api_views_without_serializer: Module symbol.
+- postprocess_add_job_id_param: Module symbol.
+- postprocess_fix_empty_204_responses: Module symbol.
+- postprocess_add_mock_paths: Module symbol.
+
+INTERACTIONS:
+- Depends on: core.models, core.services, Django signal machinery, or middleware hooks as appropriate.
+
+AI_GUIDELINES:
+- Keep this module focused on framework integration and small hook functions.
+- Do not move domain orchestration here when a service already owns the workflow.
+"""
+
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from drf_spectacular.plumbing import build_bearer_security_scheme_object
 from rest_framework.views import APIView

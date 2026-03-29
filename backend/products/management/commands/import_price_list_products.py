@@ -1,3 +1,5 @@
+"""Management command for importing products from price lists."""
+
 from __future__ import annotations
 
 import json
@@ -10,7 +12,6 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.db.utils import OperationalError, ProgrammingError
 from products.models import Product, ProductCategory
-
 
 MANUAL_CATEGORY_BY_CODE: dict[str, str] = {
     "AIRPORT": "Other",

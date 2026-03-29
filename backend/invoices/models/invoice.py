@@ -1,3 +1,7 @@
+"""Invoice model, queryset helpers, and billing-related computed fields."""
+
+"""Invoice model, queryset helpers, and billing-related computed fields."""
+
 # models.py
 from decimal import Decimal
 

@@ -1,8 +1,38 @@
+"""Shared API view infrastructure, throttles, and async guard helpers.
+
+This module centralizes reusable DRF mixins, resilience-aware throttles,
+pagination, async enqueue guards, and small helper serializers that are shared
+across the API view modules.
+"""
+
 from __future__ import annotations
 
+"""
+FILE_ROLE: Provides shared DRF mixins, throttle wrappers, pagination, and async-queue guard helpers for API views.
+
+KEY_COMPONENTS:
+- ResilientThrottleMixin: Fails open when the cache-backed throttle backend is unavailable.
+- ResilientAnonRateThrottle: Anonymous rate throttle with cache-resilience behavior.
+- ResilientUserRateThrottle: Authenticated rate throttle with cache-resilience behavior.
+- ResilientScopedRateThrottle: Scoped rate throttle with cache-resilience behavior.
+- ApiErrorHandlingMixin: Canonical API error handling, throttle resilience, and exception mapping.
+- StandardResultsSetPagination: Default pagination used by most list endpoints.
+- AsyncEnqueueGuardResult: Container for async enqueue lock/job state.
+- parse_bool: Normalizes truthy configuration values.
+- restrict_to_owner_unless_privileged: Limits queryset visibility for non-privileged users.
+
+INTERACTIONS:
+- Depends on: api.async_controls, api.cache_resilience, api.permissions, api.utils.contracts, django.conf.settings, rest_framework.*
+- Consumed by: split API view modules such as view_applications.py, view_billing.py, and view_auth_catalog.py.
+
+AI_GUIDELINES:
+- Keep reusable controller cross-cutting concerns here instead of duplicating them in each view module.
+- Do not move domain/business workflows into this file; it should stay focused on HTTP plumbing, guard helpers, and shared response handling.
+- Preserve the fail-open cache behavior because multiple endpoints rely on it for startup resilience.
+"""
 import logging
-from dataclasses import dataclass
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any, Callable
 
 from api.async_controls import (
@@ -13,13 +43,12 @@ from api.async_controls import (
 )
 from api.cache_resilience import is_transient_cache_backend_error
 from api.permissions import is_staff_or_admin_group
+from api.utils.contracts import build_error_payload
 from django.conf import settings
 from rest_framework import pagination, serializers, status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle, UserRateThrottle
-
-from api.utils.contracts import build_error_payload
 
 logger = logging.getLogger(__name__)
 
@@ -297,7 +326,9 @@ def prepare_async_enqueue(
                 job_id=str(existing_job.id),
                 status_code=status.HTTP_202_ACCEPTED,
             )
-            return AsyncEnqueueGuardResult(response=deduplicated_response_builder(existing_job), existing_job=existing_job)
+            return AsyncEnqueueGuardResult(
+                response=deduplicated_response_builder(existing_job), existing_job=existing_job
+            )
 
         _observe_async_guard_event(
             namespace=namespace,

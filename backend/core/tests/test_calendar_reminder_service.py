@@ -1,12 +1,13 @@
-from datetime import timedelta
+"""Tests for calendar reminder service behavior and scheduling."""
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from django.utils import timezone
+from datetime import timedelta
 
 from core.models import CalendarReminder
 from core.services.calendar_reminder_service import CalendarReminderService
 from core.services.push_notifications import PushNotificationResult
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.utils import timezone
 
 User = get_user_model()
 

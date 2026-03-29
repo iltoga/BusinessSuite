@@ -1,8 +1,9 @@
+"""Date utility helpers shared by core services and tasks."""
+
 from datetime import datetime
 
-from django.utils import timezone
-
 from core.models.holiday import Holiday
+from django.utils import timezone
 
 
 def parse_date_field(value):

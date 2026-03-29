@@ -1,3 +1,5 @@
+"""General regression tests for shared API behavior and defaults."""
+
 import datetime
 import json
 import tempfile
@@ -68,6 +70,31 @@ class CustomerQuickCreateAPITestCase(TestCase):
             errors["passportNumber"] if isinstance(errors["passportNumber"], list) else [errors["passportNumber"]]
         )
         self.assertIn("This passport number is already used by another customer.", messages)
+
+    def test_customer_quick_create_rejects_invalid_email(self):
+        response = self.client.post(
+            reverse("api-customer-quick-create"),
+            {"customer_type": "person", "first_name": "Bad", "last_name": "Email", "email": "not-an-email"},
+        )
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn("errors", payload)
+        self.assertIn("email", payload["errors"])
+
+    def test_customer_quick_create_rejects_invalid_date(self):
+        response = self.client.post(
+            reverse("api-customer-quick-create"),
+            {
+                "customer_type": "person",
+                "first_name": "Bad",
+                "last_name": "Date",
+                "birthdate": "31-31-2025",
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn("errors", payload)
+        self.assertIn("birthdate", payload["errors"])
 
     def test_customer_create_rejects_duplicate_passport_via_api(self):
         url = reverse("customers-list")
@@ -215,6 +242,21 @@ class CustomerListAPITestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         customer.refresh_from_db()
         self.assertFalse(customer.active)
+
+    def test_customer_search_action_matches_list_search_behavior(self):
+        active_company = Customer.objects.create(customer_type="company", company_name="Acme Bali", active=True)
+        Customer.objects.create(customer_type="company", company_name="Acme Disabled", active=False)
+
+        list_response = self.client.get(reverse("customers-list"), {"q": "Acme"})
+        search_response = self.client.get(reverse("customers-search"), {"q": "Acme"})
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(search_response.status_code, 200)
+
+        list_ids = {item["id"] for item in list_response.json()["results"]}
+        search_ids = {item["id"] for item in search_response.json()["results"]}
+        self.assertEqual(list_ids, search_ids)
+        self.assertEqual(search_ids, {active_company.id})
 
     def test_uninvoiced_applications_endpoint(self):
         customer = Customer.objects.create(customer_type="person", first_name="Nina", last_name="Stone")
@@ -652,6 +694,52 @@ class CustomerApplicationDetailAPITestCase(TestCase):
             f"GET {url} exceeded query budget: {len(queries)} queries",
         )
 
+    def test_customer_applications_history_query_budget(self):
+        stay_doc_type = DocumentType.objects.create(name="Stay Permit", is_stay_permit=True, has_expiration_date=True)
+        self.product.application_window_days = 30
+        self.product.optional_documents = "Stay Permit"
+        self.product.save(update_fields=["application_window_days", "optional_documents", "updated_at"])
+
+        for offset in range(3):
+            application = DocApplication.objects.create(
+                customer=self.customer,
+                product=self.product,
+                doc_date=timezone.now().date(),
+                created_by=self.user,
+            )
+            Document.objects.create(
+                doc_application=application,
+                doc_type=stay_doc_type,
+                expiration_date=timezone.now().date() + datetime.timedelta(days=offset + 30),
+                created_by=self.user,
+            )
+
+        url = reverse("customers-applications-history", args=[self.customer.id])
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("results", body)
+        self.assertEqual(body["count"], 4)
+        self.assertLessEqual(len(queries), 20, f"GET {url} exceeded query budget: {len(queries)} queries")
+
+    def test_customer_applications_history_supports_pagination(self):
+        for index in range(3):
+            DocApplication.objects.create(
+                customer=self.customer,
+                product=self.product,
+                doc_date=timezone.now().date() + datetime.timedelta(days=index),
+                created_by=self.user,
+            )
+
+        response = self.client.get(reverse("customers-applications-history", args=[self.customer.id]), {"page_size": 2})
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["count"], 4)
+        self.assertEqual(len(body["results"]), 2)
+
     def test_customer_application_list_excludes_invoice_only_products(self):
         invoice_only_product = Product.objects.create(
             name="Invoice Only Product",
@@ -1087,6 +1175,43 @@ class ProductApiTestCase(TestCase):
         }
 
         response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        body = response.json()
+        self.assertIn("errors", body)
+        self.assertTrue("retailPrice" in body["errors"] or "retail_price" in body["errors"])
+
+    def test_product_quick_create_applies_category_price_and_currency_defaults(self):
+        response = self.client.post(
+            reverse("api-product-quick-create"),
+            {
+                "name": "Quick Product",
+                "code": "QP-1",
+                "productType": "visa",
+                "basePrice": "1000.00",
+                "currency": "usd",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        product = Product.objects.get(code="QP-1")
+        self.assertIsNotNone(product.product_category)
+        self.assertEqual(product.product_category.product_type, "visa")
+        self.assertEqual(str(product.base_price), "1000.00")
+        self.assertEqual(str(product.retail_price), "1000.00")
+        self.assertEqual(product.currency, "USD")
+
+    def test_product_quick_create_rejects_retail_price_below_base_price(self):
+        response = self.client.post(
+            reverse("api-product-quick-create"),
+            {
+                "name": "Quick Invalid Retail",
+                "code": "QP-INVALID-1",
+                "productType": "visa",
+                "basePrice": "1000.00",
+                "retailPrice": "900.00",
+            },
+        )
+
         self.assertEqual(response.status_code, 400)
         body = response.json()
         self.assertIn("errors", body)

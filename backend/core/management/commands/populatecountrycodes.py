@@ -1,10 +1,23 @@
+"""
+FILE_ROLE: Django management command for the core app.
+
+KEY_COMPONENTS:
+- Command: Module symbol.
+
+INTERACTIONS:
+- Depends on: core app schema/runtime machinery and adjacent services imported by this module.
+
+AI_GUIDELINES:
+- Keep command logic thin and delegate real work to services when possible.
+- Keep migrations schema-only and reversible; do not add runtime business logic here.
+"""
+
 import json
 
+from core.models import CountryCode
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import IntegrityError
-
-from core.models import CountryCode
 
 
 class Command(BaseCommand):

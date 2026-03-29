@@ -1,12 +1,25 @@
-from decimal import Decimal
+"""
+FILE_ROLE: Serializer and payload-shaping helpers for the API app.
 
-from rest_framework import serializers
+KEY_COMPONENTS:
+- CustomerQuickCreateSerializer: Serializer class.
+- CustomerApplicationQuickCreateSerializer: Serializer class.
+- ProductQuickCreateSerializer: Serializer class.
 
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on serializer validation and representation only.
+- Preserve the existing API contract because client code and views depend on these field names.
+"""
+
+from api.serializers.product_write_utils import apply_pricing_defaults, apply_product_category, normalize_currency_code
 from core.models import CountryCode
-from core.utils.dateutils import parse_date_field
 from core.utils.form_validators import normalize_phone_number
 from customers.models import CUSTOMER_TYPE_CHOICES, Customer
 from products.models import Product, ProductCategory
+from rest_framework import serializers
 
 
 class CustomerQuickCreateSerializer(serializers.Serializer):
@@ -17,17 +30,55 @@ class CustomerQuickCreateSerializer(serializers.Serializer):
     company_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     npwp = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     birth_place = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    email = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
     telephone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     whatsapp = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     address_bali = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     address_abroad = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     passport_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     gender = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    nationality = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    birthdate = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    passport_issue_date = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    passport_expiration_date = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    nationality = serializers.SlugRelatedField(
+        slug_field="alpha3_code",
+        queryset=CountryCode.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    birthdate = serializers.DateField(input_formats=["%Y-%m-%d", "%d/%m/%Y"], required=False, allow_null=True)
+    passport_issue_date = serializers.DateField(
+        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
+        required=False,
+        allow_null=True,
+    )
+    passport_expiration_date = serializers.DateField(
+        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
+        required=False,
+        allow_null=True,
+    )
+
+    def to_internal_value(self, data):
+        data = data.copy()
+        for field_name in [
+            "title",
+            "first_name",
+            "last_name",
+            "company_name",
+            "npwp",
+            "birth_place",
+            "email",
+            "telephone",
+            "whatsapp",
+            "address_bali",
+            "address_abroad",
+            "passport_number",
+            "gender",
+            "nationality",
+            "birthdate",
+            "passport_issue_date",
+            "passport_expiration_date",
+        ]:
+            if data.get(field_name) == "":
+                data[field_name] = None
+        return super().to_internal_value(data)
 
     def validate(self, attrs):
         customer_type = attrs.get("customer_type", "person")
@@ -50,20 +101,6 @@ class CustomerQuickCreateSerializer(serializers.Serializer):
         attrs["telephone"] = self._normalize_phone(attrs.get("telephone"))
         attrs["whatsapp"] = self._normalize_phone(attrs.get("whatsapp"))
 
-        self._apply_parsed_date(attrs, "birthdate")
-        self._apply_parsed_date(attrs, "passport_issue_date")
-        self._apply_parsed_date(attrs, "passport_expiration_date")
-
-        nationality_code = attrs.get("nationality")
-        if nationality_code:
-            nationality = CountryCode.objects.filter(alpha3_code=nationality_code).first()
-            if nationality:
-                attrs["nationality"] = nationality
-            else:
-                attrs.pop("nationality", None)
-        else:
-            attrs.pop("nationality", None)
-
         return attrs
 
     @staticmethod
@@ -72,15 +109,6 @@ class CustomerQuickCreateSerializer(serializers.Serializer):
             return None
         normalized = normalize_phone_number(value)
         return normalized or None
-
-    @staticmethod
-    def _apply_parsed_date(attrs, field_name):
-        raw_value = attrs.get(field_name)
-        parsed_value = parse_date_field(raw_value)
-        if parsed_value:
-            attrs[field_name] = parsed_value
-        else:
-            attrs.pop(field_name, None)
 
     def validate_passport_number(self, value):
         """Ensure passport number is unique when present for quick-create."""
@@ -133,22 +161,9 @@ class ProductQuickCreateSerializer(serializers.Serializer):
         return value
 
     def validate_currency(self, value):
-        if value is None:
-            return value
-        return str(value).strip().upper()
+        return normalize_currency_code(value)
 
     def validate(self, attrs):
-        base_price = attrs.get("base_price")
-        if base_price is None:
-            base_price = Decimal("0.00")
-            attrs["base_price"] = base_price
-
-        retail_price = attrs.get("retail_price")
-        if retail_price is None:
-            retail_price = base_price
-            attrs["retail_price"] = retail_price
-
-        if retail_price < base_price:
-            raise serializers.ValidationError({"retail_price": "Retail price must be greater than or equal to base price."})
-
+        apply_product_category(attrs, instance=None)
+        apply_pricing_defaults(attrs, instance=None, set_base_price_default_on_create=True)
         return attrs

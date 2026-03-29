@@ -1,3 +1,5 @@
+"""View helpers for application pipeline report responses."""
+
 from customer_applications.models import DocApplication, DocWorkflow
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count, Q

@@ -1,9 +1,11 @@
+"""Regression tests for push notification API behavior."""
+
 from unittest.mock import Mock, patch
 
-from customer_applications.models import DocApplication, WorkflowNotification
-from customers.models import Customer
 from core.models import WebPushSubscription
 from core.services.push_notifications import PushNotificationResult
+from customer_applications.models import DocApplication, WorkflowNotification
+from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.test.utils import override_settings

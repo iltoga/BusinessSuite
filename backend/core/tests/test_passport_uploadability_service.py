@@ -1,3 +1,5 @@
+"""Tests for the passport uploadability service rules."""
+
 from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -233,7 +235,7 @@ class PassportUploadabilityServiceQualityGateTestCase(TestCase):
                             "importance": "critical",
                         },
                         {"parameter": "full_page_visible", "reason": "Page is cropped.", "importance": "major"},
-                    ]
+                    ],
                 },
             )
 
@@ -288,7 +290,6 @@ class PassportUploadabilityServiceQualityGateTestCase(TestCase):
             self.assertTrue(result.is_valid)
             self.assertIsNone(result.rejection_code)
 
-
     @patch("core.services.passport_uploadability_service.AIPassportParser")
     def test_rejects_low_confidence_when_below_threshold(self, mock_parser_cls):
         mock_parser = MagicMock()
@@ -323,7 +324,7 @@ class PassportUploadabilityServiceQualityGateTestCase(TestCase):
                             "reason": "Confidence score is below threshold.",
                             "importance": "major",
                         }
-                    ]
+                    ],
                 },
             )
 

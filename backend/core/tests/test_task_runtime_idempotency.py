@@ -1,3 +1,5 @@
+"""Tests for task runtime idempotency helpers and guards."""
+
 from types import SimpleNamespace
 from unittest.mock import patch
 

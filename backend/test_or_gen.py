@@ -1,6 +1,21 @@
+"""
+FILE_ROLE: Debug script for manually querying OpenRouter generation results during AI troubleshooting.
+
+KEY_COMPONENTS:
+- requests.get: Performs the HTTP lookup against the OpenRouter generation endpoint.
+
+INTERACTIONS:
+- Depends on: Django settings bootstrap, OpenRouter API access, and the requests library.
+
+AI_GUIDELINES:
+- Keep this script limited to manual diagnostics and local experimentation.
+- Avoid turning it into application code; the reusable behavior belongs in services or tasks.
+"""
+
 import os
-import requests
+
 import django
+import requests
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "business_suite.settings.dev")
 django.setup()

@@ -1,3 +1,5 @@
+"""Regression tests for invoice status report API behavior."""
+
 from __future__ import annotations
 
 from datetime import timedelta

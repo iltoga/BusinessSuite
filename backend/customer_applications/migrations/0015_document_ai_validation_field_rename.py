@@ -1,3 +1,5 @@
+"""Rename document AI validation fields to match the current model API."""
+
 from django.db import migrations
 
 

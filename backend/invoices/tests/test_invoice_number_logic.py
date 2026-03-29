@@ -1,7 +1,8 @@
-from django.test import TestCase
-from django.utils import timezone
+"""Tests for invoice number generation and sequencing logic."""
 
 from customers.models import Customer
+from django.test import TestCase
+from django.utils import timezone
 from invoices.models.invoice import Invoice
 
 

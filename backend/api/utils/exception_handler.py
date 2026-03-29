@@ -1,7 +1,8 @@
-from rest_framework.exceptions import NotFound, ValidationError
-from rest_framework.views import exception_handler
+"""API exception formatting helpers for canonical error responses."""
 
 from api.utils.contracts import build_error_payload
+from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.views import exception_handler
 
 
 def custom_exception_handler(exc, context):

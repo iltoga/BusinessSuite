@@ -1,3 +1,5 @@
+"""Form validator helpers shared across the core app."""
+
 import datetime
 import re
 

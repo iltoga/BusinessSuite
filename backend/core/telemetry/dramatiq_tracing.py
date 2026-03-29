@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Integrates Dramatiq middleware with the backend tracing exporter.
+
+KEY_COMPONENTS:
+- DramatiqTracingMiddleware: Captures Dramatiq message spans and exports them through the OTLP exporter.
+
+INTERACTIONS:
+- Depends on: core.telemetry.otlp_exporter, core.services.logger_service.Logger, dramatiq.middleware.Middleware.
+
+AI_GUIDELINES:
+- Keep the middleware lightweight and defer span export details to the shared OTLP exporter.
+- Do not add task business logic here; this module should only observe and report execution metadata.
+"""
+
 from __future__ import annotations
 
 import threading

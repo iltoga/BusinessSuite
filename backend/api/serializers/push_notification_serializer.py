@@ -1,6 +1,7 @@
-from rest_framework import serializers
+"""Serializers for push notification configuration and delivery payloads."""
 
 from core.models import WebPushSubscription
+from rest_framework import serializers
 
 
 class WebPushSubscriptionSerializer(serializers.ModelSerializer):

@@ -1,3 +1,5 @@
+"""Admin registrations for customer application models and workflows."""
+
 from django.contrib import admin
 from nested_admin import NestedModelAdmin, NestedTabularInline
 

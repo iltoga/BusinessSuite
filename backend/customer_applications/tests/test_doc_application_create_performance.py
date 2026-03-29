@@ -1,8 +1,11 @@
+"""Performance tests for document application creation."""
+
 from datetime import date
 from unittest.mock import patch
 
 from api.serializers.doc_application_serializer import DocApplicationCreateUpdateSerializer
 from customer_applications.models import DocApplication, Document
+from customer_applications.services.application_creation_service import CustomerApplicationCreationService
 from customer_applications.tasks import auto_import_passport_task
 from customers.models import Customer
 from django.core.files.base import ContentFile
@@ -37,7 +40,7 @@ class DocApplicationCreatePerformanceTests(TestCase):
         request.user = self.user
 
         with (
-            patch.object(DocApplicationCreateUpdateSerializer, "_can_auto_import_passport", return_value=True),
+            patch.object(CustomerApplicationCreationService, "_can_auto_import_passport", return_value=True),
             patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
             patch("customer_applications.tasks.auto_import_passport_task") as auto_import_mock,
         ):
@@ -69,7 +72,9 @@ class DocApplicationCreatePerformanceTests(TestCase):
         original_get_status = DocApplication._get_application_status
 
         with (
-            patch.object(DocApplication, "_get_application_status", autospec=True, wraps=original_get_status) as status_mock,
+            patch.object(
+                DocApplication, "_get_application_status", autospec=True, wraps=original_get_status
+            ) as status_mock,
             patch("customer_applications.services.thumbnail_service.DocumentThumbnailService.sync_for_document"),
         ):
             result = auto_import_passport_task.call_local(

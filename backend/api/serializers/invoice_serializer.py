@@ -1,3 +1,23 @@
+"""
+FILE_ROLE: Serializer and payload-shaping helpers for the API app.
+
+KEY_COMPONENTS:
+- PaymentSerializer: Serializer class.
+- InvoiceApplicationSummarySerializer: Serializer class.
+- InvoiceApplicationDetailSerializer: Serializer class.
+- InvoiceListSerializer: Serializer class.
+- InvoiceDetailSerializer: Serializer class.
+- InvoiceApplicationWriteSerializer: Serializer class.
+- InvoiceCreateUpdateSerializer: Serializer class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on serializer validation and representation only.
+- Preserve the existing API contract because client code and views depend on these field names.
+"""
+
 from api.serializers.customer_serializer import CustomerSerializer
 from api.serializers.doc_application_serializer import DocApplicationInvoiceSerializer
 from api.serializers.product_serializer import ProductSerializer

@@ -1,8 +1,9 @@
+"""Tests for product task runtime idempotency behavior."""
+
 from unittest.mock import patch
 
-from django.test import SimpleTestCase
-
 from core.models import AsyncJob
+from django.test import SimpleTestCase
 from products.tasks.product_excel_jobs import run_product_export_job, run_product_import_job
 
 

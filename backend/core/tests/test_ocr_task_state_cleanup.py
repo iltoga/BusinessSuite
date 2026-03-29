@@ -1,3 +1,5 @@
+"""Tests for OCR task state cleanup behavior."""
+
 from contextlib import contextmanager
 from io import BytesIO
 from unittest.mock import patch

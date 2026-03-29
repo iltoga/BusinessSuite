@@ -1,13 +1,14 @@
+"""Tests for the WhatsApp status polling task."""
+
 from datetime import timedelta
 from unittest.mock import Mock, patch
-
-from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
-from django.utils import timezone
 
 from customer_applications.models import DocApplication, WorkflowNotification
 from customer_applications.tasks import poll_whatsapp_delivery_statuses
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase, override_settings
+from django.utils import timezone
 from products.models import Product
 
 User = get_user_model()
@@ -122,9 +123,7 @@ class WhatsappStatusPollingTaskTests(TestCase):
     def test_poll_skips_when_graph_message_lookup_is_unsupported(self, get_mock):
         unsupported = Mock()
         unsupported.status_code = 400
-        unsupported.text = (
-            '{"error":{"message":"Unsupported get request","type":"GraphMethodException","code":100,"error_subcode":33}}'
-        )
+        unsupported.text = '{"error":{"message":"Unsupported get request","type":"GraphMethodException","code":100,"error_subcode":33}}'
         unsupported.json.return_value = {
             "error": {
                 "message": "Unsupported get request",

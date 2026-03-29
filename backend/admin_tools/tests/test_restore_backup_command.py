@@ -1,13 +1,26 @@
+"""
+FILE_ROLE: Test coverage for the admin tools app.
+
+KEY_COMPONENTS:
+- RestoreBackupCommandTests: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for app routing, model behavior, and service boundaries.
+"""
+
 import tempfile
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
+from admin_tools import services
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import SimpleTestCase
-
-from admin_tools import services
 
 
 class RestoreBackupCommandTests(SimpleTestCase):

@@ -1,11 +1,12 @@
+"""Passport file processing helpers for customer document uploads."""
+
 from __future__ import annotations
 
 import os
 from io import BytesIO
 
-from django.core.files.uploadedfile import SimpleUploadedFile, UploadedFile
-
 from core.utils.imgutils import convert_and_resize_image
+from django.core.files.uploadedfile import SimpleUploadedFile, UploadedFile
 
 
 class PassportFileProcessingError(Exception):
@@ -46,4 +47,3 @@ def normalize_passport_file(uploaded_file: UploadedFile | None) -> UploadedFile 
         content=png_bytes,
         content_type="image/png",
     )
-

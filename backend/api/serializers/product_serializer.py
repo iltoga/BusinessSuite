@@ -1,4 +1,8 @@
+"""Serializers for product read/write payloads and related nested fields."""
+
 from api.serializers.document_type_serializer import DocumentTypeSerializer
+from api.serializers.product_write_utils import apply_pricing_defaults, apply_product_category, normalize_currency_code
+from api.serializers.rbac_mixin import RbacFieldFilterMixin
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from drf_spectacular.utils import extend_schema_field
@@ -6,8 +10,6 @@ from products.models import Product, ProductCategory
 from products.models.document_type import DocumentType
 from products.models.task import Task
 from rest_framework import serializers
-
-from api.serializers.rbac_mixin import RbacFieldFilterMixin
 
 
 def _ordered_document_names(document_ids):
@@ -197,50 +199,12 @@ class ProductCreateUpdateSerializer(RbacFieldFilterMixin, serializers.ModelSeria
             "optional_document_ids",
         ]
 
-    def _apply_product_category(self, attrs):
-        if "product_category" in attrs:
-            if attrs["product_category"] is None:
-                raise serializers.ValidationError({"product_category": "Product category is required."})
-            attrs.pop("product_type", None)
-            return
-
-        product_type = attrs.pop("product_type", None)
-        if product_type:
-            attrs["product_category"] = ProductCategory.get_default_for_type(product_type)
-            return
-
-        if self.instance is None:
-            attrs["product_category"] = ProductCategory.get_default_for_type("other")
-
     def validate_currency(self, value):
-        if value is None:
-            return value
-        return str(value).strip().upper()
+        return normalize_currency_code(value)
 
     def validate(self, attrs):
-        self._apply_product_category(attrs)
-
-        base_price = attrs.get("base_price")
-        if base_price is None and self.instance is not None:
-            base_price = self.instance.base_price
-
-        retail_price = attrs.get("retail_price")
-        if retail_price is None:
-            if "base_price" in attrs:
-                retail_price = base_price
-            elif self.instance is not None:
-                retail_price = self.instance.retail_price
-            else:
-                retail_price = base_price
-
-        if base_price is not None and retail_price is not None and retail_price < base_price:
-            raise serializers.ValidationError(
-                {"retail_price": "Retail price must be greater than or equal to base price."}
-            )
-
-        if retail_price is not None:
-            attrs["retail_price"] = retail_price
-
+        apply_product_category(attrs, instance=self.instance)
+        apply_pricing_defaults(attrs, instance=self.instance)
         return attrs
 
     def to_representation(self, instance):

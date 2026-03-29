@@ -1,11 +1,12 @@
+"""Tests for scheduled cron job helpers and task dispatching."""
+
 import datetime
 from unittest.mock import MagicMock, call, patch
 
 import requests
+from core.tasks import cron_jobs
 from django.core.cache import cache
 from django.test import TestCase, override_settings
-
-from core.tasks import cron_jobs
 
 
 class AuditLogPruneTests(TestCase):
@@ -20,7 +21,6 @@ class AuditLogPruneTests(TestCase):
             assert args[0] == "auditlogflush"
             assert kwargs.get("before_date") == expected_cutoff.isoformat()
             assert kwargs.get("yes") is True
-
 
 
 class OpenRouterHealthCheckTests(TestCase):

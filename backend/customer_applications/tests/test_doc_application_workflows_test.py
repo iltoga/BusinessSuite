@@ -1,16 +1,17 @@
+"""Tests for document application workflow behavior."""
+
 import datetime
 import warnings
 from datetime import date
-
-from django.contrib.auth.models import User
-from django.test import TestCase
-from django.utils import timezone
 
 from core.management.commands.populateholiday import Command as PopulateHolidayCommand
 from core.models.country_code import CountryCode
 from core.utils.dateutils import calculate_due_date
 from customer_applications.models import DocApplication, DocWorkflow
 from customers.models import Customer
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.utils import timezone
 from products.models import Product, Task
 
 warnings.filterwarnings("ignore", category=UserWarning, module="whitenoise.base")

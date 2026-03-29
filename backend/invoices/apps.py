@@ -1,3 +1,5 @@
+"""Django app configuration for the invoices module."""
+
 from django.apps import AppConfig
 
 

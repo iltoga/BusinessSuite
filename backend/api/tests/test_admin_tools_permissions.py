@@ -1,22 +1,25 @@
+"""Regression tests for admin tools permission checks."""
+
 import asyncio
 from unittest.mock import patch
 
+from api.permissions import SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
-from api.permissions import SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR
-
 User = get_user_model()
 
 
 def _sync_iter(*items):
     """Wrap items as a sync iterable — required for mocking sync-for streams."""
+
     def _gen():
         for item in items:
             yield item
+
     return _gen()
 
 

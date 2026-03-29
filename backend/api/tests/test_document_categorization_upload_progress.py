@@ -1,3 +1,5 @@
+"""Regression tests for document categorization upload progress updates."""
+
 from unittest.mock import patch
 
 from customer_applications.models import DocApplication, DocumentCategorizationItem, DocumentCategorizationJob

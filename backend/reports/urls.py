@@ -1,3 +1,7 @@
+"""URL routes for report views and dashboards."""
+
+"""URL routes for report views and dashboards."""
+
 from django.urls import path
 
 from .views import (

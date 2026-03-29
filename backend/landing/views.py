@@ -1,3 +1,18 @@
+"""
+FILE_ROLE: View/controller logic for the landing app.
+
+KEY_COMPONENTS:
+- ConditionalLoginView: View/controller class.
+- logout_view: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for app routing, model behavior, and service boundaries.
+"""
+
 from django.contrib.auth import logout
 from django.contrib.auth import views as auth_views
 from django.shortcuts import redirect

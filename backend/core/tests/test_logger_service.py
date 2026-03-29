@@ -1,9 +1,10 @@
+"""Tests for logger service behavior and output helpers."""
+
 import logging
 from unittest import skipIf
 
-from django.test import TestCase, override_settings
-
 from core.services.logger_service import Logger
+from django.test import TestCase, override_settings
 
 
 class LoggerServiceTests(TestCase):

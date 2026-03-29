@@ -1,3 +1,5 @@
+"""Tests for invoice download job state cleanup behavior."""
+
 from datetime import timedelta
 from io import BytesIO
 from unittest.mock import patch

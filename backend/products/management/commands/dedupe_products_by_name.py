@@ -1,3 +1,5 @@
+"""Management command for deduplicating products by name."""
+
 from __future__ import annotations
 
 import json
@@ -8,7 +10,6 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import IntegrityError, transaction
 from django.db.utils import OperationalError, ProgrammingError
-
 from products.models import Product
 
 
@@ -70,9 +71,7 @@ class Command(BaseCommand):
             raise CommandError("Dataset must contain a 'products' array.")
 
         dataset_codes = {
-            str(row.get("code")).strip()
-            for row in product_rows
-            if isinstance(row, dict) and row.get("code")
+            str(row.get("code")).strip() for row in product_rows if isinstance(row, dict) and row.get("code")
         }
 
         if not dataset_codes:

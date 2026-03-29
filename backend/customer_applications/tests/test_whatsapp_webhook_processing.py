@@ -1,8 +1,9 @@
-from django.contrib.auth import get_user_model
-from django.test import TestCase
+"""Tests for WhatsApp webhook processing in customer applications."""
 
 from customer_applications.models import DocApplication, WorkflowNotification
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase
 from notifications.services.providers import process_whatsapp_webhook_payload
 from products.models import Product
 

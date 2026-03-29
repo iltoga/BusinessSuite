@@ -1,3 +1,5 @@
+"""Tests for document validation task behavior and gating."""
+
 from datetime import date, timedelta
 from unittest.mock import patch
 

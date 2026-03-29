@@ -1,3 +1,5 @@
+"""End-to-end tests for Loki logging integration."""
+
 import pytest
 
 

@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Django management command for the core app.
+
+KEY_COMPONENTS:
+- Command: Module symbol.
+
+INTERACTIONS:
+- Depends on: core models, Django migration/management machinery, and related app services imported by this module.
+
+AI_GUIDELINES:
+- Keep command logic thin and delegate real work to services when possible.
+- Keep migrations schema-only and reversible; do not add runtime business logic here.
+"""
+
 import shutil
 import tempfile
 from pathlib import Path
@@ -253,9 +267,7 @@ class Command(BaseCommand):
                     continue
 
                 if dry_run:
-                    self.stdout.write(
-                        f"[DRY RUN] Would rewire {model.__name__}#{obj.pk}: {', '.join(update_fields)}"
-                    )
+                    self.stdout.write(f"[DRY RUN] Would rewire {model.__name__}#{obj.pk}: {', '.join(update_fields)}")
                     continue
 
                 if hasattr(obj, "updated_at") and "updated_at" not in update_fields:

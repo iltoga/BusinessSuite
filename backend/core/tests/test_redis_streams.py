@@ -1,8 +1,9 @@
+"""Tests for Redis stream publishing and consumption helpers."""
+
 from unittest.mock import MagicMock, patch
 
-from django.test import SimpleTestCase
-
 from core.services.redis_streams import read_stream_blocking
+from django.test import SimpleTestCase
 
 
 class RedisStreamsServiceTests(SimpleTestCase):

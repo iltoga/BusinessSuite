@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Signal handlers that emit realtime stream events.
+
+KEY_COMPONENTS:
+- _publish_stream_event_safe: Module symbol.
+- streams_async_job_post_save: Module symbol.
+- streams_ocr_job_post_save: Module symbol.
+- streams_document_ocr_job_post_save: Module symbol.
+- streams_invoice_download_job_post_save: Module symbol.
+- streams_invoice_import_job_post_save: Module symbol.
+- streams_invoice_import_item_post_save: Module symbol.
+- streams_invoice_document_job_post_save: Module symbol.
+
+INTERACTIONS:
+- Depends on: core.models, core.services, Django signal machinery, or middleware hooks as appropriate.
+
+AI_GUIDELINES:
+- Keep this module focused on framework integration and small hook functions.
+- Do not move domain orchestration here when a service already owns the workflow.
+"""
+
 from __future__ import annotations
 
 from api.utils.stream_payloads import (

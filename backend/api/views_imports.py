@@ -1,3 +1,19 @@
+"""
+FILE_ROLE: Centralizes the shared imports used by the split API view modules.
+
+KEY_COMPONENTS:
+- Imported DRF, Django, and project symbols: Re-exported into the split view modules via wildcard imports.
+
+INTERACTIONS:
+- Depends on: api.permissions, api.serializers, api.utils, core.models, core.services, customer_applications.models, invoices.models, letters.services, payments.models, products.models, rest_framework, django, drf_spectacular.
+- Consumed by: api.view_auth_catalog, api.view_applications, api.view_billing, api.view_notifications, and other split controller modules.
+
+AI_GUIDELINES:
+- Treat this as a dependency hub only; keep real controller logic in the domain-specific view modules.
+- Avoid adding business rules here because the module is intentionally imported by many endpoints and should stay stable.
+- Keep import order consistent with the existing split-view pattern so compatibility shims keep working.
+"""
+
 import json
 import logging
 import mimetypes
@@ -10,7 +26,6 @@ from typing import Any, Generator, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
-from rest_framework import serializers
 from api.permissions import (
     STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
     IsAdminOrManagerGroup,
@@ -72,9 +87,9 @@ from api.serializers import (
 )
 from api.serializers.auth_serializer import CustomTokenObtainSerializer, CustomTokenRefreshSerializer
 from api.serializers.passport_check_serializer import PassportCheckSerializer
+from api.utils.contracts import build_error_payload, build_success_payload
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
-from api.utils.contracts import build_error_payload, build_success_payload
 from business_suite.authentication import JwtOrMockAuthentication
 from core.models import (
     AiModel,
@@ -132,7 +147,13 @@ from django.utils import timezone
 from django.utils.text import get_valid_filename, slugify
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
 from invoices.models import InvoiceDownloadJob
 from invoices.models.invoice import Invoice, InvoiceApplication
 from invoices.services.InvoiceService import InvoiceService
@@ -142,7 +163,7 @@ from payments.models import Payment
 from products.models import Product, ProductCategory
 from products.models.document_type import DocumentType
 from products.models.task import Task
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import ValidationError

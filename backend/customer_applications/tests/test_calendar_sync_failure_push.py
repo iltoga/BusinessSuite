@@ -1,12 +1,13 @@
+"""Tests for calendar sync failure push notification handling."""
+
 from datetime import date
 from unittest.mock import patch
-
-from django.contrib.auth import get_user_model
-from django.test import TestCase
 
 from customer_applications.models import DocApplication
 from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase
 from products.models import Product, Task
 
 User = get_user_model()
@@ -44,7 +45,9 @@ class CalendarSyncFailurePushTests(TestCase):
         )
 
     @patch("core.services.push_notifications.push_notification_service.PushNotificationService.send_to_user")
-    @patch("customer_applications.services.application_calendar_service.ApplicationCalendarService.sync_next_task_deadline")
+    @patch(
+        "customer_applications.services.application_calendar_service.ApplicationCalendarService.sync_next_task_deadline"
+    )
     def test_sync_failure_triggers_push_notification(self, sync_mock, push_mock):
         sync_mock.side_effect = RuntimeError("Google Calendar temporary outage")
 

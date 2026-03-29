@@ -1,3 +1,5 @@
+"""Add a uniqueness constraint for customer passport identifiers."""
+
 from django.db import migrations, models
 
 

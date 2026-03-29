@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Primary data models for the core app.
+
+KEY_COMPONENTS:
+- CalendarReminder: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on model definitions and local invariants.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from datetime import datetime
 from datetime import timezone as dt_timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError

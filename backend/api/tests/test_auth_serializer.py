@@ -1,9 +1,10 @@
+"""Regression tests for authentication serializer validation and output."""
+
 from unittest.mock import Mock, patch
 
+from api.serializers.auth_serializer import CustomTokenObtainSerializer
 from django.db import DatabaseError
 from django.test import SimpleTestCase
-
-from api.serializers.auth_serializer import CustomTokenObtainSerializer
 
 
 class CustomTokenObtainSerializerTests(SimpleTestCase):
@@ -24,7 +25,9 @@ class CustomTokenObtainSerializerTests(SimpleTestCase):
     @patch("api.serializers.auth_serializer.TokenObtainPairSerializer.get_token")
     def test_get_token_handles_profile_schema_errors(self, mock_get_token, mock_user_profile):
         mock_get_token.return_value = {}
-        mock_user_profile.objects.filter.side_effect = DatabaseError("column core_userprofile.cache_enabled does not exist")
+        mock_user_profile.objects.filter.side_effect = DatabaseError(
+            "column core_userprofile.cache_enabled does not exist"
+        )
         user = self._build_user()
 
         token = CustomTokenObtainSerializer.get_token(user)
@@ -43,7 +46,9 @@ class CustomTokenObtainSerializerTests(SimpleTestCase):
     def test_get_token_includes_avatar_when_available(self, mock_get_token, mock_user_profile, mock_storage_url):
         mock_get_token.return_value = {}
         mock_storage_url.return_value = "/media/avatars/user_42.png"
-        mock_user_profile.objects.filter.return_value.values_list.return_value.first.return_value = "avatars/user_42.png"
+        mock_user_profile.objects.filter.return_value.values_list.return_value.first.return_value = (
+            "avatars/user_42.png"
+        )
         user = self._build_user()
 
         token = CustomTokenObtainSerializer.get_token(user)

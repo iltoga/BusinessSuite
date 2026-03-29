@@ -1,3 +1,5 @@
+"""Regression tests for backup API timezone handling."""
+
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch

@@ -1,3 +1,18 @@
+"""
+FILE_ROLE: Serializer and payload-shaping helpers for the API app.
+
+KEY_COMPONENTS:
+- GoogleCalendarEventSerializer: Serializer class.
+- GoogleTaskSerializer: Serializer class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on serializer validation and representation only.
+- Preserve the existing API contract because client code and views depend on these field names.
+"""
+
 from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 from rest_framework import serializers
 

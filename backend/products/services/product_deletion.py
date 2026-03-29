@@ -1,8 +1,10 @@
+"""Service helpers for safely deleting product records and references."""
+
 from __future__ import annotations
 
 from typing import Any
 
-from customer_applications.models import DocApplication, DocWorkflow, Document
+from customer_applications.models import DocApplication, Document, DocWorkflow
 from django.db import transaction
 from django.db.models import Count
 from invoices.models.invoice import Invoice, InvoiceApplication

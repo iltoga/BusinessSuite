@@ -1,3 +1,5 @@
+"""Regression tests for async authorization control helpers."""
+
 from datetime import date
 from unittest.mock import patch
 

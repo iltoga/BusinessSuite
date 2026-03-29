@@ -1,3 +1,5 @@
+"""Date helper utilities used by reporting calculations and filters."""
+
 from datetime import datetime, timedelta
 
 from django.utils import timezone

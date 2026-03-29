@@ -1,3 +1,7 @@
+"""Async jobs for invoice document generation and document processing."""
+
+"""Async jobs for invoice document generation and document processing."""
+
 import os
 import traceback
 from io import BytesIO

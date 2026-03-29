@@ -1,3 +1,5 @@
+"""Tests for task progress helpers and progress state updates."""
+
 from core.tasks.progress import persist_progress
 from django.test import SimpleTestCase
 

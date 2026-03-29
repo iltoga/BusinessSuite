@@ -1,3 +1,22 @@
+"""
+FILE_ROLE: Provides storage adapters for iterating and deleting media files across filesystem and object storage backends.
+
+KEY_COMPONENTS:
+- _normalize_prefix: Normalizes storage prefixes before traversal or deletion.
+- _iter_storage_files_via_listdir: Recursively yields file keys from storage.listdir().
+- BaseMediaStoreAdapter: Abstract adapter interface for media store operations.
+- FileSystemMediaStoreAdapter: Adapter for FileSystemStorage-backed media.
+- ObjectMediaStoreAdapter: Adapter for object-storage buckets with list/delete support.
+- get_media_store_adapter: Chooses the correct adapter for the configured storage backend.
+
+INTERACTIONS:
+- Depends on: django.core.files.storage, default_storage, FileSystemStorage, and Storage abstractions.
+
+AI_GUIDELINES:
+- Use default_storage-compatible APIs and keep traversal logic backend-agnostic.
+- Do not hardcode filesystem paths for persisted media operations when storage abstractions are available.
+"""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

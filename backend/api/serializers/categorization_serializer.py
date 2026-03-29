@@ -1,8 +1,25 @@
-from customer_applications.models import DocumentCategorizationItem, DocumentCategorizationJob
+"""
+FILE_ROLE: Serializer and payload-shaping helpers for the API app.
+
+KEY_COMPONENTS:
+- DocumentCategorizationItemSerializer: Serializer class.
+- DocumentCategorizationJobSerializer: Serializer class.
+- CategorizationApplyItemSerializer: Serializer class.
+- CategorizationApplySerializer: Serializer class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on serializer validation and representation only.
+- Preserve the existing API contract because client code and views depend on these field names.
+"""
+
 from api.utils.stream_payloads import camelize_payload
-from rest_framework import serializers
+from customer_applications.models import DocumentCategorizationItem, DocumentCategorizationJob
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
+from rest_framework import serializers
 
 
 class DocumentCategorizationItemSerializer(serializers.ModelSerializer):

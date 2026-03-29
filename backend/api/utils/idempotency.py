@@ -1,17 +1,18 @@
+"""Idempotency helpers for replay-safe API requests and cached responses."""
+
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
+from collections.abc import Mapping
 from datetime import date, datetime
 from typing import Any
-from collections.abc import Mapping
 
+from api.utils.contracts import get_request_id
 from django.conf import settings
 from django.core.cache import cache
 from django.core.files.uploadedfile import UploadedFile
-
-from api.utils.contracts import get_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +109,9 @@ def _normalize_idempotency_value(value: Any) -> Any:
         return [_normalize_idempotency_value(item) for item in value]
 
     if isinstance(value, set):
-        return sorted((_normalize_idempotency_value(item) for item in value), key=lambda item: json.dumps(item, sort_keys=True))
+        return sorted(
+            (_normalize_idempotency_value(item) for item in value), key=lambda item: json.dumps(item, sort_keys=True)
+        )
 
     if isinstance(value, (str, int, float, bool)):
         return value
@@ -173,7 +176,9 @@ def _build_record(*, kind: str, fingerprint: str | None = None, job_id: Any | No
     return record
 
 
-def _record_fingerprint_mismatch(*, namespace: str, user_id: Any, cache_key: str, expected: str | None, actual: str | None) -> None:
+def _record_fingerprint_mismatch(
+    *, namespace: str, user_id: Any, cache_key: str, expected: str | None, actual: str | None
+) -> None:
     logger.warning(
         "Async idempotency conflict namespace=%s user_id=%s cache_key=%s expected_fingerprint=%s actual_fingerprint=%s",
         namespace,
@@ -197,7 +202,9 @@ def get_cached_async_job_id(cache_key: str) -> str | None:
     return text
 
 
-def resolve_cached_async_job(*, cache_key: str, queryset, fingerprint: str | None = None, namespace: str | None = None, user_id: Any = None):
+def resolve_cached_async_job(
+    *, cache_key: str, queryset, fingerprint: str | None = None, namespace: str | None = None, user_id: Any = None
+):
     cached = _coerce_cached_record(cache.get(cache_key))
     if cached is None:
         return None

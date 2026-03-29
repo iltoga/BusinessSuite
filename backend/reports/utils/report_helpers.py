@@ -1,3 +1,5 @@
+"""Shared helper functions for assembling reporting datasets and metrics."""
+
 from django.conf import settings
 
 

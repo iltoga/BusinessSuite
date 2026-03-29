@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Test coverage for the admin tools app.
+
+KEY_COMPONENTS:
+- _FakeStorage: Private helper.
+- _FakeFileValue: Private helper.
+- _FakeModelObject: Private helper.
+- _FakeManager: Private helper.
+- _FakeMeta: Private helper.
+- _FakeFileField: Private helper.
+- _FakeJSONField: Private helper.
+- _build_fake_model: Private helper.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for app routing, model behavior, and service boundaries.
+"""
+
 from unittest.mock import patch
 
 from admin_tools import services

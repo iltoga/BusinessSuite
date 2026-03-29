@@ -1,13 +1,26 @@
+"""
+FILE_ROLE: Django management command for the core app.
+
+KEY_COMPONENTS:
+- Command: Module symbol.
+
+INTERACTIONS:
+- Depends on: core app schema/runtime machinery and adjacent services imported by this module.
+
+AI_GUIDELINES:
+- Keep command logic thin and delegate real work to services when possible.
+- Keep migrations schema-only and reversible; do not add runtime business logic here.
+"""
+
 import os
 import posixpath
 from pathlib import Path
 
+from core.services.logger_service import Logger
 from django.conf import settings
 from django.core.files import File
 from django.core.files.storage import storages
 from django.core.management.base import BaseCommand, CommandError
-
-from core.services.logger_service import Logger
 
 logger = Logger.get_logger(__name__)
 
@@ -81,7 +94,9 @@ class Command(BaseCommand):
 
         return deleted_count
 
-    def _upload_media_tree(self, storage, *, media_root: Path, destination_prefix: str, exclude_folders: set[str]) -> int:
+    def _upload_media_tree(
+        self, storage, *, media_root: Path, destination_prefix: str, exclude_folders: set[str]
+    ) -> int:
         file_count = 0
         for root, dirs, files in os.walk(media_root):
             dirs[:] = [directory for directory in dirs if directory not in exclude_folders]

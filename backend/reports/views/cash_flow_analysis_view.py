@@ -1,3 +1,5 @@
+"""View helpers for cash flow analysis report responses."""
+
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -5,7 +7,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Sum
 from django.utils import timezone
 from django.views.generic import TemplateView
-
 from payments.models import Payment
 from reports.utils import format_currency, get_month_list
 

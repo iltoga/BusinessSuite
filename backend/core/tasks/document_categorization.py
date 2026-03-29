@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Async task entry points for the core app.
+
+KEY_COMPONENTS:
+- _get_categorization_item_result: Private helper.
+- categorization_item_ai_validation_enabled: Module symbol.
+- categorization_item_has_terminal_validation: Module symbol.
+- categorization_item_is_terminal: Module symbol.
+- run_document_categorization_item: Task/helper entry point.
+- _run_validation_step: Private helper.
+- _try_match_document: Private helper.
+- _update_categorization_job_counts: Private helper.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 import traceback as tb_module
 
 from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception

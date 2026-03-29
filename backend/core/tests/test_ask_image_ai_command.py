@@ -1,3 +1,5 @@
+"""Tests for the image-AI ask command workflow."""
+
 import io
 import os
 import tempfile

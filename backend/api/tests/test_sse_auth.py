@@ -1,13 +1,14 @@
+"""Regression tests for SSE authentication helpers."""
+
 import json
 
+from api.async_controls import build_guard_counter_key
+from api.utils.sse_auth import sse_token_auth_required
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.test import RequestFactory, TestCase
-
-from api.async_controls import build_guard_counter_key
-from api.utils.sse_auth import sse_token_auth_required
 
 User = get_user_model()
 

@@ -1,13 +1,10 @@
+"""Regression tests for applying document categorization actions."""
+
 import json
 from datetime import date
 from unittest.mock import patch
 
-from customer_applications.models import (
-    DocApplication,
-    Document,
-    DocumentCategorizationItem,
-    DocumentCategorizationJob,
-)
+from customer_applications.models import DocApplication, Document, DocumentCategorizationItem, DocumentCategorizationJob
 from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings

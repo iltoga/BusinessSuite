@@ -1,3 +1,5 @@
+"""Helpers for deriving AI-related document type fields and flags."""
+
 import json
 from dataclasses import dataclass
 

@@ -1,3 +1,5 @@
+"""Rename AI validation fields and set default document type behavior."""
+
 from django.db import migrations, models
 
 

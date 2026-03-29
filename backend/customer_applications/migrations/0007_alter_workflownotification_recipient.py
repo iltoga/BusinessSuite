@@ -1,3 +1,5 @@
+"""Adjust workflow notification recipient constraints and behavior."""
+
 from django.db import migrations, models
 
 

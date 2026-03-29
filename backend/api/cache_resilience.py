@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Provides cache-backend resilience helpers for API throttles and views.
+
+KEY_COMPONENTS:
+- is_transient_cache_backend_error: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby API/core services and DRF helpers used in this module.
+
+AI_GUIDELINES:
+- Keep this module focused on reusable API infrastructure rather than domain orchestration.
+- Preserve the existing contract so split view modules can import these helpers safely.
+"""
+
 from __future__ import annotations
 
 

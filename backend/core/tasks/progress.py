@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Async task entry points for the core app.
+
+KEY_COMPONENTS:
+- Progress task helpers: Module symbols.
+
+INTERACTIONS:
+- Depends on: core task runtime infrastructure and Redis stream helpers.
+
+AI_GUIDELINES:
+- Keep the module focused on task progress plumbing only.
+- Preserve the existing event contract because stream consumers rely on it.
+"""
+
 from __future__ import annotations
 
 from typing import Any
@@ -49,15 +63,16 @@ def persist_progress(
     user_id = getattr(instance, "created_by_id", None)
     if user_id:
         from core.services.realtime_dispatcher import RealtimeEventDispatcherService
+
         current_job_status = getattr(instance, "status", "pending")
         current_job_progress = int(getattr(instance, "progress", 0) or 0)
-        
+
         RealtimeEventDispatcherService.publish_job_update(
             user_id=user_id,
             job_id=str(instance.id),
             status=status if status is not None else current_job_status,
             progress=int(progress) if progress is not None else current_job_progress,
-            payload={k: getattr(instance, k, None) for k in (extra_fields or {}).keys()}
+            payload={k: getattr(instance, k, None) for k in (extra_fields or {}).keys()},
         )
-        
+
     return True

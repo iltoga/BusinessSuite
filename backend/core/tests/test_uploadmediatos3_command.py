@@ -1,3 +1,5 @@
+"""Tests for the media upload-to-S3 management command."""
+
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch

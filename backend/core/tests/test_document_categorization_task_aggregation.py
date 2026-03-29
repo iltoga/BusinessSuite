@@ -1,3 +1,5 @@
+"""Tests for document categorization task aggregation behavior."""
+
 from core.tasks.document_categorization import _update_categorization_job_counts
 from customer_applications.models import DocApplication, DocumentCategorizationItem, DocumentCategorizationJob
 from customers.models import Customer

@@ -1,9 +1,10 @@
-from unittest.mock import MagicMock, patch
+"""Tests for AI usage task execution and persistence."""
 
-from django.test import TestCase, override_settings
+from unittest.mock import MagicMock, patch
 
 from core.models.ai_request_usage import AIRequestUsage
 from core.tasks.ai_usage import capture_ai_usage_task
+from django.test import TestCase, override_settings
 
 
 def _run_huey_task(task, **kwargs):

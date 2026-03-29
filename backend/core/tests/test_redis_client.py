@@ -1,9 +1,10 @@
+"""Tests for Redis client configuration and helper behavior."""
+
 import os
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
-
 from core.services.redis_client import build_redis_url
+from django.test import SimpleTestCase, override_settings
 
 
 class RedisClientUrlResolutionTests(SimpleTestCase):
@@ -25,7 +26,9 @@ class RedisClientUrlResolutionTests(SimpleTestCase):
             "rediss://user:pass@secure-redis.example.com:6380/0?ssl_cert_reqs=required",
         )
 
-    @override_settings(DRAMATIQ_REDIS_DB=3, DRAMATIQ_REDIS_URL="redis://dramatiq-user:dramatiq-pass@broker.local:6379/9")
+    @override_settings(
+        DRAMATIQ_REDIS_DB=3, DRAMATIQ_REDIS_URL="redis://dramatiq-user:dramatiq-pass@broker.local:6379/9"
+    )
     def test_build_redis_url_prefers_explicit_dramatiq_redis_url(self):
         with patch.dict(
             os.environ,

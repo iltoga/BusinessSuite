@@ -1,10 +1,11 @@
-from datetime import date, timedelta
+"""Tests for document application status when documents are missing."""
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase
+from datetime import date, timedelta
 
 from customer_applications.models import DocApplication
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase
 from products.models import Product, Task
 
 User = get_user_model()

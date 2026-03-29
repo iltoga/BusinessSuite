@@ -1,16 +1,17 @@
+"""Authentication helpers for SSE endpoints and token validation."""
+
 import functools
 import inspect
 import logging
 
+from api.async_controls import increment_guard_counter
+from api.permissions import is_authenticated_user, is_superuser
+from api.utils.contracts import build_error_payload
 from asgiref.sync import sync_to_async
+from business_suite.authentication import JwtOrMockAuthentication, ensure_mock_user
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest, JsonResponse
 from rest_framework.authtoken.models import Token
-
-from api.async_controls import increment_guard_counter
-from api.utils.contracts import build_error_payload
-from api.permissions import is_authenticated_user, is_superuser
-from business_suite.authentication import JwtOrMockAuthentication, ensure_mock_user
 
 User = get_user_model()
 logger = logging.getLogger(__name__)

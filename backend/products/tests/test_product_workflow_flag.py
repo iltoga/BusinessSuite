@@ -1,5 +1,6 @@
-from django.test import TestCase
+"""Tests for product workflow flag behavior and persistence."""
 
+from django.test import TestCase
 from products.models import Product, Task
 
 

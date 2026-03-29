@@ -1,3 +1,5 @@
+"""Task model used by product workflow automation and async processing."""
+
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError

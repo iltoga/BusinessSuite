@@ -1,12 +1,12 @@
+"""Tests for the app setting service and runtime override behavior."""
+
 import os
 from unittest.mock import patch
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
-
 from core.models import AppSetting
 from core.services.app_setting_service import AppSettingScope, AppSettingService
-
+from django.contrib.auth import get_user_model
+from django.test import TestCase, override_settings
 
 LOC_MEM_CACHES = {
     "default": {
@@ -109,7 +109,9 @@ class AppSettingServiceCacheTests(TestCase):
             },
         )
 
-        self.assertEqual(AppSettingService.get_raw("FRONTEND_ONLY", default=None, require_override=True), "frontend-value")
+        self.assertEqual(
+            AppSettingService.get_raw("FRONTEND_ONLY", default=None, require_override=True), "frontend-value"
+        )
         AppSettingService.delete_raw("FRONTEND_ONLY")
         self.assertFalse(AppSetting.objects.filter(name="FRONTEND_ONLY").exists())
         self.assertIsNone(AppSettingService.get_raw("FRONTEND_ONLY", default=None, require_override=True))

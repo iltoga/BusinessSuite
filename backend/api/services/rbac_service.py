@@ -1,3 +1,5 @@
+"""RBAC service helpers for evaluating and persisting role-based rules."""
+
 import logging
 from typing import Any
 
@@ -41,14 +43,11 @@ def get_user_rbac_claims(user: User) -> dict[str, dict[str, Any]]:
     # --- MENU RULES ---
     # 1. Fetch globals
     global_menu_rules = {
-        rule.menu_id: rule.is_visible 
-        for rule in RbacMenuRule.objects.filter(group__isnull=True, role="")
+        rule.menu_id: rule.is_visible for rule in RbacMenuRule.objects.filter(group__isnull=True, role="")
     }
 
     # 2. Fetch specific
-    specific_menu_rules = RbacMenuRule.objects.filter(
-        Q(group__in=user_groups) | Q(role__in=user_roles)
-    )
+    specific_menu_rules = RbacMenuRule.objects.filter(Q(group__in=user_groups) | Q(role__in=user_roles))
     # Group by menu_id to apply OR logic across multiple groups/roles
     menu_overrides: dict[str, bool] = {}
     for rule in specific_menu_rules:
@@ -71,9 +70,7 @@ def get_user_rbac_claims(user: User) -> dict[str, dict[str, Any]]:
         for rule in RbacFieldRule.objects.filter(group__isnull=True, role="")
     }
 
-    specific_field_rules = RbacFieldRule.objects.filter(
-        Q(group__in=user_groups) | Q(role__in=user_roles)
-    )
+    specific_field_rules = RbacFieldRule.objects.filter(Q(group__in=user_groups) | Q(role__in=user_roles))
     field_overrides: dict[str, dict[str, bool]] = {}
 
     for rule in specific_field_rules:
@@ -93,8 +90,8 @@ def get_user_rbac_claims(user: User) -> dict[str, dict[str, Any]]:
             fields[fid] = global_field_rules.get(fid, {"can_read": True, "can_write": True})
 
     result = {"menus": menus, "fields": fields}
-    
+
     # Cache for 5 minutes. Cache invalidate on signal could be added if instant updates are needed.
     cache.set(cache_key, result, timeout=300)
-    
+
     return result

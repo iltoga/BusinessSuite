@@ -1,6 +1,8 @@
+"""Add application deadline and notification tracking fields."""
+
+import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
-import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
@@ -19,7 +21,20 @@ class Migration(migrations.Migration):
             name="WorkflowNotification",
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("status", models.CharField(choices=[("pending", "Pending"), ("sent", "Sent"), ("failed", "Failed"), ("cancelled", "Cancelled")], db_index=True, default="pending", max_length=20)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("sent", "Sent"),
+                            ("failed", "Failed"),
+                            ("cancelled", "Cancelled"),
+                        ],
+                        db_index=True,
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
                 ("channel", models.CharField(db_index=True, default="email", max_length=20)),
                 ("subject", models.CharField(max_length=255)),
                 ("body", models.TextField()),
@@ -30,9 +45,30 @@ class Migration(migrations.Migration):
                 ("external_reference", models.CharField(blank=True, max_length=255)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("created_by", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
-                ("doc_application", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="notifications", to="customer_applications.docapplication")),
-                ("doc_workflow", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="notifications", to="customer_applications.docworkflow")),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL
+                    ),
+                ),
+                (
+                    "doc_application",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="notifications",
+                        to="customer_applications.docapplication",
+                    ),
+                ),
+                (
+                    "doc_workflow",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="notifications",
+                        to="customer_applications.docworkflow",
+                    ),
+                ),
             ],
             options={"ordering": ["-id"]},
         ),

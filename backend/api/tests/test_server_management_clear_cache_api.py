@@ -1,3 +1,5 @@
+"""Regression tests for server management cache-clearing endpoints."""
+
 from unittest.mock import MagicMock, patch
 
 from core.models.local_resilience import LocalResilienceSettings

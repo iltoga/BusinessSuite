@@ -1,3 +1,18 @@
+"""
+FILE_ROLE: Provides template filters for permission checks in Django templates.
+
+KEY_COMPONENTS:
+- has_any_perm: Checks whether a user has any permission for a model.
+- has_perm: Checks a specific app/model permission prefix in templates.
+
+INTERACTIONS:
+- Depends on: django.template, Django auth permissions on the user object.
+
+AI_GUIDELINES:
+- Keep filters side-effect free and safe for template rendering.
+- Do not add business logic here; this file should stay limited to presentation-time permission checks.
+"""
+
 from django import template
 
 register = template.Library()

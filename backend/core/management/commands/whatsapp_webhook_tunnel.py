@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Django management command for the core app.
+
+KEY_COMPONENTS:
+- Command: Module symbol.
+
+INTERACTIONS:
+- Depends on: core app schema/runtime machinery and adjacent services imported by this module.
+
+AI_GUIDELINES:
+- Keep command logic thin and delegate real work to services when possible.
+- Keep migrations schema-only and reversible; do not add runtime business logic here.
+"""
+
 import json
 import os
 import re
@@ -89,9 +103,7 @@ class Command(BaseCommand):
 
         force = bool(options.get("force"))
         if self.state_file.exists() and not force:
-            raise CommandError(
-                f"State file already exists: {self.state_file}. Use --force or run stop first."
-            )
+            raise CommandError(f"State file already exists: {self.state_file}. Use --force or run stop first.")
 
         current_subscription = self._fetch_whatsapp_subscription()
         original_callback = current_subscription.get("callback_url") or ""
@@ -275,9 +287,7 @@ class Command(BaseCommand):
             timeout=20,
         )
         if response.status_code != 200:
-            raise CommandError(
-                f"Callback verification failed ({response.status_code}): {response.text[:300]}"
-            )
+            raise CommandError(f"Callback verification failed ({response.status_code}): {response.text[:300]}")
         if challenge not in str(response.text):
             raise CommandError("Callback verification succeeded but challenge echo mismatch.")
 
@@ -316,8 +326,7 @@ class Command(BaseCommand):
         self._terminate_process(int(process.pid))
         last_logs = "\n".join(log_lines[-10:])
         raise CommandError(
-            "Failed to detect ngrok tunnel URL within timeout. "
-            f"Last logs:\n{last_logs or '(no logs)'}"
+            "Failed to detect ngrok tunnel URL within timeout. " f"Last logs:\n{last_logs or '(no logs)'}"
         )
 
     def _terminate_process(self, pid: int) -> None:

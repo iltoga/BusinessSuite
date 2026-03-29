@@ -1,12 +1,13 @@
+"""View helpers for product demand forecast report responses."""
+
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from customer_applications.models import DocApplication
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Sum
 from django.utils import timezone
 from django.views.generic import TemplateView
-
-from customer_applications.models import DocApplication
 from products.models import Product
 from reports.utils import get_month_list
 

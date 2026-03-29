@@ -1,3 +1,7 @@
+"""Invoice document job model used for queued document generation."""
+
+"""Invoice document job model used for queued document generation."""
+
 import uuid
 
 from django.conf import settings

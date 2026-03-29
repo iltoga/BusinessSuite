@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Meta WhatsApp access-token helpers for the notifications app.
+
+KEY_COMPONENTS:
+- _safe_int: Private helper.
+- _now_epoch: Private helper.
+- _refresh_enabled: Private helper.
+- _refresh_window_seconds: Private helper.
+- _cache_timeout_seconds: Private helper.
+- _base_configured_token: Private helper.
+- _runtime_cached_token: Private helper.
+- _runtime_cached_expires_at: Private helper.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for app routing, model behavior, and service boundaries.
+"""
+
 from __future__ import annotations
 
 import logging

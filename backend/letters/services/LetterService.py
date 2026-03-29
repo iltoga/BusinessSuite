@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Letter generation and DOCX merge service for the letters app.
+
+KEY_COMPONENTS:
+- LetterService: Builds merge data and renders DOCX letter templates.
+
+INTERACTIONS:
+- Depends on: core.utils.formatutils, core.models.CountryCode, customers.models.Customer, django settings, and MailMerge/docx template handling.
+
+AI_GUIDELINES:
+- Keep template rendering and customer data normalization together in this service.
+- Do not add request/response handling here; this module should stay focused on document generation.
+"""
+
 import os
 from datetime import date, datetime
 from io import BytesIO

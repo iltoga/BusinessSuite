@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- RealtimeEventDispatcherService: Service class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 import logging
 from typing import Any, Dict, Optional
 
@@ -30,7 +44,7 @@ class RealtimeEventDispatcherService:
             return None
 
         stream_key = stream_user_key(user_id)
-        
+
         try:
             event_id = publish_stream_event(
                 stream_key,
@@ -60,7 +74,7 @@ class RealtimeEventDispatcherService:
         status: str,
         progress: int,
         payload: Optional[Dict[str, Any]] = None,
-        event_name: str = "job_update"
+        event_name: str = "job_update",
     ) -> Optional[str]:
         """
         Helper method to specifically broadcast a job progress update.
@@ -75,10 +89,4 @@ class RealtimeEventDispatcherService:
         if "jobId" not in full_payload:
             full_payload["jobId"] = str(job_id)
 
-        return cls.publish_event(
-            user_id=user_id,
-            event=event_name,
-            payload=full_payload,
-            status="info",
-            job_id=job_id
-        )
+        return cls.publish_event(user_id=user_id, event=event_name, payload=full_payload, status="info", job_id=job_id)

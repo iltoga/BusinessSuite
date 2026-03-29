@@ -1,3 +1,18 @@
+"""
+FILE_ROLE: Async task entry points for the core app.
+
+KEY_COMPONENTS:
+- QUEUE_LOW: Module symbol.
+- db_task: Module symbol.
+
+INTERACTIONS:
+- Depends on: core task runtime infrastructure and Django/queue backends.
+
+AI_GUIDELINES:
+- Keep the module focused on task runtime wiring only.
+- Preserve queue and decorator contracts because many tasks import these symbols directly.
+"""
+
 from __future__ import annotations
 
 import logging

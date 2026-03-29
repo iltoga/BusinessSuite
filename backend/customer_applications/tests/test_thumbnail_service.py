@@ -1,16 +1,17 @@
+"""Tests for the document thumbnail service."""
+
 from datetime import date
 from io import BytesIO
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+from customer_applications.models import DocApplication, Document
+from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from PIL import Image
-
-from customer_applications.models import DocApplication, Document
-from customers.models import Customer
 from products.models import DocumentType, Product
 
 User = get_user_model()

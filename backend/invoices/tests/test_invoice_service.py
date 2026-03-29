@@ -1,3 +1,5 @@
+"""Tests for the invoice service and billing workflow behavior."""
+
 from datetime import date
 from decimal import Decimal
 from io import BytesIO

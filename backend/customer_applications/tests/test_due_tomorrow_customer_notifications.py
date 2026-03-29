@@ -1,13 +1,14 @@
+"""Tests for due-tomorrow customer notification behavior."""
+
 from datetime import datetime, timedelta
 from unittest.mock import patch
-
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from django.utils import timezone
 
 from customer_applications.models import DocApplication, WorkflowNotification
 from customer_applications.tasks import send_due_tomorrow_customer_notifications
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.utils import timezone
 from products.models import Product, Task
 
 User = get_user_model()

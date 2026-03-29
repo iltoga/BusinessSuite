@@ -1,3 +1,18 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- AppSettingScope: Module symbol.
+- AppSettingService: Service class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from __future__ import annotations
 
 import json
@@ -125,11 +140,15 @@ class AppSettingService:
         if record is None:
             return False
         explicit_flag = (
-            record.get("is_runtime_override") if isinstance(record, dict) else getattr(record, "is_runtime_override", None)
+            record.get("is_runtime_override")
+            if isinstance(record, dict)
+            else getattr(record, "is_runtime_override", None)
         )
         if explicit_flag is not None:
             return bool(explicit_flag)
-        updated_by_id = record.get("updated_by_id") if isinstance(record, dict) else getattr(record, "updated_by_id", None)
+        updated_by_id = (
+            record.get("updated_by_id") if isinstance(record, dict) else getattr(record, "updated_by_id", None)
+        )
         if updated_by_id is not None:
             return True
         description = record.get("description") if isinstance(record, dict) else getattr(record, "description", "")

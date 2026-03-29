@@ -1,9 +1,10 @@
+"""Tests for reports utility helpers and date calculations."""
+
 from datetime import date, datetime
 from decimal import Decimal
 
 from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
-
 from reports.utils import format_currency, get_date_range_filter, get_month_list, get_trend_indicator
 
 

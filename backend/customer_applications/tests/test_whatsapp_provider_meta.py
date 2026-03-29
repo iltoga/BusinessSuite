@@ -1,7 +1,8 @@
+"""Tests for the Meta WhatsApp provider integration."""
+
 from unittest.mock import Mock, patch
 
 from django.test import SimpleTestCase, override_settings
-
 from notifications.services.meta_access_token import reset_meta_whatsapp_access_token_cache
 from notifications.services.providers import WhatsappNotificationProvider, verify_meta_webhook_signature
 

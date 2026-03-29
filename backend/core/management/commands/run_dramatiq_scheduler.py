@@ -1,3 +1,18 @@
+"""
+FILE_ROLE: Django management command for the core app.
+
+KEY_COMPONENTS:
+- SchedulerLock: Module symbol.
+- Command: Module symbol.
+
+INTERACTIONS:
+- Depends on: core app schema/runtime machinery and adjacent services imported by this module.
+
+AI_GUIDELINES:
+- Keep command logic thin and delegate real work to services when possible.
+- Keep migrations schema-only and reversible; do not add runtime business logic here.
+"""
+
 from __future__ import annotations
 
 import signal

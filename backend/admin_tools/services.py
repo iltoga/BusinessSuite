@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Service helpers for the admin tools app.
+
+KEY_COMPONENTS:
+- _default_product_category_ids: Private helper.
+- _resolve_product_category_id: Private helper.
+- _product_category_type_by_id: Private helper.
+- _extract_product_type_from_category_value: Private helper.
+- _get_zstd_module: Private helper.
+- _supports_tarfile_zstd_write: Private helper.
+- _safe_extract_tar: Private helper.
+- _extract_archive_to_dir: Private helper.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for app routing, model behavior, and service boundaries.
+"""
+
 # pyright: reportMissingImports=false
 # pyright: reportMissingModuleSource=false
 # Vanilla Django backup/restore using only dumpdata/loaddata/flush

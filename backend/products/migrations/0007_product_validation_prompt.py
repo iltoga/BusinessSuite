@@ -1,3 +1,5 @@
+"""Add product validation prompt storage for AI-assisted workflows."""
+
 from django.db import migrations, models
 
 

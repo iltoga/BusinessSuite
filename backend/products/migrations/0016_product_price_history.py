@@ -1,8 +1,10 @@
+"""Add product price history tracking fields and models."""
+
 from __future__ import annotations
 
+import django.db.models.deletion
 from django.db import migrations, models
 from django.db.models import Q
-import django.db.models.deletion
 from django.utils import timezone
 
 
@@ -15,10 +17,7 @@ def create_initial_price_history(apps, schema_editor) -> None:
     now = timezone.now()
 
     for product in (
-        Product.objects.using(db)
-        .all()
-        .only("id", "base_price", "retail_price", "currency", "created_at")
-        .iterator()
+        Product.objects.using(db).all().only("id", "base_price", "retail_price", "currency", "created_at").iterator()
     ):
         if product.id in existing:
             continue
@@ -41,7 +40,10 @@ class Migration(migrations.Migration):
             name="ProductPriceHistory",
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("base_price", models.DecimalField(blank=True, decimal_places=2, default=0.0, max_digits=12, null=True)),
+                (
+                    "base_price",
+                    models.DecimalField(blank=True, decimal_places=2, default=0.0, max_digits=12, null=True),
+                ),
                 (
                     "retail_price",
                     models.DecimalField(blank=True, decimal_places=2, default=0.0, max_digits=12, null=True),
@@ -81,4 +83,3 @@ class Migration(migrations.Migration):
         ),
         migrations.RunPython(create_initial_price_history, migrations.RunPython.noop),
     ]
-

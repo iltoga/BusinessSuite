@@ -1,3 +1,18 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- UploadabilityResult: Result/dataclass helper.
+- PassportUploadabilityService: Service class.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -78,9 +93,11 @@ class PassportUploadabilityService:
                 rejection_code=quality_result.rejection_code or "image_low_quality",
                 rejection_reason=quality_result.rejection_reason
                 or "Image quality is insufficient for reliable passport verification.",
-                rejection_reasons=[quality_result.rejection_reason]
-                if quality_result.rejection_reason
-                else ["Image quality is insufficient for reliable passport verification."],
+                rejection_reasons=(
+                    [quality_result.rejection_reason]
+                    if quality_result.rejection_reason
+                    else ["Image quality is insufficient for reliable passport verification."]
+                ),
                 passport_data={"quality": quality_result.as_dict()},
                 model_used=self.ai_parser.model,
             )
@@ -260,7 +277,9 @@ class PassportUploadabilityService:
         deterministic_quality_passed = bool(deterministic_quality.get("analyzer_available")) and bool(
             deterministic_quality.get("is_good_quality")
         )
-        mrz_param = parameter_checks.get("mrz_two_lines_present_and_readable") if isinstance(parameter_checks, dict) else {}
+        mrz_param = (
+            parameter_checks.get("mrz_two_lines_present_and_readable") if isinstance(parameter_checks, dict) else {}
+        )
         mrz_param_failed = isinstance(mrz_param, dict) and (mrz_param.get("valid") is False)
         mrz_zone_issue = mrz_param_failed
         raw_failures = self._extract_ordered_failures(decision=decision, parameter_checks=parameter_checks)
@@ -332,9 +351,7 @@ class PassportUploadabilityService:
 
         # Guardrail 2: essential fields must be present.
         if not passport_number or not last_name or not first_name or not normalized_nationality:
-            reason = (
-                "AI could not extract essential fields (passport number, first name, last name, nationality)."
-            )
+            reason = "AI could not extract essential fields (passport number, first name, last name, nationality)."
             return UploadabilityResult(
                 is_valid=False,
                 method_used="ai",

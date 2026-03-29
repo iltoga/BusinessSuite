@@ -1,15 +1,17 @@
+"""Tests for the invoice deletion service and cascade handling."""
+
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
-from customers.models import Customer
 from customer_applications.models import DocApplication
+from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 from invoices.models import Invoice, InvoiceApplication
-from invoices.services.invoice_deletion import bulk_delete_invoices, build_invoice_delete_preview, force_delete_invoice
+from invoices.services.invoice_deletion import build_invoice_delete_preview, bulk_delete_invoices, force_delete_invoice
 from payments.models import Payment
 from products.models import Product, ProductCategory
 

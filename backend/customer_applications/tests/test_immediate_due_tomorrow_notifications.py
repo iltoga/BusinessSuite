@@ -1,3 +1,5 @@
+"""Tests for immediate due-tomorrow notification behavior."""
+
 from datetime import datetime, timedelta
 from unittest.mock import patch
 

@@ -1,3 +1,24 @@
+"""
+FILE_ROLE: Service-layer logic for the core app.
+
+KEY_COMPONENTS:
+- _replace_db: Private helper.
+- _setting_or_env: Private helper.
+- _running_in_docker: Private helper.
+- _normalize_host: Private helper.
+- _normalize_redis_url: Private helper.
+- _build_redis_url: Private helper.
+- build_redis_url: Module symbol.
+- get_redis_client: Module symbol.
+
+INTERACTIONS:
+- Depends on: nearby Django models, services, serializers, and the app packages imported by this module.
+
+AI_GUIDELINES:
+- Keep the module focused on its narrow layer boundary and avoid moving cross-cutting workflow code here.
+- Preserve the existing API/model contract because other modules import these symbols directly.
+"""
+
 from __future__ import annotations
 
 import os

@@ -1,3 +1,17 @@
+"""
+FILE_ROLE: Test coverage for business_suite.
+
+KEY_COMPONENTS:
+- SecurityDomainHelperTests: Module symbol.
+
+INTERACTIONS:
+- Depends on: Django settings/bootstrap and adjacent app services or middleware in this module.
+
+AI_GUIDELINES:
+- Keep the file focused on its narrow responsibility and avoid mixing in unrelated business logic.
+- Preserve existing runtime contracts for middleware, scripts, or migrations because other code depends on them.
+"""
+
 from business_suite.settings.base import _build_https_origins, _default_cookie_domain
 from django.test import SimpleTestCase
 
