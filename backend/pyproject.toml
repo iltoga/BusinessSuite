@@ -22,7 +22,6 @@ dependencies = [
     "pdf2image>=1.17.0",
     "django-redis>=6.0.0",
     "django-cacheops>=7.0.0",
-    "django-waffle>=1.2.1",
     "rapidfuzz>=3.13.0",
     "django-storages[boto3]>=1.14.6",
     "django-dbbackup>=5.1.0",

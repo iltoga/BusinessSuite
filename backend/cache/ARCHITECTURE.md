@@ -34,6 +34,7 @@ The hybrid cache system is a production-grade caching architecture that combines
 ### Technology Stack
 
 **Backend**:
+
 - Django 6.x with Django REST Framework
 - Python 3.14
 - PostgreSQL (primary database)
@@ -42,9 +43,9 @@ The hybrid cache system is a production-grade caching architecture that combines
 - django-cacheops 7.x (ORM-level query caching)
 
 **Frontend**:
+
 - Angular 19
 - IndexedDB (browser-side cache storage)
-
 
 ## Architecture
 
@@ -102,24 +103,26 @@ The hybrid cache system is a production-grade caching architecture that combines
 The system combines two complementary caching strategies:
 
 **django-cacheops** provides:
+
 - Automatic query result caching at the ORM level
 - Dependency tracking between queries and models
 - Automatic invalidation when models change (save/delete/m2m/fk)
 - Zero-configuration query caching for most use cases
 
 **Namespace versioning** provides:
+
 - O(1) per-user cache invalidation via version increment
 - Complete cache isolation between users
 - User-controlled cache management (enable/disable/clear)
 - No need to iterate over keys for invalidation
 
 **Why combining both is optimal**:
+
 - cacheops alone would require expensive key iteration for per-user cache clearing
 - Namespace versioning alone would require manual invalidation logic for every model change
 - Together, they provide automatic model-based invalidation AND instant per-user clearing
 - The namespace layer wraps cacheops transparently, preserving all its automatic invalidation benefits
 - Version increment makes old cache entries inaccessible instantly without deletion overhead
-
 
 ## 4-Layer Cache Strategy
 
@@ -169,6 +172,7 @@ Request Flow:
 **Purpose**: Browser-side cache for API responses to eliminate network round-trips
 
 **Characteristics**:
+
 - Storage: IndexedDB (browser's structured storage)
 - Scope: Per-user, per-browser
 - Performance: ~1-5ms access time
@@ -176,11 +180,13 @@ Request Flow:
 - Synchronization: Version headers from backend
 
 **Cache Hit Path**:
+
 1. HTTP Interceptor checks IndexedDB for cached response
 2. If found and not expired, return immediately
 3. No network request made
 
 **Cache Miss Path**:
+
 1. HTTP Interceptor makes network request
 2. Backend returns response with X-Cache-Version header
 3. Response stored in IndexedDB with TTL
@@ -191,17 +197,20 @@ Request Flow:
 **Purpose**: Per-user cache isolation and O(1) invalidation
 
 **Characteristics**:
+
 - Storage: Redis (version keys)
 - Scope: Per-user
 - Performance: O(1) version lookup and increment
 - Key Format: `cache_user_version:{user_id}` → integer version
 
 **Operations**:
+
 - Get version: `GET cache_user_version:123` → `5`
 - Increment version: `INCR cache_user_version:123` → `6`
 - Initialize version: `SET cache_user_version:123 1 NX`
 
 **Invalidation**:
+
 - Version increment makes all old cache entries inaccessible
 - No key iteration required (O(1) operation)
 - Old keys expire naturally via TTL
@@ -211,32 +220,35 @@ Request Flow:
 **Purpose**: Automatic ORM-level query result caching
 
 **Characteristics**:
+
 - Storage: Redis DB 2
 - Scope: Per-query (with namespace prefix)
 - Performance: ~1-10ms Redis access time
 - Key Format: `cache:{user_id}:v{version}:cacheops:{query_hash}`
 
 **Automatic Invalidation**:
+
 - Model save: Invalidates all queries dependent on that model
 - Model delete: Invalidates all queries dependent on that model
 - M2M changes: Invalidates queries for both related models
 - FK changes: Invalidates queries for both related models
 
 **Configuration** (from `settings/base.py`):
+
 ```python
 CACHEOPS = {
     # Static/reference data (1-24 hours)
     'contenttypes.*': {'ops': 'all', 'timeout': 60 * 60 * 24},
     'auth.permission': {'ops': 'all', 'timeout': 60 * 60},
-    
+
     # User data (10-15 minutes)
     'auth.user': {'ops': 'get', 'timeout': 60 * 15},
     'customers.customer': {'ops': 'all', 'timeout': 60 * 10},
-    
+
     # Content data (2-5 minutes)
     'invoices.invoice': {'ops': 'all', 'timeout': 60 * 5},
     'customer_applications.docapplication': {'ops': 'all', 'timeout': 60 * 5},
-    
+
     # Real-time data (30 seconds)
     'core.calendarreminder': {'ops': 'get', 'timeout': 30},
 }
@@ -247,17 +259,18 @@ CACHEOPS = {
 **Purpose**: Source of truth and fallback
 
 **Characteristics**:
+
 - Storage: PostgreSQL
 - Scope: Global
 - Performance: ~10-100ms query time (varies by complexity)
 - Reliability: ACID guarantees
 
 **When Used**:
+
 - All cache layers miss
 - Cache is disabled for user
 - Cache backend is unavailable
 - Write operations (always)
-
 
 ## Cache Key Format and Versioning
 
@@ -272,6 +285,7 @@ cache:{user_id}:v{user_version}:cacheops:{query_hash}
 ```
 
 **Components**:
+
 - `cache:` - Prefix to identify cache keys
 - `{user_id}` - Positive integer identifying the user (e.g., `123`)
 - `v{user_version}` - User's current cache version (e.g., `v5`)
@@ -279,6 +293,7 @@ cache:{user_id}:v{user_version}:cacheops:{query_hash}
 - `{query_hash}` - Hexadecimal hash of the query (generated by cacheops)
 
 **Example**:
+
 ```
 cache:123:v5:cacheops:abc123def456789
 ```
@@ -292,6 +307,7 @@ cache_user_version:{user_id}
 **Value**: Integer representing the user's current cache version
 
 **Examples**:
+
 ```
 cache_user_version:123 → 5
 cache_user_version:456 → 12
@@ -311,6 +327,7 @@ def validate_user_id(user_id):
 ```
 
 **Rules**:
+
 - Must be a positive integer (> 0)
 - Non-integer values are rejected
 - Negative values are rejected
@@ -326,6 +343,7 @@ def validate_user_version(version):
 ```
 
 **Rules**:
+
 - Must be an integer >= 1
 - Initial version is always 1
 - Increments atomically via Redis INCR
@@ -341,6 +359,7 @@ def validate_query_hash(query_hash):
 ```
 
 **Rules**:
+
 - Must be a hexadecimal string (characters: 0-9, a-f)
 - Generated by django-cacheops
 - Typically 32-64 characters long
@@ -356,16 +375,17 @@ def get_user_version(user_id: int) -> int:
     """Get user's current cache version, initializing to 1 if not exists"""
     version_key = f"cache_user_version:{user_id}"
     version = redis.get(version_key)
-    
+
     if version is None:
         # Atomic initialization using SET NX (set if not exists)
         redis.set(version_key, 1, nx=True)
         version = redis.get(version_key)  # Retry get
-    
+
     return int(version)
 ```
 
 **Redis Operations**:
+
 ```redis
 GET cache_user_version:123
 # Returns: NULL (first time)
@@ -390,12 +410,14 @@ def increment_user_version(user_id: int) -> int:
 ```
 
 **Redis Operations**:
+
 ```redis
 INCR cache_user_version:123
 # Returns: 6 (atomically incremented from 5 to 6)
 ```
 
 **Effect**:
+
 - All cache keys with `v5` become inaccessible
 - New cache keys use `v6`
 - Old keys expire naturally via TTL
@@ -409,15 +431,16 @@ def generate_cache_key(user_id: int, query_hash: str) -> str:
     # 1. Validate inputs
     validate_user_id(user_id)
     validate_query_hash(query_hash)
-    
+
     # 2. Get current user version
     version = get_user_version(user_id)
-    
+
     # 3. Construct key
     return f"cache:{user_id}:v{version}:cacheops:{query_hash}"
 ```
 
 **Example Flow**:
+
 ```python
 # User 123 makes a query
 user_id = 123
@@ -482,7 +505,6 @@ cache:123:v1:cacheops:xyz789ghi012
 # Same user and version, different query → different keys
 ```
 
-
 ## Invalidation Mechanisms
 
 The hybrid cache system provides two complementary invalidation mechanisms:
@@ -492,6 +514,7 @@ The hybrid cache system provides two complementary invalidation mechanisms:
 **Purpose**: Automatically invalidate cache when models change
 
 **Trigger Events**:
+
 - Model save (`post_save` signal)
 - Model delete (`post_delete` signal)
 - Many-to-many relationship changes (`m2m_changed` signal)
@@ -542,6 +565,7 @@ invoice.save()
 ```
 
 **Scope**:
+
 - Invalidates across ALL users and versions
 - Uses wildcard pattern: `cache:*:*:cacheops:{query_hash}`
 - Only affects queries that depend on the changed model
@@ -612,6 +636,7 @@ cache:123:v6:cacheops:abc123  # New cache entry
 ```
 
 **Performance**:
+
 - Time Complexity: O(1)
 - Redis Operation: Single INCR command
 - No key iteration required
@@ -633,15 +658,15 @@ Response:
 
 ### Invalidation Comparison
 
-| Aspect | Automatic (Cacheops) | Manual (Version Increment) |
-|--------|---------------------|---------------------------|
-| **Trigger** | Model changes | User action |
-| **Scope** | Specific queries | All user's cache |
-| **Users Affected** | All users | Single user |
-| **Time Complexity** | O(N) where N = dependent queries | O(1) |
-| **Redis Operations** | Multiple DEL commands | Single INCR command |
-| **Use Case** | Data consistency | User preference |
-| **Automatic** | Yes | No (user-initiated) |
+| Aspect               | Automatic (Cacheops)             | Manual (Version Increment) |
+| -------------------- | -------------------------------- | -------------------------- |
+| **Trigger**          | Model changes                    | User action                |
+| **Scope**            | Specific queries                 | All user's cache           |
+| **Users Affected**   | All users                        | Single user                |
+| **Time Complexity**  | O(N) where N = dependent queries | O(1)                       |
+| **Redis Operations** | Multiple DEL commands            | Single INCR command        |
+| **Use Case**         | Data consistency                 | User preference            |
+| **Automatic**        | Yes                              | No (user-initiated)        |
 
 ### Combined Invalidation Example
 
@@ -669,21 +694,23 @@ increment_user_version(123)  # v5 → v6
 ### Invalidation Best Practices
 
 **When to use automatic invalidation**:
+
 - Model data changes (saves, deletes, relationship changes)
 - Ensuring data consistency across users
 - No user action required
 
 **When to use manual invalidation**:
+
 - User wants fresh data
 - User experiences stale data issues
 - Testing or debugging
 - User preference for cache behavior
 
 **Combining both**:
+
 - Automatic invalidation maintains data consistency
 - Manual invalidation provides user control
 - Together, they provide both correctness and flexibility
-
 
 ## Integration with Existing Cache Patterns
 
@@ -698,10 +725,12 @@ The application has several existing cache patterns that must continue working:
 **Location**: `notifications/services/meta_access_token.py`
 
 **Cache Keys**:
+
 - `META_RUNTIME_ACCESS_TOKEN_CACHE_KEY`
 - `META_RUNTIME_ACCESS_TOKEN_EXPIRES_AT_CACHE_KEY`
 
 **Operations**:
+
 ```python
 from django.core.cache import cache
 
@@ -719,12 +748,14 @@ token = cache.get('META_RUNTIME_ACCESS_TOKEN_CACHE_KEY')
 **Location**: `core/tasks/cron_jobs.py`
 
 **Cache Keys**:
+
 - `CLEAR_CACHE_RUN_LOCK_KEY`
 - `FULL_BACKUP_ENQUEUE_LOCK_KEY`
 - `CALENDAR_REMINDER_STREAM_LOCK_KEY`
 - `WORKFLOW_NOTIFICATION_STREAM_LOCK_KEY`
 
 **Operations**:
+
 ```python
 from django.core.cache import cache
 
@@ -744,6 +775,7 @@ if not cache.get('CLEAR_CACHE_RUN_LOCK_KEY'):
 **Cache Keys**: Generated by `_get_invoice_seq_cache_key(year)`
 
 **Operations**:
+
 ```python
 from django.core.cache import cache
 
@@ -762,10 +794,12 @@ sequence = cache.get(cache_key)
 **Location**: `core/services/calendar_reminder_stream.py`
 
 **Cache Keys**:
+
 - `CALENDAR_REMINDER_STREAM_CURSOR_CACHE_KEY`
 - `CALENDAR_REMINDER_STREAM_LAST_EVENT_CACHE_KEY`
 
 **Operations**:
+
 ```python
 from django.core.cache import cache
 
@@ -783,10 +817,12 @@ cursor = cache.get('CALENDAR_REMINDER_STREAM_CURSOR_CACHE_KEY')
 **Location**: `customer_applications/services/workflow_notification_stream.py`
 
 **Cache Keys**:
+
 - `WORKFLOW_NOTIFICATION_STREAM_CURSOR_CACHE_KEY`
 - `WORKFLOW_NOTIFICATION_STREAM_LAST_EVENT_CACHE_KEY`
 
 **Operations**:
+
 ```python
 from django.core.cache import cache
 
@@ -804,11 +840,13 @@ cursor = cache.get('WORKFLOW_NOTIFICATION_STREAM_CURSOR_CACHE_KEY')
 #### Namespace Layer Scope
 
 The namespace layer ONLY applies to:
+
 - Authenticated user requests
 - ORM queries executed through cacheops
 - Cache keys generated by the namespace manager
 
 The namespace layer DOES NOT apply to:
+
 - Direct `django.core.cache` usage with explicit keys
 - Unauthenticated requests
 - Global cache keys (tokens, locks, sequences, cursors)
@@ -816,11 +854,13 @@ The namespace layer DOES NOT apply to:
 #### Key Differentiation
 
 **Namespaced Keys** (new system):
+
 ```
 cache:123:v5:cacheops:abc123def456
 ```
 
 **Non-Namespaced Keys** (existing patterns):
+
 ```
 META_RUNTIME_ACCESS_TOKEN_CACHE_KEY
 CLEAR_CACHE_RUN_LOCK_KEY
@@ -829,12 +869,14 @@ CALENDAR_REMINDER_STREAM_CURSOR_CACHE_KEY
 ```
 
 **How to Identify**:
+
 - Namespaced keys always start with `cache:{user_id}:v{version}:`
 - Non-namespaced keys use custom prefixes or no prefix
 
 #### Cache Backend Separation
 
 **Redis Database Allocation**:
+
 - DB 0: Dramatiq task queue (existing)
 - DB 1: Django cache (existing patterns + namespace version keys)
 - DB 2: Cacheops query cache (new, namespaced)
@@ -842,6 +884,7 @@ CALENDAR_REMINDER_STREAM_CURSOR_CACHE_KEY
 - DB 4: Test environment (new, isolated)
 
 **Why This Works**:
+
 - Existing patterns use Django cache (DB 1)
 - Cacheops uses separate database (DB 2)
 - No key collision between existing and new patterns
@@ -850,16 +893,19 @@ CALENDAR_REMINDER_STREAM_CURSOR_CACHE_KEY
 #### Migration Path
 
 **Phase 1: Redis Migration** (Completed)
+
 - Migrated from LocMemCache to Redis
 - All existing patterns now use Redis DB 1
 - No functional changes to existing code
 
 **Phase 2: Namespace Layer** (Completed)
+
 - Added namespace manager for user-specific caching
 - Existing patterns bypass namespace layer
 - No changes to existing cache usage
 
 **Phase 3: Cacheops Integration** (Completed)
+
 - Configured cacheops to use Redis DB 2
 - Integrated with namespace layer for user isolation
 - Existing patterns unaffected
@@ -920,12 +966,14 @@ invoice = Invoice.objects.get(id=456)
 **Location**: `core/management/commands/clear_cache.py`
 
 **Original Behavior**:
+
 ```bash
 python manage.py clear_cache
 # Clears ALL cache in Django cache backend (DB 1)
 ```
 
 **Enhanced Behavior**:
+
 ```bash
 # Clear all cache (existing behavior)
 python manage.py clear_cache
@@ -944,12 +992,14 @@ python manage.py clear_cache --all-users
 **Location**: `api/views_admin.py`
 
 **Original Endpoint**:
+
 ```http
 POST /api/server-management/clear_cache/
 # Clears ALL cache
 ```
 
 **Enhanced Endpoint**:
+
 ```http
 POST /api/server-management/clear_cache/
 # Still clears ALL cache (backward compatible)
@@ -975,11 +1025,13 @@ All existing cache patterns have been tested to ensure they continue working:
 ### Best Practices for New Code
 
 **Use namespace layer for**:
+
 - User-specific data queries
 - ORM queries that should be cached
 - Data that needs per-user invalidation
 
 **Use direct cache for**:
+
 - Global data (tokens, locks, sequences)
 - Non-user-specific data
 - Coordination mechanisms (locks, cursors)
@@ -996,20 +1048,19 @@ from django.core.cache import cache
 cache.set('GLOBAL_CONFIG_KEY', config_value)
 ```
 
-
 ## Redis Database Allocation
 
 The hybrid cache system uses multiple Redis databases to isolate different consumers and prevent key collisions.
 
 ### Database Allocation Table
 
-| Database | Consumer | Purpose | Key Examples | Configuration |
-|----------|----------|---------|--------------|---------------|
-| **DB 0** | Dramatiq Task Queue | Background task queue and results | `dramatiq.task.*`, `dramatiq.result.*` | `DRAMATIQ['connection']['db'] = 0` |
-| **DB 1** | Django Cache | Django cache backend, version keys, existing patterns | `cache_user_version:123`, `META_RUNTIME_ACCESS_TOKEN_CACHE_KEY`, `invoice_seq_2024` | `CACHES['default']['LOCATION'] = 'redis://redis:6379/1'` |
-| **DB 2** | Cacheops | ORM query cache with namespace prefixes | `cache:123:v5:cacheops:abc123def456` | `CACHEOPS_REDIS = 'redis://redis:6379/2'` |
-| **DB 3** | Benchmark System | Performance testing and metrics | `benchmark:*`, `metrics:*` | `BENCHMARK_REDIS_DB = 3` |
-| **DB 4** | Test Environment | Isolated testing cache | `test:*` | `TEST_REDIS_DB = 4` |
+| Database | Consumer            | Purpose                                               | Key Examples                                                                        | Configuration                                            |
+| -------- | ------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **DB 0** | Dramatiq Task Queue | Background task queue and results                     | `dramatiq.task.*`, `dramatiq.result.*`                                              | `DRAMATIQ['connection']['db'] = 0`                       |
+| **DB 1** | Django Cache        | Django cache backend, version keys, existing patterns | `cache_user_version:123`, `META_RUNTIME_ACCESS_TOKEN_CACHE_KEY`, `invoice_seq_2024` | `CACHES['default']['LOCATION'] = 'redis://redis:6379/1'` |
+| **DB 2** | Cacheops            | ORM query cache with namespace prefixes               | `cache:123:v5:cacheops:abc123def456`                                                | `CACHEOPS_REDIS = 'redis://redis:6379/2'`                |
+| **DB 3** | Benchmark System    | Performance testing and metrics                       | `benchmark:*`, `metrics:*`                                                          | `BENCHMARK_REDIS_DB = 3`                                 |
+| **DB 4** | Test Environment    | Isolated testing cache                                | `test:*`                                                                            | `TEST_REDIS_DB = 4`                                      |
 
 ### Database Details
 
@@ -1018,11 +1069,13 @@ The hybrid cache system uses multiple Redis databases to isolate different consu
 **Purpose**: Background task queue for asynchronous job processing
 
 **Consumers**:
+
 - Dramatiq task scheduler
 - Dramatiq workers
 - Task result storage
 
 **Key Patterns**:
+
 ```
 dramatiq.task.{task_id}
 dramatiq.result.{task_id}
@@ -1030,6 +1083,7 @@ dramatiq.schedule.{timestamp}
 ```
 
 **Configuration** (from `settings/base.py`):
+
 ```python
 DRAMATIQ = {
     'dramatiq_class': 'dramatiq.contrib.redis_dramatiq.RedisDramatiq',
@@ -1043,6 +1097,7 @@ DRAMATIQ = {
 ```
 
 **Characteristics**:
+
 - High write frequency (task enqueue/dequeue)
 - Short-lived keys (tasks complete and are removed)
 - Critical for application functionality
@@ -1053,12 +1108,14 @@ DRAMATIQ = {
 **Purpose**: Django's default cache backend for general caching needs
 
 **Consumers**:
+
 - Django cache framework (`django.core.cache`)
 - Namespace version keys
 - Existing cache patterns (tokens, locks, sequences, cursors)
 - Session storage (if configured)
 
 **Key Patterns**:
+
 ```
 cache_user_version:123
 META_RUNTIME_ACCESS_TOKEN_CACHE_KEY
@@ -1071,6 +1128,7 @@ WORKFLOW_NOTIFICATION_STREAM_CURSOR_CACHE_KEY
 ```
 
 **Configuration** (from `settings/base.py`):
+
 ```python
 CACHES = {
     'default': {
@@ -1090,6 +1148,7 @@ CACHES = {
 ```
 
 **Characteristics**:
+
 - Mixed read/write frequency
 - Variable TTL (30 seconds to hours)
 - Contains both user-specific and global data
@@ -1100,11 +1159,13 @@ CACHES = {
 **Purpose**: Automatic ORM query result caching with namespace isolation
 
 **Consumers**:
+
 - django-cacheops
 - Namespace layer
 - Cacheops wrapper
 
 **Key Patterns**:
+
 ```
 cache:123:v5:cacheops:abc123def456789
 cache:456:v12:cacheops:xyz789ghi012345
@@ -1112,6 +1173,7 @@ cache:789:v1:cacheops:def456abc123789
 ```
 
 **Configuration** (from `settings/base.py`):
+
 ```python
 # Parse REDIS_URL and replace database number with 2
 _redis_url = os.getenv("REDIS_URL", "redis://redis:6379/1")
@@ -1133,6 +1195,7 @@ CACHEOPS_DEGRADE_ON_FAILURE = True
 ```
 
 **Characteristics**:
+
 - High read frequency (query results)
 - Automatic invalidation on model changes
 - Namespace-prefixed keys for user isolation
@@ -1143,11 +1206,13 @@ CACHEOPS_DEGRADE_ON_FAILURE = True
 **Purpose**: Performance testing and metrics collection without affecting production cache
 
 **Consumers**:
+
 - `benchmark_cache` management command
 - Performance monitoring tools
 - Metrics collection
 
 **Key Patterns**:
+
 ```
 benchmark:run:{timestamp}
 benchmark:result:{run_id}
@@ -1156,6 +1221,7 @@ metrics:query_latency:{query_hash}
 ```
 
 **Configuration** (from management command):
+
 ```python
 # In management/commands/benchmark_cache.py
 BENCHMARK_REDIS_DB = 3
@@ -1168,6 +1234,7 @@ redis_client = redis.Redis(
 ```
 
 **Characteristics**:
+
 - Isolated from production cache
 - Can be flushed without affecting application
 - Used for performance testing
@@ -1178,11 +1245,13 @@ redis_client = redis.Redis(
 **Purpose**: Isolated cache for automated testing
 
 **Consumers**:
+
 - Django test suite
 - pytest tests
 - CI/CD pipelines
 
 **Key Patterns**:
+
 ```
 test:cache:*
 test:cacheops:*
@@ -1190,6 +1259,7 @@ test:version:*
 ```
 
 **Configuration** (from test settings):
+
 ```python
 # In settings/test.py or test fixtures
 if TESTING:
@@ -1198,6 +1268,7 @@ if TESTING:
 ```
 
 **Characteristics**:
+
 - Completely isolated from production
 - Flushed before/after test runs
 - No impact on production data
@@ -1267,6 +1338,7 @@ Heavy operations in one database don't affect others:
 ### Redis Configuration
 
 **Connection Settings**:
+
 ```python
 # From settings/base.py
 REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
@@ -1275,6 +1347,7 @@ REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/1')
 ```
 
 **Connection Pooling**:
+
 ```python
 'CONNECTION_POOL_KWARGS': {
     'max_connections': 50,
@@ -1285,6 +1358,7 @@ REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/1')
 ```
 
 **Environment Variables**:
+
 ```bash
 # Redis connection
 REDIS_HOST=redis
@@ -1304,6 +1378,7 @@ TEST_REDIS_DB=4
 ### Database Size Monitoring
 
 **Check database sizes**:
+
 ```bash
 # Connect to Redis
 redis-cli
@@ -1326,6 +1401,7 @@ DBSIZE  # Test
 ```
 
 **Expected Sizes** (production):
+
 - DB 0 (Dramatiq): 10-1000 keys (active tasks)
 - DB 1 (Django): 100-10,000 keys (version keys + global cache)
 - DB 2 (Cacheops): 10,000-1,000,000+ keys (query cache)
@@ -1335,6 +1411,7 @@ DBSIZE  # Test
 ### Maintenance Operations
 
 **Safe Operations**:
+
 ```bash
 # Clear benchmark data
 redis-cli -n 3 FLUSHDB
@@ -1348,6 +1425,7 @@ redis-cli -n 2 FLUSHDB
 ```
 
 **Dangerous Operations**:
+
 ```bash
 # NEVER flush Dramatiq database (breaks background tasks)
 # redis-cli -n 0 FLUSHDB  # DON'T DO THIS
@@ -1357,6 +1435,7 @@ redis-cli -n 2 FLUSHDB
 ```
 
 **Recommended Maintenance**:
+
 ```bash
 # Clear expired keys (safe, automatic)
 redis-cli --scan --pattern "*" | xargs redis-cli DEL
@@ -1368,7 +1447,6 @@ redis-cli INFO memory
 redis-cli SLOWLOG GET 10
 ```
 
-
 ## Components
 
 ### Backend Components
@@ -1378,25 +1456,27 @@ redis-cli SLOWLOG GET 10
 **Purpose**: Manages per-user cache versioning and key prefixing
 
 **Key Methods**:
+
 ```python
 class NamespaceManager:
     def get_user_version(self, user_id: int) -> int:
         """Get current cache version for user, initializing to 1 if not exists"""
-        
+
     def increment_user_version(self, user_id: int) -> int:
         """Increment user's cache version, invalidating all cached data"""
-        
+
     def get_cache_key_prefix(self, user_id: int) -> str:
         """Generate namespace prefix for user's cache keys"""
-        
+
     def is_cache_enabled(self, user_id: int) -> bool:
         """Check if caching is enabled for user"""
-        
+
     def set_cache_enabled(self, user_id: int, enabled: bool) -> None:
         """Enable or disable caching for user"""
 ```
 
 **Usage Example**:
+
 ```python
 from cache.namespace import NamespaceManager
 
@@ -1417,19 +1497,21 @@ prefix = ns.get_cache_key_prefix(user_id=123)  # Returns: "cache:123:v6:cacheops
 **Purpose**: Integrates django-cacheops with namespace layer
 
 **Key Methods**:
+
 ```python
 class CacheopsWrapper:
     def configure_cacheops(self, settings: dict) -> None:
         """Configure cacheops with namespace support"""
-        
+
     def get_cached_query(self, queryset, user_id: int):
         """Execute query with caching, using namespace prefix"""
-        
+
     def invalidate_model(self, model_class) -> None:
         """Invalidate all cache entries for a model"""
 ```
 
 **Integration**:
+
 - Hooks into cacheops key generation
 - Adds namespace prefix to all cache keys
 - Preserves cacheops automatic invalidation
@@ -1440,6 +1522,7 @@ class CacheopsWrapper:
 **Purpose**: Injects cache version headers into responses
 
 **Middleware Flow**:
+
 ```python
 class CacheMiddleware:
     def __call__(self, request):
@@ -1450,18 +1533,19 @@ class CacheMiddleware:
             request.cache_enabled = namespace_manager.is_cache_enabled(request.user.id)
         else:
             request.cache_enabled = False
-        
+
         response = self.get_response(request)
-        
+
         # Process response
         if hasattr(request, 'cache_version'):
             response['X-Cache-Version'] = request.cache_version
             response['X-Cache-Enabled'] = str(request.cache_enabled).lower()
-        
+
         return response
 ```
 
 **Headers Added**:
+
 - `X-Cache-Version`: Current user cache version (integer)
 - `X-Cache-Enabled`: Whether caching is enabled for user (boolean)
 
@@ -1469,14 +1553,15 @@ class CacheMiddleware:
 
 **Endpoints**:
 
-| Method | Endpoint | Description | Response |
-|--------|----------|-------------|----------|
-| GET | `/api/cache/status` | Get cache status | `{enabled: bool, version: int}` |
-| POST | `/api/cache/enable` | Enable caching | `{enabled: true, version: int}` |
-| POST | `/api/cache/disable` | Disable caching | `{enabled: false}` |
-| POST | `/api/cache/clear` | Clear user cache | `{version: int, cleared: true}` |
+| Method | Endpoint             | Description      | Response                        |
+| ------ | -------------------- | ---------------- | ------------------------------- |
+| GET    | `/api/cache/status`  | Get cache status | `{enabled: bool, version: int}` |
+| POST   | `/api/cache/enable`  | Enable caching   | `{enabled: true, version: int}` |
+| POST   | `/api/cache/disable` | Disable caching  | `{enabled: false}`              |
+| POST   | `/api/cache/clear`   | Clear user cache | `{version: int, cleared: true}` |
 
 **Example Usage**:
+
 ```bash
 # Get cache status
 curl -H "Authorization: Bearer <token>" \
@@ -1492,6 +1577,7 @@ curl -X POST -H "Authorization: Bearer <token>" \
 **Purpose**: Measure cache performance in production
 
 **Command**:
+
 ```bash
 python manage.py benchmark_cache \
   --users 100 \
@@ -1500,6 +1586,7 @@ python manage.py benchmark_cache \
 ```
 
 **Options**:
+
 - `--users`: Number of simulated users (default: 10)
 - `--queries`: Number of queries per user (default: 100)
 - `--report`: Output file for results (JSON format)
@@ -1507,6 +1594,7 @@ python manage.py benchmark_cache \
 - `--models`: Comma-separated list of models to benchmark
 
 **Metrics Collected**:
+
 - Cache hit rate (percentage)
 - Average response time (cached vs uncached)
 - Cache invalidation time (O(1) verification)
@@ -1520,26 +1608,28 @@ python manage.py benchmark_cache \
 **Purpose**: Manages IndexedDB cache storage
 
 **Key Methods**:
+
 ```typescript
 class CacheService {
-  async get(key: string): Promise<CachedResponse | null>
-  async set(key: string, data: any, ttl: number): Promise<void>
-  async clear(): Promise<void>
-  async clearByVersion(version: number): Promise<void>
-  async getVersion(): Promise<number>
-  async setVersion(version: number): Promise<void>
+  async get(key: string): Promise<CachedResponse | null>;
+  async set(key: string, data: any, ttl: number): Promise<void>;
+  async clear(): Promise<void>;
+  async clearByVersion(version: number): Promise<void>;
+  async getVersion(): Promise<number>;
+  async setVersion(version: number): Promise<void>;
 }
 ```
 
 **IndexedDB Schema**:
+
 ```typescript
 interface CachedResponse {
-  key: string;           // Cache key
-  userId: number;        // User ID
-  version: number;       // Cache version
-  data: any;            // Response data
-  timestamp: number;     // Storage timestamp
-  expiresAt: number;    // Expiration timestamp
+  key: string; // Cache key
+  userId: number; // User ID
+  version: number; // Cache version
+  data: any; // Response data
+  timestamp: number; // Storage timestamp
+  expiresAt: number; // Expiration timestamp
 }
 ```
 
@@ -1548,19 +1638,20 @@ interface CachedResponse {
 **Purpose**: Intercepts HTTP requests/responses for caching
 
 **Interceptor Logic**:
+
 ```typescript
 intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
   // 1. Check if request is cacheable
   if (!this.isCacheable(req)) {
     return next.handle(req);
   }
-  
+
   // 2. Check IndexedDB cache
   const cached = await this.cache.get(this.getCacheKey(req));
   if (cached && !this.isExpired(cached)) {
     return of(new HttpResponse({ body: cached.data }));
   }
-  
+
   // 3. Make network request
   return next.handle(req).pipe(
     tap(response => {
@@ -1570,7 +1661,7 @@ intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> 
         this.cache.clearByVersion(this.currentVersion);
         this.currentVersion = version;
       }
-      
+
       // 5. Store in cache
       this.cache.set(this.getCacheKey(req), response.body, this.getTTL(req));
     })
@@ -1583,6 +1674,7 @@ intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> 
 **Purpose**: User interface for cache management
 
 **Features**:
+
 - Display current cache status (enabled/disabled)
 - Display current cache version
 - Enable/disable caching button
@@ -1590,7 +1682,6 @@ intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> 
 - Success/error feedback
 
 **Integration**: Integrated into existing server management component
-
 
 ## Configuration
 
@@ -1636,15 +1727,15 @@ CACHEOPS = {
     'auth.permission': {'ops': 'all', 'timeout': 60 * 60},
     'core.countrycode': {'ops': 'all', 'timeout': 60 * 60 * 24},
     'products.documenttype': {'ops': 'all', 'timeout': 60 * 60},
-    
+
     # User data (10-15 minutes)
     'auth.user': {'ops': 'get', 'timeout': 60 * 15},
     'customers.customer': {'ops': 'all', 'timeout': 60 * 10},
-    
+
     # Content data (2-5 minutes)
     'invoices.invoice': {'ops': 'all', 'timeout': 60 * 5},
     'customer_applications.docapplication': {'ops': 'all', 'timeout': 60 * 5},
-    
+
     # Real-time data (30 seconds)
     'core.calendarreminder': {'ops': 'get', 'timeout': 30},
 }
@@ -1665,7 +1756,6 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'cache.middleware.CacheMiddleware',  # After AuthenticationMiddleware
-    'waffle.middleware.WaffleMiddleware',
     # ... other middleware
 ]
 ```
@@ -1673,6 +1763,7 @@ MIDDLEWARE = [
 ### Environment Variables
 
 **Required**:
+
 ```bash
 # Redis connection
 REDIS_URL=redis://redis:6379/1
@@ -1687,6 +1778,7 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
 ```
 
 **Optional**:
+
 ```bash
 # Cache configuration
 CACHE_DEFAULT_TIMEOUT=300
@@ -1712,25 +1804,25 @@ DRAMATIQ_REDIS_DB=0
 ```typescript
 export const CACHE_CONFIG = {
   // IndexedDB configuration
-  dbName: 'hybrid-cache',
+  dbName: "hybrid-cache",
   dbVersion: 1,
-  
+
   // Cache TTL per endpoint (seconds)
   endpointTTL: {
-    '/api/users': 300,      // 5 minutes
-    '/api/invoices': 60,    // 1 minute
-    '/api/customers': 180,  // 3 minutes
-    'default': 120,         // 2 minutes
+    "/api/users": 300, // 5 minutes
+    "/api/invoices": 60, // 1 minute
+    "/api/customers": 180, // 3 minutes
+    default: 120, // 2 minutes
   },
-  
+
   // Cache size limits
-  maxCacheSize: 50 * 1024 * 1024,  // 50 MB
+  maxCacheSize: 50 * 1024 * 1024, // 50 MB
   maxEntries: 1000,
-  
+
   // Cleanup configuration
-  cleanupInterval: 60 * 1000,  // 1 minute
-  expiredCheckInterval: 5 * 60 * 1000,  // 5 minutes
-  
+  cleanupInterval: 60 * 1000, // 1 minute
+  expiredCheckInterval: 5 * 60 * 1000, // 5 minutes
+
   // Feature flags
   enableCache: true,
   enableLogging: false,
@@ -1742,21 +1834,23 @@ export const CACHE_CONFIG = {
 
 **Configuration Strategy**:
 
-| Model Type | TTL | Rationale |
-|------------|-----|-----------|
-| Static/Reference | 1-24 hours | Rarely changes (permissions, content types) |
-| User Data | 10-15 minutes | Moderate change frequency (users, profiles) |
-| Content Data | 2-5 minutes | Frequent changes (invoices, applications) |
-| Real-time Data | 30 seconds | Very frequent changes (reminders, notifications) |
-| Job/Task Data | 1 minute | Short-lived (OCR jobs, import jobs) |
+| Model Type       | TTL           | Rationale                                        |
+| ---------------- | ------------- | ------------------------------------------------ |
+| Static/Reference | 1-24 hours    | Rarely changes (permissions, content types)      |
+| User Data        | 10-15 minutes | Moderate change frequency (users, profiles)      |
+| Content Data     | 2-5 minutes   | Frequent changes (invoices, applications)        |
+| Real-time Data   | 30 seconds    | Very frequent changes (reminders, notifications) |
+| Job/Task Data    | 1 minute      | Short-lived (OCR jobs, import jobs)              |
 
 **Operations Configuration**:
+
 - `'ops': 'get'`: Cache only single object retrievals (`Model.objects.get()`)
 - `'ops': 'fetch'`: Cache only QuerySet evaluations (`Model.objects.filter()`)
 - `'ops': 'all'`: Cache both get and fetch operations
 - `'ops': 'count'`: Cache only count queries
 
 **Example**:
+
 ```python
 # Cache only get operations (single object lookups)
 'auth.user': {'ops': 'get', 'timeout': 60 * 15}
@@ -1764,7 +1858,6 @@ export const CACHE_CONFIG = {
 # Cache all operations (get + QuerySet)
 'invoices.invoice': {'ops': 'all', 'timeout': 60 * 5}
 ```
-
 
 ## Error Handling and Resilience
 
@@ -1775,6 +1868,7 @@ export const CACHE_CONFIG = {
 **Scenario**: Redis server is unavailable or connection times out
 
 **Handling Strategy**:
+
 1. Log error with full context (operation, user_id, timestamp)
 2. Fall back to direct database query
 3. Return data to user without caching
@@ -1782,6 +1876,7 @@ export const CACHE_CONFIG = {
 5. Monitor error rate for alerting
 
 **Implementation**:
+
 ```python
 def get_cached_query(queryset, user_id):
     try:
@@ -1796,7 +1891,7 @@ def get_cached_query(queryset, user_id):
     except Exception as e:
         logger.error(f"Cache error for user {user_id}: {e}", exc_info=True)
         # Fall through to database query
-    
+
     # Execute query against database
     return queryset.all()
 ```
@@ -1806,11 +1901,13 @@ def get_cached_query(queryset, user_id):
 **Scenario**: Object cannot be serialized for cache storage
 
 **Handling Strategy**:
+
 1. Log error with object type and user_id
 2. Execute query without caching
 3. Return data to user
 
 **Common Causes**:
+
 - Objects with file handles or database connections
 - Circular references in object graph
 - Custom objects without pickle support
@@ -1820,12 +1917,14 @@ def get_cached_query(queryset, user_id):
 **Scenario**: Cached data is corrupted or incompatible
 
 **Handling Strategy**:
+
 1. Log error with cache key
 2. Delete corrupted cache entry
 3. Re-execute query against database
 4. Return fresh data to user
 
 **Implementation**:
+
 ```python
 try:
     cached_data = redis.get(cache_key)
@@ -1844,12 +1943,14 @@ except (pickle.UnpicklingError, AttributeError) as e:
 **Scenario**: Browser storage quota is exceeded
 
 **Handling Strategy**:
+
 1. Log warning with current usage
 2. Clear expired entries
 3. If still over quota, clear oldest entries
 4. Proceed with network request
 
 **Implementation**:
+
 ```typescript
 async set(key: string, data: any, ttl: number): Promise<void> {
   try {
@@ -1877,22 +1978,24 @@ async set(key: string, data: any, ttl: number): Promise<void> {
 **Scenario**: Browser doesn't support IndexedDB or it's disabled
 
 **Handling Strategy**:
+
 1. Detect IndexedDB availability on service initialization
 2. Set flag to bypass all cache operations
 3. All requests go directly to network
 
 **Implementation**:
+
 ```typescript
 export class CacheService {
   private available: boolean;
-  
+
   constructor() {
-    this.available = 'indexedDB' in window;
+    this.available = "indexedDB" in window;
     if (!this.available) {
-      console.warn('IndexedDB not available, caching disabled');
+      console.warn("IndexedDB not available, caching disabled");
     }
   }
-  
+
   async get(key: string): Promise<any> {
     if (!this.available) return null;
     // ... normal cache logic
@@ -1907,6 +2010,7 @@ export class CacheService {
 **Purpose**: Prevent cascading failures when Redis is consistently failing
 
 **Strategy**:
+
 1. Track Redis error rate
 2. If error rate exceeds threshold (e.g., 50% over 1 minute), open circuit
 3. While circuit is open, bypass cache entirely
@@ -1918,6 +2022,7 @@ export class CacheService {
 **Principle**: Cache failures should never break application functionality
 
 **Implementation Checklist**:
+
 - ✅ All cache operations wrapped in try-except blocks
 - ✅ Database fallback for all cache misses and errors
 - ✅ Errors logged but not propagated to users
@@ -1945,49 +2050,52 @@ export class CacheService {
 
 All levels maintain full functionality, only performance differs.
 
-
 ## Performance Characteristics
 
 ### Time Complexity
 
-| Operation | Complexity | Description |
-|-----------|-----------|-------------|
-| Get user version | O(1) | Single Redis GET |
-| Increment version | O(1) | Single Redis INCR |
-| Generate cache key | O(1) | String concatenation |
-| Cache lookup | O(1) | Redis GET by key |
-| Cache store | O(1) | Redis SET with TTL |
-| Per-user invalidation | O(1) | Version increment (no key iteration) |
-| Model invalidation | O(N) | N = number of dependent queries |
-| IndexedDB lookup | O(log N) | Indexed search |
+| Operation             | Complexity | Description                          |
+| --------------------- | ---------- | ------------------------------------ |
+| Get user version      | O(1)       | Single Redis GET                     |
+| Increment version     | O(1)       | Single Redis INCR                    |
+| Generate cache key    | O(1)       | String concatenation                 |
+| Cache lookup          | O(1)       | Redis GET by key                     |
+| Cache store           | O(1)       | Redis SET with TTL                   |
+| Per-user invalidation | O(1)       | Version increment (no key iteration) |
+| Model invalidation    | O(N)       | N = number of dependent queries      |
+| IndexedDB lookup      | O(log N)   | Indexed search                       |
 
 ### Latency Benchmarks
 
 **Layer 1: IndexedDB** (Browser-side)
+
 - Cache hit: ~1-5ms
 - Cache miss: 0ms (immediate network request)
 - Storage: ~2-10ms
 
 **Layer 2: Namespace Layer** (Version lookup)
+
 - Get version: ~1-2ms (Redis GET)
 - Increment version: ~1-2ms (Redis INCR)
 
 **Layer 3: Cacheops** (Redis)
+
 - Cache hit: ~1-10ms (Redis GET + deserialization)
 - Cache miss: Database query time + ~2-5ms (serialization + Redis SET)
 
 **Layer 4: PostgreSQL** (Database)
+
 - Simple query: ~10-50ms
 - Complex query: ~50-500ms
 - Depends on query complexity and data size
 
 ### Cache Hit Rate Targets
 
-| Cache Layer | Target Hit Rate | Typical Hit Rate |
-|-------------|----------------|------------------|
-| IndexedDB (Layer 1) | 80-90% | 85% |
-| Cacheops (Layer 3) | 70-85% | 75% |
-| Overall (any layer) | 90-95% | 92% |
+| Cache Layer         | Target Hit Rate | Typical Hit Rate |
+| ------------------- | --------------- | ---------------- |
+| IndexedDB (Layer 1) | 80-90%          | 85%              |
+| Cacheops (Layer 3)  | 70-85%          | 75%              |
+| Overall (any layer) | 90-95%          | 92%              |
 
 ### Memory Usage
 
@@ -2014,6 +2122,7 @@ With version increment (cache clear):
 ```
 
 **IndexedDB Storage**:
+
 - Default quota: ~50 MB per origin
 - Configurable: Request persistent storage for more
 - Automatic cleanup: Remove expired entries
@@ -2021,16 +2130,19 @@ With version increment (cache clear):
 ### Scalability
 
 **User Scalability**:
+
 - Tested: 10,000 concurrent users
 - Theoretical: Millions of users
 - Bottleneck: Redis memory (not CPU or network)
 
 **Cache Size Scalability**:
+
 - Tested: 1 million cache keys
 - Theoretical: 10+ million keys
 - Bottleneck: Redis memory (not lookup performance)
 
 **Invalidation Scalability**:
+
 - Per-user invalidation: O(1) regardless of cache size
 - Model invalidation: O(N) where N = dependent queries
 - No full cache scans required
@@ -2038,6 +2150,7 @@ With version increment (cache clear):
 ### Performance Optimization Tips
 
 **Backend**:
+
 1. Configure appropriate TTL per model (balance freshness vs hit rate)
 2. Use `'ops': 'get'` for models with low list query frequency
 3. Monitor Redis memory usage and adjust TTL if needed
@@ -2045,6 +2158,7 @@ With version increment (cache clear):
 5. Enable `CACHEOPS_DEGRADE_ON_FAILURE` for resilience
 
 **Frontend**:
+
 1. Configure appropriate TTL per endpoint
 2. Implement cache warming for critical endpoints
 3. Use service workers for offline support (future enhancement)
@@ -2052,22 +2166,24 @@ With version increment (cache clear):
 5. Implement automatic cleanup of expired entries
 
 **Database**:
+
 1. Add indexes for frequently cached queries
 2. Optimize query performance (cache misses still hit DB)
 3. Monitor slow queries and add to cache configuration
 4. Use database connection pooling
-
 
 ## Security
 
 ### Data Isolation
 
 **Per-User Namespace Isolation**:
+
 - Each user's cache keys include their user ID
 - Different users cannot access each other's cache
 - Cache keys validated to ensure user_id matches authenticated user
 
 **Example**:
+
 ```python
 # User 123's cache
 cache:123:v5:cacheops:abc123def456
@@ -2081,18 +2197,20 @@ cache:456:v12:cacheops:abc123def456
 ### Authorization
 
 **Cache Control API**:
+
 - All endpoints require authentication
 - Users can only manage their own cache
 - No admin override (security by design)
 
 **Validation**:
+
 ```python
 def clear_cache(request):
     # Ensure user can only clear their own cache
     user_id = request.user.id
     if user_id != request.data.get('user_id'):
         return Response(status=403)  # Forbidden
-    
+
     # Clear cache for authenticated user only
     namespace_manager.increment_user_version(user_id)
 ```
@@ -2100,6 +2218,7 @@ def clear_cache(request):
 ### Input Validation
 
 **User ID Validation**:
+
 ```python
 def validate_user_id(user_id):
     if not isinstance(user_id, int) or user_id <= 0:
@@ -2108,6 +2227,7 @@ def validate_user_id(user_id):
 ```
 
 **Query Hash Validation**:
+
 ```python
 def validate_query_hash(query_hash):
     if not re.match(r'^[a-f0-9]+$', query_hash):
@@ -2118,11 +2238,13 @@ def validate_query_hash(query_hash):
 ### Information Disclosure Prevention
 
 **No Cache Key Exposure**:
+
 - Cache keys never exposed in API responses
 - Internal cache structure hidden from clients
 - Only cache version exposed (integer)
 
 **Error Messages**:
+
 - Generic error messages for cache failures
 - No stack traces or internal details exposed
 - Detailed errors logged server-side only
@@ -2130,6 +2252,7 @@ def validate_query_hash(query_hash):
 ### Security Best Practices
 
 **Implemented**:
+
 - ✅ Per-user cache isolation via namespace prefixing
 - ✅ Authorization checks on all cache management endpoints
 - ✅ Input validation for all cache key components
@@ -2139,23 +2262,25 @@ def validate_query_hash(query_hash):
 - ✅ No user-provided data in cache keys (only IDs and hashes)
 
 **Recommended**:
+
 - Use TLS for Redis connections in production
 - Implement rate limiting on cache management endpoints
 - Monitor for unusual cache access patterns
 - Regular security audits of cache implementation
-
 
 ## Monitoring and Observability
 
 ### Key Metrics
 
 **Cache Performance**:
+
 - Cache hit rate (overall and per-user)
 - Cache miss rate
 - Average response time (cached vs uncached)
 - Cache operation latency
 
 **Redis Metrics**:
+
 - Memory usage per database
 - Number of keys per database
 - Connection pool utilization
@@ -2163,6 +2288,7 @@ def validate_query_hash(query_hash):
 - Eviction rate
 
 **Application Metrics**:
+
 - Cache invalidation frequency
 - User cache clear frequency
 - Error rate for cache operations
@@ -2191,6 +2317,7 @@ logger.error(f"Serialization failed for {model_class.__name__}: {error}")
 ```
 
 **Log Format**:
+
 ```json
 {
   "timestamp": "2024-01-15T10:30:45Z",
@@ -2235,12 +2362,14 @@ logger.error(f"Serialization failed for {model_class.__name__}: {error}")
 ### Alerts
 
 **Critical Alerts**:
+
 - Redis connection failure rate > 10%
 - Cache hit rate < 70%
 - Redis memory usage > 80%
 - Cache error rate > 5%
 
 **Warning Alerts**:
+
 - Cache hit rate < 85%
 - Redis memory usage > 60%
 - High cache invalidation frequency
@@ -2249,19 +2378,20 @@ logger.error(f"Serialization failed for {model_class.__name__}: {error}")
 ### Health Checks
 
 **Backend Health Check**:
+
 ```python
 def cache_health_check():
     """Check cache system health"""
     try:
         # Test Redis connection
         redis.ping()
-        
+
         # Test cache operations
         test_key = "health_check_test"
         redis.set(test_key, "ok", ex=10)
         value = redis.get(test_key)
         redis.delete(test_key)
-        
+
         if value == "ok":
             return {"status": "healthy", "redis": "ok"}
         else:
@@ -2271,6 +2401,7 @@ def cache_health_check():
 ```
 
 **Frontend Health Check**:
+
 ```typescript
 async cacheHealthCheck(): Promise<HealthStatus> {
   try {
@@ -2278,12 +2409,12 @@ async cacheHealthCheck(): Promise<HealthStatus> {
     if (!('indexedDB' in window)) {
       return { status: 'degraded', indexedDB: 'unavailable' };
     }
-    
+
     // Test IndexedDB operations
     const testKey = 'health_check_test';
     await this.cache.set(testKey, { test: 'ok' }, 10);
     const value = await this.cache.get(testKey);
-    
+
     if (value && value.test === 'ok') {
       return { status: 'healthy', indexedDB: 'ok' };
     } else {
@@ -2298,6 +2429,7 @@ async cacheHealthCheck(): Promise<HealthStatus> {
 ### Debugging Tools
 
 **Redis CLI Commands**:
+
 ```bash
 # Check database sizes
 redis-cli -n 1 DBSIZE  # Django cache
@@ -2321,6 +2453,7 @@ redis-cli SLOWLOG GET 10
 ```
 
 **Django Management Commands**:
+
 ```bash
 # Benchmark cache performance
 python manage.py benchmark_cache --users 100 --queries 1000
@@ -2336,6 +2469,7 @@ python manage.py cache_stats
 ```
 
 **Browser DevTools**:
+
 ```javascript
 // Inspect IndexedDB
 // Open DevTools → Application → IndexedDB → hybrid-cache
@@ -2353,6 +2487,7 @@ console.log(await cacheService.getVersion());
 ### Performance Profiling
 
 **Backend Profiling**:
+
 ```python
 import time
 
@@ -2364,6 +2499,7 @@ def profile_cache_operation(operation_name):
 ```
 
 **Frontend Profiling**:
+
 ```typescript
 async profileCacheOperation(operationName: string, operation: () => Promise<any>) {
   const start = performance.now();
@@ -2408,14 +2544,15 @@ The hybrid cache system provides a production-grade caching architecture that co
 ### Next Steps
 
 For implementation details, see:
+
 - Backend: `backend/cache/` directory
 - Frontend: `frontend/src/app/core/services/cache.service.ts`
 - Tests: `backend/cache/tests/` directory
 - Configuration: `backend/business_suite/settings/base.py`
 
 For operational procedures, see:
+
 - Monitoring: Set up dashboards for key metrics
 - Alerts: Configure alerts for critical thresholds
 - Maintenance: Regular Redis memory monitoring and cleanup
 - Debugging: Use provided CLI commands and DevTools
-

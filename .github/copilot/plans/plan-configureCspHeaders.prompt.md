@@ -77,7 +77,7 @@ if (cspEnabled) {
 
 - **nginx**: read `$upstream_http_x_csp_nonce` and `$upstream_http_x_csp_mode` and conditionally emit `Content-Security-Policy(-Report-Only)` header. (Use a short if/map in nginx config to switch header name between report-only and enforce.)
 
-- **Optional**: Mirror a control flag in Django (via `SECURE_CSP` / django-waffle) when you need centralized toggling across services; this can be used for administration UI but keep the SSR env var as the immediate runtime control.
+- **Optional**: Mirror a control setting in Django when you need centralized toggling across services; keep the SSR env var as the immediate runtime control.
 
 ## Tests & validation
 

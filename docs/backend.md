@@ -17,5 +17,5 @@
   - SimpleJWT lifetimes: 15 min access (configurable via `JWT_ACCESS_TOKEN_LIFETIME_MINUTES`), 7 days refresh.
   - DRAMATIQ namespace/results namespaces configurable; workers default counts in settings.
 - Logging: structured logging via Logger service; performance middleware; logs in `logs/`.
-- Feature flags: django-waffle flag `disable_django_views` plus env override.
+- Runtime toggles: backend settings and environment overrides.
 - Tests: pytest with strict markers; e2e Redis/Dramatiq tests; caching and task runtime policies covered.

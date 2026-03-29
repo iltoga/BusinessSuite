@@ -339,7 +339,6 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "nested_admin",
     "django.contrib.humanize",
-    "waffle",
     "dbbackup",
     "storages",
     "admin_tools",
@@ -361,9 +360,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Cache middleware must be after AuthenticationMiddleware to access request.user
     "cache.middleware.CacheMiddleware",
-    # Waffle must be after AuthenticationMiddleware to access request.user
-    "waffle.middleware.WaffleMiddleware",
-    # Custom middlewares that might rely on Waffle flags or Auth
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",

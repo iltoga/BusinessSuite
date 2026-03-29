@@ -38,7 +38,7 @@ BusinessSuite is built for agencies that process visa/stay-permit applications a
 - Application workflows with deadlines and Google Calendar sync
 - Async OCR and document validation/categorization jobs
 - Invoice generation (sync/async) and payment reconciliation
-- Reports, admin tools, backups/restore utilities, feature flags (waffle)
+- Reports, admin tools, backups/restore utilities, runtime toggles
 - Hybrid caching (cacheops + per-user namespace) with optional browser caching
 - **Dynamic Role-Based Access Control (RBAC)**: Fine-grained menu visibility and field-level permissions (redaction/masking) controlled directly via the Django Admin UI.
 
@@ -174,7 +174,7 @@ At minimum, set these env vars in `.env`:
 
 - Keep API changes contract-first: update serializer/view → regenerate `backend/schema.yaml` → regenerate the Angular client.
 - Prefer extending shared UI components in `frontend/src/app/shared/components/` (update `docs/shared_components.md` when adding new ones).
-- Use waffle flags for risky changes that need runtime toggles.
+- Use runtime toggles for risky changes that need controlled rollout.
 - In CI, enforce schema/client drift checks and run backend/frontend tests.
 
 ---
