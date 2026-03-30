@@ -259,7 +259,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
   constructor() {
     super();
     this.columnFilters.set({
-      deprecated: ['active'],
+      deprecated: [],
       productCategoryName: [],
     });
     this.config = {
@@ -339,20 +339,20 @@ export class ProductListComponent extends BaseListComponent<Product> {
     this.productsApi
       .productsPartialUpdate(product.id, updatePayload as ProductCreateUpdateRequest)
       .subscribe({
-      next: () => {
-        this.toast.success(deprecated ? 'Product deprecated' : 'Product activated');
-        this.reload();
-      },
-      error: (error) => {
-        const message = extractServerErrorMessage(error);
-        const actionLabel = deprecated ? 'deprecate' : 'activate';
-        this.toast.error(
-          message
-            ? `Failed to ${actionLabel} product: ${message}`
-            : `Failed to ${actionLabel} product`,
-        );
-      },
-    });
+        next: () => {
+          this.toast.success(deprecated ? 'Product deprecated' : 'Product activated');
+          this.reload();
+        },
+        error: (error) => {
+          const message = extractServerErrorMessage(error);
+          const actionLabel = deprecated ? 'deprecate' : 'activate';
+          this.toast.error(
+            message
+              ? `Failed to ${actionLabel} product: ${message}`
+              : `Failed to ${actionLabel} product`,
+          );
+        },
+      });
   }
 
   /**

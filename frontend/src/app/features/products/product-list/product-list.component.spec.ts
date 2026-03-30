@@ -125,10 +125,10 @@ describe('ProductListComponent', () => {
     sessionStorage.clear();
   });
 
-  it('shows active-only products by default and all products when the deprecated filter is cleared', () => {
+  it('shows all products by default and applies deprecated filters only when selected', () => {
     loadCurrentPage();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
-      false,
+      undefined,
       false,
       'name',
       1,
@@ -229,7 +229,7 @@ describe('ProductListComponent', () => {
   it('loads category filter options from the server instead of deriving them from the current page', () => {
     loadCurrentPage();
     expect(mockProductsService.productsCategoryOptionsList).toHaveBeenLastCalledWith(
-      false,
+      undefined,
       false,
       undefined,
     );
@@ -256,7 +256,7 @@ describe('ProductListComponent', () => {
         page: 3,
         returnToList: true,
         filters: {
-          deprecated: ['active'],
+          deprecated: [],
           productCategoryName: [],
         },
       }),
