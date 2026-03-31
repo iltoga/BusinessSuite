@@ -58,6 +58,30 @@ class AIRuntimeSettingsServiceTests(TestCase):
         setting = AppSetting.objects.get(name="INVOICE_IMPORT_MODEL")
         self.assertEqual(setting.updated_by_id, user.id)
 
+    def test_invalid_openrouter_base_url_override_falls_back_to_default(self):
+        AppSetting.objects.update_or_create(
+            name="OPENROUTER_API_BASE_URL",
+            defaults={
+                "value": "http://169.254.169.254/latest/meta-data",
+                "scope": AppSetting.SCOPE_BACKEND,
+                "description": "unsafe override",
+                "updated_by": None,
+            },
+        )
+
+        self.assertEqual(
+            AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL"),
+            "https://openrouter.ai/api/v1",
+        )
+
+    def test_update_runtime_settings_rejects_unsafe_openrouter_base_url(self):
+        with self.assertRaises(ValueError) as raised:
+            AIRuntimeSettingsService.update_runtime_settings(
+                {"OPENROUTER_API_BASE_URL": "http://127.0.0.1:8000/private"}
+            )
+
+        self.assertIn("OPENROUTER_API_BASE_URL", str(raised.exception))
+
     @override_settings(
         LLM_PROVIDER="openrouter",
         LLM_DEFAULT_MODEL="openai/gpt-5-mini",

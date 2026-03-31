@@ -20,10 +20,12 @@ import contextlib
 import contextvars
 import hashlib
 import json
+import logging
 import os
 import socket
 from datetime import date, datetime, time
 from decimal import Decimal
+from pathlib import PurePosixPath
 from typing import Any
 from uuid import UUID
 
@@ -228,10 +230,42 @@ def capture_model_delete(model_label: str, object_pk: Any, *, source_node: str |
     )
 
 
+# Models that are allowed to be synced via the remote sync endpoint.
+# Explicitly excludes auth, admin, session, and other sensitive models
+# to prevent privilege-escalation via arbitrary model writes.
+SYNC_ALLOWED_MODELS: set[str] = {
+    "customers.customer",
+    "customer_applications.docapplication",
+    "customer_applications.docworkflow",
+    "customer_applications.document",
+    "customer_applications.workflownotification",
+    "invoices.invoice",
+    "invoices.invoiceapplication",
+    "payments.payment",
+    "products.product",
+    "products.task",
+    "products.documenttype",
+    "products.productcategory",
+    "letters.letter",
+    "core.calendarevent",
+    "core.calendarreminder",
+    "core.holiday",
+    "core.countrycode",
+    "core.appsetting",
+    "core.localresiliencesettings",
+}
+
+_sync_logger = logging.getLogger(__name__)
+
+
 def _resolve_model(model_label: str):
     if not model_label or "." not in model_label:
         return None
-    app_label, model_name = model_label.split(".", 1)
+    normalized = model_label.strip().lower()
+    if normalized not in SYNC_ALLOWED_MODELS:
+        _sync_logger.warning("Sync rejected for disallowed model: %s", model_label)
+        return None
+    app_label, model_name = normalized.split(".", 1)
     try:
         return apps.get_model(app_label, model_name)
     except LookupError:
@@ -537,6 +571,15 @@ def get_media_manifest(*, after_updated_at: datetime | None = None, limit: int =
     ]
 
 
+def _is_safe_storage_path(path: str) -> bool:
+    """Return True if *path* contains no traversal components (e.g. '..')."""
+    try:
+        parts = PurePosixPath(path).parts
+    except (TypeError, ValueError):
+        return False
+    return ".." not in parts and not any(p.startswith("~") for p in parts)
+
+
 def fetch_media_entries(
     *, paths: list[str], include_content: bool = False, content_size_limit: int = 5_000_000
 ) -> list[dict[str, Any]]:
@@ -544,6 +587,9 @@ def fetch_media_entries(
     for raw_path in paths:
         path = str(raw_path or "").strip().lstrip("/")
         if not path:
+            continue
+        if not _is_safe_storage_path(path):
+            items.append({"path": path, "exists": False, "error": "invalid_path"})
             continue
 
         exists = default_storage.exists(path)

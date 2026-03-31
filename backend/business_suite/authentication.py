@@ -65,6 +65,15 @@ def ensure_mock_user() -> User:
 
 class JwtOrMockAuthentication(JWTAuthentication):
     def authenticate(self, request):
+        # Hard block: never allow mock auth when running production settings.
+        _settings_module = getattr(settings, "SETTINGS_MODULE", "") or getattr(settings, "DJANGO_SETTINGS_MODULE", "")
+        if not _settings_module:
+            import os
+
+            _settings_module = os.getenv("DJANGO_SETTINGS_MODULE", "")
+        if _settings_module.endswith(".prod"):
+            return super().authenticate(request)
+
         from core.services.app_setting_service import AppSettingService
 
         if AppSettingService.parse_bool(AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False):

@@ -17,14 +17,20 @@ AI_GUIDELINES:
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 from core.models import AiModel
 from core.services.ai_usage_service import AIUsageFeature
 from core.services.app_setting_service import AppSettingScope, AppSettingService
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
+_OPENROUTER_ALLOWED_BASE_URL_HOSTS = {"openrouter.ai", "api.openrouter.ai"}
+_OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 @dataclass(frozen=True)
@@ -495,6 +501,43 @@ class AIRuntimeSettingsService:
         return 120.0
 
     @classmethod
+    def _normalize_openrouter_api_base_url(cls, raw_value: Any, *, strict: bool) -> str:
+        candidate = str(raw_value or "").strip()
+        if not candidate:
+            return _OPENROUTER_DEFAULT_BASE_URL
+
+        parsed = urlparse(candidate)
+        host = str(parsed.hostname or "").strip().lower()
+        is_allowed_host = host in _OPENROUTER_ALLOWED_BASE_URL_HOSTS or host.endswith(".openrouter.ai")
+        port = parsed.port
+
+        invalid_reason = None
+        if parsed.scheme.lower() != "https":
+            invalid_reason = "must use https"
+        elif parsed.username or parsed.password:
+            invalid_reason = "must not include embedded credentials"
+        elif not host:
+            invalid_reason = "must include a hostname"
+        elif not is_allowed_host:
+            invalid_reason = "must target an allowed OpenRouter hostname"
+        elif port not in {None, 443}:
+            invalid_reason = "must not use a custom port"
+
+        if invalid_reason:
+            if strict:
+                raise ValueError(
+                    "OPENROUTER_API_BASE_URL "
+                    f"{invalid_reason}. Allowed hosts: {sorted(_OPENROUTER_ALLOWED_BASE_URL_HOSTS)}"
+                )
+            logger.warning("Ignoring unsafe OPENROUTER_API_BASE_URL value %r; using default.", candidate)
+            return _OPENROUTER_DEFAULT_BASE_URL
+
+        normalized_path = (parsed.path or "").rstrip("/") or "/api/v1"
+        if normalized_path == "/":
+            normalized_path = "/api/v1"
+        return urlunparse(("https", host, normalized_path, "", "", ""))
+
+    @classmethod
     def _normalize_fallback_model_chain(
         cls,
         raw_value: Any,
@@ -710,14 +753,13 @@ class AIRuntimeSettingsService:
                 or "ai:router:sticky_provider"
             ),
             "OPENROUTER_API_BASE_URL": (
-                str(
+                cls._normalize_openrouter_api_base_url(
                     cls._default_from_settings_and_env(
                         "OPENROUTER_API_BASE_URL",
-                        "https://openrouter.ai/api/v1",
-                    )
-                    or ""
-                ).strip()
-                or "https://openrouter.ai/api/v1"
+                        _OPENROUTER_DEFAULT_BASE_URL,
+                    ),
+                    strict=False,
+                )
             ),
             "OPENROUTER_TIMEOUT": float(cls._default_from_settings_and_env("OPENROUTER_TIMEOUT", 120.0)),
             "OPENAI_TIMEOUT": float(cls._default_from_settings_and_env("OPENAI_TIMEOUT", 120.0)),
@@ -813,6 +855,8 @@ class AIRuntimeSettingsService:
     @classmethod
     def _coerce_value(cls, name: str, raw_value: Any, default_value: Any) -> Any:
         definition = AI_RUNTIME_SETTING_DEFINITIONS[name]
+        if name == "OPENROUTER_API_BASE_URL":
+            return cls._normalize_openrouter_api_base_url(raw_value, strict=False)
         if definition.value_type == "bool":
             return AppSettingService.parse_bool(raw_value, bool(default_value))
         if definition.value_type == "int":
@@ -1382,6 +1426,12 @@ class AIRuntimeSettingsService:
             if normalized_timeout <= 0:
                 raise ValueError(f"{name} must be greater than zero.")
             normalized_updates[name] = normalized_timeout
+
+        if "OPENROUTER_API_BASE_URL" in normalized_updates:
+            normalized_updates["OPENROUTER_API_BASE_URL"] = cls._normalize_openrouter_api_base_url(
+                normalized_updates["OPENROUTER_API_BASE_URL"],
+                strict=True,
+            )
 
         for name in cleared_setting_names:
             AppSettingService.delete_raw(name)

@@ -177,6 +177,7 @@ class Document(models.Model):
 
         old_file_name = ""
         old_thumbnail_name = ""
+        _files_to_delete: list[str] = []
 
         # In case of an update operation, handle file replacement or removal.
         # Use select_for_update to prevent concurrent saves from racing on
@@ -189,11 +190,9 @@ class Document(models.Model):
             file_changed = old_file_name != new_file_name
 
             if old_file_name and file_changed:
-                if default_storage.exists(orig.file.name):
-                    default_storage.delete(orig.file.name)
+                _files_to_delete.append(old_file_name)
             if old_thumbnail_name and file_changed:
-                if default_storage.exists(old_thumbnail_name):
-                    default_storage.delete(old_thumbnail_name)
+                _files_to_delete.append(old_thumbnail_name)
 
         if self.file:
             self.file_link = self.file.url
@@ -209,6 +208,21 @@ class Document(models.Model):
         }
 
         super().save(*args, **kwargs)
+
+        # Defer old file cleanup until the transaction commits successfully
+        # so files aren't orphaned if the save is rolled back.
+        if _files_to_delete:
+            paths = list(_files_to_delete)
+
+            def _cleanup_old_files():
+                for path in paths:
+                    try:
+                        if default_storage.exists(path):
+                            default_storage.delete(path)
+                    except Exception as exc:
+                        logger.warning("Failed to delete old file %s: %s", path, exc)
+
+            transaction.on_commit(_cleanup_old_files)
 
         if skip_thumbnail_sync:
             return
@@ -350,15 +364,13 @@ def post_delete_document_storage_signal(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Document)
 def update_doc_application_status_on_document_save(sender, instance, **kwargs):
-    doc_application = instance.doc_application
     skip_application_status_sync = bool(getattr(instance, "_skip_application_status_sync", False))
-    if (
-        doc_application
-        and not skip_application_status_sync
-        and doc_application.status != DocApplication.STATUS_COMPLETED
-    ):
-        # Recalculate status when documents change so the application leaves pending once requirements are met.
-        doc_application.save()
+    # Only load the FK relation when we actually need to check/update its status.
+    if not skip_application_status_sync and instance.doc_application_id:
+        doc_application = instance.doc_application
+        if doc_application and doc_application.status != DocApplication.STATUS_COMPLETED:
+            # Recalculate status when documents change so the application leaves pending once requirements are met.
+            doc_application.save()
     _queue_visa_submission_window_sync(instance, operation="save")
 
 

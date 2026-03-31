@@ -21,7 +21,7 @@ from logging import getLogger
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models.signals import post_save
-from django.db.utils import DatabaseError
+from django.db.utils import DatabaseError, IntegrityError
 from django.dispatch import receiver
 
 logger = getLogger(__name__)
@@ -64,5 +64,8 @@ def save_user_profile(sender, instance, **kwargs):
 
     try:
         UserProfile.objects.create(user=instance)
+    except IntegrityError:
+        # Expected race: profile created between exists() check and create().
+        logger.debug("UserProfile already exists for user_id=%s (race condition)", instance.pk)
     except DatabaseError:
         logger.exception("Unable to auto-create UserProfile for user_id=%s", instance.pk)

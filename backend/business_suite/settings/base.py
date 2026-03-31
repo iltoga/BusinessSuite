@@ -382,7 +382,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "django.template.context_processors.request",
                 "django.template.context_processors.csp",
                 "business_suite.context_processors.site_info",
             ],
@@ -720,8 +719,9 @@ _default_cors_origins = [
 _default_cors_origins += _build_https_origins(APP_DOMAIN, ADMIN_DOMAIN)
 
 CORS_ALLOWED_ORIGINS = _parse_list(os.getenv("CORS_ALLOWED_ORIGINS", ",".join(_default_cors_origins)))
-# Allow credentials (cookies) only when explicitly enabled in env var (default False for safety)
-CORS_ALLOW_CREDENTIALS = _parse_bool(os.getenv("CORS_ALLOW_CREDENTIALS", "False"))
+# Allow credentials (cookies) for cross-origin requests. Required for the HttpOnly
+# refresh-token cookie flow. Default True since the auth strategy depends on it.
+CORS_ALLOW_CREDENTIALS = _parse_bool(os.getenv("CORS_ALLOW_CREDENTIALS", "True"))
 # Ensure common headers (including Authorization) are allowed for preflight requests.
 # Use defaults from django-cors-headers and extend if needed.
 try:

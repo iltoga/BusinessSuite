@@ -43,10 +43,9 @@ def bulk_delete_customers(query: str | None = None, hide_disabled: bool = True) 
         queryset = queryset.filter(active=True)
 
     with transaction.atomic():
-        count = queryset.count()
-        queryset.delete()
+        _, per_model = queryset.delete()
 
-    return count
+    return per_model.get(Customer._meta.label, 0)
 
 
 def bulk_delete_products(query: str | None = None) -> int:
@@ -65,10 +64,9 @@ def bulk_delete_products(query: str | None = None) -> int:
         queryset = Product.objects.search_products(query)
 
     with transaction.atomic():
-        count = queryset.count()
-        queryset.delete()
+        _, per_model = queryset.delete()
 
-    return count
+    return per_model.get(Product._meta.label, 0)
 
 
 def bulk_delete_applications(query: str | None = None) -> int:
@@ -92,7 +90,6 @@ def bulk_delete_applications(query: str | None = None) -> int:
         queryset = DocApplication.objects.search_doc_applications(query)
 
     with transaction.atomic():
-        count = queryset.count()
-        queryset.delete()
+        _, per_model = queryset.delete()
 
-    return count
+    return per_model.get(DocApplication._meta.label, 0)

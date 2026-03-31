@@ -96,6 +96,37 @@ class CustomerQuickCreateAPITestCase(TestCase):
         self.assertIn("errors", payload)
         self.assertIn("birthdate", payload["errors"])
 
+    def test_customer_quick_create_requires_notify_by_when_expiration_notifications_enabled(self):
+        response = self.client.post(
+            reverse("api-customer-quick-create"),
+            {
+                "customer_type": "person",
+                "first_name": "Notify",
+                "last_name": "Missing",
+                "notify_documents_expiration": True,
+                "notify_by": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn("errors", payload)
+        self.assertIn("If notify expiration is true", json.dumps(payload["errors"]))
+
+    def test_customer_quick_create_rejects_missing_person_and_company_names(self):
+        response = self.client.post(
+            reverse("api-customer-quick-create"),
+            {
+                "customer_type": "person",
+                "notify_documents_expiration": False,
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn("errors", payload)
+        self.assertIn("First name and last name are required", json.dumps(payload["errors"]))
+
     def test_customer_create_rejects_duplicate_passport_via_api(self):
         url = reverse("customers-list")
         data1 = {"customer_type": "person", "first_name": "X", "last_name": "One", "passport_number": "P-DUP-1"}

@@ -108,3 +108,15 @@ class JwtOrMockAuthenticationTests(TestCase):
         get_effective_raw_mock.assert_called_once_with("MOCK_AUTH_ENABLED", False)
         parse_bool_mock.assert_called_once_with(False, False)
         jwt_authenticate_mock.assert_called_once_with(request)
+
+    @override_settings(SETTINGS_MODULE="business_suite.settings.prod")
+    @patch("business_suite.authentication.ensure_mock_user")
+    @patch("business_suite.authentication.JWTAuthentication.authenticate", return_value=("jwt-user", "jwt-token"))
+    def test_production_settings_never_allow_mock_auth(self, jwt_authenticate_mock, ensure_mock_user_mock):
+        request = self.factory.get("/api/resource/", HTTP_AUTHORIZATION="Bearer mock-token")
+
+        result = self.authentication.authenticate(request)
+
+        self.assertEqual(result, ("jwt-user", "jwt-token"))
+        jwt_authenticate_mock.assert_called_once_with(request)
+        ensure_mock_user_mock.assert_not_called()

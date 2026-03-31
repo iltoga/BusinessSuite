@@ -1,5 +1,7 @@
 """Regression tests for sync API behavior and response shaping."""
 
+from unittest.mock import patch
+
 from core.models.holiday import Holiday
 from core.models.local_resilience import LocalResilienceSettings, SyncChangeLog, SyncConflict
 from django.contrib.auth import get_user_model
@@ -146,3 +148,20 @@ class SyncApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()["data"]
         self.assertIn("nodeId", payload)
+
+    @patch("api.views_sync.ingest_remote_changes")
+    def test_push_changes_rejects_oversized_change_batches(self, ingest_remote_changes_mock):
+        response = self.client.post(
+            "/api/sync/changes/push/",
+            {
+                "source_node": "remote-node",
+                "changes": [{} for _ in range(501)],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertEqual(payload["error"]["code"], "too_many_changes")
+        self.assertIn("maximum of 500 changes", payload["error"]["message"].lower())
+        ingest_remote_changes_mock.assert_not_called()

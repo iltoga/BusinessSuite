@@ -16,6 +16,7 @@ from django.core.serializers import serialize
 from django.db import models
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
+from django.utils.text import get_valid_filename
 from django.utils.translation import gettext_lazy as _
 
 logger = Logger.get_logger(__name__)
@@ -263,7 +264,8 @@ class Customer(models.Model):
     @property
     def upload_folder(self):
         base_doc_path = settings.DOCUMENTS_FOLDER
-        return f"{base_doc_path}/{whitespaces_to_underscores(self.full_name)}_{self.pk}"
+        safe_name = get_valid_filename(self.full_name) or "unknown"
+        return f"{base_doc_path}/{safe_name}_{self.pk}"
 
     def delete_customer_files(self):
         # get media root path from settings

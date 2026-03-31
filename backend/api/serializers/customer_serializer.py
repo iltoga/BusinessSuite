@@ -17,6 +17,7 @@ from typing import Optional
 
 from customers.models import Customer
 from customers.services.passport_file_processing import PassportFileProcessingError, normalize_passport_file
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
@@ -133,10 +134,21 @@ class CustomerSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         attrs = super().validate(attrs)
         passport_file = attrs.get("passport_file")
-        if not passport_file:
-            return attrs
+        if passport_file:
+            try:
+                attrs["passport_file"] = normalize_passport_file(passport_file)
+            except PassportFileProcessingError as exc:
+                raise serializers.ValidationError({"passport_file": [str(exc)]}) from exc
+
+        # Run model-level clean() so business invariants (e.g. notify_by required
+        # when notify_documents_expiration is set) are enforced at the API boundary.
+        instance = self.instance or Customer(**attrs)
+        if self.instance:
+            for field, value in attrs.items():
+                setattr(instance, field, value)
         try:
-            attrs["passport_file"] = normalize_passport_file(passport_file)
-        except PassportFileProcessingError as exc:
-            raise serializers.ValidationError({"passport_file": [str(exc)]}) from exc
+            instance.clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict if hasattr(exc, "message_dict") else exc.messages)
+
         return attrs
