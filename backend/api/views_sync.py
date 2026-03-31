@@ -42,6 +42,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
 User = get_user_model()
+MAX_PUSH_CHANGES_PER_REQUEST = 500
 
 
 class SyncPlaceholderSerializer(serializers.Serializer):
@@ -174,6 +175,15 @@ class SyncViewSet(viewsets.ViewSet):
         body = request.data if isinstance(request.data, dict) else {}
         source_node = str(body.get("source_node") or body.get("sourceNode") or "unknown-remote").strip()
         changes = body.get("changes") if isinstance(body.get("changes"), list) else []
+        if len(changes) > MAX_PUSH_CHANGES_PER_REQUEST:
+            return Response(
+                build_error_payload(
+                    code="too_many_changes",
+                    message=(f"A maximum of {MAX_PUSH_CHANGES_PER_REQUEST} changes may be pushed in a single request."),
+                    request=request,
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         result = ingest_remote_changes(source_node=source_node, changes=changes)
         return Response(build_success_payload(camelize_payload(result), request=request))

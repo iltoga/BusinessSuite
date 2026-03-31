@@ -75,11 +75,11 @@ class ApplicationLifecycleService:
         if not can_delete:
             raise ValidationError(msg)
 
-        application.updated_by = user
-        application.save(update_fields=["updated_by", "updated_at"])
-
-        invoice_ids = list(application.invoice_applications.values_list("invoice_id", flat=True).distinct())
         with transaction.atomic():
+            application.updated_by = user
+            application.save(update_fields=["updated_by", "updated_at"])
+
+            invoice_ids = list(application.invoice_applications.values_list("invoice_id", flat=True).distinct())
             if delete_invoices:
                 application.invoice_applications.all().delete()
             application.delete(force_delete_invoices=delete_invoices, user=user)

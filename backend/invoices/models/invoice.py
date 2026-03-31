@@ -34,6 +34,23 @@ class InvoiceQuerySet(models.QuerySet):
             )
         )
 
+    def with_computed_totals(self):
+        """Annotate with total_paid and total_due to avoid N+1 property queries."""
+        total_paid_field = models.DecimalField(max_digits=12, decimal_places=2)
+        return self.annotate(
+            total_paid=Coalesce(
+                Sum("invoice_applications__payments__amount"),
+                Value(0, output_field=total_paid_field),
+                output_field=total_paid_field,
+            ),
+            total_due=models.F("total_amount")
+            - Coalesce(
+                Sum("invoice_applications__payments__amount"),
+                Value(0, output_field=total_paid_field),
+                output_field=total_paid_field,
+            ),
+        )
+
     def for_document_generation(self):
         paid_amount_field = models.DecimalField(max_digits=10, decimal_places=2)
         invoice_applications_queryset = (
@@ -101,6 +118,9 @@ class InvoiceManager(models.Manager):
 
     def with_payment_totals(self):
         return self.get_queryset().with_payment_totals()
+
+    def with_computed_totals(self):
+        return self.get_queryset().with_computed_totals()
 
     def for_document_generation(self):
         return self.get_queryset().for_document_generation()
@@ -170,6 +190,12 @@ class Invoice(models.Model):
 
     class Meta:
         ordering = ("-invoice_date", "-invoice_no")
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(due_date__gte=models.F("invoice_date")),
+                name="invoice_due_date_gte_invoice_date",
+            ),
+        ]
 
     @property
     def invoice_no_display(self):

@@ -17,7 +17,8 @@ AI_GUIDELINES:
 from api.serializers.product_write_utils import apply_pricing_defaults, apply_product_category, normalize_currency_code
 from core.models import CountryCode
 from core.utils.form_validators import normalize_phone_number
-from customers.models import CUSTOMER_TYPE_CHOICES, Customer
+from customers.models import CUSTOMER_TYPE_CHOICES, NOTIFY_BY_CHOICES, Customer
+from django.core.exceptions import ValidationError as DjangoValidationError
 from products.models import Product, ProductCategory
 from rest_framework import serializers
 
@@ -35,6 +36,8 @@ class CustomerQuickCreateSerializer(serializers.Serializer):
     whatsapp = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     address_bali = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     address_abroad = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    notify_documents_expiration = serializers.BooleanField(required=False, default=False)
+    notify_by = serializers.ChoiceField(choices=NOTIFY_BY_CHOICES, required=False, allow_blank=True, allow_null=True)
     passport_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     gender = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     nationality = serializers.SlugRelatedField(
@@ -69,6 +72,7 @@ class CustomerQuickCreateSerializer(serializers.Serializer):
             "whatsapp",
             "address_bali",
             "address_abroad",
+            "notify_by",
             "passport_number",
             "gender",
             "nationality",
@@ -100,6 +104,13 @@ class CustomerQuickCreateSerializer(serializers.Serializer):
         attrs["company_name"] = company_name or None
         attrs["telephone"] = self._normalize_phone(attrs.get("telephone"))
         attrs["whatsapp"] = self._normalize_phone(attrs.get("whatsapp"))
+        attrs["notify_by"] = (attrs.get("notify_by") or "").strip() or None
+
+        instance = Customer(**attrs)
+        try:
+            instance.clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict if hasattr(exc, "message_dict") else exc.messages)
 
         return attrs
 

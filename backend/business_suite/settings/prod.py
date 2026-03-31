@@ -22,6 +22,9 @@ if _parse_bool(os.getenv("DJANGO_DEBUG", "False")):
 
 DEBUG = False
 
+# Safety: never allow mock auth in production, regardless of DB runtime settings.
+MOCK_AUTH_ENABLED = False
+
 SERVER_IP_ADDR = os.getenv("SERVER_IP_ADDR", "127.0.0.1")
 
 ALLOWED_HOSTS = list(

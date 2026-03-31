@@ -61,3 +61,18 @@ class PushNotificationServiceTests(TestCase):
         self.subscription.refresh_from_db()
         self.assertFalse(self.subscription.is_active)
         self.assertIn("Token no longer valid", self.subscription.last_error)
+
+    def test_send_to_user_returns_skipped_when_no_active_subscriptions(self):
+        self.subscription.is_active = False
+        self.subscription.save(update_fields=["is_active", "updated_at"])
+
+        service = PushNotificationService(client=_SuccessfulClient())
+        result = service.send_to_user(
+            user=self.user,
+            title="Test",
+            body="Body",
+        )
+
+        self.assertEqual(result.sent, 0)
+        self.assertEqual(result.failed, 0)
+        self.assertEqual(result.skipped, 1)

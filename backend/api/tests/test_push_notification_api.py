@@ -53,6 +53,33 @@ class PushNotificationApiTests(TestCase):
         subscription = WebPushSubscription.objects.get(token="fcm-token-api-1")
         self.assertFalse(subscription.is_active)
 
+    def test_register_reactivates_existing_subscription(self):
+        existing = WebPushSubscription.objects.create(
+            user=self.user,
+            token="fcm-token-api-existing",
+            device_label="Old device",
+            user_agent="Old UA",
+            is_active=False,
+            last_error="stale error",
+        )
+
+        response = self.client.post(
+            "/api/push-notifications/register/",
+            {
+                "token": "fcm-token-api-existing",
+                "device_label": "New device",
+                "user_agent": "New UA",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        existing.refresh_from_db()
+        self.assertTrue(existing.is_active)
+        self.assertEqual(existing.device_label, "New device")
+        self.assertEqual(existing.user_agent, "New UA")
+        self.assertEqual(existing.last_error, "")
+
     @patch("api.views.PushNotificationService.send_to_user")
     def test_test_endpoint_returns_delivery_summary(self, send_to_user_mock):
         WebPushSubscription.objects.create(user=self.user, token="fcm-token-api-test", is_active=True)

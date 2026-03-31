@@ -140,6 +140,17 @@ class ApplicationLifecycleServiceTests(TestCase):
         orphan_invoice.delete.assert_called_once_with(force=True)
         linked_invoice.save.assert_called_once()
 
+    def test_delete_application_rolls_back_updated_by_when_delete_fails(self):
+        application, _ = self._create_application_with_step_one()
+        failing_user = User.objects.create_user("delete-fail-user", "deletefail@example.com", "pass")
+
+        with patch.object(DocApplication, "delete", autospec=True, side_effect=RuntimeError("boom")):
+            with self.assertRaises(RuntimeError):
+                self.service.delete_application(application=application, user=failing_user, delete_invoices=False)
+
+        application.refresh_from_db()
+        self.assertIsNone(application.updated_by)
+
 
 class StayPermitWorkflowScheduleServiceTests(TestCase):
     def setUp(self):

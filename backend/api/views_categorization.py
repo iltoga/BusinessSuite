@@ -6,6 +6,13 @@ Endpoints for AI-powered document classification:
 - GET /api/document-categorization/stream/{job_id}/ — SSE progress streaming
 - POST /api/document-categorization/{job_id}/apply/ — apply confirmed mappings
 - POST /api/documents/{id}/validate-category/ — single-file pre-upload AI validation
+
+Transient file lifecycle:
+    Uploaded files are saved to ``tmp/categorization/{job_id}/`` via ``default_storage``.
+    When the user applies matched files, each mapped file is copied to its final
+    Document location and then **all** transient files (applied, unapplied, "No Slot",
+    and errored) are deleted together with the temp directory.  This guarantees that
+    only persisted Document files remain in storage.
 """
 
 import os
@@ -18,16 +25,16 @@ from api.utils.contracts import build_error_payload, build_success_payload
 from api.utils.idempotency import resolve_request_idempotent_job, store_request_idempotent_job
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
+from api.utils.stream_payloads import build_async_job_start_payload, camelize_payload
+from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.ai_document_categorizer import (
     AIDocumentCategorizer,
     extract_validation_details_markdown,
     extract_validation_doc_number,
     extract_validation_expiration_date,
 )
-from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.logger_service import Logger
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_file_key, stream_job_key
-from api.utils.stream_payloads import build_async_job_start_payload, camelize_payload
 from core.tasks.document_categorization import (
     categorization_item_has_terminal_validation,
     categorization_item_is_terminal,
@@ -131,9 +138,7 @@ def _extract_ai_runtime_metadata(payload: dict | None) -> dict[str, str | None]:
         }
 
     provider = str(payload.get("ai_provider") or payload.get("aiProvider") or "").strip().lower() or None
-    provider_name = (
-        str(payload.get("ai_provider_name") or payload.get("aiProviderName") or "").strip() or None
-    )
+    provider_name = str(payload.get("ai_provider_name") or payload.get("aiProviderName") or "").strip() or None
     model = str(payload.get("ai_model") or payload.get("aiModel") or "").strip() or None
 
     return {
@@ -141,6 +146,50 @@ def _extract_ai_runtime_metadata(payload: dict | None) -> dict[str, str | None]:
         "provider_name": provider_name or provider,
         "model": model,
     }
+
+
+def _cleanup_categorization_job_files(job: DocumentCategorizationJob) -> None:
+    """Delete **all** transient files for a categorization job.
+
+    This removes every file tracked by the job's items and then removes
+    the ``tmp/categorization/{job_id}/`` directory itself.  It is called
+    after ``categorization_apply`` so that only files that were already
+    copied into their final :class:`~customer_applications.models.Document`
+    location survive — every unapplied, "no slot", or errored file is
+    cleaned up.
+    """
+    # 1) Delete individual item files tracked in the DB.
+    for item in job.items.all().only("file_path"):
+        file_path = (item.file_path or "").strip()
+        if file_path:
+            try:
+                if default_storage.exists(file_path):
+                    default_storage.delete(file_path)
+            except Exception as exc:
+                logger.warning("Failed to delete transient file %s: %s", file_path, exc)
+
+    # 2) Remove the entire temp folder for this job (catches any files
+    #    not tracked by an item, e.g. partial uploads or retries).
+    temp_dir = f"tmp/categorization/{job.id}"
+    try:
+        dirs, files = default_storage.listdir(temp_dir)
+        for fname in files:
+            fpath = f"{temp_dir}/{fname}"
+            try:
+                default_storage.delete(fpath)
+            except Exception as exc:
+                logger.warning("Failed to delete leftover temp file %s: %s", fpath, exc)
+    except FileNotFoundError:
+        pass
+    except Exception as exc:
+        logger.warning("Failed to list temp folder %s for cleanup: %s", temp_dir, exc)
+
+    # Try to remove the now-empty temp directory.
+    try:
+        if default_storage.exists(temp_dir):
+            default_storage.delete(temp_dir)
+    except Exception:
+        pass
 
 
 def _normalize_total_files(raw_total_files: Any) -> int:
@@ -799,8 +848,7 @@ def categorization_stream_sse(request, job_id):
                                 "validationModel": v_runtime["model"],
                                 "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
                                 "validationConfidence": v_result.get("confidence", 0),
-                                "message": f"{validation_prefix} "
-                                f"{item.filename}: {item.validation_status}",
+                                "message": f"{validation_prefix} " f"{item.filename}: {item.validation_status}",
                             },
                             event_id=event_id,
                         )
@@ -944,7 +992,9 @@ def categorization_stream_sse(request, job_id):
             elif stream_event.event != "categorization_job_changed":
                 force_full_refresh = True
             now = time.monotonic()
-            if (now - last_refresh_at) < refresh_interval_seconds and stream_event.event != "categorization_job_changed":
+            if (
+                now - last_refresh_at
+            ) < refresh_interval_seconds and stream_event.event != "categorization_job_changed":
                 continue
 
             should_full_refresh = force_full_refresh or (now - last_full_refresh_at >= full_refresh_interval_seconds)
@@ -962,7 +1012,9 @@ def categorization_stream_sse(request, job_id):
                 return
 
         if pending_event_id is not None:
-            should_full_refresh = force_full_refresh or (time.monotonic() - last_full_refresh_at >= full_refresh_interval_seconds)
+            should_full_refresh = force_full_refresh or (
+                time.monotonic() - last_full_refresh_at >= full_refresh_interval_seconds
+            )
             changed_ids = None if should_full_refresh else set(pending_item_ids)
             messages, done = _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
             for message in messages:
@@ -977,7 +1029,13 @@ def categorization_stream_sse(request, job_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def categorization_apply(request, job_id):
-    """Apply confirmed categorization results: attach files to Document rows."""
+    """Apply confirmed categorization results: attach files to Document rows.
+
+    After applying the requested mappings, **all** transient files for this
+    job are deleted from storage (``tmp/categorization/{job_id}/``).  This
+    includes unapplied files (e.g. "No Slot" or errored items) so that
+    only files copied into their final Document location are persisted.
+    """
     try:
         job = DocumentCategorizationJob.objects.get(id=job_id)
     except DocumentCategorizationJob.DoesNotExist:
@@ -997,9 +1055,7 @@ def categorization_apply(request, job_id):
     errors = []
 
     incomplete_items = [
-        item.filename
-        for item in job.items.all().order_by("sort_index")
-        if not categorization_item_is_terminal(item)
+        item.filename for item in job.items.all().order_by("sort_index") if not categorization_item_is_terminal(item)
     ]
     if incomplete_items:
         pending_list = ", ".join(incomplete_items[:3])
@@ -1103,14 +1159,11 @@ def categorization_apply(request, job_id):
             logger.error("Error applying categorization item %s: %s", item_id, exc, exc_info=True)
             errors.append({"itemId": str(item_id), "errorMessage": str(exc)})
 
-    # Clean up temp files for applied items
-    for item_data in applied:
-        try:
-            item = DocumentCategorizationItem.objects.get(id=item_data["itemId"])
-            if default_storage.exists(item.file_path):
-                default_storage.delete(item.file_path)
-        except Exception:
-            pass
+    # Clean up ALL transient files for this job — both applied and unapplied
+    # (e.g. "No Slot" or error items).  Only the files that were copied into
+    # their final Document location above survive; every other temp artefact
+    # is removed so nothing lingers in ``tmp/categorization/{job_id}/``.
+    _cleanup_categorization_job_files(job)
 
     return Response(
         {
@@ -1200,20 +1253,22 @@ def validate_document_category(request, document_id):
                 "reasoning": user_message,
                 "documentTypeId": doc_type.id,
                 "validationStatus": "error",
-                "validationResult": camelize_payload({
-                    "valid": False,
-                    "confidence": 0,
-                    "positive_analysis": "",
-                    "negative_issues": [user_message],
-                    "reasoning": user_message,
-                    "extracted_expiration_date": None,
-                    "extracted_doc_number": None,
-                    "extracted_details_markdown": None,
-                    "error_type": "timeout" if is_ai_timeout_exception(exc) else "provider_error",
-                    "ai_provider": runtime["provider"],
-                    "ai_provider_name": runtime["provider_name"],
-                    "ai_model": runtime["model"],
-                }),
+                "validationResult": camelize_payload(
+                    {
+                        "valid": False,
+                        "confidence": 0,
+                        "positive_analysis": "",
+                        "negative_issues": [user_message],
+                        "reasoning": user_message,
+                        "extracted_expiration_date": None,
+                        "extracted_doc_number": None,
+                        "extracted_details_markdown": None,
+                        "error_type": "timeout" if is_ai_timeout_exception(exc) else "provider_error",
+                        "ai_provider": runtime["provider"],
+                        "ai_provider_name": runtime["provider_name"],
+                        "ai_model": runtime["model"],
+                    }
+                ),
                 "aiValidationEnabled": bool(doc_type.ai_validation),
                 "validationProvider": runtime["provider"],
                 "validationProviderName": runtime["provider_name"],

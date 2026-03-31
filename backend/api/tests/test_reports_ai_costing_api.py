@@ -139,3 +139,20 @@ class AICostingReportApiTests(TestCase):
 
         response = regular_client.get("/api/reports/ai-costing/?year=2026&month=2")
         self.assertEqual(response.status_code, 403)
+
+    def test_ai_costing_report_clamps_invalid_month_and_uses_latest_available_year(self):
+        tz = timezone.get_current_timezone()
+        self._create_usage(
+            feature=AIUsageFeature.INVOICE_IMPORT_AI_PARSER,
+            created_at=timezone.make_aware(datetime(2026, 4, 2, 11, 0), tz),
+            cost_usd=Decimal("0.010000"),
+            total_tokens=10,
+        )
+
+        response = self.client.get("/api/reports/ai-costing/?year=1999&month=99")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["selectedYear"], 2026)
+        self.assertEqual(payload["selectedMonth"], 12)
+        self.assertEqual(payload["selectedMonthLabel"], "December")
