@@ -213,4 +213,3 @@ Fix:
 - Command: `backend/core/management/commands/whatsapp_webhook_tunnel.py`
 - Webhook endpoint: `backend/api/views.py` (`whatsapp_webhook`)
 - Status processing: `backend/notifications/services/providers.py` (`process_whatsapp_webhook_payload`)
-

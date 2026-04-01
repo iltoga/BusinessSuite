@@ -32,10 +32,11 @@ bun run dev:mock
 ```
 
 This starts:
+
 - Prism on `4010`
 - Angular dev server on `4200`
 
-2. In a second terminal, run tests:
+1. In a second terminal, run tests:
 
 ```bash
 cd frontend
@@ -45,13 +46,14 @@ bun run test:e2e
 ## Recommended Playwright config
 
 ```ts
-import { defineConfig } from '@playwright/test';
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   use: {
-    baseURL: 'http://localhost:4200',
+    baseURL: "http://localhost:4200",
   },
   webServer: {
+    command: "bun run dev:mock"
     command: 'bun run dev:mock',
     port: 4200,
     reuseExistingServer: process.env.CI ? false : true,

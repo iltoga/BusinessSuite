@@ -5,21 +5,26 @@ This document outlines the architecture, rules, and best practices for interacti
 ## System Overview
 
 The RBAC system has shifted from rigid, hardcoded user roles (e.g., checking `is_staff` or specific `group` names inside UI components) to a **dynamic, database-driven permissions matrix**. The matrix controls two main domains:
+
 1. **Menu Visibility**: Determines which navigation menus and corresponding views a user is allowed to access.
 2. **Field-Level Visibility/Editing (Masking)**: Determines whether a user can read or write specific fields on a specific data model (e.g., hiding a `base_price` for non-managers).
 
 ### Priority Logic
+
 Rules are configured in the Django Admin pane (`RbacMenuRule` and `RbacFieldRule`) and evaluated per user on the backend.
+
 - **Superuser (`is_superuser`)**: Always has `True` for all access rules.
 - **Group/Role Overrides**: Specific rules assigned to a user's Group (e.g., `manager`, `controller`) or Role (e.g., `is_staff`). If multiple groups have conflicting rules for the same field/menu, an **OR** logic is applied (if any group grants access, the user has access).
 - **Global Fallback (`group__isnull=True`)**: If a user does not match any specific group/role rules, the global default rule applies.
 
 ## 1. Backend Integration (Django)
 
-The backend is responsible for compiling the evaluated permission matrix and intercepting restricted data *before* it gets serialized.
+The backend is responsible for compiling the evaluated permission matrix and intercepting restricted data _before_ it gets serialized.
 
 ### The Unified Claims Endpoint
+
 The frontend retrieves the complete dictionary of evaluated permissions at application startup via the unified claims endpoint (`/api/auth/me/`). This endpoint calls the `get_user_rbac_claims` service which returns a dictionary in the format:
+
 ```json
 {
   "menus": {
@@ -31,9 +36,11 @@ The frontend retrieves the complete dictionary of evaluated permissions at appli
   }
 }
 ```
-*Note: This matrix uses `snake_case` exactly as it's modeled in the database (e.g. `product.base_price`). Do not rely on automatic `camelCase` transformation in this payload structure.*
+
+_Note: This matrix uses `snake_case` exactly as it's modeled in the database (e.g. `product.base_price`). Do not rely on automatic `camelCase` transformation in this payload structure._
 
 ### Serializer Masking
+
 To prevent hidden data from leaking over the network, serializers must inherit from `RbacFieldFilterMixin`.
 
 ```python
@@ -41,7 +48,7 @@ from api.serializers.rbac_mixin import RbacFieldFilterMixin
 
 class ProductSerializer(RbacFieldFilterMixin, serializers.ModelSerializer):
     # This identifier MUST match the 'model_name' explicitly configured in the database rule!
-    rbac_model_name = "product"  
+    rbac_model_name = "product"
 
     class Meta:
         model = Product
@@ -55,17 +62,20 @@ The `RbacFieldFilterMixin` intercepts the DRF `get_fields()` hook. It cross-refe
 The Angular application must strictly enforce the RBAC matrix locally for optimal UX / UI structure without forcing unnecessary API trips.
 
 ### State Management (`RBAC_RULES` Token)
+
 The `AppConfig` initializes the system by grabbing the claims from the unified endpoint payload. The state is then securely pinned into an Angular Signal injection token: `RBAC_RULES`.
 
 ```typescript
-import { RBAC_RULES } from '@/core/tokens/rbac.token';
+import { RBAC_RULES } from "@/core/tokens/rbac.token";
 const rbacRulesSignal = inject(RBAC_RULES);
 ```
 
 ### Form Masking (`BaseFormComponent`)
-The UI is built on a **Visual Masking** philosophy: we do not break horizontal grid layouts by ripping out DOM elements with structural directives (like `*ngIf`). Instead, we degrade the component gracefully. 
+
+The UI is built on a **Visual Masking** philosophy: we do not break horizontal grid layouts by ripping out DOM elements with structural directives (like `*ngIf`). Instead, we degrade the component gracefully.
 
 When extending `BaseFormComponent`:
+
 ```typescript
 export class ProductFormComponent extends BaseFormComponent<...> {
   constructor() {
@@ -73,14 +83,17 @@ export class ProductFormComponent extends BaseFormComponent<...> {
   }
 }
 ```
-**Mechanism:** 
-On `ngOnInit()`, `BaseFormComponent` recursively checks each reactive form control's name against the RBAC dictionary (automatically handling `camelCase` to `snake_case` conversion internally). 
+
+**Mechanism:**
+On `ngOnInit()`, `BaseFormComponent` recursively checks each reactive form control's name against the RBAC dictionary (automatically handling `camelCase` to `snake_case` conversion internally).
 If a control evaluates to `canRead: false`, the Base Component:
+
 1. Calls `control.disable()`
 2. Calls `control.setValue(null)` (Ensuring default numeric values like `0` aren't mistakenly presented)
 
 **Handling `<input type="number">` Quirks:**
 If you have a strict number input, standard HTML5 refuses to display text placeholders like `"Hidden"`. In these explicit edge cases, edit the template to dynamically flip the `[type]` property, avoiding compilation breaks:
+
 ```html
 <input
   z-input
@@ -91,13 +104,31 @@ If you have a strict number input, standard HTML5 refuses to display text placeh
 ```
 
 ### Table Column Masking (`DataTableComponent`)
+
 List views also use the gracefully-masked fallback logic via the `visibleColumns()` signal algorithm inside `DataTableComponent`.
 If you declare an `rbacModelName` input on `<app-data-table>`, the grid automatically filters out restricted columns out of reality so they do not even render as table headers.
+
 ```html
 <app-data-table [data]="items()" [rbacModelName]="'product'" ... />
 ```
 
 ### Menu Routing (`RbacMenuGuard` & `MenuService`)
+
+[type]="isFieldReadable('basePrice') ? 'number' : 'text'"
+[placeholder]="isFieldReadable('basePrice') ? '' : 'Hidden for your role'"
+/>
+
+````
+
+### Table Column Masking (`DataTableComponent`)
+
+List views also use the gracefully-masked fallback logic via the `visibleColumns()` signal algorithm inside `DataTableComponent`.
+If you declare an `rbacModelName` input on `<app-data-table>`, the grid automatically filters out restricted columns out of reality so they do not even render as table headers.
+
+```html
+<app-data-table [data]="items()" [rbacModelName]="'product'" ... />
+````
+
 For navigation routing access, routes should utilize the `RbacMenuGuard` guard alongside tracking exact menu identifiers inside the `Route.data` objects. `MenuService` globally observes the `RBAC_RULES` map to dynamically compose the available Sidebar navigation UI.
 
 ```typescript
