@@ -361,24 +361,11 @@ export class InvoiceFormComponent implements OnInit {
       searchQuery,
       page: Number.isFinite(page) && page > 0 ? Math.floor(page) : undefined,
     };
-    const shouldReturnToList = history.state?.returnToList === true;
-    const focusState: Record<string, unknown> = {
-      focusTable: true,
-      searchQuery,
-      page: Number.isFinite(page) && page > 0 ? Math.floor(page) : undefined,
-    };
-
     if (this.isEditMode() && this.invoice()) {
       this.invoicesApi.invoicesUpdate(this.invoice()!.id, payload).subscribe({
         next: (invoice: InvoiceCreateUpdate) => {
           this.toast.success('Invoice updated');
-          if (shouldReturnToList) {
-            this.router.navigate(['/invoices'], {
-              state: { ...focusState, focusId: invoice.id },
-            });
-          } else {
-            this.router.navigate(['/invoices', invoice.id], { state: detailState });
-          }
+          this.router.navigate(['/invoices', invoice.id], { state: detailState });
         },
         error: (error) => {
           applyServerErrorsToForm(this.form, error);
@@ -396,13 +383,7 @@ export class InvoiceFormComponent implements OnInit {
     this.invoicesApi.invoicesCreate(payload).subscribe({
       next: (invoice: InvoiceCreateUpdate) => {
         this.toast.success('Invoice created');
-        if (shouldReturnToList) {
-          this.router.navigate(['/invoices'], {
-            state: { ...focusState, focusId: invoice.id },
-          });
-        } else {
-          this.router.navigate(['/invoices', invoice.id], { state: detailState });
-        }
+        this.router.navigate(['/invoices', invoice.id], { state: detailState });
       },
       error: (error) => {
         applyServerErrorsToForm(this.form, error);

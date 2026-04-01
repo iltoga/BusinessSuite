@@ -60,6 +60,7 @@ business_suite/backups
 business_suite/static/bootstrap/bootstrap.bundle.min.js.map
 business_suite/staticfiles
 business_suite/files
+business_suite/static/reporting/
 business_suite/static/reporting/*.bkp
 business_suite/static/*.bkp
 business_suite/static/reporting/invoice_template_with_footer_revisbali.docx

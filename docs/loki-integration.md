@@ -3,6 +3,7 @@
 Status: direct in-app Loki pushes are deprecated in this codebase.
 
 Current approach:
+
 - Application logs are written to stdout/stderr and local `logs/` files.
 - Log shipping is handled by external collectors (for example Grafana Alloy).
 - Audit events are persisted via `django-auditlog` and can be exported/indexed externally.
@@ -32,6 +33,9 @@ Current approach:
 ## If you need direct push again
 
 Reintroduce a dedicated handler in settings/logger service and document:
+
+Reintroduce a dedicated handler in settings/logger service and document:
+
 - env vars
 - handler wiring
 - rollout and fallback behavior
