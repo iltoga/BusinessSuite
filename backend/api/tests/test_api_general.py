@@ -873,6 +873,8 @@ class ProductApiTestCase(TestCase):
         self.assertEqual(inv.customer_id, customer.id)
         self.assertEqual(inv.invoice_applications.count(), 1)
         self.assertEqual(inv.invoice_applications.first().product_id, product.id)
+        self.assertEqual(inv.invoice_applications.first().quantity, 1)
+        self.assertIsNone(inv.invoice_applications.first().notes)
 
     def test_create_invoice_via_api_with_product_only_line(self):
         self.client.force_login(self.user)
@@ -893,6 +895,8 @@ class ProductApiTestCase(TestCase):
         self.assertIsNotNone(line)
         self.assertEqual(line.product_id, product.id)
         self.assertIsNone(line.customer_application_id)
+        self.assertEqual(line.quantity, 1)
+        self.assertIsNone(line.notes)
 
     def test_create_invoice_legacy_customer_application_payload_derives_product(self):
         self.client.force_login(self.user)
@@ -927,6 +931,91 @@ class ProductApiTestCase(TestCase):
         self.assertIsNotNone(line)
         self.assertEqual(line.customer_application_id, application.id)
         self.assertEqual(line.product_id, product.id)
+        self.assertEqual(line.quantity, 1)
+        self.assertIsNone(line.notes)
+
+    def test_create_invoice_via_api_persists_line_quantity_and_sanitized_notes(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Qty", last_name="Notes", active=True)
+        product = Product.objects.create(name="Qty Product", code="QTY-1", product_type="other")
+
+        payload = {
+            "customer": customer.id,
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": timezone.now().date().isoformat(),
+            "invoice_applications": [
+                {
+                    "product": product.id,
+                    "quantity": 2,
+                    "notes": "  <b>Priority</b>\nSecond line  ",
+                    "amount": "500000.00",
+                }
+            ],
+        }
+
+        response = self.client.post(reverse("invoices-list"), data=json.dumps(payload), content_type="application/json")
+        self.assertIn(response.status_code, (200, 201))
+
+        invoice = Invoice.objects.get(pk=response.json()["id"])
+        line = invoice.invoice_applications.get()
+        self.assertEqual(line.quantity, 2)
+        self.assertEqual(line.notes, "Priority\nSecond line")
+
+    def test_update_invoice_via_api_updates_line_quantity_and_notes(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Update", last_name="Line", active=True)
+        product = Product.objects.create(name="Update Product", code="UPD-1", product_type="other")
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        line = InvoiceApplication.objects.create(invoice=invoice, product=product, amount="250000.00")
+
+        payload = {
+            "customer": customer.id,
+            "invoice_date": invoice.invoice_date.isoformat(),
+            "due_date": invoice.due_date.isoformat(),
+            "notes": "",
+            "sent": False,
+            "invoice_applications": [
+                {
+                    "id": line.id,
+                    "product": product.id,
+                    "quantity": 4,
+                    "notes": "<b>Renewal</b>",
+                    "amount": "760000.00",
+                }
+            ],
+        }
+
+        response = self.client.put(
+            reverse("invoices-detail", args=[invoice.id]),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        line.refresh_from_db()
+        self.assertEqual(line.quantity, 4)
+        self.assertEqual(line.notes, "Renewal")
+        self.assertEqual(str(line.amount), "760000.00")
+
+    def test_create_invoice_via_api_rejects_zero_quantity(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Bad", last_name="Quantity", active=True)
+        product = Product.objects.create(name="Bad Qty Product", code="BAD-QTY-1", product_type="other")
+
+        payload = {
+            "customer": customer.id,
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": timezone.now().date().isoformat(),
+            "invoice_applications": [{"product": product.id, "quantity": 0, "amount": "250000.00"}],
+        }
+
+        response = self.client.post(reverse("invoices-list"), data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, 400)
 
     def test_from_application_prefill_allows_non_completed_when_uninvoiced(self):
         self.client.force_login(self.user)
@@ -955,6 +1044,8 @@ class ProductApiTestCase(TestCase):
         self.assertNotIn("invoice_application", payload)
         self.assertEqual(payload["invoiceApplication"]["product"], product.id)
         self.assertEqual(payload["invoiceApplication"]["customerApplication"], application.id)
+        self.assertEqual(payload["invoiceApplication"]["quantity"], 1)
+        self.assertIsNone(payload["invoiceApplication"]["notes"])
         self.assertIn("sourceLine", payload["locks"])
         self.assertNotIn("source_line", payload["locks"])
 

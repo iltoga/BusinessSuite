@@ -22,7 +22,7 @@ from api.serializers.customer_serializer import CustomerSerializer
 from api.serializers.doc_application_serializer import DocApplicationInvoiceSerializer
 from api.serializers.product_serializer import ProductSerializer
 from customer_applications.models import DocApplication
-from invoices.models.invoice import Invoice, InvoiceApplication
+from invoices.models.invoice import Invoice, InvoiceApplication, sanitize_invoice_application_notes
 from payments.models import Payment
 from products.models import Product
 from rest_framework import serializers
@@ -58,6 +58,8 @@ class InvoiceApplicationSummarySerializer(serializers.ModelSerializer):
             "id",
             "product",
             "customer_application",
+            "quantity",
+            "notes",
             "amount",
             "status",
             "paid_amount",
@@ -78,6 +80,8 @@ class InvoiceApplicationDetailSerializer(serializers.ModelSerializer):
             "id",
             "product",
             "customer_application",
+            "quantity",
+            "notes",
             "amount",
             "status",
             "paid_amount",
@@ -172,7 +176,12 @@ class InvoiceApplicationWriteSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    quantity = serializers.IntegerField(required=False, min_value=1, default=1)
+    notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+    def validate_notes(self, value):
+        return sanitize_invoice_application_notes(value)
 
     def validate(self, attrs):
         product = attrs.get("product")

@@ -9,8 +9,8 @@
 
     <div class="mt-4 space-y-4" formArrayName="invoiceApplications">
       @for (group of invoiceApplications.controls; track group; let i = $index) {
-        <div [formGroupName]="i" class="grid gap-3 rounded-lg border p-4 md:grid-cols-4">
-          <div class="md:col-span-2">
+        <div [formGroupName]="i" class="grid gap-3 rounded-lg border p-4 md:grid-cols-6 xl:grid-cols-12">
+          <div class="md:col-span-2 xl:col-span-4">
             <label class="text-sm font-medium">Product</label>
             <z-combobox
               class="mt-1"
@@ -25,7 +25,7 @@
             />
           </div>
 
-          <div>
+          <div class="md:col-span-2 xl:col-span-4">
             <label class="text-sm font-medium">Linked Application</label>
             <z-combobox
               class="mt-1"
@@ -47,13 +47,38 @@
             </div>
           </div>
 
-          <div>
-            <label class="text-sm font-medium">Amount</label>
-            <input z-input type="number" formControlName="amount" class="mt-1 w-full" />
+          <div class="xl:col-span-2">
+            <label class="text-sm font-medium">Qty</label>
+            <input
+              z-input
+              type="number"
+              inputmode="numeric"
+              min="1"
+              step="1"
+              data-zard-number-spinner="true"
+              formControlName="quantity"
+              class="mt-1 w-full"
+            />
           </div>
 
-          <div class="flex items-center justify-between md:col-span-4">
-            <div class="text-xs text-muted-foreground">
+          <div class="xl:col-span-2">
+            <label class="text-sm font-medium">Amount</label>
+            <input z-input type="number" min="0" formControlName="amount" class="mt-1 w-full" />
+          </div>
+
+          <div class="md:col-span-5 xl:col-span-10">
+            <label class="text-sm font-medium">Notes</label>
+            <textarea
+              z-input
+              rows="2"
+              formControlName="notes"
+              class="mt-1 w-full"
+              placeholder="Optional invoice line notes..."
+            ></textarea>
+          </div>
+
+          <div class="flex items-center justify-between md:col-span-6 xl:col-span-12">
+            <div class="text-xs text-muted-foreground whitespace-pre-line">
               @if (isLineLocked(group)) {
                 Source application line is locked.
               }

@@ -13,7 +13,10 @@ export interface InvoiceLineInitial {
   id?: number;
   product?: number | null;
   customerApplication?: number | null;
+  quantity?: number;
+  notes?: string;
   amount?: number;
+  amountOverridden?: boolean;
   locked?: boolean;
 }
 

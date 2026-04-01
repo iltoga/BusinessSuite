@@ -11,5 +11,7 @@
 export interface InvoiceFromApplicationPrefillLine {
   product: number;
   customerApplication: number;
+  quantity: number;
+  notes: string | null;
   amount: string;
 }

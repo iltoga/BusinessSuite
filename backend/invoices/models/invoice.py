@@ -14,9 +14,17 @@ from django.db import models
 from django.db.models import Prefetch, Q, Sum, Value
 from django.db.models.functions import Cast, Coalesce
 from django.db.utils import OperationalError, ProgrammingError
+from django.utils.html import strip_tags
 from django.utils import timezone
 from products.models import Product
 from products.models.product_price_history import ProductPriceHistory
+
+
+def sanitize_invoice_application_notes(value: str | None) -> str | None:
+    if value is None:
+        return None
+    text = strip_tags(str(value)).strip()
+    return text or None
 
 
 class InvoiceQuerySet(models.QuerySet):
@@ -513,6 +521,8 @@ class InvoiceApplication(models.Model):
         null=True,
         blank=True,
     )
+    quantity = models.PositiveIntegerField(default=1)
+    notes = models.TextField(blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(choices=PAYMENT_STATUS_CHOICES, default=PENDING, max_length=20, db_index=True)
     objects = InvoiceApplicationManager()
@@ -523,7 +533,8 @@ class InvoiceApplication(models.Model):
             models.Index(fields=["invoice", "product"], name="invoiceapp_inv_prod_idx"),
         ]
         constraints = [
-            models.UniqueConstraint(fields=["customer_application", "invoice"], name="unique_invoice_application")
+            models.UniqueConstraint(fields=["customer_application", "invoice"], name="unique_invoice_application"),
+            models.CheckConstraint(condition=models.Q(quantity__gte=1), name="invoiceapp_quantity_gte_1"),
         ]
 
     @property
@@ -599,5 +610,6 @@ class InvoiceApplication(models.Model):
             except (ProgrammingError, OperationalError):
                 # Schema not ready (e.g. during migrations). Skip binding.
                 pass
+        self.notes = sanitize_invoice_application_notes(self.notes)
         self.status = self.calculate_payment_status()
         super().save(*args, **kwargs)

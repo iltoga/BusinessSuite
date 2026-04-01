@@ -153,13 +153,13 @@ z-dropdown-menu-item[data-highlighted='true'],
     @apply bg-background text-foreground;
   }
 
-  input[type='number']::-webkit-inner-spin-button,
-  input[type='number']::-webkit-outer-spin-button {
+  input[type='number']:not([data-zard-number-spinner='true'])::-webkit-inner-spin-button,
+  input[type='number']:not([data-zard-number-spinner='true'])::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
   }
 
-  input[type='number'] {
+  input[type='number']:not([data-zard-number-spinner='true']) {
     -moz-appearance: textfield;
     appearance: textfield; /* Added for general compatibility */
   }

@@ -253,6 +253,16 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
     return customerApplication?.customer?.fullName ?? 'Unlinked line item';
   }
 
+  getApplicationQuantity(app: InvoiceApplicationDetail): number {
+    const quantity = Number(app.quantity ?? 1);
+    return Number.isFinite(quantity) && quantity > 0 ? Math.trunc(quantity) : 1;
+  }
+
+  getApplicationNotes(app: InvoiceApplicationDetail): string | null {
+    const notes = app.notes;
+    return typeof notes === 'string' && notes.trim() ? notes : null;
+  }
+
   /**
    * Open linked application
    */

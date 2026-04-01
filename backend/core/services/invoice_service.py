@@ -44,7 +44,7 @@ from typing import Iterable
 from customer_applications.models import DocApplication
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from invoices.models.invoice import Invoice, InvoiceApplication
+from invoices.models.invoice import Invoice, InvoiceApplication, sanitize_invoice_application_notes
 from payments.models import Payment
 from products.models import Product
 from products.models.product_price_history import ProductPriceHistory
@@ -64,6 +64,10 @@ class InvoiceApplicationPayload:
     """ID of the ``Product`` for this line."""
     customer_application_id: int | None
     """ID of the linked ``DocApplication``; ``None`` for product-only lines."""
+    quantity: int
+    """Requested quantity for the line item."""
+    notes: str | None
+    """Optional invoice-line notes stored on the invoice row itself."""
     amount: Decimal
     """Line amount in the invoice currency (IDR)."""
     invoice_application_id: int | None = None
@@ -73,6 +77,16 @@ class InvoiceApplicationPayload:
 def _normalize_id(value):
     """Return ``value.id`` for model instances, otherwise return *value* unchanged."""
     return value.id if hasattr(value, "id") else value
+
+
+def _coerce_quantity(value) -> int:
+    try:
+        quantity = int(1 if value in (None, "") else value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError({"invoice_applications": ["Quantity must be a positive integer."]}) from exc
+    if quantity < 1:
+        raise ValidationError({"invoice_applications": ["Quantity must be at least 1."]})
+    return quantity
 
 
 def _extract_constraint_name(exc: Exception) -> str | None:
@@ -153,6 +167,8 @@ def _build_payloads(raw_items: Iterable[dict]) -> list[InvoiceApplicationPayload
                 invoice_application_id=item.get("id"),
                 customer_application_id=customer_application_id,
                 product_id=product_id,
+                quantity=_coerce_quantity(item.get("quantity")),
+                notes=sanitize_invoice_application_notes(item.get("notes")),
                 amount=Decimal(str(item.get("amount"))),
             )
         )
@@ -336,6 +352,8 @@ def _sync_invoice_applications(*, invoice: Invoice, payloads: list[InvoiceApplic
             invoice_app = existing[payload.invoice_application_id]
             invoice_app.customer_application_id = payload.customer_application_id
             invoice_app.product_id = payload.product_id
+            invoice_app.quantity = payload.quantity
+            invoice_app.notes = payload.notes
             invoice_app.amount = payload.amount
             invoice_app.price_history_id = history_id
             invoice_app.save()
@@ -345,6 +363,8 @@ def _sync_invoice_applications(*, invoice: Invoice, payloads: list[InvoiceApplic
                 invoice=invoice,
                 product_id=payload.product_id,
                 customer_application_id=payload.customer_application_id,
+                quantity=payload.quantity,
+                notes=payload.notes,
                 amount=payload.amount,
                 price_history_id=history_id,
             )

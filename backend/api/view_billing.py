@@ -888,6 +888,8 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     fields={
                         "product": serializers.IntegerField(),
                         "customerApplication": serializers.IntegerField(),
+                        "quantity": serializers.IntegerField(),
+                        "notes": serializers.CharField(allow_null=True),
                         "amount": serializers.CharField(),
                     },
                 ),
@@ -943,6 +945,8 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     "invoiceApplication": {
                         "product": product.id,
                         "customerApplication": source_application.id,
+                        "quantity": 1,
+                        "notes": None,
                         "amount": str(amount),
                     },
                     "locks": {

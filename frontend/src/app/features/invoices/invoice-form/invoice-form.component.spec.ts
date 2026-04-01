@@ -1,3 +1,4 @@
+import { FormBuilder } from '@angular/forms';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { ensureSourceApplicationIncluded } from './invoice-form-normalizers';
@@ -33,7 +34,24 @@ describe('InvoiceFormComponent source application merge', () => {
     updateResponseId?: number;
   } = {}) {
     const component = Object.create(InvoiceFormComponent.prototype) as any;
-    const invoiceApplications: unknown[] = [];
+    const invoiceApplications: unknown[] = [
+      {
+        id: 71,
+        product: 11,
+        customerApplication: 21,
+        quantity: 2,
+        notes: ' Line note ',
+        amount: 350000,
+      },
+      {
+        id: 72,
+        product: 12,
+        customerApplication: null,
+        quantity: 1,
+        notes: '',
+        amount: 125000,
+      },
+    ];
     component.form = {
       invalid: false,
       value: {
@@ -52,6 +70,7 @@ describe('InvoiceFormComponent source application merge', () => {
         dueDate: new Date('2026-04-27'),
         notes: '',
         sent: false,
+        invoiceApplications,
       }),
       get: (name: string) =>
         name === 'invoiceApplications' ? { value: invoiceApplications } : null,
@@ -86,6 +105,28 @@ describe('InvoiceFormComponent source application merge', () => {
 
     component.save();
 
+    expect(component.invoicesApi.invoicesCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invoiceApplications: [
+          {
+            id: 71,
+            product: 11,
+            customerApplication: 21,
+            quantity: 2,
+            notes: ' Line note ',
+            amount: '350000',
+          },
+          {
+            id: 72,
+            product: 12,
+            customerApplication: null,
+            quantity: 1,
+            notes: null,
+            amount: '125000',
+          },
+        ],
+      }),
+    );
     expect(component.router.navigate).toHaveBeenCalledWith(['/invoices', 44], {
       state: {
         from: 'invoices',
@@ -118,6 +159,24 @@ describe('InvoiceFormComponent source application merge', () => {
       expect.objectContaining({
         customer: 9,
         invoiceNo: 'INV-9',
+        invoiceApplications: [
+          {
+            id: 71,
+            product: 11,
+            customerApplication: 21,
+            quantity: 2,
+            notes: ' Line note ',
+            amount: '350000',
+          },
+          {
+            id: 72,
+            product: 12,
+            customerApplication: null,
+            quantity: 1,
+            notes: null,
+            amount: '125000',
+          },
+        ],
       }),
     );
     expect(component.router.navigate).toHaveBeenCalledWith(['/invoices', 54], {
@@ -129,5 +188,59 @@ describe('InvoiceFormComponent source application merge', () => {
         page: 2,
       },
     });
+  });
+
+  it('recomputes amount from qty while the line has not been manually overridden', () => {
+    const component = Object.create(InvoiceFormComponent.prototype) as any;
+    const fb = new FormBuilder();
+    const group = fb.group({
+      product: [19],
+      customerApplication: [null],
+      quantity: [3],
+      amount: [150],
+      amountOverridden: [false],
+    });
+
+    component.findPendingApplicationById = vi.fn().mockReturnValue(undefined);
+    component.resolveProductPrice = vi.fn().mockReturnValue(150);
+    component['onLineQuantityChanged'](group, 3);
+
+    expect(group.get('amount')?.value).toBe(450);
+  });
+
+  it('keeps a custom amount when qty changes after manual override', () => {
+    const component = Object.create(InvoiceFormComponent.prototype) as any;
+    const fb = new FormBuilder();
+    const group = fb.group({
+      product: [19],
+      customerApplication: [null],
+      quantity: [4],
+      amount: [999],
+      amountOverridden: [true],
+    });
+
+    component.findPendingApplicationById = vi.fn().mockReturnValue(undefined);
+    component.resolveProductPrice = vi.fn().mockReturnValue(150);
+    component['onLineQuantityChanged'](group, 4);
+
+    expect(group.get('amount')?.value).toBe(999);
+  });
+
+  it('updates the total amount signal when line amounts change', () => {
+    const component = Object.create(InvoiceFormComponent.prototype) as any;
+    const fb = new FormBuilder();
+    component.totalAmount = {
+      set: vi.fn(),
+    };
+    component.form = fb.group({
+      invoiceApplications: fb.array([
+        fb.group({ amount: [950000] }),
+        fb.group({ amount: [39750000] }),
+      ]),
+    });
+
+    component['updateTotalAmount']();
+
+    expect(component.totalAmount.set).toHaveBeenCalledWith(40700000);
   });
 });

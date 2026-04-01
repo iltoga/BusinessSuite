@@ -105,6 +105,10 @@
               </div>
               <div class="invoice-application-metrics">
                 <div class="invoice-application-metric">
+                  <div class="text-xs text-muted-foreground">Qty</div>
+                  <div class="font-medium">{{ getApplicationQuantity(app) }}</div>
+                </div>
+                <div class="invoice-application-metric">
                   <div class="text-xs text-muted-foreground">Amount</div>
                   <div class="font-medium">{{ formatCurrency(app.amount) }}</div>
                 </div>
@@ -130,6 +134,11 @@
                   </z-button>
                 }
               </div>
+            </div>
+
+            <div class="mt-3">
+              <div class="text-xs text-muted-foreground">Notes</div>
+              <div class="text-sm whitespace-pre-line">{{ getApplicationNotes(app) || '—' }}</div>
             </div>
 
             <div class="mt-4">
