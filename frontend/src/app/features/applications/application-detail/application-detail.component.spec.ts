@@ -111,6 +111,23 @@ describe('ApplicationDetailComponent customer navigation', () => {
   });
 });
 
+describe('ApplicationDetailComponent header title', () => {
+  it('does not duplicate identical product code and name', () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    component.application = () => ({
+      id: 329,
+      product: {
+        code: 'VOA Extension (30 Days)',
+        name: 'VOA Extension (30 Days)',
+      },
+    });
+
+    expect(component.getApplicationHeaderTitle()).toBe(
+      'Application #329 - VOA Extension (30 Days)',
+    );
+  });
+});
+
 describe('ApplicationDetailComponent inline application date editing', () => {
   const createHarness = () => {
     const component = Object.create(ApplicationDetailComponent.prototype) as any;

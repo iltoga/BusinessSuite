@@ -246,11 +246,11 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
   /**
    * Get application customer name
    */
-  getApplicationCustomerName(app: InvoiceApplicationDetail): string {
+  getApplicationCustomerName(app: InvoiceApplicationDetail): string | null {
     const customerApplication = app.customerApplication as {
       customer?: { fullName?: string | null } | null;
     } | null;
-    return customerApplication?.customer?.fullName ?? 'Unlinked line item';
+    return customerApplication?.customer?.fullName ?? null;
   }
 
   getApplicationQuantity(app: InvoiceApplicationDetail): number {

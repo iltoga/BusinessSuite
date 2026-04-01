@@ -758,6 +758,21 @@ export class ApplicationDetailComponent implements OnInit {
     };
   }
 
+  getApplicationHeaderTitle(): string {
+    const app = this.application();
+    if (!app) {
+      return '';
+    }
+
+    const code = app.product?.code?.trim() || '—';
+    const name = app.product?.name?.trim() || '—';
+    if (code === name) {
+      return `Application #${app.id} - ${code}`;
+    }
+
+    return `Application #${app.id} - ${code} - ${name}`;
+  }
+
   getApplicationStatusVariant(
     status: string,
   ): 'default' | 'secondary' | 'warning' | 'success' | 'destructive' {
