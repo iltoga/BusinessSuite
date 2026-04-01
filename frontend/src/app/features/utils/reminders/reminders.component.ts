@@ -38,6 +38,7 @@ import {
   TypeaheadOption,
 } from '@/shared/components/typeahead-combobox';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import { parseIsoDate } from '@/shared/utils/date-parsing';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 import { RemindersStreamEvent, RemindersStreamService } from './reminders-stream.service';
@@ -147,17 +148,17 @@ export class RemindersComponent implements OnInit, OnDestroy {
 
   clearAllFilters(): void {
     let changed = false;
-    
+
     if (this.query() !== '') {
       this.query.set('');
       changed = true;
     }
-    
+
     if (this.statusFilter().length > 0) {
       this.statusFilter.set([]);
       changed = true;
     }
-    
+
     if (changed) {
       this.page.set(1);
       this.loadReminders();
@@ -386,7 +387,7 @@ export class RemindersComponent implements OnInit, OnDestroy {
   openEditDialog(reminder: ReminderItem): void {
     this.editingReminder.set(reminder);
     this.reminderForm.reset({
-      reminderDate: this.parseIsoDate(reminder.reminderDate),
+      reminderDate: parseIsoDate(reminder.reminderDate) ?? new Date(),
       reminderTime: this.normalizeTime(reminder.reminderTime),
       timezone: reminder.timezone || DEFAULT_TIMEZONE,
       userIds: [String(reminder.user)],
@@ -928,17 +929,5 @@ export class RemindersComponent implements OnInit, OnDestroy {
 
   private todayDate(): Date {
     return this.normalizeDateOnly(new Date());
-  }
-
-  private parseIsoDate(value: string): Date {
-    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!match) {
-      return new Date();
-    }
-
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    return new Date(year, month - 1, day);
   }
 }

@@ -2,126 +2,67 @@ import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { ApplicationDetailComponent } from './application-detail.component';
+import { DocumentUploadService } from './document-upload.service';
+import { PendingFieldPoller } from './pending-field-refresh.service';
+import { ApplicationWorkflowService } from './workflow.service';
 
-describe('ApplicationDetailComponent pending passport refresh', () => {
-  type ApplicationDetailHarness = any;
-
-  const createHarness = (): ApplicationDetailHarness => {
-    const component = Object.create(
-      ApplicationDetailComponent.prototype,
-    ) as ApplicationDetailHarness;
-
-    component.isBrowser = true;
-    component.pendingPassportRefreshEnabled = true;
-    component.pendingPassportRefreshAttempts = 0;
-    component.pendingPassportRefreshTimer = null;
-    component.pendingPassportRefreshMaxAttempts = 10;
-    component.pendingPassportRefreshIntervalMs = 25;
-    component.loadApplication = vi.fn();
-
-    component.parseDocumentNames =
-      ApplicationDetailComponent.prototype['parseDocumentNames'].bind(component);
-    component.getConfiguredDocumentNames =
-      ApplicationDetailComponent.prototype['getConfiguredDocumentNames'].bind(component);
-    component.isPassportConfigured =
-      ApplicationDetailComponent.prototype['isPassportConfigured'].bind(component);
-    component.hasPassportDocument =
-      ApplicationDetailComponent.prototype['hasPassportDocument'].bind(component);
-    component.clearPendingPassportRefresh =
-      ApplicationDetailComponent.prototype['clearPendingPassportRefresh'].bind(component);
-    component.schedulePendingPassportRefresh =
-      ApplicationDetailComponent.prototype['schedulePendingPassportRefresh'].bind(component);
-    component.handlePendingPassportRefresh =
-      ApplicationDetailComponent.prototype['handlePendingPassportRefresh'].bind(component);
-
-    return component;
+describe('PendingFieldPoller (passport channel)', () => {
+  const createPoller = () => {
+    const reloadFn = vi.fn();
+    const poller = new PendingFieldPoller({ maxAttempts: 10, intervalMs: 25 }, true);
+    poller.bindReload(reloadFn);
+    poller.start();
+    return { poller, reloadFn };
   };
 
-  it('schedules a silent reload when passport is configured but not yet present', () => {
+  it('schedules a silent reload when shouldContinue is true', () => {
     vi.useFakeTimers();
-    const component = createHarness();
+    const { poller, reloadFn } = createPoller();
 
-    component.handlePendingPassportRefresh(42, {
-      product: { requiredDocuments: 'Passport' },
-      documents: [],
-    });
-
+    poller.handleRefresh(42, true);
     vi.advanceTimersByTime(25);
 
-    expect(component.loadApplication).toHaveBeenCalledWith(42, { silent: true });
+    expect(reloadFn).toHaveBeenCalledWith(42);
     vi.useRealTimers();
   });
 
-  it('stops refreshing once the passport document exists', () => {
-    const component = createHarness();
+  it('stops polling when shouldContinue is false', () => {
+    const { poller, reloadFn } = createPoller();
 
-    component.handlePendingPassportRefresh(42, {
-      product: { requiredDocuments: 'Passport' },
-      documents: [{ docType: { name: 'Passport' } }],
-    });
+    poller.handleRefresh(42, false);
 
-    expect(component.pendingPassportRefreshEnabled).toBe(false);
-    expect(component.loadApplication).not.toHaveBeenCalled();
+    expect(poller.enabled()).toBe(false);
+    expect(reloadFn).not.toHaveBeenCalled();
   });
 });
 
-describe('ApplicationDetailComponent pending due date refresh', () => {
-  type ApplicationDetailHarness = any;
-
-  const createHarness = (): ApplicationDetailHarness => {
-    const component = Object.create(
-      ApplicationDetailComponent.prototype,
-    ) as ApplicationDetailHarness;
-
-    component.isBrowser = true;
-    component.pendingDueDateRefreshEnabled = true;
-    component.pendingDueDateRefreshAttempts = 0;
-    component.pendingDueDateRefreshTimer = null;
-    component.pendingDueDateRefreshMaxAttempts = 8;
-    component.pendingDueDateRefreshIntervalMs = 25;
-    component.loadApplication = vi.fn();
-
-    component.clearPendingDueDateRefresh =
-      ApplicationDetailComponent.prototype['clearPendingDueDateRefresh'].bind(component);
-    component.shouldAwaitDueDateRefresh =
-      ApplicationDetailComponent.prototype['shouldAwaitDueDateRefresh'].bind(component);
-    component.schedulePendingDueDateRefresh =
-      ApplicationDetailComponent.prototype['schedulePendingDueDateRefresh'].bind(component);
-    component.handlePendingDueDateRefresh =
-      ApplicationDetailComponent.prototype['handlePendingDueDateRefresh'].bind(component);
-
-    return component;
+describe('PendingFieldPoller (due date channel)', () => {
+  const createPoller = () => {
+    const reloadFn = vi.fn();
+    const poller = new PendingFieldPoller({ maxAttempts: 8, intervalMs: 25 }, true);
+    poller.bindReload(reloadFn);
+    poller.start();
+    return { poller, reloadFn };
   };
 
-  it('schedules a silent reload when the submission date changed but the deadline is still missing', () => {
+  it('schedules a silent reload when shouldContinue is true', () => {
     vi.useFakeTimers();
-    const component = createHarness();
+    const { poller, reloadFn } = createPoller();
 
-    component.handlePendingDueDateRefresh(42, {
-      dueDate: null,
-      addDeadlinesToCalendar: true,
-      hasNextTask: true,
-      nextTask: { id: 15 },
-    });
-
+    poller.handleRefresh(42, true);
     vi.advanceTimersByTime(25);
 
-    expect(component.loadApplication).toHaveBeenCalledWith(42, { silent: true });
+    expect(reloadFn).toHaveBeenCalledWith(42);
     vi.useRealTimers();
   });
 
-  it('stops refreshing once the due date is present', () => {
-    const component = createHarness();
+  it('stops polling when shouldContinue is false', () => {
+    const { poller, reloadFn } = createPoller();
 
-    component.handlePendingDueDateRefresh(42, {
-      dueDate: '2026-03-31',
-      addDeadlinesToCalendar: true,
-      hasNextTask: true,
-      nextTask: { id: 15 },
-    });
+    poller.handleRefresh(42, false);
 
-    expect(component.pendingDueDateRefreshEnabled).toBe(false);
-    expect(component.loadApplication).not.toHaveBeenCalled();
+    expect(poller.enabled()).toBe(false);
+    expect(reloadFn).not.toHaveBeenCalled();
   });
 });
 
@@ -228,10 +169,17 @@ describe('ApplicationDetailComponent application partial updates', () => {
     component.editableNotes = { set: vi.fn() };
     component.toast = { success: vi.fn(), error: vi.fn() };
     component.loadApplication = vi.fn();
+
+    // Wire up pendingRefresh since updateApplicationPartial references it for docDate updates
+    const dueDatePoller = new PendingFieldPoller({ maxAttempts: 8, intervalMs: 400 }, false);
+    component.pendingRefresh = { dueDate: dueDatePoller };
+
     component.applyApplicationFromActionResponse =
       ApplicationDetailComponent.prototype['applyApplicationFromActionResponse'].bind(component);
     component.normalizeApplicationPayload =
       ApplicationDetailComponent.prototype['normalizeApplicationPayload'].bind(component);
+    component.shouldAwaitDueDateRefresh =
+      ApplicationDetailComponent.prototype['shouldAwaitDueDateRefresh'].bind(component);
     component.updateApplicationPartial =
       ApplicationDetailComponent.prototype['updateApplicationPartial'].bind(component);
     component.applicationsService = {
@@ -295,11 +243,6 @@ describe('ApplicationDetailComponent application partial updates', () => {
       },
     );
     component.isBrowser = true;
-    component.pendingDueDateRefreshEnabled = false;
-    component.pendingDueDateRefreshAttempts = 0;
-    component.pendingDueDateRefreshTimer = null;
-    component.pendingDueDateRefreshMaxAttempts = 8;
-    component.pendingDueDateRefreshIntervalMs = 25;
     component.isSavingMeta = Object.assign(
       vi.fn(() => false),
       {
@@ -309,14 +252,14 @@ describe('ApplicationDetailComponent application partial updates', () => {
     component.editableNotes = { set: vi.fn() };
     component.toast = { success: vi.fn(), error: vi.fn() };
     component.loadApplication = vi.fn();
-    component.clearPendingDueDateRefresh =
-      ApplicationDetailComponent.prototype['clearPendingDueDateRefresh'].bind(component);
+
+    // Wire up the PendingFieldRefreshService mock using real PendingFieldPoller
+    const dueDatePoller = new PendingFieldPoller({ maxAttempts: 8, intervalMs: 25 }, true);
+    dueDatePoller.bindReload((id) => component.loadApplication(id, { silent: true }));
+    component.pendingRefresh = { dueDate: dueDatePoller };
+
     component.shouldAwaitDueDateRefresh =
       ApplicationDetailComponent.prototype['shouldAwaitDueDateRefresh'].bind(component);
-    component.schedulePendingDueDateRefresh =
-      ApplicationDetailComponent.prototype['schedulePendingDueDateRefresh'].bind(component);
-    component.handlePendingDueDateRefresh =
-      ApplicationDetailComponent.prototype['handlePendingDueDateRefresh'].bind(component);
     component.applyApplicationFromActionResponse =
       ApplicationDetailComponent.prototype['applyApplicationFromActionResponse'].bind(component);
     component.normalizeApplicationPayload =
@@ -349,15 +292,13 @@ describe('ApplicationDetailComponent application partial updates', () => {
 
 describe('ApplicationDetailComponent validation extraction merge', () => {
   it('prefers freshly extracted doc number and expiration date over stale form values', () => {
-    const component = Object.create(ApplicationDetailComponent.prototype) as any;
-    component.extractValidationAutoFillFields =
-      ApplicationDetailComponent.prototype['extractValidationAutoFillFields'].bind(component);
-    component.mergeUploadFormWithValidationExtraction =
-      ApplicationDetailComponent.prototype['mergeUploadFormWithValidationExtraction'].bind(
-        component,
-      );
+    const service = Object.create(DocumentUploadService.prototype) as any;
+    service.extractValidationAutoFillFields =
+      DocumentUploadService.prototype['extractValidationAutoFillFields'].bind(service);
+    service.mergeUploadFormWithValidationExtraction =
+      DocumentUploadService.prototype['mergeUploadFormWithValidationExtraction'].bind(service);
 
-    const merged = component.mergeUploadFormWithValidationExtraction(
+    const merged = service.mergeUploadFormWithValidationExtraction(
       {
         docNumber: 'OLD-ITK-001',
         expirationDate: '2025-01-01',
@@ -378,26 +319,26 @@ describe('ApplicationDetailComponent validation extraction merge', () => {
   });
 
   it('patches extracted values into the upload form', () => {
-    const component = Object.create(ApplicationDetailComponent.prototype) as any;
-    component.parseApiDate = vi.fn((value: string | null) =>
+    const service = Object.create(DocumentUploadService.prototype) as any;
+    service.parseApiDate = vi.fn((value: string | null) =>
       value ? new Date(`${value}T00:00:00`) : null,
     );
-    component.uploadForm = {
+    service.uploadForm = {
       getRawValue: vi.fn(() => ({ details: '   ' })),
       patchValue: vi.fn(),
     };
-    component.extractValidationAutoFillFields =
-      ApplicationDetailComponent.prototype['extractValidationAutoFillFields'].bind(component);
-    component.applyValidationExtractionToUploadForm =
-      ApplicationDetailComponent.prototype['applyValidationExtractionToUploadForm'].bind(component);
+    service.extractValidationAutoFillFields =
+      DocumentUploadService.prototype['extractValidationAutoFillFields'].bind(service);
+    service.applyValidationExtractionToUploadForm =
+      DocumentUploadService.prototype['applyValidationExtractionToUploadForm'].bind(service);
 
-    component.applyValidationExtractionToUploadForm({
+    service.applyValidationExtractionToUploadForm({
       extracted_doc_number: 'ITK-2026-ABC',
       extracted_expiration_date: '2026-01-30',
       extracted_details_markdown: '## OCR details',
     });
 
-    expect(component.uploadForm.patchValue).toHaveBeenCalledWith({
+    expect(service.uploadForm.patchValue).toHaveBeenCalledWith({
       docNumber: 'ITK-2026-ABC',
       expirationDate: new Date('2026-01-30T00:00:00'),
       details: '## OCR details',
@@ -413,7 +354,7 @@ describe('ApplicationDetailComponent categorization progress messaging', () => {
   });
 });
 
-describe('ApplicationDetailComponent confirmForceClose', () => {
+describe('ApplicationWorkflowService confirmForceClose', () => {
   /**
    * Regression: forceClose was called with (id, app) — the app object was passed
    * as the second positional argument which the generated API client interprets as
@@ -421,17 +362,22 @@ describe('ApplicationDetailComponent confirmForceClose', () => {
    * The fix removes the spurious second argument so the call is forceClose(id) only.
    */
   const createHarness = () => {
-    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    const service = Object.create(ApplicationWorkflowService.prototype) as any;
 
-    component.application = vi.fn(() => ({ id: 327, status: 'pending', canForceClose: true }));
-    component.canForceClose = vi.fn(() => true);
-    component.workflowAction = { set: vi.fn() };
-    component.toast = { success: vi.fn(), error: vi.fn() };
-    component.loadApplication = vi.fn();
-    component.applyApplicationFromActionResponse = vi.fn(() => true);
-    component.patchForceCloseLocally = vi.fn(() => false);
-    component.applicationsService = {
+    const mockApp = { id: 327, status: 'pending', canForceClose: true };
+    service.applicationsService = {
       forceClose: vi.fn(() => of({ id: 327, status: 'completed' })),
+    };
+    service.toast = { success: vi.fn(), error: vi.fn() };
+    service.action = { set: vi.fn() };
+    service.WORKFLOW_TIMEZONE = 'Asia/Singapore';
+    service.host = {
+      application: vi.fn(() => mockApp),
+      loadApplication: vi.fn(),
+      applyApplicationFromActionResponse: vi.fn(() => true),
+      patchApplicationLocally: vi.fn(() => true),
+      displayDate: vi.fn((v: string) => v),
+      stayPermitSubmissionWindow: vi.fn(() => null),
     };
 
     // Suppress the browser confirm dialog — auto-confirm
@@ -440,10 +386,11 @@ describe('ApplicationDetailComponent confirmForceClose', () => {
       vi.fn(() => true),
     );
 
-    component.confirmForceClose =
-      ApplicationDetailComponent.prototype['confirmForceClose'].bind(component);
+    service.canForceClose = ApplicationWorkflowService.prototype.canForceClose.bind(service);
+    service.confirmForceClose =
+      ApplicationWorkflowService.prototype.confirmForceClose.bind(service);
 
-    return component;
+    return service;
   };
 
   afterEach(() => {
@@ -451,35 +398,35 @@ describe('ApplicationDetailComponent confirmForceClose', () => {
   });
 
   it('calls forceClose with only the application id — no second argument', () => {
-    const component = createHarness();
+    const service = createHarness();
 
-    component.confirmForceClose();
+    service.confirmForceClose();
 
-    expect(component.applicationsService.forceClose).toHaveBeenCalledTimes(1);
+    expect(service.applicationsService.forceClose).toHaveBeenCalledTimes(1);
     // Must be called with exactly one argument (the id). A second argument (e.g. the
     // application object) would be interpreted as the `observe` option and trigger
     // NG02809 "unhandled observe type [object Object]".
-    expect(component.applicationsService.forceClose).toHaveBeenCalledWith(327);
-    const callArgs: unknown[] = component.applicationsService.forceClose.mock.calls[0];
+    expect(service.applicationsService.forceClose).toHaveBeenCalledWith(327);
+    const callArgs: unknown[] = service.applicationsService.forceClose.mock.calls[0];
     expect(callArgs).toHaveLength(1);
   });
 
   it('shows a success toast and clears the workflow action after a successful force close', () => {
-    const component = createHarness();
+    const service = createHarness();
 
-    component.confirmForceClose();
+    service.confirmForceClose();
 
-    expect(component.toast.success).toHaveBeenCalledWith('Application force closed');
-    expect(component.workflowAction.set).toHaveBeenCalledWith(null);
+    expect(service.toast.success).toHaveBeenCalledWith('Application force closed');
+    expect(service.action.set).toHaveBeenCalledWith(null);
   });
 
   it('does nothing when the application is not force-closeable', () => {
-    const component = createHarness();
-    component.canForceClose = vi.fn(() => false);
+    const service = createHarness();
+    service.canForceClose = vi.fn(() => false);
 
-    component.confirmForceClose();
+    service.confirmForceClose();
 
-    expect(component.applicationsService.forceClose).not.toHaveBeenCalled();
-    expect(component.toast.error).toHaveBeenCalledWith('You cannot force close this application');
+    expect(service.applicationsService.forceClose).not.toHaveBeenCalled();
+    expect(service.toast.error).toHaveBeenCalledWith('You cannot force close this application');
   });
 });

@@ -8,14 +8,10 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule, Validators, type FormGroup } from '@angular/forms';
-import { Observable, Subscription, tap } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 
-import { AsyncJob, type CountryCode, type Customer } from '@/core/api';
+import { type CountryCode, type Customer } from '@/core/api';
 import { CustomersService } from '@/core/services/customers.service';
-import { JobService } from '@/core/services/job.service';
-import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service';
-import { SseService } from '@/core/services/sse.service';
-import { extractJobId } from '@/core/utils/async-job-contract';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardCheckboxComponent } from '@/shared/components/checkbox';
@@ -31,6 +27,7 @@ import {
   buildExistingDocumentPreview,
   buildLocalFilePreview,
 } from '@/shared/utils/document-preview-source';
+import { PassportOcrWorkflowService } from './passport-ocr-workflow.service';
 
 // Type definitions for DTOs
 interface CustomerCreateDto {
@@ -72,10 +69,6 @@ interface CustomerListNavigationState {
   page?: number | string;
 }
 
-interface AsyncJobResultPayload extends Record<string, unknown> {
-  errorMessage?: string;
-}
-
 /**
  * Customer form component
  *
@@ -106,15 +99,14 @@ interface AsyncJobResultPayload extends Record<string, unknown> {
   templateUrl: './customer-form.component.html',
   styleUrls: ['./customer-form.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [PassportOcrWorkflowService],
 })
 export class CustomerFormComponent
   extends BaseFormComponent<Customer, CustomerCreateDto, CustomerUpdateDto>
   implements OnInit
 {
   private readonly customersService = inject(CustomersService);
-  private readonly ocrService = inject(OcrService);
-  private readonly sseService = inject(SseService);
-  private readonly jobService = inject(JobService);
+  private readonly ocrWorkflow = inject(PassportOcrWorkflowService);
 
   // Customer-specific state
   readonly countries = signal<CountryCode[]>([]);
@@ -137,21 +129,21 @@ export class CustomerFormComponent
   readonly hasExistingPassportFile = computed(
     () => this.isEditMode() && !!this.customer()?.passportFile && !this.passportFile(),
   );
-  readonly passportPreviewUrl = signal<string | null>(null);
-  readonly passportPastePreviewUrl = signal<string | null>(null);
-  readonly passportPasteStatus = signal<string | null>(null);
-  readonly ocrUseAi = signal(true);
-  readonly ocrProcessing = signal(false);
-  readonly ocrMessage = signal<string | null>(null);
-  readonly ocrMessageTone = signal<'success' | 'warning' | 'error' | 'info' | null>(null);
-  readonly ocrData = signal<OcrStatusResponse | null>(null);
-  readonly passportMetadata = signal<Record<string, unknown> | null>(null);
+  // OCR signal proxies
+  readonly passportPreviewUrl = this.ocrWorkflow.passportPreviewUrl;
+  readonly passportPastePreviewUrl = this.ocrWorkflow.passportPastePreviewUrl;
+  readonly passportPasteStatus = this.ocrWorkflow.passportPasteStatus;
+  readonly ocrUseAi = this.ocrWorkflow.ocrUseAi;
+  readonly ocrProcessing = this.ocrWorkflow.ocrProcessing;
+  readonly ocrMessage = this.ocrWorkflow.ocrMessage;
+  readonly ocrMessageTone = this.ocrWorkflow.ocrMessageTone;
+  readonly ocrData = this.ocrWorkflow.ocrData;
+  readonly passportMetadata = this.ocrWorkflow.passportMetadata;
 
   // Customer reference for template compatibility
   readonly customer = signal<Customer | null>(null);
 
-  // OCR tracking
-  private pollSub: Subscription | null = null;
+  // Navigation tracking
   private previousUrl: string | null = null;
   private createdCustomerId: number | null = null;
 
@@ -346,10 +338,13 @@ export class CustomerFormComponent
     // Initial validation setup
     this.updateConditionalValidators(this.form.get('customer_type')?.value ?? 'person');
 
+    // Initialize OCR workflow with form reference
+    this.ocrWorkflow.init(this.form);
+
     // Cleanup on destroy
     this.destroyRef.onDestroy(() => {
       this.clearPassportFilePreview();
-      this.clearOcrAsyncTracking();
+      this.ocrWorkflow.destroy();
     });
   }
 
@@ -456,9 +451,7 @@ export class CustomerFormComponent
   onPassportFileSelected(file: File): void {
     this.setPassportFilePreview(file);
     this.passportFile.set(file);
-    this.passportPreviewUrl.set(null);
-    this.ocrMessage.set(null);
-    this.ocrMessageTone.set(null);
+    this.ocrWorkflow.clearState();
   }
 
   /**
@@ -467,9 +460,7 @@ export class CustomerFormComponent
   onPassportFileCleared(): void {
     this.clearPassportFilePreview();
     this.passportFile.set(null);
-    this.passportPreviewUrl.set(null);
-    this.ocrMessage.set(null);
-    this.ocrMessageTone.set(null);
+    this.ocrWorkflow.clearState();
   }
 
   /**
@@ -495,12 +486,12 @@ export class CustomerFormComponent
         }
         const reader = new FileReader();
         reader.onload = () => {
-          this.passportPastePreviewUrl.set(String(reader.result));
+          this.ocrWorkflow.passportPastePreviewUrl.set(String(reader.result));
         };
         reader.readAsDataURL(file);
-        this.passportPasteStatus.set('Uploading...');
+        this.ocrWorkflow.passportPasteStatus.set('Uploading...');
         this.passportFile.set(file);
-        this.runPassportImport(file);
+        this.ocrWorkflow.startImport(file);
         event.preventDefault();
         break;
       }
@@ -512,7 +503,7 @@ export class CustomerFormComponent
    */
   onToggleUseAi(event: Event): void {
     const target = event.target as HTMLInputElement | null;
-    this.ocrUseAi.set(Boolean(target?.checked));
+    this.ocrWorkflow.toggleUseAi(Boolean(target?.checked));
   }
 
   /**
@@ -525,11 +516,11 @@ export class CustomerFormComponent
     }
     const file = this.passportFile();
     if (!file) {
-      this.ocrMessage.set('No file selected');
-      this.ocrMessageTone.set('error');
+      this.ocrWorkflow.ocrMessage.set('No file selected');
+      this.ocrWorkflow.ocrMessageTone.set('error');
       return;
     }
-    this.runPassportImport(file);
+    this.ocrWorkflow.startImport(file);
   }
 
   /**
@@ -692,214 +683,6 @@ export class CustomerFormComponent
       const filename = withoutQuery.split('/').pop() ?? '';
       return decodeURIComponent(filename) || 'passport-file';
     }
-  }
-
-  private runPassportImport(file: File): void {
-    this.clearOcrAsyncTracking();
-    this.ocrProcessing.set(true);
-    this.ocrMessage.set(this.ocrUseAi() ? 'Processing with AI...' : 'Processing...');
-    this.ocrMessageTone.set('info');
-
-    this.ocrService
-      .startPassportOcr(file, {
-        useAi: this.ocrUseAi(),
-        saveSession: true,
-        previewWidth: 500,
-      })
-      .subscribe({
-        next: (response) => {
-          const jobId = extractJobId(response);
-          if (jobId && typeof jobId === 'string') {
-            this.subscribeToOcrStream(jobId);
-            return;
-          }
-          this.handleOcrResult(response as OcrStatusResponse);
-        },
-        error: (error) => {
-          this.ocrProcessing.set(false);
-          this.ocrMessage.set(this.extractOcrError(error) ?? 'Upload failed');
-          this.ocrMessageTone.set('error');
-        },
-      });
-  }
-
-  private subscribeToOcrStream(jobId: string): void {
-    this.clearOcrAsyncTracking();
-
-    this.pollSub = this.jobService.watchJob(jobId).subscribe({
-      next: (jobStatus: AsyncJob) => {
-        if (jobStatus.status === 'completed') {
-          // Job is complete, get the final result mapping it as OcrStatusResponse
-          const jobResult = (jobStatus.result as AsyncJobResultPayload) || {};
-          const result: OcrStatusResponse = {
-            ...jobResult,
-            status: 'completed',
-            jobId: jobStatus.jobId,
-          };
-          this.handleOcrResult(result);
-          this.clearOcrAsyncTracking();
-          return;
-        }
-
-        if (jobStatus.status === 'failed') {
-          this.clearOcrAsyncTracking();
-          this.ocrProcessing.set(false);
-          const jobResult = (jobStatus.result as AsyncJobResultPayload) || {};
-          this.ocrMessage.set(
-            typeof jobResult.errorMessage === 'string' ? jobResult.errorMessage : 'OCR failed',
-          );
-          this.ocrMessageTone.set('error');
-          return;
-        }
-
-        if (typeof jobStatus.progress === 'number') {
-          this.ocrMessage.set(`Processing... ${jobStatus.progress}%`);
-        } else {
-          this.ocrMessage.set('Processing...');
-        }
-        this.ocrMessageTone.set('info');
-      },
-      error: (error: unknown) => {
-        this.pollSub = null;
-        this.ocrProcessing.set(false);
-        this.ocrMessage.set(this.extractOcrError(error) || 'Realtime OCR updates failed');
-        this.ocrMessageTone.set('error');
-      },
-      complete: () => {
-        this.pollSub = null;
-      },
-    });
-  }
-
-  private clearOcrAsyncTracking(): void {
-    if (this.pollSub) {
-      this.pollSub.unsubscribe();
-      this.pollSub = null;
-    }
-  }
-
-  private handleOcrResult(status: OcrStatusResponse): void {
-    this.clearOcrAsyncTracking();
-    this.ocrProcessing.set(false);
-    this.ocrData.set(status);
-
-    const mrz = status.mrzData as NonNullable<OcrStatusResponse['mrzData']> | undefined;
-    if (!mrz) {
-      this.ocrMessage.set('OCR completed but no data was extracted');
-      this.ocrMessageTone.set('error');
-      return;
-    }
-
-    const confidence =
-      this.getMrzValue<number>(mrz, 'aiConfidenceScore', 'ai_confidence_score') ?? null;
-    const aiWarning = status.aiWarning || null;
-    const hasMismatches =
-      this.getMrzValue<boolean>(mrz, 'hasMismatches', 'has_mismatches') ?? false;
-    const mismatchSummary =
-      this.getMrzValue<string>(mrz, 'mismatchSummary', 'mismatch_summary') ??
-      'Field mismatches detected.';
-    const extractionMethod = this.getMrzValue<string>(mrz, 'extractionMethod', 'extraction_method');
-
-    if (aiWarning) {
-      this.ocrMessage.set(`OCR completed with warning: ${aiWarning}`);
-      this.ocrMessageTone.set('warning');
-    } else if (hasMismatches) {
-      this.ocrMessage.set(
-        `Data imported with warnings. ${mismatchSummary}` +
-          (confidence !== null ? ` (confidence ${(confidence * 100).toFixed(0)}%)` : ''),
-      );
-      this.ocrMessageTone.set('warning');
-    } else if (extractionMethod === 'ai_only' && confidence !== null) {
-      this.ocrMessage.set(
-        `Data imported via AI (Passport OCR failed, confidence ${(confidence * 100).toFixed(0)}%)`,
-      );
-      this.ocrMessageTone.set('success');
-    } else if (extractionMethod === 'hybridMrzAi' && confidence !== null) {
-      this.ocrMessage.set(
-        `Data imported via OCR + AI (confidence ${(confidence * 100).toFixed(0)}%)`,
-      );
-      this.ocrMessageTone.set('success');
-    } else {
-      this.ocrMessage.set('Data successfully imported via OCR');
-      this.ocrMessageTone.set('success');
-    }
-
-    const previewImage = status.b64ResizedImage;
-    const previewUrl = status.previewUrl;
-    if (previewUrl) {
-      this.passportPreviewUrl.set(previewUrl);
-    } else if (previewImage) {
-      this.passportPreviewUrl.set(`data:image/jpeg;base64,${previewImage}`);
-    }
-
-    this.passportMetadata.set(mrz as unknown as Record<string, unknown>);
-    this.patchFormFromMrz(mrz);
-    this.passportPasteStatus.set(null);
-  }
-
-  private patchFormFromMrz(mrz: NonNullable<OcrStatusResponse['mrzData']>): void {
-    const titleValue = mrz.sex === 'M' ? 'Mr' : mrz.sex === 'F' ? 'Ms' : '';
-
-    this.form.patchValue({
-      first_name: this.getMrzValue(mrz, 'names') ?? this.form.get('first_name')?.value,
-      last_name: this.getMrzValue(mrz, 'surname') ?? this.form.get('last_name')?.value,
-      gender: this.getMrzValue(mrz, 'sex') ?? this.form.get('gender')?.value,
-      title: titleValue || this.form.get('title')?.value,
-      nationality: this.getMrzValue(mrz, 'nationality') ?? this.form.get('nationality')?.value,
-      birthdate:
-        this.parseDate(this.getMrzValue(mrz, 'dateOfBirthYyyyMmDd', 'date_of_birth_yyyy_mm_dd')) ??
-        this.form.get('birthdate')?.value,
-      birth_place:
-        this.getMrzValue(mrz, 'birthPlace', 'birth_place') ?? this.form.get('birth_place')?.value,
-      passport_number: this.getMrzValue(mrz, 'number') ?? this.form.get('passport_number')?.value,
-      passport_issue_date:
-        this.parseDate(
-          this.getMrzValue(mrz, 'passportIssueDate', 'passport_issue_date') ??
-            this.getMrzValue(mrz, 'issueDateYyyyMmDd', 'issue_date_yyyy_mm_dd'),
-        ) ?? this.form.get('passport_issue_date')?.value,
-      passport_expiration_date:
-        this.parseDate(
-          this.getMrzValue(mrz, 'expirationDateYyyyMmDd', 'expiration_date_yyyy_mm_dd'),
-        ) ?? this.form.get('passport_expiration_date')?.value,
-      address_abroad:
-        this.getMrzValue(mrz, 'addressAbroad', 'address_abroad') ??
-        this.form.get('address_abroad')?.value,
-    });
-  }
-
-  private getMrzValue<T = string>(
-    mrz: NonNullable<OcrStatusResponse['mrzData']>,
-    camelKey: string,
-    snakeKey?: string,
-  ): T | undefined {
-    const record = mrz as Record<string, unknown>;
-    if (record[camelKey] !== undefined) {
-      return record[camelKey] as T;
-    }
-    if (snakeKey && record[snakeKey] !== undefined) {
-      return record[snakeKey] as T;
-    }
-    return undefined;
-  }
-
-  private parseDate(value?: string | null): Date | null {
-    if (!value) {
-      return null;
-    }
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  private extractOcrError(error: unknown): string | null {
-    if (!error || typeof error !== 'object') {
-      return null;
-    }
-    const message = (error as { message?: string }).message;
-    if (message) {
-      return message;
-    }
-    const errorMessage = (error as { error?: string }).error;
-    return errorMessage ?? null;
   }
 
   private passportDatesValidator(

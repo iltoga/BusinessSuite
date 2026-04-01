@@ -161,8 +161,9 @@ from api.serializers.doc_application_serializer import DocApplicationListSeriali
 class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [filters.OrderingFilter]
     search_fields = [
+        "id",
         "product__name",
         "product__code",
         "customer__first_name",
@@ -199,6 +200,10 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if self.action == "list":
             queryset = queryset.filter(product__uses_customer_app_workflow=True)
 
+        query = self.request.query_params.get("search") or self.request.query_params.get("q")
+        if query:
+            queryset = queryset.search_doc_applications(query)
+
         # Detail responses can derive completion state from prefetched documents,
         # so skip aggregate annotations to keep the base query lighter.
         if self.action != "retrieve":
@@ -210,6 +215,20 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
 
         return queryset
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="search",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Search applications by customer, product, dates, or full application ID such as #329.",
+            )
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     def get_serializer_class(self):
         # Use specialized serializer for create/update actions

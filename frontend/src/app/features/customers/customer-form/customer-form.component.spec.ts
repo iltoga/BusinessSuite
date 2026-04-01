@@ -1,87 +1,90 @@
 import { signal } from '@angular/core';
-import { of, Subject, throwError } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { type AsyncJob } from '@/core/api';
 import { type OcrStatusResponse } from '@/core/services/ocr.service';
 
 import { CustomerFormComponent } from './customer-form.component';
+import { PassportOcrWorkflowService } from './passport-ocr-workflow.service';
 
-describe('CustomerFormComponent OCR flow', () => {
-  // use `any` to avoid TS errors when patching private/readonly fields
-  type CustomerFormHarness = any;
+describe('PassportOcrWorkflowService OCR flow', () => {
+  type ServiceHarness = any;
 
-  const createHarness = (): CustomerFormHarness => {
-    const component = Object.create(CustomerFormComponent.prototype) as CustomerFormHarness;
+  const createHarness = (): ServiceHarness => {
+    const service = Object.create(PassportOcrWorkflowService.prototype) as ServiceHarness;
 
-    (component as any).ocrUseAi = signal(true);
-    (component as any).ocrProcessing = signal(false);
-    (component as any).ocrMessage = signal<string | null>(null);
-    (component as any).ocrMessageTone = signal<'success' | 'warning' | 'error' | 'info' | null>(
-      null,
-    );
-    (component as any).ocrData = signal<OcrStatusResponse | null>(null);
-    (component as any).passportPreviewUrl = signal<string | null>(null);
-    (component as any).passportPasteStatus = signal<string | null>(null);
-    (component as any).passportMetadata = signal<Record<string, unknown> | null>(null);
-    (component as any).pollSub = null;
-    
-    (component as any).ocrService = {
+    service.ocrUseAi = signal(true);
+    service.ocrProcessing = signal(false);
+    service.ocrMessage = signal<string | null>(null);
+    service.ocrMessageTone = signal<'success' | 'warning' | 'error' | 'info' | null>(null);
+    service.ocrData = signal<OcrStatusResponse | null>(null);
+    service.passportPreviewUrl = signal<string | null>(null);
+    service.passportPasteStatus = signal<string | null>(null);
+    service.passportMetadata = signal<Record<string, unknown> | null>(null);
+    service.pollSub = null;
+
+    service.ocrService = {
       startPassportOcr: vi.fn(),
     };
-    (component as any).jobService = {
+    service.jobService = {
       watchJob: vi.fn(),
     };
 
-    (component as any).extractOcrError = vi.fn().mockReturnValue('Upload failed');
-    (component as any).handleOcrResult = vi.fn();
-    (component as any).clearOcrAsyncTracking =
-      CustomerFormComponent.prototype['clearOcrAsyncTracking'].bind(component);
+    service.extractOcrError = vi.fn().mockReturnValue('Upload failed');
+    service.handleOcrResult = vi.fn();
+    service.clearAsyncTracking =
+      PassportOcrWorkflowService.prototype['clearAsyncTracking'].bind(service);
 
-    return component;
+    return service;
   };
 
   it('subscribes to job updates via jobService when an OCR job starts', () => {
-    const component = createHarness();
+    const service = createHarness();
     const subscribeToOcrStream = vi
-      .spyOn(component as any, 'subscribeToOcrStream')
+      .spyOn(service as any, 'subscribeToOcrStream')
       .mockImplementation(() => undefined);
     const file = new File(['passport'], 'passport.png', { type: 'image/png' });
 
-    (component as any).ocrService.startPassportOcr.mockReturnValue(
+    service.ocrService.startPassportOcr.mockReturnValue(
       of({
         jobId: 'job-1',
         status: 'queued',
       }),
     );
 
-    (component as any)['runPassportImport'](file);
+    service.startImport(file);
 
     expect(subscribeToOcrStream).toHaveBeenCalledWith('job-1');
-    expect(component.handleOcrResult).not.toHaveBeenCalled();
+    expect(service.handleOcrResult).not.toHaveBeenCalled();
   });
 
   it('handles job failure appropriately', () => {
-    const component = createHarness();
+    const service = createHarness();
     const stream$ = new Subject<AsyncJob>();
 
-    component.ocrProcessing.set(true);
-    (component as any).jobService.watchJob.mockReturnValue(stream$);
+    service.ocrProcessing.set(true);
+    service.jobService.watchJob.mockReturnValue(stream$);
 
-    component['subscribeToOcrStream']('job-1');
-    stream$.next({ status: 'failed', progress: 100, jobId: 'job-1', errorMessage: 'Realtime OCR failed' } as unknown as AsyncJob);
+    service['subscribeToOcrStream']('job-1');
+    stream$.next({
+      status: 'failed',
+      progress: 100,
+      jobId: 'job-1',
+      errorMessage: 'Realtime OCR failed',
+    } as unknown as AsyncJob);
 
-    expect(component.ocrProcessing()).toBe(false);
+    expect(service.ocrProcessing()).toBe(false);
   });
 
   it('uses realtime stream updates as the primary path to completion', () => {
-    const component = createHarness();
+    const service = createHarness();
     const stream$ = new Subject<AsyncJob>();
 
-    component.ocrProcessing.set(true);
-    (component as any).jobService.watchJob.mockReturnValue(stream$);
+    service.ocrProcessing.set(true);
+    service.jobService.watchJob.mockReturnValue(stream$);
 
-    component['subscribeToOcrStream']('job-1');
+    service['subscribeToOcrStream']('job-1');
     stream$.next({ status: 'processing', progress: 55, jobId: 'job-1' } as unknown as AsyncJob);
     stream$.next({
       status: 'completed',
@@ -90,12 +93,12 @@ describe('CustomerFormComponent OCR flow', () => {
       result: { number: 'X123' },
     } as unknown as AsyncJob);
 
-    expect(component.handleOcrResult).toHaveBeenCalledWith(
+    expect(service.handleOcrResult).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'completed',
         jobId: 'job-1',
         number: 'X123',
-      })
+      }),
     );
   });
 });

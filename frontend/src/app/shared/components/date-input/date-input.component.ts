@@ -19,8 +19,7 @@ import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { ZardInputGroupComponent } from '@/shared/components/input-group';
 import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
-
-type SupportedDateFormat = 'dd-MM-yyyy' | 'yyyy-MM-dd' | 'dd/MM/yyyy' | 'MM/dd/yyyy';
+import { normalizeDateFormat, type SupportedDateFormat } from '@/shared/utils/date-parsing';
 
 @Component({
   selector: 'z-date-input',
@@ -105,7 +104,7 @@ export class ZardDateInputComponent implements ControlValueAccessor {
 
   private inputValue = signal<string>('');
   private readonly configuredDateFormat = computed<SupportedDateFormat>(() =>
-    this.normalizeDateFormat(this.configService.config().dateFormat),
+    normalizeDateFormat(this.configService.config().dateFormat),
   );
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -239,14 +238,6 @@ export class ZardDateInputComponent implements ControlValueAccessor {
 
   setDisabledState(isDisabled: boolean): void {
     this.disabled.set(isDisabled);
-  }
-
-  private normalizeDateFormat(format: string | null | undefined): SupportedDateFormat {
-    const normalized = (format ?? '').trim();
-    if (normalized === 'yyyy-MM-dd') return 'yyyy-MM-dd';
-    if (normalized === 'dd/MM/yyyy') return 'dd/MM/yyyy';
-    if (normalized === 'MM/dd/yyyy') return 'MM/dd/yyyy';
-    return 'dd-MM-yyyy';
   }
 
   private toPlaceholder(format: SupportedDateFormat): string {

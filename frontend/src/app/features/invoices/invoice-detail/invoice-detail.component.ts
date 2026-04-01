@@ -1,4 +1,4 @@
-import { formatDate } from '@angular/common';
+import { formatDate as angularFormatDate } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -31,6 +31,7 @@ import { CardSkeletonComponent, ZardSkeletonComponent } from '@/shared/component
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { BaseDetailComponent, BaseDetailConfig } from '@/shared/core/base-detail.component';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import { formatDateForDisplay } from '@/shared/utils/date-parsing';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { PaymentModalComponent } from '../payment-modal/payment-modal.component';
 
@@ -100,7 +101,7 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
     }
 
     const amount = this.formatCurrency(payment.amount);
-    const date = this.formatDateForDisplay(payment.paymentDate);
+    const date = this.displayDate(payment.paymentDate);
     return `Delete payment of ${amount} dated ${date}? This will update invoice totals.`;
   });
 
@@ -440,57 +441,14 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
   }
 
   /**
-   * Format date for display
+   * Format date for display — delegates to shared utility
    */
-  private formatDateForDisplay(value: string | null | undefined): string {
-    if (!value) {
-      return '—';
-    }
-    const parsed = this.parseApiDate(value);
-    if (!parsed) {
-      return value;
-    }
-    return formatDate(
-      parsed,
-      this.normalizeDateFormat(this.configService.settings.dateFormat),
+  private displayDate(value: string | null | undefined): string {
+    return formatDateForDisplay(
+      value,
+      angularFormatDate,
+      this.configService.settings.dateFormat,
       this.locale,
     );
-  }
-
-  /**
-   * Parse API date
-   */
-  private parseApiDate(value: string): Date | null {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return null;
-    }
-    const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    if (!match) {
-      const parsed = new Date(trimmed);
-      if (Number.isNaN(parsed.getTime())) {
-        return null;
-      }
-      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-    }
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    const date = new Date(year, month - 1, day);
-    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-      return null;
-    }
-    return date;
-  }
-
-  /**
-   * Normalize date format
-   */
-  private normalizeDateFormat(format: string | null | undefined): string {
-    const normalized = (format ?? '').trim();
-    if (['dd-MM-yyyy', 'yyyy-MM-dd', 'dd/MM/yyyy', 'MM/dd/yyyy'].includes(normalized)) {
-      return normalized;
-    }
-    return 'dd-MM-yyyy';
   }
 }

@@ -20,7 +20,6 @@ import {
 } from '@/core/services/desktop-bridge.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { createAsyncRequestMetadata } from '@/core/utils/request-metadata';
-import { unwrapApiRecord } from '@/core/utils/api-envelope';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -38,121 +37,29 @@ import {
   MediaCleanupStreamEvent,
   ServerManagementMediaCleanupStreamService,
 } from './server-management-media-cleanup-stream.service';
-
-interface MediaDiagnosticResult {
-  model: string;
-  id: number;
-  field: string;
-  path: string;
-  absPath: string;
-  exists: boolean;
-  url: string;
-  fileLink?: string;
-  discrepancy: boolean;
-}
-
-interface ServerSettings {
-  mediaRoot: string;
-  mediaUrl: string;
-  debug: boolean;
-}
-
-interface CacheStatusResponse {
-  enabled: boolean;
-  version: number;
-  message: string;
-  cacheBackend?: string;
-  cacheLocation?: string;
-  globalEnabled?: boolean;
-  userEnabled?: boolean;
-}
-
-interface CacheHealthResponse {
-  ok: boolean;
-  message: string;
-  checkedAt: string;
-  cacheBackend: string;
-  cacheLocation: string;
-  redisConfigured: boolean;
-  redisConnected: boolean | null;
-  userCacheEnabled?: boolean;
-  probeSkipped?: boolean;
-  writeReadDeleteOk: boolean | null;
-  probeLatencyMs: number;
-  errors: string[];
-}
-
-interface LocalResilienceSettingsResponse {
-  enabled: boolean;
-  encryptionRequired: boolean;
-  desktopMode: 'localPrimary' | 'remotePrimary' | string;
-  vaultEpoch: number;
-  updatedAt?: string;
-  updatedBy?: {
-    id: number;
-    username?: string | null;
-    email?: string | null;
-  } | null;
-}
-
-interface UiSettingsResponse {
-  useOverlayMenu: boolean;
-  updatedAt?: string;
-  updatedBy?: {
-    id: number;
-    username?: string | null;
-    email?: string | null;
-  } | null;
-}
-
-interface ServerActionResponse {
-  ok: boolean;
-  message: string;
-}
-
-interface MediaDiagnosticResponse {
-  ok: boolean;
-  message: string;
-  results: MediaDiagnosticResult[];
-  settings: ServerSettings | null;
-}
-
-interface MediaRepairResponse {
-  ok: boolean;
-  message: string;
-  repairs: string[];
-}
-
-interface MediaCleanupFile {
-  path: string;
-  sizeBytes?: number;
-}
-
-interface MediaCleanupResult {
-  ok: boolean;
-  message: string;
-  dryRun: boolean;
-  prefixes: string[];
-  scannedFiles: number;
-  referencedFiles: number;
-  orphanedFiles: number;
-  deletedFiles: number;
-  totalOrphanBytes: number;
-  files: MediaCleanupFile[];
-  errors: string[];
-  storageBackend?: string;
-  storageProvider?: string;
-}
-
-interface MediaCleanupResponse {
-  ok: boolean;
-  message: string;
-  cleanup: MediaCleanupResult | null;
-}
-
-interface VaultResetResponse extends ServerActionResponse {
-  vaultEpoch?: number;
-}
+import {
+  CacheHealthResponse,
+  CacheStatusResponse,
+  LocalResilienceSettingsResponse,
+  MediaCleanupFile,
+  MediaCleanupResult,
+  MediaDiagnosticResult,
+  normalizeCacheHealth,
+  normalizeCacheStatus,
+  normalizeLocalResilience,
+  normalizeMediaCleanupFile,
+  normalizeMediaCleanupResult,
+  normalizeMediaDiagnosticResponse,
+  normalizeMediaRepairResponse,
+  normalizeServerActionResponse,
+  normalizeUiSettings,
+  normalizeVaultResetResponse,
+  ServerActionResponse,
+  ServerSettings,
+  toOptionalNumber,
+  toOptionalString,
+  UiSettingsResponse,
+} from './server-management-normalizers';
 
 type ServerActionName = 'clearCache' | 'mediaDiagnostic' | 'mediaRepair' | 'mediaCleanup';
 
@@ -164,8 +71,8 @@ type ServerActionName = 'clearCache' | 'mediaDiagnostic' | 'mediaRepair' | 'medi
     ZardButtonComponent,
     ZardBadgeComponent,
     ServerManagementAiWorkflowComponent,
-    ...ZardTooltipImports
-],
+    ...ZardTooltipImports,
+  ],
   templateUrl: './server-management.component.html',
   styleUrls: ['./server-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -251,7 +158,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.finishServerAction('clearCache')),
       )
       .subscribe((response) => {
-        const normalized = this.normalizeServerActionResponse(response);
+        const normalized = normalizeServerActionResponse(response);
         if (normalized.ok) {
           this.toast.success(normalized.message || 'Cache cleared successfully');
           this.loadCacheHealth();
@@ -273,7 +180,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.cacheLoading.set(false)),
       )
       .subscribe((response) => {
-        this.cacheStatus.set(this.normalizeCacheStatus(response));
+        this.cacheStatus.set(normalizeCacheStatus(response));
       });
   }
 
@@ -298,7 +205,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.cacheLoading.set(false)),
       )
       .subscribe((response) => {
-        const normalized = this.normalizeCacheStatus(response);
+        const normalized = normalizeCacheStatus(response);
         this.cacheStatus.set(normalized);
         this.toast.success(normalized.message);
         this.loadCacheHealth();
@@ -317,7 +224,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.cacheLoading.set(false)),
       )
       .subscribe((response) => {
-        const normalized = this.normalizeServerActionResponse(response);
+        const normalized = normalizeServerActionResponse(response);
         if (normalized.ok) {
           this.toast.success(normalized.message || 'Cache cleared');
         } else {
@@ -345,7 +252,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.localResilienceLoading.set(false)),
       )
       .subscribe((response) => {
-        this.localResilience.set(this.normalizeLocalResilience(response));
+        this.localResilience.set(normalizeLocalResilience(response));
       });
   }
 
@@ -368,7 +275,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.localResilienceSaving.set(false)),
       )
       .subscribe((response) => {
-        const normalized = this.normalizeLocalResilience(response);
+        const normalized = normalizeLocalResilience(response);
         this.localResilience.set(normalized);
         this.toast.success(
           normalized.enabled ? 'Local resilience enabled' : 'Local resilience disabled',
@@ -392,7 +299,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.localResilienceSaving.set(false)),
       )
       .subscribe((response) => {
-        const payload = this.normalizeVaultResetResponse(response);
+        const payload = normalizeVaultResetResponse(response);
         if (!payload.ok) {
           this.toast.error(payload.message || 'Failed to reset local media vault');
           return;
@@ -512,7 +419,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.uiSettingsLoading.set(false)),
       )
       .subscribe((response) => {
-        this.uiSettings.set(this.normalizeUiSettings(response));
+        this.uiSettings.set(normalizeUiSettings(response));
       });
   }
 
@@ -648,7 +555,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.uiSettingsSaving.set(false)),
       )
       .subscribe((response) => {
-        const normalized = this.normalizeUiSettings(response);
+        const normalized = normalizeUiSettings(response);
         this.uiSettings.set(normalized);
         this.toast.success(
           normalized.useOverlayMenu
@@ -670,7 +577,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.cacheHealthLoading.set(false)),
       )
       .subscribe((response) => {
-        const normalized = this.normalizeCacheHealth(response);
+        const normalized = normalizeCacheHealth(response);
         this.cacheHealth.set(normalized);
         if (showToast) {
           const userCacheIsDisabled =
@@ -708,7 +615,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.finishServerAction('mediaDiagnostic')),
       )
       .subscribe((response) => {
-        const normalized = this.normalizeMediaDiagnosticResponse(response);
+        const normalized = normalizeMediaDiagnosticResponse(response);
         if (normalized.ok) {
           this.diagnosticResults.set(normalized.results);
           this.serverSettings.set(normalized.settings);
@@ -751,7 +658,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.finishServerAction('mediaRepair')),
       )
       .subscribe((response) => {
-        const normalized = this.normalizeMediaRepairResponse(response);
+        const normalized = normalizeMediaRepairResponse(response);
         if (normalized.ok) {
           this.repairResults.set(normalized.repairs);
 
@@ -793,7 +700,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
 
   private handleMediaCleanupStreamEvent(event: MediaCleanupStreamEvent): void {
     if (event.cleanup) {
-      const normalizedCleanup = this.normalizeMediaCleanupResult(event.cleanup);
+      const normalizedCleanup = normalizeMediaCleanupResult(event.cleanup);
       if (normalizedCleanup) {
         this.cleanupResult.set(normalizedCleanup);
       }
@@ -829,29 +736,29 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
   private applyMediaCleanupProgress(event: MediaCleanupStreamEvent): void {
     const current = this.cleanupResult() ?? this.createCleanupProgressState(Boolean(event.dryRun));
     const nextFiles = [...current.files];
-    const foundFile = this.normalizeMediaCleanupFile(event.file);
+    const foundFile = normalizeMediaCleanupFile(event.file);
     if (foundFile && !nextFiles.some((entry) => entry.path === foundFile.path)) {
       nextFiles.push(foundFile);
     }
 
     this.cleanupResult.set({
       ...current,
-      message: this.toOptionalString(event.message) ?? current.message,
+      message: toOptionalString(event.message) ?? current.message,
       dryRun: Boolean(event.dryRun ?? current.dryRun),
       prefixes: Array.isArray(event.prefixes)
         ? event.prefixes.map((entry) => String(entry))
         : current.prefixes,
-      scannedFiles: this.toOptionalNumber(event.scannedFiles) ?? current.scannedFiles,
-      referencedFiles: this.toOptionalNumber(event.referencedFiles) ?? current.referencedFiles,
-      orphanedFiles: this.toOptionalNumber(event.orphanedFiles) ?? current.orphanedFiles,
-      deletedFiles: this.toOptionalNumber(event.deletedFiles) ?? current.deletedFiles,
-      totalOrphanBytes: this.toOptionalNumber(event.totalOrphanBytes) ?? current.totalOrphanBytes,
+      scannedFiles: toOptionalNumber(event.scannedFiles) ?? current.scannedFiles,
+      referencedFiles: toOptionalNumber(event.referencedFiles) ?? current.referencedFiles,
+      orphanedFiles: toOptionalNumber(event.orphanedFiles) ?? current.orphanedFiles,
+      deletedFiles: toOptionalNumber(event.deletedFiles) ?? current.deletedFiles,
+      totalOrphanBytes: toOptionalNumber(event.totalOrphanBytes) ?? current.totalOrphanBytes,
       errors: Array.isArray(event.errors)
         ? event.errors.map((entry) => String(entry))
         : current.errors,
       files: nextFiles,
-      storageBackend: this.toOptionalString(event.storage?.backend) ?? current.storageBackend,
-      storageProvider: this.toOptionalString(event.storage?.provider) ?? current.storageProvider,
+      storageBackend: toOptionalString(event.storage?.backend) ?? current.storageBackend,
+      storageProvider: toOptionalString(event.storage?.provider) ?? current.storageProvider,
     });
   }
 
@@ -918,218 +825,4 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
     return this.aiWorkflowFacade.getFailoverProviderStatus(provider);
   }
 
-  private normalizeLocalResilience(raw: unknown): LocalResilienceSettingsResponse {
-    const source = this.toRecord(raw);
-    return {
-      enabled: Boolean(source?.['enabled']),
-      encryptionRequired: Boolean(source?.['encryptionRequired'] ?? true),
-      desktopMode: String(source?.['desktopMode'] ?? 'localPrimary'),
-      vaultEpoch: Number(source?.['vaultEpoch'] ?? 1),
-      updatedAt: this.toOptionalString(source?.['updatedAt']),
-      updatedBy: this.toRecord(source?.['updatedBy']) as
-        | LocalResilienceSettingsResponse['updatedBy']
-        | null,
-    };
-  }
-
-  private normalizeUiSettings(raw: unknown): UiSettingsResponse {
-    const source = this.toRecord(raw);
-    return {
-      useOverlayMenu: Boolean(source?.['useOverlayMenu'] ?? false),
-      updatedAt: this.toOptionalString(source?.['updatedAt']),
-      updatedBy: this.toRecord(source?.['updatedBy']) as
-        | UiSettingsResponse['updatedBy']
-        | null,
-    };
-  }
-
-  private normalizeCacheHealth(raw: unknown): CacheHealthResponse {
-    const source = this.toRecord(raw);
-    const redisConnectedRaw = source?.['redisConnected'];
-    const writeReadDeleteRaw = source?.['writeReadDeleteOk'];
-    return {
-      ok: Boolean(source?.['ok']),
-      message: String(source?.['message'] ?? 'Cache health check complete'),
-      checkedAt: String(source?.['checkedAt'] ?? ''),
-      cacheBackend: String(source?.['cacheBackend'] ?? ''),
-      cacheLocation: String(source?.['cacheLocation'] ?? ''),
-      redisConfigured: Boolean(source?.['redisConfigured'] ?? false),
-      redisConnected:
-        redisConnectedRaw === null || redisConnectedRaw === undefined
-          ? null
-          : Boolean(redisConnectedRaw),
-      userCacheEnabled: source?.['userCacheEnabled'] as boolean | undefined,
-      probeSkipped: source?.['probeSkipped'] as boolean | undefined,
-      writeReadDeleteOk:
-        writeReadDeleteRaw === null || writeReadDeleteRaw === undefined
-          ? null
-          : Boolean(writeReadDeleteRaw),
-      probeLatencyMs: Number(source?.['probeLatencyMs'] ?? 0),
-      errors: Array.isArray(source?.['errors'])
-        ? (source?.['errors'] as unknown[]).map((e) => String(e))
-        : [],
-    };
-  }
-
-  private normalizeCacheStatus(raw: unknown): CacheStatusResponse {
-    const source = this.toRecord(raw);
-    const globalEnabledRaw = source?.['globalEnabled'];
-    const userEnabledRaw = source?.['userEnabled'];
-    return {
-      enabled: Boolean(source?.['enabled']),
-      version: Number(source?.['version'] ?? 1),
-      message: String(source?.['message'] ?? 'Cache status updated'),
-      cacheBackend: String(source?.['cacheBackend'] ?? ''),
-      cacheLocation: String(source?.['cacheLocation'] ?? ''),
-      globalEnabled: globalEnabledRaw === undefined ? undefined : Boolean(globalEnabledRaw),
-      userEnabled: userEnabledRaw === undefined ? undefined : Boolean(userEnabledRaw),
-    };
-  }
-
-  private normalizeServerActionResponse(raw: unknown): ServerActionResponse {
-    const source = this.toRecord(raw);
-    return {
-      ok: Boolean(source?.['ok']),
-      message: this.toOptionalString(source?.['message']) ?? '',
-    };
-  }
-
-  private normalizeVaultResetResponse(raw: unknown): VaultResetResponse {
-    const source = this.toRecord(raw);
-    return {
-      ok: Boolean(source?.['ok']),
-      message: this.toOptionalString(source?.['message']) ?? '',
-      vaultEpoch: this.toOptionalNumber(source?.['vaultEpoch'] ?? source?.['vault_epoch']),
-    };
-  }
-
-  private normalizeMediaDiagnosticResponse(raw: unknown): MediaDiagnosticResponse {
-    const source = this.toRecord(raw);
-    return {
-      ok: Boolean(source?.['ok']),
-      message: this.toOptionalString(source?.['message']) ?? '',
-      results: Array.isArray(source?.['results'])
-        ? (source['results'] as unknown[])
-            .map((entry) => this.normalizeMediaDiagnosticResult(entry))
-            .filter((entry): entry is MediaDiagnosticResult => !!entry)
-        : [],
-      settings: this.normalizeServerSettings(source?.['settings']),
-    };
-  }
-
-  private normalizeMediaRepairResponse(raw: unknown): MediaRepairResponse {
-    const source = this.toRecord(raw);
-    return {
-      ok: Boolean(source?.['ok']),
-      message: this.toOptionalString(source?.['message']) ?? '',
-      repairs: Array.isArray(source?.['repairs'])
-        ? (source['repairs'] as unknown[]).map((entry) => String(entry))
-        : [],
-    };
-  }
-
-  private normalizeMediaCleanupResponse(raw: unknown): MediaCleanupResponse {
-    const source = this.toRecord(raw);
-    return {
-      ok: Boolean(source?.['ok']),
-      message: this.toOptionalString(source?.['message']) ?? '',
-      cleanup: this.normalizeMediaCleanupResult(source?.['cleanup']),
-    };
-  }
-
-  private normalizeMediaCleanupResult(raw: unknown): MediaCleanupResult | null {
-    const source = this.toRecord(raw);
-    if (!source) {
-      return null;
-    }
-
-    const storage = this.toRecord(source['storage']);
-    return {
-      ok: Boolean(source['ok'] ?? true),
-      message: String(source['message'] ?? ''),
-      dryRun: Boolean(source['dryRun'] ?? true),
-      prefixes: Array.isArray(source['prefixes'])
-        ? (source['prefixes'] as unknown[]).map((entry) => String(entry))
-        : [],
-      scannedFiles: Number(source['scannedFiles'] ?? 0),
-      referencedFiles: Number(source['referencedFiles'] ?? 0),
-      orphanedFiles: Number(source['orphanedFiles'] ?? 0),
-      deletedFiles: Number(source['deletedFiles'] ?? 0),
-      totalOrphanBytes: Number(source['totalOrphanBytes'] ?? 0),
-      files: Array.isArray(source['files'])
-        ? (source['files'] as unknown[])
-            .map((entry) => this.normalizeMediaCleanupFile(entry))
-            .filter((entry): entry is MediaCleanupFile => !!entry)
-        : [],
-      errors: Array.isArray(source['errors'])
-        ? (source['errors'] as unknown[]).map((entry) => String(entry))
-        : [],
-      storageBackend: this.toOptionalString(storage?.['backend']),
-      storageProvider: this.toOptionalString(storage?.['provider']),
-    };
-  }
-
-  private normalizeMediaCleanupFile(raw: unknown): MediaCleanupFile | null {
-    const source = this.toRecord(raw);
-    if (!source) {
-      return null;
-    }
-
-    return {
-      path: String(source['path'] ?? ''),
-      sizeBytes: this.toOptionalNumber(source['sizeBytes']),
-    };
-  }
-
-  private normalizeServerSettings(raw: unknown): ServerSettings | null {
-    const source = this.toRecord(raw);
-    if (!source) {
-      return null;
-    }
-    return {
-      mediaRoot: String(source['mediaRoot'] ?? ''),
-      mediaUrl: String(source['mediaUrl'] ?? ''),
-      debug: Boolean(source['debug']),
-    };
-  }
-
-  private normalizeMediaDiagnosticResult(raw: unknown): MediaDiagnosticResult | null {
-    const source = this.toRecord(raw);
-    if (!source) {
-      return null;
-    }
-    return {
-      model: String(source['model'] ?? ''),
-      id: Number(source['id'] ?? 0),
-      field: String(source['field'] ?? ''),
-      path: String(source['path'] ?? ''),
-      absPath: String(source['absPath'] ?? ''),
-      exists: Boolean(source['exists']),
-      url: String(source['url'] ?? ''),
-      fileLink: this.toOptionalString(source['fileLink']),
-      discrepancy: Boolean(source['discrepancy']),
-    };
-  }
-
-  private toRecord(value: unknown): Record<string, unknown> | null {
-    return unwrapApiRecord(value);
-  }
-
-  private toOptionalString(value: unknown): string | undefined {
-    if (typeof value !== 'string') {
-      return undefined;
-    }
-    return value;
-  }
-
-  private toOptionalNumber(value: unknown): number | undefined {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return value;
-    }
-    if (typeof value === 'string' && value.trim() !== '') {
-      const numericValue = Number(value);
-      return Number.isFinite(numericValue) ? numericValue : undefined;
-    }
-    return undefined;
-  }
 }

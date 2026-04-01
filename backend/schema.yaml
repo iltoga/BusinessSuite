@@ -1191,12 +1191,12 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
-      - name: search
-        required: false
-        in: query
-        description: A search term.
+      - in: query
+        name: search
         schema:
           type: string
+        description: 'Search applications by customer, product, dates, or full application
+          ID such as #329.'
       tags:
       - customer-applications
       security:
@@ -6657,12 +6657,12 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
-      - name: search
-        required: false
-        in: query
-        description: A search term.
+      - in: query
+        name: search
         schema:
           type: string
+        description: 'Search applications by customer, product, dates, or full application
+          ID such as #329.'
       tags:
       - v1
       security:

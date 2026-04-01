@@ -50,6 +50,15 @@
         (sortChange)="onSortChange($event)"
         (columnFilterChange)="onColumnFilterChange($event)"
       >
+        <ng-template #columnId let-row>
+          <a
+            [routerLink]="['/applications', row.id]"
+            [state]="applicationDetailState(row)"
+            class="font-medium hover:underline"
+          >
+            #{{ row.id }}
+          </a>
+        </ng-template>
         <ng-template #columnCustomer let-row>
           <a
             [routerLink]="['/applications', row.id]"

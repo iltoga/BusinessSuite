@@ -16,20 +16,8 @@ import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-
-interface TimelineWorkflowItem {
-  workflow: ApplicationWorkflow;
-  gapDaysFromPrevious: number | null;
-}
-
-interface PendingStartNotice {
-  step: number;
-  taskName: string;
-  startDateDisplay: string;
-  dueDateDisplay: string | null;
-  expirationDateDisplay: string;
-  windowDays: number;
-}
+import { getTodayInTimezoneDate, parseApiDate, parseIsoDate } from '@/shared/utils/date-parsing';
+import { type PendingStartNotice, type TimelineWorkflowItem } from './workflow.service';
 
 interface DocumentCollectionStatus {
   label:
@@ -98,11 +86,11 @@ export class ApplicationWorkflowTimelineComponent implements OnChanges {
     if (workflow.status !== 'pending') {
       return false;
     }
-    const startDate = this.parseIsoDate(workflow.startDate);
+    const startDate = parseIsoDate(workflow.startDate);
     if (!startDate) {
       return false;
     }
-    const today = this.getTodayInWorkflowTimezoneDate();
+    const today = getTodayInTimezoneDate(this.workflowTimezone);
     return startDate.getTime() > today.getTime();
   }
 
@@ -201,76 +189,16 @@ export class ApplicationWorkflowTimelineComponent implements OnChanges {
     }
 
     const previousWorkflow = this.getPreviousWorkflow(workflow);
-    const previousDueDate = this.parseIsoDate(previousWorkflow?.dueDate);
+    const previousDueDate = parseIsoDate(previousWorkflow?.dueDate);
     if (!previousDueDate) {
       return false;
     }
 
-    const today = this.getTodayInWorkflowTimezoneDate();
+    const today = getTodayInTimezoneDate(this.workflowTimezone);
     return previousDueDate.getTime() > today.getTime();
   }
 
-  private getTodayInWorkflowTimezoneDate(): Date {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: this.workflowTimezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(new Date());
-    const year = Number(parts.find((part) => part.type === 'year')?.value);
-    const month = Number(parts.find((part) => part.type === 'month')?.value);
-    const day = Number(parts.find((part) => part.type === 'day')?.value);
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
-      return new Date();
-    }
-    return new Date(Date.UTC(year, month - 1, day));
-  }
-
-  private parseIsoDate(value?: string | null): Date | null {
-    if (!value) {
-      return null;
-    }
-    const parts = value.split('-');
-    if (parts.length !== 3) {
-      return null;
-    }
-    const year = Number(parts[0]);
-    const month = Number(parts[1]);
-    const day = Number(parts[2]);
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
-      return null;
-    }
-    return new Date(Date.UTC(year, month - 1, day));
-  }
-
-  private parseApiDate(value: unknown): Date | null {
-    if (value instanceof Date && !Number.isNaN(value.getTime())) {
-      return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-    }
-    if (typeof value !== 'string') {
-      return null;
-    }
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return null;
-    }
-    const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    if (!match) {
-      const parsed = new Date(trimmed);
-      if (Number.isNaN(parsed.getTime())) {
-        return null;
-      }
-      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-    }
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    const date = new Date(year, month - 1, day);
-    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-      return null;
-    }
-    return date;
-  }
+  // getTodayInWorkflowTimezoneDate, parseIsoDate, parseApiDate → shared/utils/date-parsing
 
   private rebuildWorkflowCaches(): void {
     this.workflowDueDateCache.clear();
@@ -282,7 +210,7 @@ export class ApplicationWorkflowTimelineComponent implements OnChanges {
 
     for (const item of this.timelineItems) {
       const workflow = item.workflow;
-      this.workflowDueDateCache.set(workflow.id, this.parseApiDate(workflow.dueDate));
+      this.workflowDueDateCache.set(workflow.id, parseApiDate(workflow.dueDate));
       this.workflowStatusOptionsCache.set(workflow.id, this.buildWorkflowStatusOptions(workflow));
       this.workflowCanRollbackCache.set(workflow.id, this.canRollbackWorkflow(workflow));
       this.workflowDueDateEditableCache.set(workflow.id, this.isWorkflowDueDateEditable(workflow));

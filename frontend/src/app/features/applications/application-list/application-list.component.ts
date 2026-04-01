@@ -88,6 +88,10 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
     viewChild.required<TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>>(
       'columnCustomer',
     );
+  private readonly idTemplate =
+    viewChild.required<TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>>(
+      'columnId',
+    );
   private readonly productTemplate =
     viewChild.required<TemplateRef<{ $implicit: DocApplicationList; value: any; row: any }>>(
       'columnProduct',
@@ -110,7 +114,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
 
   // Columns configuration
   readonly columns = computed<ColumnConfig[]>(() => [
-    { key: 'id', header: 'ID', sortable: true, sortKey: 'id', width: '5%' },
+    { key: 'id', header: 'ID', sortable: true, sortKey: 'id', width: '5%', template: this.idTemplate() },
     {
       key: 'customer',
       header: 'Customer',

@@ -123,7 +123,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 type=OpenApiTypes.BOOL,
                 location=OpenApiParameter.QUERY,
                 required=False,
-            )
+            ),
         ]
     )
     def list(self, request, *args, **kwargs):
