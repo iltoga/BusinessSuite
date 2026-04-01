@@ -13933,6 +13933,13 @@ components:
           - $ref: '#/components/schemas/DocApplicationInvoice'
           readOnly: true
           nullable: true
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        notes:
+          type: string
+          nullable: true
         amount:
           type: string
           format: decimal
@@ -13996,6 +14003,13 @@ components:
           - $ref: '#/components/schemas/DocApplicationInvoice'
           readOnly: true
           nullable: true
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        notes:
+          type: string
+          nullable: true
         amount:
           type: string
           format: decimal
@@ -14049,6 +14063,13 @@ components:
         customer_application:
           type: integer
           nullable: true
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+        notes:
+          type: string
+          nullable: true
         amount:
           type: string
           format: decimal
@@ -14065,6 +14086,13 @@ components:
           nullable: true
         customer_application:
           type: integer
+          nullable: true
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+        notes:
+          type: string
           nullable: true
         amount:
           type: string
@@ -14309,12 +14337,19 @@ components:
           type: integer
         customerApplication:
           type: integer
+        quantity:
+          type: integer
+        notes:
+          type: string
+          nullable: true
         amount:
           type: string
       required:
       - amount
       - customerApplication
+      - notes
       - product
+      - quantity
     InvoiceFromApplicationPrefillLocks:
       type: object
       properties:

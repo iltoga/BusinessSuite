@@ -4,6 +4,7 @@
 
 import os
 from io import BytesIO
+from decimal import Decimal
 
 import core.utils.formatutils as formatutils
 from django.conf import settings
@@ -50,6 +51,18 @@ class InvoiceService:
         lines = [line.strip() for line in normalized.split("\n") if line.strip()]
         return ", ".join(lines)
 
+    @classmethod
+    def _line_base_description(cls, product) -> str:
+        description = cls._normalize_multiline_text(str(product.description or ""))
+        if description:
+            return description
+
+        fallback_name = cls._normalize_multiline_text(str(product.name or ""))
+        if fallback_name:
+            return fallback_name
+
+        return str(product.code)
+
     def generate_invoice_data(self):
         cur_date = formatutils.as_date_str(datetime_now())
         data = {
@@ -76,15 +89,12 @@ class InvoiceService:
         }
 
         items = []
-        qty = 1
         for item in self.invoice.invoice_applications.all():
-            # Match the 'Items' column from the Invoice List view:
-            # "<product.code> - <customer_application.notes or customer.full_name>"
             product = item.product
             customer_application = item.customer_application
             prod_code = str(product.code)
-            prod_description = self._normalize_multiline_text(str(product.description))
-            notes = customer_application.notes if customer_application else ""
+            prod_description = self._line_base_description(product)
+            notes = item.notes or ""
             customer_name = (
                 str(customer_application.customer.full_name)
                 if customer_application and customer_application.customer
@@ -93,16 +103,21 @@ class InvoiceService:
             if notes:
                 notes_text = self._normalize_multiline_text(str(notes))
                 description = f"{prod_description} - {notes_text}"
+            elif item.quantity > 1:
+                description = prod_description
             else:
                 description = f"{prod_description} for {customer_name}"
+
+            quantity = max(1, int(item.quantity or 1))
+            unit_price = Decimal(str(item.amount or 0)) / quantity
 
             items.append(
                 {
                     "invoice_item": prod_code,
                     "description": description,
-                    "quantity": str(qty),
-                    "unit_price": formatutils.as_currency(item.amount),
-                    "amount": formatutils.as_currency(item.amount * qty),
+                    "quantity": str(quantity),
+                    "unit_price": formatutils.as_currency(unit_price),
+                    "amount": formatutils.as_currency(item.amount),
                     "paid_amount": formatutils.as_currency(item.paid_amount),
                     "due_amount": formatutils.as_currency(item.amount - item.paid_amount),
                 }

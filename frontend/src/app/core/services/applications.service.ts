@@ -60,6 +60,7 @@ export interface ApplicationCustomer {
 export interface ApplicationProduct {
   id: number;
   name: string;
+  code: string;
   productType?: string;
   requiredDocuments?: string | null;
   optionalDocuments?: string | null;

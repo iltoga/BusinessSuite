@@ -5,6 +5,7 @@ import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
+import { ZardInputDirective } from '@/shared/components/input';
 
 @Component({
   selector: 'app-invoice-line-items-section',
@@ -13,8 +14,9 @@ import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/compone
     ReactiveFormsModule,
     ZardCardComponent,
     ZardButtonComponent,
-    ZardComboboxComponent
-],
+    ZardComboboxComponent,
+    ZardInputDirective,
+  ],
   templateUrl: './invoice-line-items-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

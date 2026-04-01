@@ -83,6 +83,7 @@ export class InvoiceFormComponent implements OnInit {
   readonly billableProducts = signal<BillableProductRow[]>([]);
   readonly sourceApplicationId = signal<number | null>(null);
   readonly lockCustomerFromSource = signal(false);
+  readonly totalAmount = signal(0);
 
   readonly form = this.fb.group({
     customer: [null as number | null, Validators.required],
@@ -104,15 +105,11 @@ export class InvoiceFormComponent implements OnInit {
     invoiceApplications: 'Invoice Products',
     invoiceApplicationsProduct: 'Product',
     invoiceApplicationsCustomerApplication: 'Linked Application',
+    invoiceApplicationsQuantity: 'Qty',
+    invoiceApplicationsNotes: 'Line Notes',
     invoiceApplicationsAmount: 'Amount',
   };
 
-  readonly totalAmount = computed(() =>
-    this.invoiceApplications.controls.reduce((sum, group) => {
-      const amount = Number(group.get('amount')?.value ?? 0);
-      return sum + (Number.isNaN(amount) ? 0 : amount);
-    }, 0),
-  );
   readonly billableProductOptions = computed<ZardComboboxOption[]>(() =>
     this.billableProducts().map((row) => ({
       value: String(row.product.id),
@@ -208,6 +205,12 @@ export class InvoiceFormComponent implements OnInit {
         this.addLineItem({}, { manual: false, skipAutoExpand: true });
         this.loadBillableProducts(value);
       });
+
+    this.invoiceApplications.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.updateTotalAmount());
+
+    this.updateTotalAmount();
   }
 
   goBack(): void {
@@ -235,7 +238,10 @@ export class InvoiceFormComponent implements OnInit {
       locked: [!!initial.locked],
       product: [initial.product ?? null, Validators.required],
       customerApplication: [initial.customerApplication ?? null],
+      quantity: [initial.quantity ?? 1, [Validators.required, Validators.min(1)]],
+      notes: [initial.notes ?? ''],
       amount: [initial.amount ?? 0, [Validators.required, Validators.min(0)]],
+      amountOverridden: [!!initial.amountOverridden],
     });
 
     group
@@ -252,6 +258,21 @@ export class InvoiceFormComponent implements OnInit {
         this.onLineApplicationChanged(group, value);
       });
 
+    group
+      .get('quantity')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        this.onLineQuantityChanged(group, value);
+      });
+
+    group
+      .get('amount')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        group.get('amountOverridden')?.setValue(true, { emitEvent: false });
+        this.updateTotalAmount();
+      });
+
     this.invoiceApplications.push(group);
 
     if (initial.locked) {
@@ -259,16 +280,19 @@ export class InvoiceFormComponent implements OnInit {
       group.get('customerApplication')?.disable({ emitEvent: false });
     }
 
-    if (initial.product && initial.customerApplication) {
+    const quantity = this.getLineQuantity(group);
+    if (initial.product && initial.customerApplication && initial.amount === undefined) {
       const app = this.findPendingApplicationById(initial.customerApplication);
       if (app) {
-        group.get('amount')?.setValue(this.resolveApplicationPrice(app), { emitEvent: false });
+        group.get('amount')?.setValue(this.resolveApplicationPrice(app) * quantity, { emitEvent: false });
       }
     } else if (initial.product && initial.amount === undefined) {
       group
         .get('amount')
-        ?.setValue(this.resolveProductPrice(initial.product), { emitEvent: false });
+        ?.setValue(this.resolveProductPrice(initial.product) * quantity, { emitEvent: false });
     }
+
+    this.updateTotalAmount();
   }
 
   removeLineItem(index: number): void {
@@ -277,6 +301,7 @@ export class InvoiceFormComponent implements OnInit {
       return;
     }
     this.invoiceApplications.removeAt(index);
+    this.updateTotalAmount();
   }
 
   isLineLocked(group: FormGroup): boolean {
@@ -345,6 +370,8 @@ export class InvoiceFormComponent implements OnInit {
         id: item.id ?? undefined,
         product: Number(item.product),
         customerApplication: item.customerApplication ? Number(item.customerApplication) : null,
+        quantity: this.normalizeLineQuantity(item.quantity),
+        notes: this.normalizeLineNotes(item.notes),
         amount: String(item.amount ?? 0),
       })),
     };
@@ -460,6 +487,7 @@ export class InvoiceFormComponent implements OnInit {
     if (!productId) {
       group.get('customerApplication')?.setValue(null, { emitEvent: false });
       group.get('amount')?.setValue(0, { emitEvent: false });
+      this.updateTotalAmount();
       return;
     }
 
@@ -470,7 +498,7 @@ export class InvoiceFormComponent implements OnInit {
       if (availablePending.length > 0) {
         const [first, ...rest] = availablePending;
         group.get('customerApplication')?.setValue(first.id, { emitEvent: false });
-        group.get('amount')?.setValue(this.resolveApplicationPrice(first), { emitEvent: false });
+        this.updateLineAmountFromDefault(group);
 
         for (const pendingApp of rest) {
           this.addLineItem(
@@ -483,6 +511,7 @@ export class InvoiceFormComponent implements OnInit {
           );
         }
         this.cdr.markForCheck();
+        this.updateTotalAmount();
         return;
       }
     }
@@ -491,24 +520,21 @@ export class InvoiceFormComponent implements OnInit {
       const selectedApp = this.findPendingApplicationById(currentAppId);
       if (!selectedApp || selectedApp.product?.id !== productId) {
         group.get('customerApplication')?.setValue(null, { emitEvent: false });
-        group.get('amount')?.setValue(this.resolveProductPrice(productId), { emitEvent: false });
+        this.updateLineAmountFromDefault(group);
         return;
       }
 
-      group
-        .get('amount')
-        ?.setValue(this.resolveApplicationPrice(selectedApp), { emitEvent: false });
+      this.updateLineAmountFromDefault(group);
       return;
     }
 
-    group.get('amount')?.setValue(this.resolveProductPrice(productId), { emitEvent: false });
+    this.updateLineAmountFromDefault(group);
   }
 
   private onLineApplicationChanged(group: FormGroup, rawApplicationId: unknown): void {
     const applicationId = Number(rawApplicationId ?? 0);
     if (!applicationId) {
-      const productId = Number(group.get('product')?.value ?? 0);
-      group.get('amount')?.setValue(this.resolveProductPrice(productId), { emitEvent: false });
+      this.updateLineAmountFromDefault(group);
       return;
     }
 
@@ -521,7 +547,11 @@ export class InvoiceFormComponent implements OnInit {
     if (applicationProductId && group.get('product')?.value !== applicationProductId) {
       group.get('product')?.setValue(applicationProductId, { emitEvent: false });
     }
-    group.get('amount')?.setValue(this.resolveApplicationPrice(application), { emitEvent: false });
+    this.updateLineAmountFromDefault(group);
+  }
+
+  private onLineQuantityChanged(group: FormGroup, _rawQuantity: unknown): void {
+    this.updateLineAmountFromDefault(group);
   }
 
   private findBillableProduct(productId: number): BillableProductRow | undefined {
@@ -548,6 +578,59 @@ export class InvoiceFormComponent implements OnInit {
 
   private resolveApplicationPrice(app: DocApplicationInvoice): number {
     return resolveProductPriceFromProduct(app.product as Product);
+  }
+
+  private getLineQuantity(group: FormGroup): number {
+    return this.normalizeLineQuantity(group.get('quantity')?.value);
+  }
+
+  private normalizeLineQuantity(value: unknown): number {
+    const quantity = Number(value ?? 1);
+    if (!Number.isFinite(quantity)) {
+      return 1;
+    }
+    return Math.max(1, Math.trunc(quantity));
+  }
+
+  private normalizeLineNotes(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    return value.trim() ? value : null;
+  }
+
+  private updateLineAmountFromDefault(group: FormGroup): void {
+    if (group.get('amountOverridden')?.value) {
+      return;
+    }
+
+    const quantity = this.getLineQuantity(group);
+    const applicationId = Number(group.get('customerApplication')?.value ?? 0);
+    if (applicationId) {
+      const application = this.findPendingApplicationById(applicationId);
+      if (application) {
+        group.get('amount')?.setValue(this.resolveApplicationPrice(application) * quantity, { emitEvent: false });
+        this.updateTotalAmount();
+        return;
+      }
+    }
+
+    const productId = Number(group.get('product')?.value ?? 0);
+    group.get('amount')?.setValue(this.resolveProductPrice(productId) * quantity, { emitEvent: false });
+    this.updateTotalAmount();
+  }
+
+  private updateTotalAmount(): void {
+    const invoiceApplications = this.form?.get?.('invoiceApplications');
+    if (!(invoiceApplications instanceof FormArray)) {
+      return;
+    }
+
+    const total = invoiceApplications.controls.reduce((sum, group) => {
+      const amount = Number(group.get('amount')?.value ?? 0);
+      return sum + (Number.isNaN(amount) ? 0 : amount);
+    }, 0);
+    this.totalAmount.set(total);
   }
 
   private loadFromApplication(applicationId: number): void {
@@ -582,7 +665,10 @@ export class InvoiceFormComponent implements OnInit {
               {
                 product: Number(sourceProductId),
                 customerApplication: Number(sourceApplicationId),
+                quantity: Number(sourceLine['quantity'] ?? 1),
+                notes: sourceLine['notes'] ?? '',
                 amount: Number(sourceLine['amount'] ?? 0),
+                amountOverridden: false,
                 locked: true,
               },
               { manual: false, skipAutoExpand: true },
@@ -654,7 +740,10 @@ export class InvoiceFormComponent implements OnInit {
                   id: item.id,
                   product: productId,
                   customerApplication: item.customerApplication?.id ?? null,
+                  quantity: Number(item.quantity ?? 1),
+                  notes: item.notes ?? '',
                   amount: Number(item.amount ?? 0),
+                  amountOverridden: true,
                 },
                 { manual: false, skipAutoExpand: true },
               );

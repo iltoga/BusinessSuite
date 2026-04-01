@@ -45,6 +45,14 @@ class InvoiceServiceTests(TestCase):
             base_price=Decimal("50.00"),
             retail_price=Decimal("50.00"),
         )
+        self.bulk_product = Product.objects.create(
+            name="Bundle Service",
+            code="BULK-001",
+            product_category=self.addon_category,
+            description="Bundle line 1\nBundle line 2",
+            base_price=Decimal("80.00"),
+            retail_price=Decimal("80.00"),
+        )
         self.doc_application = DocApplication.objects.create(
             customer=self.customer,
             product=self.workflow_product,
@@ -64,11 +72,19 @@ class InvoiceServiceTests(TestCase):
                     {
                         "product": self.workflow_product,
                         "customer_application": self.doc_application,
-                        "amount": "100.00",
+                        "quantity": 3,
+                        "notes": "Priority processing\nVAT included",
+                        "amount": "300.00",
                     },
                     {
                         "product": self.addon_product,
+                        "quantity": 1,
                         "amount": "50.00",
+                    },
+                    {
+                        "product": self.bulk_product,
+                        "quantity": 2,
+                        "amount": "160.00",
                     },
                 ],
             },
@@ -76,6 +92,7 @@ class InvoiceServiceTests(TestCase):
         )
         self.linked_application = self.invoice.invoice_applications.get(customer_application=self.doc_application)
         self.addon_application = self.invoice.invoice_applications.get(product=self.addon_product)
+        self.bulk_application = self.invoice.invoice_applications.get(product=self.bulk_product)
         self.partial_payment = Payment.objects.create(
             invoice_application=self.linked_application,
             from_customer=self.customer,
@@ -104,18 +121,42 @@ class InvoiceServiceTests(TestCase):
         self.assertEqual(data["total_amount"], formatutils.as_currency(self.invoice.total_amount))
         self.assertEqual(data["total_paid"], formatutils.as_currency(self.invoice.total_paid_amount))
         self.assertEqual(data["total_due"], formatutils.as_currency(self.invoice.total_due_amount))
-        self.assertEqual(len(items), 2)
+        self.assertEqual(len(items), 3)
 
         linked_item = next(item for item in items if item["invoice_item"] == self.workflow_product.code)
         addon_item = next(item for item in items if item["invoice_item"] == self.addon_product.code)
+        bulk_item = next(item for item in items if item["invoice_item"] == self.bulk_product.code)
 
         self.assertEqual(
             linked_item["description"],
-            "Step one, Step two - Urgent request, Customer asked for fast processing",
+            "Step one, Step two - Priority processing, VAT included",
         )
+        self.assertNotIn("Urgent request", linked_item["description"])
         self.assertEqual(addon_item["description"], "Add-on line 1, Add-on line 2 for PT Example")
-        self.assertEqual(linked_item["unit_price"], formatutils.as_currency(self.linked_application.amount))
+        self.assertEqual(bulk_item["description"], "Bundle line 1, Bundle line 2")
+        self.assertEqual(linked_item["quantity"], "3")
+        self.assertEqual(bulk_item["quantity"], "2")
+        self.assertEqual(linked_item["unit_price"], formatutils.as_currency(Decimal("100.00")))
+        self.assertEqual(bulk_item["unit_price"], formatutils.as_currency(Decimal("80.00")))
+        self.assertEqual(linked_item["amount"], formatutils.as_currency(self.linked_application.amount))
         self.assertEqual(addon_item["amount"], formatutils.as_currency(self.addon_application.amount))
+        self.assertEqual(bulk_item["amount"], formatutils.as_currency(self.bulk_application.amount))
+
+    def test_generate_invoice_data_falls_back_to_product_name_when_description_is_blank(self):
+        self.bulk_product.description = ""
+        self.bulk_product.save(update_fields=["description"])
+        self.bulk_application.notes = "for all stokazzo family"
+        self.bulk_application.save(update_fields=["notes"])
+
+        service = InvoiceService(self.invoice)
+
+        _, items = service.generate_invoice_data()
+
+        bulk_item = next(item for item in items if item["invoice_item"] == self.bulk_product.code)
+        self.assertEqual(
+            bulk_item["description"],
+            "Bundle Service - for all stokazzo family",
+        )
 
     def test_generate_partial_invoice_data_includes_payment_rows(self):
         service = InvoiceService(self.invoice)
@@ -123,7 +164,7 @@ class InvoiceServiceTests(TestCase):
         data, items, payments = service.generate_partial_invoice_data()
 
         self.assertEqual(data["total_paid"], formatutils.as_currency(self.invoice.total_paid_amount))
-        self.assertEqual(len(items), 2)
+        self.assertEqual(len(items), 3)
         self.assertEqual(len(payments), 1)
         self.assertEqual(
             payments[0],

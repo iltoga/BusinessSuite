@@ -97,12 +97,11 @@
   <ul class="space-y-1 text-sm">
     @for (item of row.invoiceApplications ?? []; track item.id) {
       <li>
-        {{ item.product?.code || item.customerApplication?.product?.code || '—' }} -
-        {{
-          item.customerApplication?.notes ||
-            item.customerApplication?.customer?.fullName ||
-            'Unlinked line item'
-        }}
+        {{ item.product?.code || item.customerApplication?.product?.code || '—' }}
+        @if (item.customerApplication?.notes || item.customerApplication?.customer?.fullName) {
+          -
+          {{ item.customerApplication?.notes || item.customerApplication?.customer?.fullName }}
+        }
       </li>
     }
     @if (!row.invoiceApplications?.length) {
