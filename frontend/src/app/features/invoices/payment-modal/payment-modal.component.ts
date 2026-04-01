@@ -1,4 +1,3 @@
-
 import {
   ChangeDetectionStrategy,
   Component,
@@ -27,6 +26,7 @@ import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
+import { parseApiDate, toApiDate } from '@/shared/utils/date-parsing';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -37,8 +37,8 @@ import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/uti
     ZardButtonComponent,
     ZardDateInputComponent,
     ZardInputDirective,
-    FormErrorSummaryComponent
-],
+    FormErrorSummaryComponent,
+  ],
   templateUrl: './payment-modal.component.html',
   styleUrls: ['./payment-modal.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -164,7 +164,7 @@ export class PaymentModalComponent {
     if (payment) {
       this.form.controls.amount.enable({ emitEvent: false });
       this.form.patchValue({
-        paymentDate: this.parseApiDate(payment.paymentDate) ?? defaultDate,
+        paymentDate: parseApiDate(payment.paymentDate) ?? defaultDate,
         paymentType: payment.paymentType ?? 'cash',
         amount: Number(payment.amount ?? 0),
         notes: payment.notes ?? '',
@@ -213,7 +213,7 @@ export class PaymentModalComponent {
     }
 
     this.isSaving.set(true);
-    const paymentDate = this.toApiDate(raw.paymentDate);
+    const paymentDate = toApiDate(raw.paymentDate);
     if (!paymentDate) {
       this.toast.error('Invalid payment date.');
       this.isSaving.set(false);
@@ -313,9 +313,9 @@ export class PaymentModalComponent {
       return '—';
     }
     const lineProduct = invoiceApplication.product as { code?: string | null } | null;
-    const customerApplication = invoiceApplication.customerApplication as
-      | { product?: { code?: string | null } | null }
-      | null;
+    const customerApplication = invoiceApplication.customerApplication as {
+      product?: { code?: string | null } | null;
+    } | null;
     return lineProduct?.code ?? customerApplication?.product?.code ?? '—';
   }
 
@@ -325,9 +325,9 @@ export class PaymentModalComponent {
       return '—';
     }
     const lineProduct = invoiceApplication.product as { name?: string | null } | null;
-    const customerApplication = invoiceApplication.customerApplication as
-      | { product?: { name?: string | null } | null }
-      | null;
+    const customerApplication = invoiceApplication.customerApplication as {
+      product?: { name?: string | null } | null;
+    } | null;
     return lineProduct?.name ?? customerApplication?.product?.name ?? '—';
   }
 
@@ -336,9 +336,9 @@ export class PaymentModalComponent {
     if (!invoiceApplication) {
       return '—';
     }
-    const customerApplication = invoiceApplication.customerApplication as
-      | { customer?: { fullName?: string | null } | null }
-      | null;
+    const customerApplication = invoiceApplication.customerApplication as {
+      customer?: { fullName?: string | null } | null;
+    } | null;
     return customerApplication?.customer?.fullName ?? 'Unlinked line item';
   }
 
@@ -355,17 +355,6 @@ export class PaymentModalComponent {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
 
-  private toApiDate(value: unknown): string | null {
-    const parsed = this.parseApiDate(value);
-    if (!parsed) {
-      return null;
-    }
-    const year = parsed.getFullYear();
-    const month = String(parsed.getMonth() + 1).padStart(2, '0');
-    const day = String(parsed.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
   private normalizePaymentType(value: unknown): PaymentRequest.PaymentTypeEnum {
     switch (value) {
       case 'credit_card':
@@ -377,35 +366,5 @@ export class PaymentModalComponent {
       default:
         return 'cash';
     }
-  }
-
-  private parseApiDate(value: unknown): Date | null {
-    if (value instanceof Date && !Number.isNaN(value.getTime())) {
-      return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-    }
-    if (typeof value !== 'string') {
-      return null;
-    }
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return null;
-    }
-    const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    if (!match) {
-      const parsed = new Date(trimmed);
-      if (Number.isNaN(parsed.getTime())) {
-        return null;
-      }
-      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-    }
-
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    const date = new Date(year, month - 1, day);
-    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-      return null;
-    }
-    return date;
   }
 }

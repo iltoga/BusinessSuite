@@ -16,6 +16,7 @@ import { FormErrorSummaryComponent } from '@/shared/components/form-error-summar
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ProductSelectComponent } from '@/shared/components/product-select';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
+import { addDays, daysDifference, parseApiDate, toApiDate } from '@/shared/utils/date-parsing';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { Location } from '@angular/common';
 import {
@@ -51,48 +52,18 @@ import {
   type Observable,
 } from 'rxjs';
 import { ApplicationFormDocumentsSectionComponent } from './application-form-documents-section.component';
-
-interface ApplicationDocumentTypeOption {
-  id: number;
-  name: string;
-  isStayPermit: boolean;
-}
-
-interface ApplicationCalendarTaskOption {
-  id: number;
-  step: number;
-  name: string;
-  addTaskToCalendar: boolean;
-}
-
-interface ProductDocumentsAdapter {
-  requiredDocuments: ApplicationDocumentTypeOption[];
-  optionalDocuments: ApplicationDocumentTypeOption[];
-  tasks: ApplicationCalendarTaskOption[];
-  calendarTask: ApplicationCalendarTaskOption | null;
-}
-
-interface ApplicationFormSnapshot {
-  customerId: number | null;
-  productId: number | null;
-  docDate: Date;
-  dueDate: Date;
-  addDeadlinesToCalendar: boolean;
-  notifyCustomer: boolean;
-  notifyCustomerChannel: 'whatsapp' | 'email';
-  notes: string;
-}
-
-interface ApplicationFormNavigationState {
-  from?: string;
-  focusId?: number | null;
-  searchQuery?: string | null;
-  returnUrl?: string;
-  customerId?: number;
-  page?: number;
-  returnToList?: boolean;
-  awaitPassportImport?: boolean;
-}
+import {
+  adaptApplicationSnapshot,
+  adaptDocumentTypes,
+  adaptProductDocuments,
+  getCalendarTaskFromProduct,
+  getTaskName,
+  shouldAwaitPassportImport,
+  toRecord,
+  type ApplicationDocumentTypeOption,
+  type ApplicationFormNavigationState,
+  type ProductDocumentsAdapter,
+} from './application-form-normalizers';
 
 @Component({
   selector: 'app-application-form',
@@ -295,23 +266,20 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       .subscribe(([previousDocDateRaw, currentDocDateRaw]) => {
         this.form.get('dueDate')?.updateValueAndValidity();
 
-        const previousDocDate = this.toDateOnly(previousDocDateRaw);
-        const currentDocDate = this.toDateOnly(currentDocDateRaw);
-        const currentDueDate = this.toDateOnly(this.form.get('dueDate')?.value);
+        const previousDocDate = parseApiDate(previousDocDateRaw);
+        const currentDocDate = parseApiDate(currentDocDateRaw);
+        const currentDueDate = parseApiDate(this.form.get('dueDate')?.value);
 
         if (!previousDocDate || !currentDocDate || !currentDueDate) {
           return;
         }
 
-        const dayDelta = this.diffInDays(previousDocDate, currentDocDate);
+        const dayDelta = daysDifference(previousDocDate, currentDocDate);
         if (dayDelta === 0) {
           return;
         }
 
-        this.form.patchValue(
-          { dueDate: this.addDays(currentDueDate, dayDelta) },
-          { emitEvent: false },
-        );
+        this.form.patchValue({ dueDate: addDays(currentDueDate, dayDelta) }, { emitEvent: false });
       });
 
     this.form
@@ -350,7 +318,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     this.isLoading.set(true);
     this.customerApplicationsService.customerApplicationsRetrieve(id).subscribe({
       next: (rawApp) => {
-        const app = this.adaptApplicationSnapshot(rawApp);
+        const app = adaptApplicationSnapshot(rawApp);
         this.form.patchValue(
           {
             customer: app.customerId ? String(app.customerId) : null,
@@ -405,7 +373,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
   private loadDocumentTypes() {
     this.documentTypesService.documentTypesList().subscribe({
-      next: (res) => this.documentTypes.set(this.adaptDocumentTypes(res)),
+      next: (res) => this.documentTypes.set(adaptDocumentTypes(res)),
       error: () => this.toast.error('Failed to load document types'),
     });
   }
@@ -422,7 +390,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         // Do not clear an already computed label from productsRetrieve() if this
         // lighter endpoint does not include task details.
         if (deadlineTask) {
-          this.nextDeadlineTaskName.set(this.getTaskName(deadlineTask));
+          this.nextDeadlineTaskName.set(getTaskName(deadlineTask));
         }
 
         this.documentsArray.clear();
@@ -535,22 +503,22 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private tryAutoDueDateCalculation(productId: number): void {
     this.getProductDocuments(productId).subscribe({
       next: (productDetails) => {
-        const task = this.getCalendarTaskFromProduct(productDetails);
-        this.nextDeadlineTaskName.set(this.getTaskName(task));
-        const doc = this.toDateOnly(this.form.get('docDate')?.value);
+        const task = getCalendarTaskFromProduct(productDetails);
+        this.nextDeadlineTaskName.set(getTaskName(task));
+        const doc = parseApiDate(this.form.get('docDate')?.value);
         if (!doc) return;
         if (!task) {
           this.form.patchValue({ dueDate: doc });
           return;
         }
-        const start = this.toApiDate(doc);
+        const start = toApiDate(doc);
         if (!start) return;
         this.computeService.computeDocWorkflowDueDateRetrieve(start, task.id).subscribe({
           next: (res) => {
-            const payload = this.toRecord(res);
+            const payload = toRecord(res);
             const computedDueDate = payload?.['dueDate'];
             if (!computedDueDate) return;
-            const parsedDueDate = this.toDateOnly(computedDueDate);
+            const parsedDueDate = parseApiDate(computedDueDate);
             if (!parsedDueDate) return;
             this.form.patchValue({ dueDate: parsedDueDate }, { emitEvent: false });
           },
@@ -571,7 +539,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     }
 
     const request$ = this.productsService.productsGetProductByIdRetrieve(productId).pipe(
-      map((rawData) => this.adaptProductDocuments(rawData)),
+      map((rawData) => adaptProductDocuments(rawData)),
       map((data) => {
         this.productDocumentsCache.set(productId, data);
         return data;
@@ -584,23 +552,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     this.productDocumentsRequests.set(productId, request$);
     return request$;
-  }
-
-  private getCalendarTaskFromProduct(product: unknown): ApplicationCalendarTaskOption | null {
-    const adapted = this.adaptProductDocuments(product);
-    if (adapted.calendarTask) {
-      return adapted.calendarTask;
-    }
-    if (!adapted.tasks.length) {
-      return null;
-    }
-    const sortedTasks = [...adapted.tasks].sort((a, b) => a.step - b.step);
-    return sortedTasks[0] ?? null;
-  }
-
-  private getTaskName(task: ApplicationCalendarTaskOption | null): string | null {
-    const rawName = typeof task?.name === 'string' ? task.name.trim() : '';
-    return rawName || null;
   }
 
   private syncNotifyCustomerAvailability(): void {
@@ -662,7 +613,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       page: Number.isFinite(sourcePage) && sourcePage > 0 ? Math.floor(sourcePage) : undefined,
     };
 
-    const docDateStr = this.toApiDate(this.form.value.docDate);
+    const docDateStr = toApiDate(this.form.value.docDate);
     if (!docDateStr) {
       this.toast.error('Application submission date is required');
       this.isSubmitting.set(false);
@@ -671,7 +622,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     if (this.isEditMode() && this.applicationId()) {
       // Update mode
-      const dueDateStr = this.toApiDate(this.form.value.dueDate);
+      const dueDateStr = toApiDate(this.form.value.dueDate);
       const payload: DocApplicationCreateUpdateRequest = {
         customer: Number(this.form.getRawValue().customer),
         product: Number(this.form.value.product),
@@ -686,10 +637,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       };
 
       this.customerApplicationsService
-        .customerApplicationsPartialUpdate(
-          this.applicationId()!,
-          payload,
-        )
+        .customerApplicationsPartialUpdate(this.applicationId()!, payload)
         .subscribe({
           next: (application) => {
             this.toast.success('Application updated');
@@ -715,7 +663,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         });
     } else {
       // Create mode
-      const dueDateStr = this.toApiDate(this.form.value.dueDate);
+      const dueDateStr = toApiDate(this.form.value.dueDate);
       const payload: DocApplicationCreateUpdateRequest = {
         customer: Number(this.form.getRawValue().customer),
         product: Number(this.form.value.product),
@@ -731,35 +679,35 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       };
 
       this.customerApplicationsService.customerApplicationsCreate(payload).subscribe({
-          next: (application) => {
-            this.toast.success('Application created');
-            const id = application?.id;
-            if (id) {
-              if (shouldReturnToList) {
-                this.router.navigate(['/applications'], {
-                  state: { ...focusState, focusId: id },
-                });
-              } else {
-                detailState['awaitPassportImport'] = this.shouldAwaitPassportImport(application);
-                this.router.navigate(['/applications', id], { state: detailState });
-              }
-            } else {
+        next: (application) => {
+          this.toast.success('Application created');
+          const id = application?.id;
+          if (id) {
+            if (shouldReturnToList) {
               this.router.navigate(['/applications'], {
-                state: focusState,
+                state: { ...focusState, focusId: id },
               });
+            } else {
+              detailState['awaitPassportImport'] = shouldAwaitPassportImport(application);
+              this.router.navigate(['/applications', id], { state: detailState });
             }
-            this.isSubmitting.set(false);
-          },
-          error: (error) => {
-            applyServerErrorsToForm(this.form, error);
-            this.form.markAllAsTouched();
-            const message = extractServerErrorMessage(error);
-            this.toast.error(
-              message ? `Failed to create application: ${message}` : 'Failed to create application',
-            );
-            this.isSubmitting.set(false);
-          },
-        });
+          } else {
+            this.router.navigate(['/applications'], {
+              state: focusState,
+            });
+          }
+          this.isSubmitting.set(false);
+        },
+        error: (error) => {
+          applyServerErrorsToForm(this.form, error);
+          this.form.markAllAsTouched();
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to create application: ${message}` : 'Failed to create application',
+          );
+          this.isSubmitting.set(false);
+        },
+      });
     }
   }
 
@@ -820,82 +768,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     }
   }
 
-  private adaptApplicationSnapshot(raw: unknown): ApplicationFormSnapshot {
-    const source = this.toRecord(raw);
-    const docDate = this.toDateOnly(source?.['docDate']) ?? new Date();
-    const dueDate = this.toDateOnly(source?.['dueDate']) ?? docDate;
-    const notifyCustomerRaw = source?.['notifyCustomer'] ?? source?.['notifyCustomerToo'];
-    const notifyChannelRaw = source?.['notifyCustomerChannel'];
-    const notifyCustomerChannel: 'whatsapp' | 'email' =
-      notifyChannelRaw === 'email' ? 'email' : 'whatsapp';
-
-    return {
-      customerId: this.toNumber(
-        source?.['customer'] ?? this.toRecord(source?.['customer'])?.['id'],
-      ),
-      productId: this.toNumber(source?.['product'] ?? this.toRecord(source?.['product'])?.['id']),
-      docDate,
-      dueDate,
-      addDeadlinesToCalendar: Boolean(source?.['addDeadlinesToCalendar'] ?? true),
-      notifyCustomer: Boolean(notifyCustomerRaw),
-      notifyCustomerChannel,
-      notes: typeof source?.['notes'] === 'string' ? source['notes'] : '',
-    };
-  }
-
-  private adaptDocumentTypes(raw: unknown): ApplicationDocumentTypeOption[] {
-    if (!Array.isArray(raw)) {
-      return [];
-    }
-    return raw
-      .map((entry) => this.toRecord(entry))
-      .filter((entry): entry is Record<string, unknown> => !!entry)
-      .map((entry) => ({
-        id: this.toNumber(entry['id']) ?? 0,
-        name: typeof entry['name'] === 'string' ? entry['name'] : '',
-        isStayPermit: Boolean(entry['isStayPermit'] ?? entry['is_stay_permit']),
-      }))
-      .filter((entry) => entry.id > 0 && entry.name.length > 0);
-  }
-
-  private adaptProductDocuments(raw: unknown): ProductDocumentsAdapter {
-    const source = this.toRecord(raw);
-    const productContainer = this.toRecord(source?.['product']) ?? source;
-    const explicitTask = this.adaptCalendarTask(source?.['calendarTask']);
-
-    const tasks = Array.isArray(productContainer?.['tasks'])
-      ? (productContainer['tasks'] as unknown[])
-          .map((task) => this.adaptCalendarTask(task))
-          .filter((task): task is ApplicationCalendarTaskOption => !!task)
-      : [];
-
-    const calendarTask = explicitTask ?? tasks.find((task) => task.addTaskToCalendar) ?? null;
-
-    return {
-      requiredDocuments: this.adaptDocumentTypes(source?.['requiredDocuments']),
-      optionalDocuments: this.adaptDocumentTypes(source?.['optionalDocuments']),
-      tasks,
-      calendarTask,
-    };
-  }
-
-  private adaptCalendarTask(raw: unknown): ApplicationCalendarTaskOption | null {
-    const source = this.toRecord(raw);
-    if (!source) {
-      return null;
-    }
-    const id = this.toNumber(source['id']);
-    if (!id) {
-      return null;
-    }
-    return {
-      id,
-      step: this.toNumber(source['step']) ?? 0,
-      name: typeof source['name'] === 'string' ? source['name'] : '',
-      addTaskToCalendar: Boolean(source['addTaskToCalendar']),
-    };
-  }
-
   private wouldCreateDuplicateStayPermit(docTypeId: number | string): boolean {
     const target = this.documentTypes().find((doc) => String(doc.id) === String(docTypeId));
     if (!target?.isStayPermit) {
@@ -910,99 +782,5 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       const currentDoc = this.documentTypes().find((doc) => String(doc.id) === currentId);
       return Boolean(currentDoc?.isStayPermit);
     });
-  }
-
-  private toRecord(value: unknown): Record<string, unknown> | null {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return null;
-    }
-    return value as Record<string, unknown>;
-  }
-
-  private toNumber(value: unknown): number | null {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  private toDateOnly(raw: unknown): Date | null {
-    if (raw == null) return null;
-
-    if (raw instanceof Date) {
-      if (Number.isNaN(raw.getTime())) return null;
-      return new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
-    }
-
-    if (typeof raw === 'string') {
-      const isoDateMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (isoDateMatch) {
-        const [, year, month, day] = isoDateMatch;
-        return new Date(Number(year), Number(month) - 1, Number(day));
-      }
-      const parsed = new Date(raw);
-      if (!Number.isNaN(parsed.getTime())) {
-        return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-      }
-    }
-
-    return null;
-  }
-
-  private toApiDate(raw: unknown): string | null {
-    const date = this.toDateOnly(raw);
-    if (!date) return null;
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  private shouldAwaitPassportImport(application: unknown): boolean {
-    const raw = this.toRecord(application);
-    if (!raw) {
-      return false;
-    }
-
-    const product = this.toRecord(raw['product']);
-    const documents = Array.isArray(raw['documents']) ? raw['documents'] : [];
-    const configuredDocumentNames = new Set(
-      [
-        ...this.parseDocumentNames(product?.['requiredDocuments']),
-        ...this.parseDocumentNames(product?.['optionalDocuments']),
-      ].map((name) => name.toLowerCase()),
-    );
-
-    if (!configuredDocumentNames.has('passport')) {
-      return false;
-    }
-
-    return !documents.some((document) => {
-      const rawDocument = this.toRecord(document);
-      const docType = this.toRecord(rawDocument?.['docType'] ?? rawDocument?.['doc_type']);
-      const docTypeName = docType?.['name'];
-      return typeof docTypeName === 'string' && docTypeName.trim().toLowerCase() === 'passport';
-    });
-  }
-
-  private parseDocumentNames(value: unknown): string[] {
-    if (typeof value !== 'string' || !value.trim()) {
-      return [];
-    }
-    return value
-      .split(',')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-  }
-
-  private diffInDays(from: Date, to: Date): number {
-    const fromUtc = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
-    const toUtc = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate());
-    return Math.round((toUtc - fromUtc) / (24 * 60 * 60 * 1000));
-  }
-
-  private addDays(date: Date, days: number): Date {
-    const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    next.setDate(next.getDate() + days);
-    return next;
   }
 }

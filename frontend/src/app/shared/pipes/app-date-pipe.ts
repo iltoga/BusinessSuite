@@ -2,6 +2,7 @@ import { formatDate } from '@angular/common';
 import { inject, LOCALE_ID, Pipe, PipeTransform } from '@angular/core';
 
 import { ConfigService } from '@/core/services/config.service';
+import { normalizeDateFormat } from '@/shared/utils/date-parsing';
 
 export type AppDateFormat = 'date' | 'datetime' | 'time';
 
@@ -17,7 +18,7 @@ export class AppDatePipe implements PipeTransform {
     if (!value || value === '') return null;
 
     try {
-      const baseFormat = this.normalizeDateFormat(this.configService.settings.dateFormat);
+      const baseFormat = normalizeDateFormat(this.configService.settings.dateFormat);
       let formatString: string;
 
       switch (format) {
@@ -39,13 +40,5 @@ export class AppDatePipe implements PipeTransform {
       console.error('[AppDatePipe] Error formatting date:', e);
       return null;
     }
-  }
-
-  private normalizeDateFormat(format: string | null | undefined): string {
-    const normalized = (format ?? '').trim();
-    if (['dd-MM-yyyy', 'yyyy-MM-dd', 'dd/MM/yyyy', 'MM/dd/yyyy'].includes(normalized)) {
-      return normalized;
-    }
-    return 'dd-MM-yyyy';
   }
 }

@@ -631,7 +631,7 @@ export class CustomerApplicationsService extends BaseService {
    * @param ordering Which field to use when ordering the results.
    * @param page A page number within the paginated result set.
    * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param search Search applications by customer, product, dates, or full application ID such as #329.
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options

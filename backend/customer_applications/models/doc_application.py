@@ -34,6 +34,29 @@ class DocApplicationQuerySet(models.QuerySet):
     Custom queryset for DocApplication model.
     """
 
+    def search_doc_applications(self, query):
+        """
+        Search DocApplications by product name, product code, product type,
+        customer first name, customer last name, doc date, or exact primary key.
+        """
+        normalized_query = str(query).strip()
+        normalized_id_query = normalized_query[1:] if normalized_query.startswith("#") else normalized_query
+
+        if normalized_id_query.isdigit():
+            exact_id = int(normalized_id_query)
+            exact_id_queryset = self.filter(id=exact_id)
+            if exact_id_queryset.exists():
+                return exact_id_queryset
+
+        return self.filter(
+            models.Q(product__name__icontains=normalized_query)
+            | models.Q(product__code__icontains=normalized_query)
+            | models.Q(product__product_category__product_type__icontains=normalized_query)
+            | models.Q(customer__first_name__icontains=normalized_query)
+            | models.Q(customer__last_name__icontains=normalized_query)
+            | models.Q(doc_date__icontains=normalized_query)
+        )
+
     def filter_by_document_collection_completed(self):
         # First, we annotate each DocApplication with the count of required documents
         # and the count of required, completed documents
@@ -77,18 +100,7 @@ class DocApplicationManager(models.Manager):
         return self.get_queryset().exclude_already_invoiced(current_invoice_to_include)
 
     def search_doc_applications(self, query):
-        """
-        Search DocApplications by product name, product code, product type,
-        customer first name, customer last name, and doc date.
-        """
-        return self.filter(
-            models.Q(product__name__icontains=query)
-            | models.Q(product__code__icontains=query)
-            | models.Q(product__product_category__product_type__icontains=query)
-            | models.Q(customer__first_name__icontains=query)
-            | models.Q(customer__last_name__icontains=query)
-            | models.Q(doc_date__icontains=query)
-        )
+        return self.get_queryset().search_doc_applications(query)
 
 
 class DocApplication(models.Model):

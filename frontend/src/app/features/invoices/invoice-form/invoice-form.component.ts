@@ -34,23 +34,17 @@ import { CustomerSelectComponent } from '@/shared/components/customer-select/cus
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
+import { toApiDate } from '@/shared/utils/date-parsing';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
+import {
+  ensureSourceApplicationIncluded,
+  normalizeBillableRows,
+  parseComboboxNumericValue,
+  resolveProductPriceFromProduct,
+  type BillableProductRow,
+  type InvoiceLineInitial,
+} from './invoice-form-normalizers';
 import { InvoiceLineItemsSectionComponent } from './invoice-line-items-section.component';
-
-interface BillableProductRow {
-  product: Product;
-  pendingApplications: DocApplicationInvoice[];
-  pendingApplicationsCount: number;
-  hasPendingApplications: boolean;
-}
-
-interface InvoiceLineInitial {
-  id?: number;
-  product?: number | null;
-  customerApplication?: number | null;
-  amount?: number;
-  locked?: boolean;
-}
 
 @Component({
   selector: 'app-invoice-form',
@@ -332,8 +326,8 @@ export class InvoiceFormComponent implements OnInit {
 
     this.isSaving.set(true);
     const raw = this.form.getRawValue();
-    const invoiceDate = this.toIsoDate(raw.invoiceDate);
-    const dueDate = this.toIsoDate(raw.dueDate);
+    const invoiceDate = toApiDate(raw.invoiceDate);
+    const dueDate = toApiDate(raw.dueDate);
     if (!invoiceDate || !dueDate) {
       this.toast.error('Invoice and due dates are required.');
       this.isSaving.set(false);
@@ -454,11 +448,11 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   onLineProductComboboxChange(group: FormGroup, value: string | null): void {
-    group.get('product')?.setValue(this.parseComboboxNumericValue(value));
+    group.get('product')?.setValue(parseComboboxNumericValue(value));
   }
 
   onLineCustomerApplicationComboboxChange(group: FormGroup, value: string | null): void {
-    group.get('customerApplication')?.setValue(this.parseComboboxNumericValue(value));
+    group.get('customerApplication')?.setValue(parseComboboxNumericValue(value));
   }
 
   private selectedCustomerApplicationIds(excludeLineKey?: number): Set<number> {
@@ -568,21 +562,11 @@ export class InvoiceFormComponent implements OnInit {
       return 0;
     }
     const row = this.findBillableProduct(productId);
-    return this.resolveProductPriceFromProduct(row?.product);
-  }
-
-  private resolveProductPriceFromProduct(product: Product | null | undefined): number {
-    if (!product) {
-      return 0;
-    }
-    const retail = (product as any).retailPrice;
-    const base = (product as any).basePrice;
-    const price = Number(retail ?? base ?? 0);
-    return Number.isNaN(price) ? 0 : price;
+    return resolveProductPriceFromProduct(row?.product);
   }
 
   private resolveApplicationPrice(app: DocApplicationInvoice): number {
-    return this.resolveProductPriceFromProduct(app.product as Product);
+    return resolveProductPriceFromProduct(app.product as Product);
   }
 
   private loadFromApplication(applicationId: number): void {
@@ -611,9 +595,7 @@ export class InvoiceFormComponent implements OnInit {
 
         this.fetchBillableProducts(customerId).subscribe({
           next: (rows: BillableProductRow[]) => {
-            this.billableProducts.set(
-              this.ensureSourceApplicationIncluded(rows, sourceApplication),
-            );
+            this.billableProducts.set(ensureSourceApplicationIncluded(rows, sourceApplication));
             this.invoiceApplications.clear();
             this.addLineItem(
               {
@@ -745,141 +727,7 @@ export class InvoiceFormComponent implements OnInit {
   private fetchBillableProducts(customerId: number, currentInvoiceId?: number) {
     return this.invoicesApi
       .invoicesGetBillableProductsList(customerId, currentInvoiceId)
-      .pipe(map((rows) => this.normalizeBillableRows(rows)));
-  }
-
-  private normalizeBillableRows(rows: unknown): BillableProductRow[] {
-    const list = Array.isArray(rows)
-      ? rows
-      : Array.isArray((rows as any)?.results)
-        ? (rows as any).results
-        : [];
-    return list
-      .map((row: any) => {
-        const product = (row?.product ?? null) as Product | null;
-        if (!product || typeof product.id !== 'number') {
-          return null;
-        }
-
-        const pendingApplications = (row?.pendingApplications ??
-          row?.pending_applications ??
-          []) as DocApplicationInvoice[];
-        const pendingApplicationsCount = Number(
-          row?.pendingApplicationsCount ??
-            row?.pending_applications_count ??
-            pendingApplications.length,
-        );
-        const hasPendingApplications =
-          row?.hasPendingApplications ??
-          row?.has_pending_applications ??
-          pendingApplicationsCount > 0;
-
-        return {
-          product,
-          pendingApplications: Array.isArray(pendingApplications) ? pendingApplications : [],
-          pendingApplicationsCount: Number.isFinite(pendingApplicationsCount)
-            ? pendingApplicationsCount
-            : 0,
-          hasPendingApplications: Boolean(hasPendingApplications),
-        } as BillableProductRow;
-      })
-      .filter((row: BillableProductRow | null): row is BillableProductRow => row !== null);
-  }
-
-  private ensureSourceApplicationIncluded(
-    rows: BillableProductRow[],
-    rawSourceApplication: unknown,
-  ): BillableProductRow[] {
-    const sourceApplication = this.toDocApplicationInvoice(rawSourceApplication);
-    const sourceApplicationId = Number(sourceApplication?.id ?? 0);
-    const sourceProduct = sourceApplication?.product as Product | null | undefined;
-    const sourceProductId = Number(sourceProduct?.id ?? 0);
-
-    if (!sourceApplication || !sourceApplicationId || !sourceProductId || !sourceProduct) {
-      return rows;
-    }
-
-    const existingRowIndex = rows.findIndex((row) => row.product.id === sourceProductId);
-    if (existingRowIndex === -1) {
-      return this.sortBillableRows([
-        ...rows,
-        {
-          product: sourceProduct,
-          pendingApplications: [sourceApplication],
-          pendingApplicationsCount: 1,
-          hasPendingApplications: true,
-        },
-      ]);
-    }
-
-    const existingRow = rows[existingRowIndex];
-    if (
-      existingRow.pendingApplications.some((application) => application.id === sourceApplicationId)
-    ) {
-      return rows;
-    }
-
-    const updatedRow: BillableProductRow = {
-      ...existingRow,
-      pendingApplications: [sourceApplication, ...existingRow.pendingApplications],
-      pendingApplicationsCount: existingRow.pendingApplicationsCount + 1,
-      hasPendingApplications: true,
-    };
-
-    return rows.map((row, index) => (index === existingRowIndex ? updatedRow : row));
-  }
-
-  private toDocApplicationInvoice(value: unknown): DocApplicationInvoice | null {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-
-    const candidate = value as Partial<DocApplicationInvoice> & {
-      product?: Partial<Product> | null;
-    };
-    if (typeof candidate.id !== 'number') {
-      return null;
-    }
-    if (!candidate.product || typeof candidate.product.id !== 'number') {
-      return null;
-    }
-
-    return candidate as DocApplicationInvoice;
-  }
-
-  private sortBillableRows(rows: BillableProductRow[]): BillableProductRow[] {
-    return [...rows].sort((left, right) => {
-      if (left.hasPendingApplications !== right.hasPendingApplications) {
-        return left.hasPendingApplications ? -1 : 1;
-      }
-      return (left.product.name ?? '').localeCompare(right.product.name ?? '', undefined, {
-        sensitivity: 'base',
-      });
-    });
-  }
-
-  private toIsoDate(value: Date | string | null): string | null {
-    if (!value) return null;
-    if (typeof value === 'string') {
-      const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (iso) {
-        return `${iso[1]}-${iso[2]}-${iso[3]}`;
-      }
-    }
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return null;
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  private parseComboboxNumericValue(value: string | null): number | null {
-    if (!value) {
-      return null;
-    }
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+      .pipe(map((rows) => normalizeBillableRows(rows)));
   }
 
   private proposeInvoiceNo(invoiceDate?: Date | string | null): void {

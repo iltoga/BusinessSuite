@@ -1,14 +1,10 @@
-import { InvoiceFormComponent } from './invoice-form.component';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
+import { ensureSourceApplicationIncluded } from './invoice-form-normalizers';
+import { InvoiceFormComponent } from './invoice-form.component';
 
 describe('InvoiceFormComponent source application merge', () => {
   it('injects the source application into billable rows when it is still incomplete', () => {
-    const component = Object.create(InvoiceFormComponent.prototype) as any;
-    component.sortBillableRows = InvoiceFormComponent.prototype['sortBillableRows'].bind(component);
-    component.ensureSourceApplicationIncluded =
-      InvoiceFormComponent.prototype['ensureSourceApplicationIncluded'].bind(component);
-
     const rows = [
       {
         product: { id: 10, name: 'KITAS', code: 'KITAS' },
@@ -18,19 +14,21 @@ describe('InvoiceFormComponent source application merge', () => {
       },
     ];
 
-    const result = component.ensureSourceApplicationIncluded(rows, {
+    const result = ensureSourceApplicationIncluded(rows as any, {
       id: 314,
       product: { id: 10, name: 'KITAS', code: 'KITAS' },
     });
 
-    expect(result[0].pendingApplications.map((application: { id: number }) => application.id)).toEqual([314]);
+    expect(
+      result[0].pendingApplications.map((application: { id: number }) => application.id),
+    ).toEqual([314]);
     expect(result[0].pendingApplicationsCount).toBe(1);
     expect(result[0].hasPendingApplications).toBe(true);
   });
 
   it('returns list-origin saves back to the invoice list', () => {
     const component = Object.create(InvoiceFormComponent.prototype) as any;
-    const invoiceApplications = [];
+    const invoiceApplications: unknown[] = [];
     component.form = {
       invalid: false,
       value: {
@@ -42,8 +40,16 @@ describe('InvoiceFormComponent source application merge', () => {
         sent: false,
         invoiceApplications: [],
       },
-      getRawValue: () => ({ customer: 9 }),
-      get: (name: string) => (name === 'invoiceApplications' ? { value: invoiceApplications } : null),
+      getRawValue: () => ({
+        customer: 9,
+        invoiceNo: 'INV-9',
+        invoiceDate: new Date('2026-03-27'),
+        dueDate: new Date('2026-04-27'),
+        notes: '',
+        sent: false,
+      }),
+      get: (name: string) =>
+        name === 'invoiceApplications' ? { value: invoiceApplications } : null,
       markAllAsTouched: vi.fn(),
     };
     component.toast = { success: vi.fn(), error: vi.fn() };
@@ -55,7 +61,6 @@ describe('InvoiceFormComponent source application merge', () => {
     component.isSaving = { set: vi.fn() };
     component.isEditMode = () => false;
     component.invoice = () => null;
-    component.toIsoDate = vi.fn().mockReturnValue('2026-03-27');
 
     Object.defineProperty(history, 'state', {
       value: {
