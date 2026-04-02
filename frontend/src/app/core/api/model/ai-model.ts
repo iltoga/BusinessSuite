@@ -17,7 +17,7 @@ export interface AiModel {
   /**
    * * `openrouter` - OpenRouter * `openai` - OpenAI * `groq` - Groq
    */
-  provider: AiModel.ProviderEnum;
+  provider: AiModelProviderEnum;
   modelId: string;
   name: string;
   description?: string;
@@ -59,11 +59,8 @@ export interface AiModel {
   readonly createdAt: string;
   readonly updatedAt: string;
 }
-export namespace AiModel {
-  export const ProviderEnum = {
-    Openrouter: 'openrouter',
-    Openai: 'openai',
-    Groq: 'groq',
-  } as const;
-  export type ProviderEnum = (typeof ProviderEnum)[keyof typeof ProviderEnum];
+export enum AiModelProviderEnum {
+  Openrouter = 'openrouter',
+  Openai = 'openai',
+  Groq = 'groq',
 }

@@ -18,16 +18,12 @@ export interface DocumentRequest {
   /**
    * * `` -  * `valid` - valid * `invalid` - invalid * `error` - error
    */
-  aiValidationStatusOverride?: DocumentRequest.AiValidationStatusOverrideEnum;
+  aiValidationStatusOverride?: DocumentRequestAiValidationStatusOverrideEnum;
   aiValidationResultOverride?: any | null;
 }
-export namespace DocumentRequest {
-  export const AiValidationStatusOverrideEnum = {
-    Empty: '',
-    Valid: 'valid',
-    Invalid: 'invalid',
-    Error: 'error',
-  } as const;
-  export type AiValidationStatusOverrideEnum =
-    (typeof AiValidationStatusOverrideEnum)[keyof typeof AiValidationStatusOverrideEnum];
+export enum DocumentRequestAiValidationStatusOverrideEnum {
+  Empty = '',
+  Valid = 'valid',
+  Invalid = 'invalid',
+  Error = 'error',
 }

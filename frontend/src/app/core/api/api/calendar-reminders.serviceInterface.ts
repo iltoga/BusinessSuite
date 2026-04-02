@@ -21,6 +21,7 @@ import { CalendarReminderInboxSnooze } from '../model/models';
 import { CalendarReminderInboxSnoozeRequest } from '../model/models';
 import { CalendarReminderRequest } from '../model/models';
 import { PaginatedCalendarReminderList } from '../model/models';
+import { PaginatedPushNotificationUserList } from '../model/models';
 
 import { Configuration } from '../configuration';
 
@@ -72,6 +73,13 @@ export interface CalendarRemindersRetrieveRequestParams {
 export interface CalendarRemindersUpdateRequestParams {
   id: number;
   calendarReminderCreateRequest: CalendarReminderCreateRequest;
+}
+
+export interface CalendarRemindersUsersListRequestParams {
+  ordering?: string;
+  page?: number;
+  pageSize?: number;
+  search?: string;
 }
 
 export interface CalendarRemindersServiceInterface {
@@ -206,6 +214,10 @@ export interface CalendarRemindersServiceInterface {
    *
    *
    * @endpoint get /api/calendar-reminders/users/
+   * @param requestParameters
    */
-  calendarRemindersUsersRetrieve(extraHttpRequestParams?: any): Observable<CalendarReminder>;
+  calendarRemindersUsersList(
+    requestParameters: CalendarRemindersUsersListRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<PaginatedPushNotificationUserList>;
 }

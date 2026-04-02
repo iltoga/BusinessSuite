@@ -30,11 +30,21 @@ import { AiModelRequest } from '../model/ai-model-request';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  AiModelsServiceInterface,
+  AiModelsCreateRequestParams,
+  AiModelsDestroyRequestParams,
+  AiModelsListRequestParams,
+  AiModelsOpenrouterSearchRetrieveRequestParams,
+  AiModelsPartialUpdateRequestParams,
+  AiModelsRetrieveRequestParams,
+  AiModelsUpdateRequestParams,
+} from './ai-models.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class AiModelsService extends BaseService {
+export class AiModelsService extends BaseService implements AiModelsServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -133,13 +143,13 @@ export class AiModelsService extends BaseService {
 
   /**
    * @endpoint post /api/ai-models/
-   * @param aiModelRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public aiModelsCreate(
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -149,7 +159,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<AiModel>;
   public aiModelsCreate(
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -159,7 +169,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public aiModelsCreate(
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -169,7 +179,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public aiModelsCreate(
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -178,6 +188,7 @@ export class AiModelsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const aiModelRequest = requestParameters?.aiModelRequest;
     if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
         'Required parameter aiModelRequest was null or undefined when calling aiModelsCreate.',
@@ -245,35 +256,36 @@ export class AiModelsService extends BaseService {
 
   /**
    * @endpoint delete /api/ai-models/{id}/
-   * @param id A unique integer value identifying this ai model.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public aiModelsDestroy(
-    id: number,
+    requestParameters: AiModelsDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public aiModelsDestroy(
-    id: number,
+    requestParameters: AiModelsDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public aiModelsDestroy(
-    id: number,
+    requestParameters: AiModelsDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public aiModelsDestroy(
-    id: number,
+    requestParameters: AiModelsDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling aiModelsDestroy.');
     }
@@ -326,15 +338,13 @@ export class AiModelsService extends BaseService {
 
   /**
    * @endpoint get /api/ai-models/
-   * @param ordering Which field to use when ordering the results.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public aiModelsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: AiModelsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -344,8 +354,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<Array<AiModel>>;
   public aiModelsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: AiModelsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -355,8 +364,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpResponse<Array<AiModel>>>;
   public aiModelsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: AiModelsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -366,8 +374,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpEvent<Array<AiModel>>>;
   public aiModelsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: AiModelsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -376,6 +383,9 @@ export class AiModelsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -443,15 +453,13 @@ export class AiModelsService extends BaseService {
 
   /**
    * @endpoint get /api/ai-models/openrouter-search/
-   * @param limit
-   * @param q
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public aiModelsOpenrouterSearchRetrieve(
-    limit?: number,
-    q?: string,
+    requestParameters?: AiModelsOpenrouterSearchRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -461,8 +469,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<AiModel>;
   public aiModelsOpenrouterSearchRetrieve(
-    limit?: number,
-    q?: string,
+    requestParameters?: AiModelsOpenrouterSearchRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -472,8 +479,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public aiModelsOpenrouterSearchRetrieve(
-    limit?: number,
-    q?: string,
+    requestParameters?: AiModelsOpenrouterSearchRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -483,8 +489,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public aiModelsOpenrouterSearchRetrieve(
-    limit?: number,
-    q?: string,
+    requestParameters?: AiModelsOpenrouterSearchRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -493,6 +498,9 @@ export class AiModelsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const limit = requestParameters?.limit;
+    const q = requestParameters?.q;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -560,15 +568,13 @@ export class AiModelsService extends BaseService {
 
   /**
    * @endpoint patch /api/ai-models/{id}/
-   * @param id A unique integer value identifying this ai model.
-   * @param aiModelRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public aiModelsPartialUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -578,8 +584,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<AiModel>;
   public aiModelsPartialUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -589,8 +594,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public aiModelsPartialUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -600,8 +604,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public aiModelsPartialUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -610,11 +613,13 @@ export class AiModelsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling aiModelsPartialUpdate.',
       );
     }
+    const aiModelRequest = requestParameters?.aiModelRequest;
     if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
         'Required parameter aiModelRequest was null or undefined when calling aiModelsPartialUpdate.',
@@ -682,13 +687,13 @@ export class AiModelsService extends BaseService {
 
   /**
    * @endpoint get /api/ai-models/{id}/
-   * @param id A unique integer value identifying this ai model.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public aiModelsRetrieve(
-    id: number,
+    requestParameters: AiModelsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -698,7 +703,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<AiModel>;
   public aiModelsRetrieve(
-    id: number,
+    requestParameters: AiModelsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -708,7 +713,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public aiModelsRetrieve(
-    id: number,
+    requestParameters: AiModelsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -718,7 +723,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public aiModelsRetrieve(
-    id: number,
+    requestParameters: AiModelsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -727,6 +732,7 @@ export class AiModelsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling aiModelsRetrieve.');
     }
@@ -779,15 +785,13 @@ export class AiModelsService extends BaseService {
 
   /**
    * @endpoint put /api/ai-models/{id}/
-   * @param id A unique integer value identifying this ai model.
-   * @param aiModelRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public aiModelsUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -797,8 +801,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<AiModel>;
   public aiModelsUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -808,8 +811,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public aiModelsUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -819,8 +821,7 @@ export class AiModelsService extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public aiModelsUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: AiModelsUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -829,9 +830,11 @@ export class AiModelsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling aiModelsUpdate.');
     }
+    const aiModelRequest = requestParameters?.aiModelRequest;
     if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
         'Required parameter aiModelRequest was null or undefined when calling aiModelsUpdate.',

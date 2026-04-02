@@ -28,11 +28,26 @@ import { MediaCleanupRequestRequest } from '../model/media-cleanup-request-reque
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  ServerManagementServiceInterface,
+  ServerManagementAppSettingsCreateRequestParams,
+  ServerManagementAppSettingsDestroyRequestParams,
+  ServerManagementAppSettingsPartialUpdateRequestParams,
+  ServerManagementCalendarSyncHealthRetrieveRequestParams,
+  ServerManagementClearCacheCreateRequestParams,
+  ServerManagementLocalResiliencePartialUpdateRequestParams,
+  ServerManagementMediaCleanupCreateRequestParams,
+  ServerManagementOpenrouterStatusPartialUpdateRequestParams,
+  ServerManagementUiSettingsPartialUpdateRequestParams,
+} from './server-management.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class ServerManagementService extends BaseService {
+export class ServerManagementService
+  extends BaseService
+  implements ServerManagementServiceInterface
+{
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -44,13 +59,13 @@ export class ServerManagementService extends BaseService {
   /**
    * List and create application settings
    * @endpoint post /api/server-management/app-settings/
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public serverManagementAppSettingsCreate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementAppSettingsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -60,7 +75,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public serverManagementAppSettingsCreate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementAppSettingsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -70,7 +85,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public serverManagementAppSettingsCreate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementAppSettingsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -80,7 +95,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public serverManagementAppSettingsCreate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementAppSettingsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -89,6 +104,8 @@ export class ServerManagementService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const requestBody = requestParameters?.requestBody;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -151,13 +168,13 @@ export class ServerManagementService extends BaseService {
   /**
    * Update or delete single application setting
    * @endpoint delete /api/server-management/app-settings/{name}/
-   * @param name Case-insensitive application setting name.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public serverManagementAppSettingsDestroy(
-    name: string,
+    requestParameters: ServerManagementAppSettingsDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -167,7 +184,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public serverManagementAppSettingsDestroy(
-    name: string,
+    requestParameters: ServerManagementAppSettingsDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -177,7 +194,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public serverManagementAppSettingsDestroy(
-    name: string,
+    requestParameters: ServerManagementAppSettingsDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -187,7 +204,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public serverManagementAppSettingsDestroy(
-    name: string,
+    requestParameters: ServerManagementAppSettingsDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -196,6 +213,7 @@ export class ServerManagementService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const name = requestParameters?.name;
     if (name === null || name === undefined) {
       throw new Error(
         'Required parameter name was null or undefined when calling serverManagementAppSettingsDestroy.',
@@ -251,15 +269,13 @@ export class ServerManagementService extends BaseService {
   /**
    * Update or delete single application setting
    * @endpoint patch /api/server-management/app-settings/{name}/
-   * @param name Case-insensitive application setting name.
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public serverManagementAppSettingsPartialUpdate(
-    name: string,
-    requestBody?: { [key: string]: any },
+    requestParameters: ServerManagementAppSettingsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -269,8 +285,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public serverManagementAppSettingsPartialUpdate(
-    name: string,
-    requestBody?: { [key: string]: any },
+    requestParameters: ServerManagementAppSettingsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -280,8 +295,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public serverManagementAppSettingsPartialUpdate(
-    name: string,
-    requestBody?: { [key: string]: any },
+    requestParameters: ServerManagementAppSettingsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -291,8 +305,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public serverManagementAppSettingsPartialUpdate(
-    name: string,
-    requestBody?: { [key: string]: any },
+    requestParameters: ServerManagementAppSettingsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -301,11 +314,13 @@ export class ServerManagementService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const name = requestParameters?.name;
     if (name === null || name === undefined) {
       throw new Error(
         'Required parameter name was null or undefined when calling serverManagementAppSettingsPartialUpdate.',
       );
     }
+    const requestBody = requestParameters?.requestBody;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -819,15 +834,13 @@ export class ServerManagementService extends BaseService {
    * Run calendar sync health check
    * Report stuck pending application calendar sync events.
    * @endpoint get /api/server-management/calendar-sync-health/
-   * @param sampleLimit Maximum number of stuck event samples returned.
-   * @param stuckAfterMinutes Pending sync threshold in minutes.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public serverManagementCalendarSyncHealthRetrieve(
-    sampleLimit?: number,
-    stuckAfterMinutes?: number,
+    requestParameters?: ServerManagementCalendarSyncHealthRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -837,8 +850,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public serverManagementCalendarSyncHealthRetrieve(
-    sampleLimit?: number,
-    stuckAfterMinutes?: number,
+    requestParameters?: ServerManagementCalendarSyncHealthRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -848,8 +860,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public serverManagementCalendarSyncHealthRetrieve(
-    sampleLimit?: number,
-    stuckAfterMinutes?: number,
+    requestParameters?: ServerManagementCalendarSyncHealthRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -859,8 +870,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public serverManagementCalendarSyncHealthRetrieve(
-    sampleLimit?: number,
-    stuckAfterMinutes?: number,
+    requestParameters?: ServerManagementCalendarSyncHealthRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -869,6 +879,9 @@ export class ServerManagementService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const sampleLimit = requestParameters?.sampleLimit;
+    const stuckAfterMinutes = requestParameters?.stuckAfterMinutes;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -938,13 +951,13 @@ export class ServerManagementService extends BaseService {
    * Clear application cache
    * Clear application cache.  Supports two modes: 1. Global cache clear (default): Clears all cache entries 2. Per-user cache clear: Increments user\&#39;s cache version for O(1) invalidation  Query Parameters:     user_id (optional): User ID for per-user cache clearing
    * @endpoint post /api/server-management/clear-cache/
-   * @param userId Optional user ID for per-user cache clearing. If omitted, clears global cache.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public serverManagementClearCacheCreate(
-    userId?: number,
+    requestParameters?: ServerManagementClearCacheCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -954,7 +967,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public serverManagementClearCacheCreate(
-    userId?: number,
+    requestParameters?: ServerManagementClearCacheCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -964,7 +977,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public serverManagementClearCacheCreate(
-    userId?: number,
+    requestParameters?: ServerManagementClearCacheCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -974,7 +987,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public serverManagementClearCacheCreate(
-    userId?: number,
+    requestParameters?: ServerManagementClearCacheCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -983,6 +996,8 @@ export class ServerManagementService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const userId = requestParameters?.userId;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -1043,13 +1058,13 @@ export class ServerManagementService extends BaseService {
   /**
    * Get or update local resilience settings
    * @endpoint patch /api/server-management/local-resilience/
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public serverManagementLocalResiliencePartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementLocalResiliencePartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1059,7 +1074,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public serverManagementLocalResiliencePartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementLocalResiliencePartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1069,7 +1084,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public serverManagementLocalResiliencePartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementLocalResiliencePartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1079,7 +1094,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public serverManagementLocalResiliencePartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementLocalResiliencePartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1088,6 +1103,8 @@ export class ServerManagementService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const requestBody = requestParameters?.requestBody;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -1329,13 +1346,13 @@ export class ServerManagementService extends BaseService {
    * Clean unlinked media files
    * Delete unlinked media files from the active media store.
    * @endpoint post /api/server-management/media-cleanup/
-   * @param mediaCleanupRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public serverManagementMediaCleanupCreate(
-    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
+    requestParameters?: ServerManagementMediaCleanupCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1345,7 +1362,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public serverManagementMediaCleanupCreate(
-    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
+    requestParameters?: ServerManagementMediaCleanupCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1355,7 +1372,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public serverManagementMediaCleanupCreate(
-    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
+    requestParameters?: ServerManagementMediaCleanupCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1365,7 +1382,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public serverManagementMediaCleanupCreate(
-    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
+    requestParameters?: ServerManagementMediaCleanupCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1374,6 +1391,8 @@ export class ServerManagementService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const mediaCleanupRequestRequest = requestParameters?.mediaCleanupRequestRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -1617,13 +1636,13 @@ export class ServerManagementService extends BaseService {
    * Get or update OpenRouter status and AI model usage
    * Return OpenRouter credit status and AI model usage by feature.  PATCH accepts DB overrides for supported AI runtime setting names.
    * @endpoint patch /api/server-management/openrouter-status/
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public serverManagementOpenrouterStatusPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementOpenrouterStatusPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1633,7 +1652,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public serverManagementOpenrouterStatusPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementOpenrouterStatusPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1643,7 +1662,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public serverManagementOpenrouterStatusPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementOpenrouterStatusPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1653,7 +1672,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public serverManagementOpenrouterStatusPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementOpenrouterStatusPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1662,6 +1681,8 @@ export class ServerManagementService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const requestBody = requestParameters?.requestBody;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -1814,13 +1835,13 @@ export class ServerManagementService extends BaseService {
   /**
    * Get or update global UI settings
    * @endpoint patch /api/server-management/ui-settings/
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public serverManagementUiSettingsPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementUiSettingsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1830,7 +1851,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public serverManagementUiSettingsPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementUiSettingsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1840,7 +1861,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public serverManagementUiSettingsPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementUiSettingsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1850,7 +1871,7 @@ export class ServerManagementService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public serverManagementUiSettingsPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: ServerManagementUiSettingsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1859,6 +1880,8 @@ export class ServerManagementService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const requestBody = requestParameters?.requestBody;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required

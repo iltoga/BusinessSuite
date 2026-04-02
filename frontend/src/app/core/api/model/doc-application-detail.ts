@@ -24,11 +24,11 @@ export interface DocApplicationDetail {
   /**
    * * `email` - Email * `whatsapp` - WhatsApp
    */
-  readonly notifyCustomerChannel: DocApplicationDetail.NotifyCustomerChannelEnum | null;
+  readonly notifyCustomerChannel: DocApplicationDetailNotifyCustomerChannelEnum | null;
   /**
    * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
    */
-  readonly status: DocApplicationDetail.StatusEnum;
+  readonly status: DocApplicationDetailStatusEnum;
   readonly notes: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -46,18 +46,13 @@ export interface DocApplicationDetail {
   readonly strField: string;
   readonly canForceClose: boolean;
 }
-export namespace DocApplicationDetail {
-  export const NotifyCustomerChannelEnum = {
-    Email: 'email',
-    Whatsapp: 'whatsapp',
-  } as const;
-  export type NotifyCustomerChannelEnum =
-    (typeof NotifyCustomerChannelEnum)[keyof typeof NotifyCustomerChannelEnum];
-  export const StatusEnum = {
-    Pending: 'pending',
-    Processing: 'processing',
-    Completed: 'completed',
-    Rejected: 'rejected',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum DocApplicationDetailNotifyCustomerChannelEnum {
+  Email = 'email',
+  Whatsapp = 'whatsapp',
+}
+export enum DocApplicationDetailStatusEnum {
+  Pending = 'pending',
+  Processing = 'processing',
+  Completed = 'completed',
+  Rejected = 'rejected',
 }

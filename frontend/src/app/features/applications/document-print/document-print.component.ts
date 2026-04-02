@@ -81,7 +81,7 @@ export class DocumentPrintComponent implements OnInit {
   }
 
   private loadDocument(id: number): void {
-    this.documentsApi.documentsPrintRetrieve(id).subscribe({
+    this.documentsApi.documentsPrintRetrieve({ id }).subscribe({
       next: (data) => {
         const document = this.mapDocumentPrintData(data);
         this.document.set(document);

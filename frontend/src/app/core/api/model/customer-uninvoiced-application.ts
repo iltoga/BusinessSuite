@@ -20,7 +20,7 @@ export interface CustomerUninvoicedApplication {
   /**
    * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
    */
-  readonly status: CustomerUninvoicedApplication.StatusEnum;
+  readonly status: CustomerUninvoicedApplicationStatusEnum;
   readonly notes: string | null;
   readonly strField: string;
   readonly statusDisplay: string;
@@ -30,12 +30,9 @@ export interface CustomerUninvoicedApplication {
   readonly isDocumentCollectionCompleted: boolean;
   readonly readyForInvoice: boolean;
 }
-export namespace CustomerUninvoicedApplication {
-  export const StatusEnum = {
-    Pending: 'pending',
-    Processing: 'processing',
-    Completed: 'completed',
-    Rejected: 'rejected',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum CustomerUninvoicedApplicationStatusEnum {
+  Pending = 'pending',
+  Processing = 'processing',
+  Completed = 'completed',
+  Rejected = 'rejected',
 }

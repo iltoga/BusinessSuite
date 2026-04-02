@@ -179,7 +179,7 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
   protected override createListLoader(
     params: ListRequestParams,
   ): Observable<PaginatedResponse<Holiday>> {
-    return this.holidaysApi.holidaysList(params.ordering).pipe(
+    return this.holidaysApi.holidaysList({ ordering: params.ordering }).pipe(
       map((data) => {
         const items = data ?? [];
         return {
@@ -318,8 +318,8 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
 
     const current = this.editingHoliday();
     const request = current
-      ? this.holidaysApi.holidaysUpdate(current.id, payload)
-      : this.holidaysApi.holidaysCreate(payload);
+      ? this.holidaysApi.holidaysUpdate({ id: current.id, holidayRequest: payload })
+      : this.holidaysApi.holidaysCreate({ holidayRequest: payload });
 
     request
       .pipe(
@@ -352,7 +352,7 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
     if (!current) return;
 
     this.holidaysApi
-      .holidaysDestroy(current.id)
+      .holidaysDestroy({ id: current.id })
       .pipe(
         catchError(() => {
           this.toast.error('Failed to delete holiday');

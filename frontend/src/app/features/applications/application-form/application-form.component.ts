@@ -5,6 +5,7 @@ import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { ProductsService } from '@/core/api/api/products.service';
 import type { Customer } from '@/core/api/model/customer';
 import type { DocApplicationCreateUpdateRequest } from '@/core/api/model/doc-application-create-update-request';
+import { DocApplicationCreateUpdateRequestNotifyCustomerChannelEnum } from '@/core/api/model/doc-application-create-update-request';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { FormNavigationFacadeService } from '@/features/shared/services/form-navigation-facade.service';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -316,7 +317,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
   private loadApplication(id: number): void {
     this.isLoading.set(true);
-    this.customerApplicationsService.customerApplicationsRetrieve(id).subscribe({
+    this.customerApplicationsService.customerApplicationsRetrieve({ id }).subscribe({
       next: (rawApp) => {
         const app = adaptApplicationSnapshot(rawApp);
         this.form.patchValue(
@@ -354,7 +355,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   }
 
   private loadCustomerDetail(customerId: number): void {
-    this.customersService.customersRetrieve(customerId).subscribe({
+    this.customersService.customersRetrieve({ id: customerId }).subscribe({
       next: (customer) => {
         this.selectedCustomer.set(customer);
         this.syncNotifyCustomerAvailability();
@@ -372,7 +373,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   }
 
   private loadDocumentTypes() {
-    this.documentTypesService.documentTypesList().subscribe({
+    this.documentTypesService.documentTypesList({}).subscribe({
       next: (res) => this.documentTypes.set(adaptDocumentTypes(res)),
       error: () => this.toast.error('Failed to load document types'),
     });
@@ -513,7 +514,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         }
         const start = toApiDate(doc);
         if (!start) return;
-        this.computeService.computeDocWorkflowDueDateRetrieve(start, task.id).subscribe({
+        this.computeService
+          .computeDocWorkflowDueDateRetrieve({ startDate: start, taskId: task.id })
+          .subscribe({
           next: (res) => {
             const payload = toRecord(res);
             const computedDueDate = payload?.['dueDate'];
@@ -538,7 +541,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       return inflight;
     }
 
-    const request$ = this.productsService.productsGetProductByIdRetrieve(productId).pipe(
+    const request$ = this.productsService.productsGetProductByIdRetrieve({ productId }).pipe(
       map((rawData) => adaptProductDocuments(rawData)),
       map((data) => {
         this.productDocumentsCache.set(productId, data);
@@ -631,13 +634,16 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar ?? undefined,
         notifyCustomerToo: this.form.value.notifyCustomer ?? undefined,
         notifyCustomerChannel: this.form.value.notifyCustomer
-          ? this.form.value.notifyCustomerChannel
+          ? this.normalizeNotifyCustomerChannel(this.form.value.notifyCustomerChannel)
           : null,
         notes: this.form.value.notes,
       };
 
       this.customerApplicationsService
-        .customerApplicationsPartialUpdate(this.applicationId()!, payload)
+        .customerApplicationsPartialUpdate({
+          id: this.applicationId()!,
+          docApplicationCreateUpdateRequest: payload,
+        })
         .subscribe({
           next: (application) => {
             this.toast.success('Application updated');
@@ -672,13 +678,15 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar ?? undefined,
         notifyCustomerToo: this.form.value.notifyCustomer ?? undefined,
         notifyCustomerChannel: this.form.value.notifyCustomer
-          ? this.form.value.notifyCustomerChannel
+          ? this.normalizeNotifyCustomerChannel(this.form.value.notifyCustomerChannel)
           : null,
         notes: this.form.value.notes,
         documentTypes: this.form.value.documents as Array<Record<string, unknown>>,
       };
 
-      this.customerApplicationsService.customerApplicationsCreate(payload).subscribe({
+      this.customerApplicationsService
+        .customerApplicationsCreate({ docApplicationCreateUpdateRequest: payload })
+        .subscribe({
         next: (application) => {
           this.toast.success('Application created');
           const id = application?.id;
@@ -782,5 +790,18 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       const currentDoc = this.documentTypes().find((doc) => String(doc.id) === currentId);
       return Boolean(currentDoc?.isStayPermit);
     });
+  }
+
+  private normalizeNotifyCustomerChannel(
+    value: unknown,
+  ): DocApplicationCreateUpdateRequestNotifyCustomerChannelEnum {
+    switch (String(value ?? '').trim().toLowerCase()) {
+      case DocApplicationCreateUpdateRequestNotifyCustomerChannelEnum.Email:
+        return DocApplicationCreateUpdateRequestNotifyCustomerChannelEnum.Email;
+      case DocApplicationCreateUpdateRequestNotifyCustomerChannelEnum.Whatsapp:
+        return DocApplicationCreateUpdateRequestNotifyCustomerChannelEnum.Whatsapp;
+      default:
+        return DocApplicationCreateUpdateRequestNotifyCustomerChannelEnum.Whatsapp;
+    }
   }
 }

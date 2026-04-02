@@ -48,11 +48,31 @@ import { ProductsBulkDeleteResponse } from '../model/products-bulk-delete-respon
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  ProductsServiceInterface,
+  ProductsBulkDeleteCreateRequestParams,
+  ProductsCanDeleteRetrieveRequestParams,
+  ProductsCategoryOptionsListRequestParams,
+  ProductsCreateRequestParams,
+  ProductsDeletePreviewRetrieveRequestParams,
+  ProductsDestroyRequestParams,
+  ProductsExportDownloadRetrieveRequestParams,
+  ProductsExportStartCreateRequestParams,
+  ProductsForceDeleteCreateRequestParams,
+  ProductsGetProductByIdRetrieveRequestParams,
+  ProductsGetProductsByProductTypeRetrieveRequestParams,
+  ProductsImportStartCreateRequestParams,
+  ProductsListRequestParams,
+  ProductsPartialUpdateRequestParams,
+  ProductsPriceListPrintDownloadRetrieveRequestParams,
+  ProductsRetrieveRequestParams,
+  ProductsUpdateRequestParams,
+} from './products.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class ProductsService extends BaseService {
+export class ProductsService extends BaseService implements ProductsServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -63,13 +83,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint post /api/products/bulk-delete/
-   * @param productsBulkDeleteRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsBulkDeleteCreate(
-    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
+    requestParameters?: ProductsBulkDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -79,7 +99,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<ProductsBulkDeleteResponse>;
   public productsBulkDeleteCreate(
-    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
+    requestParameters?: ProductsBulkDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -89,7 +109,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<ProductsBulkDeleteResponse>>;
   public productsBulkDeleteCreate(
-    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
+    requestParameters?: ProductsBulkDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -99,7 +119,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<ProductsBulkDeleteResponse>>;
   public productsBulkDeleteCreate(
-    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
+    requestParameters?: ProductsBulkDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -108,6 +128,8 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const productsBulkDeleteRequestRequest = requestParameters?.productsBulkDeleteRequestRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -173,13 +195,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint get /api/products/{id}/can-delete/
-   * @param id A unique integer value identifying this product.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsCanDeleteRetrieve(
-    id: number,
+    requestParameters: ProductsCanDeleteRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -189,7 +211,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<Product>;
   public productsCanDeleteRetrieve(
-    id: number,
+    requestParameters: ProductsCanDeleteRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -199,7 +221,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public productsCanDeleteRetrieve(
-    id: number,
+    requestParameters: ProductsCanDeleteRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -209,7 +231,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public productsCanDeleteRetrieve(
-    id: number,
+    requestParameters: ProductsCanDeleteRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -218,6 +240,7 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling productsCanDeleteRetrieve.',
@@ -272,19 +295,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint get /api/products/category-options/
-   * @param deprecated Filter category options by explicit deprecated product status.
-   * @param hideDeprecated When true (default), hide categories that only belong to deprecated products.
-   * @param productType Restrict category options to a product type.
-   * @param usesCustomerAppWorkflow Restrict category options to workflow-enabled products.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsCategoryOptionsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    productType?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: ProductsCategoryOptionsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -294,10 +311,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<Array<ProductCategoryFilterOption>>;
   public productsCategoryOptionsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    productType?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: ProductsCategoryOptionsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -307,10 +321,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<Array<ProductCategoryFilterOption>>>;
   public productsCategoryOptionsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    productType?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: ProductsCategoryOptionsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -320,10 +331,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<Array<ProductCategoryFilterOption>>>;
   public productsCategoryOptionsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    productType?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: ProductsCategoryOptionsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -332,6 +340,11 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const deprecated = requestParameters?.deprecated;
+    const hideDeprecated = requestParameters?.hideDeprecated;
+    const productType = requestParameters?.productType;
+    const usesCustomerAppWorkflow = requestParameters?.usesCustomerAppWorkflow;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -419,13 +432,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint post /api/products/
-   * @param productCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsCreate(
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -435,7 +448,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<ProductCreateUpdate>;
   public productsCreate(
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -445,7 +458,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public productsCreate(
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -455,7 +468,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public productsCreate(
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -464,6 +477,7 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const productCreateUpdateRequest = requestParameters?.productCreateUpdateRequest;
     if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter productCreateUpdateRequest was null or undefined when calling productsCreate.',
@@ -531,13 +545,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint get /api/products/{id}/delete-preview/
-   * @param id A unique integer value identifying this product.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsDeletePreviewRetrieve(
-    id: number,
+    requestParameters: ProductsDeletePreviewRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -547,7 +561,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public productsDeletePreviewRetrieve(
-    id: number,
+    requestParameters: ProductsDeletePreviewRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -557,7 +571,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public productsDeletePreviewRetrieve(
-    id: number,
+    requestParameters: ProductsDeletePreviewRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -567,7 +581,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public productsDeletePreviewRetrieve(
-    id: number,
+    requestParameters: ProductsDeletePreviewRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -576,6 +590,7 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling productsDeletePreviewRetrieve.',
@@ -630,35 +645,36 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint delete /api/products/{id}/
-   * @param id A unique integer value identifying this product.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsDestroy(
-    id: number,
+    requestParameters: ProductsDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public productsDestroy(
-    id: number,
+    requestParameters: ProductsDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public productsDestroy(
-    id: number,
+    requestParameters: ProductsDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public productsDestroy(
-    id: number,
+    requestParameters: ProductsDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling productsDestroy.');
     }
@@ -711,13 +727,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint get /api/products/export/download/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsExportDownloadRetrieve(
-    jobId: string,
+    requestParameters: ProductsExportDownloadRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -727,7 +743,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<Product>;
   public productsExportDownloadRetrieve(
-    jobId: string,
+    requestParameters: ProductsExportDownloadRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -737,7 +753,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public productsExportDownloadRetrieve(
-    jobId: string,
+    requestParameters: ProductsExportDownloadRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -747,7 +763,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public productsExportDownloadRetrieve(
-    jobId: string,
+    requestParameters: ProductsExportDownloadRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -756,6 +772,7 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling productsExportDownloadRetrieve.',
@@ -810,13 +827,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint post /api/products/export/start/
-   * @param productRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsExportStartCreate(
-    productRequest: ProductRequest,
+    requestParameters: ProductsExportStartCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -826,7 +843,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<Product>;
   public productsExportStartCreate(
-    productRequest: ProductRequest,
+    requestParameters: ProductsExportStartCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -836,7 +853,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public productsExportStartCreate(
-    productRequest: ProductRequest,
+    requestParameters: ProductsExportStartCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -846,7 +863,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public productsExportStartCreate(
-    productRequest: ProductRequest,
+    requestParameters: ProductsExportStartCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -855,6 +872,7 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const productRequest = requestParameters?.productRequest;
     if (productRequest === null || productRequest === undefined) {
       throw new Error(
         'Required parameter productRequest was null or undefined when calling productsExportStartCreate.',
@@ -922,15 +940,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint post /api/products/{id}/force-delete/
-   * @param id A unique integer value identifying this product.
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsForceDeleteCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: ProductsForceDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -940,8 +956,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public productsForceDeleteCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: ProductsForceDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -951,8 +966,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public productsForceDeleteCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: ProductsForceDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -962,8 +976,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public productsForceDeleteCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: ProductsForceDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -972,11 +985,13 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling productsForceDeleteCreate.',
       );
     }
+    const requestBody = requestParameters?.requestBody;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -1039,13 +1054,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint get /api/products/get_product_by_id/{productId}/
-   * @param productId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsGetProductByIdRetrieve(
-    productId: number,
+    requestParameters: ProductsGetProductByIdRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1055,7 +1070,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<Product>;
   public productsGetProductByIdRetrieve(
-    productId: number,
+    requestParameters: ProductsGetProductByIdRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1065,7 +1080,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public productsGetProductByIdRetrieve(
-    productId: number,
+    requestParameters: ProductsGetProductByIdRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1075,7 +1090,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public productsGetProductByIdRetrieve(
-    productId: number,
+    requestParameters: ProductsGetProductByIdRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1084,6 +1099,7 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const productId = requestParameters?.productId;
     if (productId === null || productId === undefined) {
       throw new Error(
         'Required parameter productId was null or undefined when calling productsGetProductByIdRetrieve.',
@@ -1138,13 +1154,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint get /api/products/get_products_by_product_type/{productType}/
-   * @param productType Product type (visa|other).
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsGetProductsByProductTypeRetrieve(
-    productType: string,
+    requestParameters: ProductsGetProductsByProductTypeRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1154,7 +1170,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<Product>;
   public productsGetProductsByProductTypeRetrieve(
-    productType: string,
+    requestParameters: ProductsGetProductsByProductTypeRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1164,7 +1180,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public productsGetProductsByProductTypeRetrieve(
-    productType: string,
+    requestParameters: ProductsGetProductsByProductTypeRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1174,7 +1190,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public productsGetProductsByProductTypeRetrieve(
-    productType: string,
+    requestParameters: ProductsGetProductsByProductTypeRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1183,6 +1199,7 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const productType = requestParameters?.productType;
     if (productType === null || productType === undefined) {
       throw new Error(
         'Required parameter productType was null or undefined when calling productsGetProductsByProductTypeRetrieve.',
@@ -1237,13 +1254,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint post /api/products/import/start/
-   * @param file
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsImportStartCreate(
-    file: Blob,
+    requestParameters: ProductsImportStartCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1253,7 +1270,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<ProductImportStartResponse>;
   public productsImportStartCreate(
-    file: Blob,
+    requestParameters: ProductsImportStartCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1263,7 +1280,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<ProductImportStartResponse>>;
   public productsImportStartCreate(
-    file: Blob,
+    requestParameters: ProductsImportStartCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1273,7 +1290,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<ProductImportStartResponse>>;
   public productsImportStartCreate(
-    file: Blob,
+    requestParameters: ProductsImportStartCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1282,6 +1299,7 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const file = requestParameters?.file;
     if (file === null || file === undefined) {
       throw new Error(
         'Required parameter file was null or undefined when calling productsImportStartCreate.',
@@ -1365,27 +1383,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint get /api/products/
-   * @param deprecated Filter by explicit deprecated status.
-   * @param hideDeprecated When true (default), hide deprecated products.
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param productCategory Filter by product category name (comma-separated).
-   * @param search A search term.
-   * @param usesCustomerAppWorkflow Filter products by whether they use customer-application workflows.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    productCategory?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: ProductsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1395,14 +1399,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<PaginatedProductList>;
   public productsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    productCategory?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: ProductsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1412,14 +1409,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedProductList>>;
   public productsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    productCategory?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: ProductsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1429,14 +1419,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedProductList>>;
   public productsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    productCategory?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: ProductsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1445,6 +1428,15 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const deprecated = requestParameters?.deprecated;
+    const hideDeprecated = requestParameters?.hideDeprecated;
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const productCategory = requestParameters?.productCategory;
+    const search = requestParameters?.search;
+    const usesCustomerAppWorkflow = requestParameters?.usesCustomerAppWorkflow;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -1560,15 +1552,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint patch /api/products/{id}/
-   * @param id A unique integer value identifying this product.
-   * @param productCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsPartialUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1578,8 +1568,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<ProductCreateUpdate>;
   public productsPartialUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1589,8 +1578,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public productsPartialUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1600,8 +1588,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public productsPartialUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1610,11 +1597,13 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling productsPartialUpdate.',
       );
     }
+    const productCreateUpdateRequest = requestParameters?.productCreateUpdateRequest;
     if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter productCreateUpdateRequest was null or undefined when calling productsPartialUpdate.',
@@ -1682,13 +1671,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint get /api/products/price-list/print/download/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsPriceListPrintDownloadRetrieve(
-    jobId: string,
+    requestParameters: ProductsPriceListPrintDownloadRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1698,7 +1687,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<Blob>;
   public productsPriceListPrintDownloadRetrieve(
-    jobId: string,
+    requestParameters: ProductsPriceListPrintDownloadRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1708,7 +1697,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public productsPriceListPrintDownloadRetrieve(
-    jobId: string,
+    requestParameters: ProductsPriceListPrintDownloadRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1718,7 +1707,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public productsPriceListPrintDownloadRetrieve(
-    jobId: string,
+    requestParameters: ProductsPriceListPrintDownloadRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1727,6 +1716,7 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling productsPriceListPrintDownloadRetrieve.',
@@ -1862,13 +1852,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint get /api/products/{id}/
-   * @param id A unique integer value identifying this product.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsRetrieve(
-    id: number,
+    requestParameters: ProductsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1878,7 +1868,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<ProductDetail>;
   public productsRetrieve(
-    id: number,
+    requestParameters: ProductsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1888,7 +1878,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<ProductDetail>>;
   public productsRetrieve(
-    id: number,
+    requestParameters: ProductsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1898,7 +1888,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<ProductDetail>>;
   public productsRetrieve(
-    id: number,
+    requestParameters: ProductsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1907,6 +1897,7 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling productsRetrieve.');
     }
@@ -1959,15 +1950,13 @@ export class ProductsService extends BaseService {
 
   /**
    * @endpoint put /api/products/{id}/
-   * @param id A unique integer value identifying this product.
-   * @param productCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public productsUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1977,8 +1966,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<ProductCreateUpdate>;
   public productsUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1988,8 +1976,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public productsUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1999,8 +1986,7 @@ export class ProductsService extends BaseService {
     },
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public productsUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: ProductsUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2009,9 +1995,11 @@ export class ProductsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling productsUpdate.');
     }
+    const productCreateUpdateRequest = requestParameters?.productCreateUpdateRequest;
     if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter productCreateUpdateRequest was null or undefined when calling productsUpdate.',

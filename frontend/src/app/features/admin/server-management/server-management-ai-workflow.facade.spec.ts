@@ -137,7 +137,7 @@ describe('ServerManagementAiWorkflowFacade', () => {
     expect(
       mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
     ).toHaveBeenCalledWith({
-      settings: { INVOICE_IMPORT_MODEL: null },
+      requestBody: { settings: { INVOICE_IMPORT_MODEL: null } },
     });
 
     expect(facade.getAiSettingValue('INVOICE_IMPORT_MODEL')).toBe('');
@@ -160,7 +160,7 @@ describe('ServerManagementAiWorkflowFacade', () => {
     expect(
       mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
     ).toHaveBeenCalledWith({
-      settings: { INVOICE_IMPORT_MODEL: null },
+      requestBody: { settings: { INVOICE_IMPORT_MODEL: null } },
     });
   });
 
@@ -196,11 +196,13 @@ describe('ServerManagementAiWorkflowFacade', () => {
     expect(
       mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
     ).toHaveBeenCalledWith({
-      settings: {
-        LLM_FALLBACK_MODEL_CHAIN: [
-          { model: 'gpt-5-mini', timeoutSeconds: 120 },
-          { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
-        ],
+      requestBody: {
+        settings: {
+          LLM_FALLBACK_MODEL_CHAIN: [
+            { model: 'gpt-5-mini', timeoutSeconds: 120 },
+            { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+          ],
+        },
       },
     });
   });
@@ -226,11 +228,13 @@ describe('ServerManagementAiWorkflowFacade', () => {
     expect(
       mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
     ).toHaveBeenCalledWith({
-      settings: {
-        LLM_FALLBACK_MODEL_CHAIN: [
-          { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
-          { model: 'gpt-5-mini', timeoutSeconds: 120 },
-        ],
+      requestBody: {
+        settings: {
+          LLM_FALLBACK_MODEL_CHAIN: [
+            { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+            { model: 'gpt-5-mini', timeoutSeconds: 120 },
+          ],
+        },
       },
     });
   });
@@ -301,9 +305,11 @@ describe('ServerManagementAiWorkflowFacade', () => {
     expect(
       mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
     ).toHaveBeenCalledWith({
-      settings: {
-        LLM_PROVIDER: 'groq',
-        GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+      requestBody: {
+        settings: {
+          LLM_PROVIDER: 'groq',
+          GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+        },
       },
     });
 
@@ -358,8 +364,12 @@ describe('ServerManagementAiWorkflowFacade', () => {
     expect(
       mockServerManagementService.serverManagementOpenrouterStatusPartialUpdate,
     ).toHaveBeenCalledWith({
-      settings: {
-        LLM_FALLBACK_MODEL_CHAIN: [{ model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 }],
+      requestBody: {
+        settings: {
+          LLM_FALLBACK_MODEL_CHAIN: [
+            { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+          ],
+        },
       },
     });
 

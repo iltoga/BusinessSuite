@@ -30,11 +30,15 @@ import { UserSettingsRequest } from '../model/user-settings-request';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  UserSettingsServiceInterface,
+  UserSettingsMePartialUpdateRequestParams,
+} from './user-settings.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class UserSettingsService extends BaseService {
+export class UserSettingsService extends BaseService implements UserSettingsServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -46,13 +50,13 @@ export class UserSettingsService extends BaseService {
   /**
    * Retrieve or partially update current user\&#39;s settings.  Supports GET and PATCH on the same URL &#x60;/me/&#x60;.
    * @endpoint patch /api/user-settings/me/
-   * @param userSettingsRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public userSettingsMePartialUpdate(
-    userSettingsRequest?: UserSettingsRequest,
+    requestParameters?: UserSettingsMePartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -62,7 +66,7 @@ export class UserSettingsService extends BaseService {
     },
   ): Observable<UserSettings>;
   public userSettingsMePartialUpdate(
-    userSettingsRequest?: UserSettingsRequest,
+    requestParameters?: UserSettingsMePartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -72,7 +76,7 @@ export class UserSettingsService extends BaseService {
     },
   ): Observable<HttpResponse<UserSettings>>;
   public userSettingsMePartialUpdate(
-    userSettingsRequest?: UserSettingsRequest,
+    requestParameters?: UserSettingsMePartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -82,7 +86,7 @@ export class UserSettingsService extends BaseService {
     },
   ): Observable<HttpEvent<UserSettings>>;
   public userSettingsMePartialUpdate(
-    userSettingsRequest?: UserSettingsRequest,
+    requestParameters?: UserSettingsMePartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -91,6 +95,8 @@ export class UserSettingsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const userSettingsRequest = requestParameters?.userSettingsRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required

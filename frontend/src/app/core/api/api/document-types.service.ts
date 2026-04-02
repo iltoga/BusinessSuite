@@ -30,11 +30,22 @@ import { DocumentTypeRequest } from '../model/document-type-request';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  DocumentTypesServiceInterface,
+  DocumentTypesCanDeleteRetrieveRequestParams,
+  DocumentTypesCreateRequestParams,
+  DocumentTypesDeprecationImpactRetrieveRequestParams,
+  DocumentTypesDestroyRequestParams,
+  DocumentTypesListRequestParams,
+  DocumentTypesPartialUpdateRequestParams,
+  DocumentTypesRetrieveRequestParams,
+  DocumentTypesUpdateRequestParams,
+} from './document-types.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class DocumentTypesService extends BaseService {
+export class DocumentTypesService extends BaseService implements DocumentTypesServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -47,13 +58,13 @@ export class DocumentTypesService extends BaseService {
    * Check if a document type can be deleted
    * Check if document type can be safely deleted.
    * @endpoint get /api/document-types/{id}/can-delete/
-   * @param id A unique integer value identifying this document type.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesCanDeleteRetrieve(
-    id: number,
+    requestParameters: DocumentTypesCanDeleteRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -63,7 +74,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public documentTypesCanDeleteRetrieve(
-    id: number,
+    requestParameters: DocumentTypesCanDeleteRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -73,7 +84,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public documentTypesCanDeleteRetrieve(
-    id: number,
+    requestParameters: DocumentTypesCanDeleteRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -83,7 +94,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public documentTypesCanDeleteRetrieve(
-    id: number,
+    requestParameters: DocumentTypesCanDeleteRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -92,6 +103,7 @@ export class DocumentTypesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentTypesCanDeleteRetrieve.',
@@ -146,13 +158,13 @@ export class DocumentTypesService extends BaseService {
 
   /**
    * @endpoint post /api/document-types/
-   * @param documentTypeRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesCreate(
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -162,7 +174,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<DocumentType>;
   public documentTypesCreate(
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -172,7 +184,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public documentTypesCreate(
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -182,7 +194,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public documentTypesCreate(
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -191,6 +203,7 @@ export class DocumentTypesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const documentTypeRequest = requestParameters?.documentTypeRequest;
     if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
         'Required parameter documentTypeRequest was null or undefined when calling documentTypesCreate.',
@@ -258,13 +271,13 @@ export class DocumentTypesService extends BaseService {
 
   /**
    * @endpoint get /api/document-types/{id}/deprecation-impact/
-   * @param id A unique integer value identifying this document type.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesDeprecationImpactRetrieve(
-    id: number,
+    requestParameters: DocumentTypesDeprecationImpactRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -274,7 +287,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<DocumentType>;
   public documentTypesDeprecationImpactRetrieve(
-    id: number,
+    requestParameters: DocumentTypesDeprecationImpactRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -284,7 +297,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public documentTypesDeprecationImpactRetrieve(
-    id: number,
+    requestParameters: DocumentTypesDeprecationImpactRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -294,7 +307,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public documentTypesDeprecationImpactRetrieve(
-    id: number,
+    requestParameters: DocumentTypesDeprecationImpactRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -303,6 +316,7 @@ export class DocumentTypesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentTypesDeprecationImpactRetrieve.',
@@ -357,35 +371,36 @@ export class DocumentTypesService extends BaseService {
 
   /**
    * @endpoint delete /api/document-types/{id}/
-   * @param id A unique integer value identifying this document type.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesDestroy(
-    id: number,
+    requestParameters: DocumentTypesDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public documentTypesDestroy(
-    id: number,
+    requestParameters: DocumentTypesDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public documentTypesDestroy(
-    id: number,
+    requestParameters: DocumentTypesDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public documentTypesDestroy(
-    id: number,
+    requestParameters: DocumentTypesDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentTypesDestroy.',
@@ -440,21 +455,13 @@ export class DocumentTypesService extends BaseService {
 
   /**
    * @endpoint get /api/document-types/
-   * @param deprecated Filter by explicit deprecated status.
-   * @param hideDeprecated When true (default), hide deprecated document types.
-   * @param ordering Which field to use when ordering the results.
-   * @param search A search term.
-   * @param usesCustomerAppWorkflow Filter products by workflow-enabled flag.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: DocumentTypesListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -464,11 +471,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<Array<DocumentType>>;
   public documentTypesList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: DocumentTypesListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -478,11 +481,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpResponse<Array<DocumentType>>>;
   public documentTypesList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: DocumentTypesListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -492,11 +491,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpEvent<Array<DocumentType>>>;
   public documentTypesList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: DocumentTypesListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -505,6 +500,12 @@ export class DocumentTypesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const deprecated = requestParameters?.deprecated;
+    const hideDeprecated = requestParameters?.hideDeprecated;
+    const ordering = requestParameters?.ordering;
+    const search = requestParameters?.search;
+    const usesCustomerAppWorkflow = requestParameters?.usesCustomerAppWorkflow;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -596,15 +597,13 @@ export class DocumentTypesService extends BaseService {
 
   /**
    * @endpoint patch /api/document-types/{id}/
-   * @param id A unique integer value identifying this document type.
-   * @param documentTypeRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesPartialUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -614,8 +613,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<DocumentType>;
   public documentTypesPartialUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -625,8 +623,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public documentTypesPartialUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -636,8 +633,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public documentTypesPartialUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -646,11 +642,13 @@ export class DocumentTypesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentTypesPartialUpdate.',
       );
     }
+    const documentTypeRequest = requestParameters?.documentTypeRequest;
     if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
         'Required parameter documentTypeRequest was null or undefined when calling documentTypesPartialUpdate.',
@@ -718,13 +716,13 @@ export class DocumentTypesService extends BaseService {
 
   /**
    * @endpoint get /api/document-types/{id}/
-   * @param id A unique integer value identifying this document type.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesRetrieve(
-    id: number,
+    requestParameters: DocumentTypesRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -734,7 +732,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<DocumentType>;
   public documentTypesRetrieve(
-    id: number,
+    requestParameters: DocumentTypesRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -744,7 +742,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public documentTypesRetrieve(
-    id: number,
+    requestParameters: DocumentTypesRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -754,7 +752,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public documentTypesRetrieve(
-    id: number,
+    requestParameters: DocumentTypesRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -763,6 +761,7 @@ export class DocumentTypesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentTypesRetrieve.',
@@ -817,15 +816,13 @@ export class DocumentTypesService extends BaseService {
 
   /**
    * @endpoint put /api/document-types/{id}/
-   * @param id A unique integer value identifying this document type.
-   * @param documentTypeRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentTypesUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -835,8 +832,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<DocumentType>;
   public documentTypesUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -846,8 +842,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public documentTypesUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -857,8 +852,7 @@ export class DocumentTypesService extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public documentTypesUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: DocumentTypesUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -867,11 +861,13 @@ export class DocumentTypesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentTypesUpdate.',
       );
     }
+    const documentTypeRequest = requestParameters?.documentTypeRequest;
     if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
         'Required parameter documentTypeRequest was null or undefined when calling documentTypesUpdate.',

@@ -18,7 +18,7 @@ export interface DocApplicationSerializerWithRelations {
   /**
    * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
    */
-  status?: DocApplicationSerializerWithRelations.StatusEnum;
+  status?: DocApplicationSerializerWithRelationsStatusEnum;
   notes?: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -39,12 +39,9 @@ export interface DocApplicationSerializerWithRelations {
   readonly canForceClose: boolean;
   readonly submissionWindowLastDate: string | null;
 }
-export namespace DocApplicationSerializerWithRelations {
-  export const StatusEnum = {
-    Pending: 'pending',
-    Processing: 'processing',
-    Completed: 'completed',
-    Rejected: 'rejected',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum DocApplicationSerializerWithRelationsStatusEnum {
+  Pending = 'pending',
+  Processing = 'processing',
+  Completed = 'completed',
+  Rejected = 'rejected',
 }

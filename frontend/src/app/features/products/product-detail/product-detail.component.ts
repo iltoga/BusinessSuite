@@ -250,7 +250,7 @@ export class ProductDetailComponent implements OnInit {
 
   private loadProduct(id: number): void {
     this.isLoading.set(true);
-    this.productsApi.productsRetrieve(id).subscribe({
+    this.productsApi.productsRetrieve({ id }).subscribe({
       next: (product) => {
         this.product.set(product);
         this.isLoading.set(false);

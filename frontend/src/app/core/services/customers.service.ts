@@ -34,6 +34,12 @@ import type {
   PaginatedCustomerUninvoicedApplicationList,
   Product,
 } from '@/core/api';
+import {
+  CustomerApplicationHistoryStatusEnum,
+} from '@/core/api/model/customer-application-history';
+import {
+  CustomerUninvoicedApplicationStatusEnum,
+} from '@/core/api/model/customer-uninvoiced-application';
 import { AuthService } from '@/core/services/auth.service';
 import { unwrapApiRecord } from '@/core/utils/api-envelope';
 
@@ -313,17 +319,18 @@ export class CustomersService {
   }
 
   private mapUninvoicedApplication(item: any): CustomerUninvoicedApplication {
+    const status = this.normalizeCustomerApplicationStatus(item?.status);
     return {
       id: Number(item?.id ?? 0),
       customer: this.mapCustomer(item?.customer ?? {}),
       product: this.mapProduct(item?.product ?? {}),
       docDate: item?.docDate ?? '',
       dueDate: item?.dueDate ?? null,
-      status: item?.status ?? '',
+      status,
       addDeadlinesToCalendar: item?.addDeadlinesToCalendar ?? false,
       notes: item?.notes ?? null,
       strField: item?.strField ?? '',
-      statusDisplay: item?.statusDisplay ?? item?.status ?? '',
+      statusDisplay: item?.statusDisplay ?? status,
       productTypeDisplay: item?.productTypeDisplay ?? '',
       hasInvoice: Boolean(item?.hasInvoice ?? false),
       invoiceId: item?.invoiceId ?? null,
@@ -335,9 +342,11 @@ export class CustomersService {
   private mapCustomerApplicationHistory(item: any): CustomerApplicationHistory {
     const base = this.mapUninvoicedApplication(item);
     const paymentStatus = (item?.paymentStatus ?? 'uninvoiced') as CustomerApplicationPaymentStatus;
+    const status = this.normalizeCustomerApplicationHistoryStatus(item?.status);
 
     return {
       ...base,
+      status,
       paymentStatus,
       paymentStatusDisplay:
         item?.paymentStatusDisplay ??
@@ -351,5 +360,39 @@ export class CustomersService {
         item?.invoiceStatusDisplay ?? (paymentStatus === 'uninvoiced' ? 'Uninvoiced' : '—'),
       submissionWindowLastDate: item?.submissionWindowLastDate ?? null,
     };
+  }
+
+  private normalizeCustomerApplicationStatus(
+    value: unknown,
+  ): CustomerUninvoicedApplicationStatusEnum {
+    switch (String(value ?? '').trim().toLowerCase()) {
+      case CustomerUninvoicedApplicationStatusEnum.Pending:
+        return CustomerUninvoicedApplicationStatusEnum.Pending;
+      case CustomerUninvoicedApplicationStatusEnum.Processing:
+        return CustomerUninvoicedApplicationStatusEnum.Processing;
+      case CustomerUninvoicedApplicationStatusEnum.Completed:
+        return CustomerUninvoicedApplicationStatusEnum.Completed;
+      case CustomerUninvoicedApplicationStatusEnum.Rejected:
+        return CustomerUninvoicedApplicationStatusEnum.Rejected;
+      default:
+        return CustomerUninvoicedApplicationStatusEnum.Pending;
+    }
+  }
+
+  private normalizeCustomerApplicationHistoryStatus(
+    value: unknown,
+  ): CustomerApplicationHistoryStatusEnum {
+    switch (String(value ?? '').trim().toLowerCase()) {
+      case CustomerApplicationHistoryStatusEnum.Pending:
+        return CustomerApplicationHistoryStatusEnum.Pending;
+      case CustomerApplicationHistoryStatusEnum.Processing:
+        return CustomerApplicationHistoryStatusEnum.Processing;
+      case CustomerApplicationHistoryStatusEnum.Completed:
+        return CustomerApplicationHistoryStatusEnum.Completed;
+      case CustomerApplicationHistoryStatusEnum.Rejected:
+        return CustomerApplicationHistoryStatusEnum.Rejected;
+      default:
+        return CustomerApplicationHistoryStatusEnum.Pending;
+    }
   }
 }

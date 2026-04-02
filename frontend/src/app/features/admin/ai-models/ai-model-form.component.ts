@@ -13,7 +13,8 @@ import { Observable } from 'rxjs';
 
 import { AiModelsService } from '@/core/api/api/ai-models.service';
 import { AiModel } from '@/core/api/model/ai-model';
-import { AiModelRequest } from '@/core/api/model/ai-model-request';
+import type { AiModelRequest } from '@/core/api/model/ai-model-request';
+import { AiModelRequestProviderEnum } from '@/core/api/model/ai-model-request';
 import type { AiModelPricingDisplay } from '@/core/api/model/ai-model-pricing-display';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
@@ -177,7 +178,7 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelRequest,
    * Load AI model for edit mode
    */
   protected override loadItem(id: number): Observable<any> {
-    return this.aiModelsApi.aiModelsRetrieve(id);
+    return this.aiModelsApi.aiModelsRetrieve({ id });
   }
 
   /**
@@ -197,8 +198,7 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelRequest,
   protected override createDto(): AiModelRequest {
     const formValue = this.form.getRawValue();
     return {
-      provider:
-        (formValue.provider as AiModelRequest['provider']) ?? AiModelRequest.ProviderEnum.Openrouter,
+      provider: this.normalizeProvider(formValue.provider),
       modelId: formValue.model_id ?? '',
       name: formValue.name ?? '',
       description: formValue.description ?? '',
@@ -231,8 +231,7 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelRequest,
   protected override updateDto(): AiModelRequest {
     const formValue = this.form.getRawValue();
     return {
-      provider:
-        (formValue.provider as AiModelRequest['provider']) ?? AiModelRequest.ProviderEnum.Openrouter,
+      provider: this.normalizeProvider(formValue.provider),
       modelId: formValue.model_id ?? '',
       name: formValue.name ?? '',
       description: formValue.description ?? '',
@@ -329,14 +328,14 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelRequest,
    * Save new AI model
    */
   protected override saveCreate(dto: AiModelRequest): Observable<any> {
-    return this.aiModelsApi.aiModelsCreate(dto);
+    return this.aiModelsApi.aiModelsCreate({ aiModelRequest: dto });
   }
 
   /**
    * Update existing AI model
    */
   protected override saveUpdate(dto: AiModelRequest): Observable<any> {
-    return this.aiModelsApi.aiModelsUpdate(this.itemId!, dto);
+    return this.aiModelsApi.aiModelsUpdate({ id: this.itemId!, aiModelRequest: dto });
   }
 
   /**
@@ -383,7 +382,7 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelRequest,
    */
   private loadModels(query: string): void {
     this.isLoadingModels.set(true);
-    this.aiModelsApi.aiModelsOpenrouterSearchRetrieve(10, query).subscribe({
+    this.aiModelsApi.aiModelsOpenrouterSearchRetrieve({ limit: 10, q: query }).subscribe({
       next: (resp) => {
         const payload = (resp as any)?.data ?? resp;
         const results = ((payload as any)?.results ?? []) as OpenRouterModelResult[];
@@ -467,8 +466,8 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelRequest,
     const payload = this.itemId ? this.updateDto() : this.createDto();
     const id = this.itemId;
     const req = id
-      ? this.aiModelsApi.aiModelsUpdate(id, payload)
-      : this.aiModelsApi.aiModelsCreate(payload);
+      ? this.aiModelsApi.aiModelsUpdate({ id, aiModelRequest: payload })
+      : this.aiModelsApi.aiModelsCreate({ aiModelRequest: payload });
 
     req.subscribe({
       next: () => {
@@ -498,9 +497,21 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelRequest,
   delete(): void {
     const id = this.itemId;
     if (!id) return;
-    this.aiModelsApi.aiModelsDestroy(id).subscribe(() => {
+    this.aiModelsApi.aiModelsDestroy({ id }).subscribe(() => {
       this.toast.success('AI model deleted successfully');
       this.router.navigate(['/admin/ai-models']);
     });
+  }
+
+  private normalizeProvider(value: unknown): AiModelRequest['provider'] {
+    switch (String(value ?? '').trim().toLowerCase()) {
+      case AiModelRequestProviderEnum.Openai:
+        return AiModelRequestProviderEnum.Openai;
+      case AiModelRequestProviderEnum.Groq:
+        return AiModelRequestProviderEnum.Groq;
+      case AiModelRequestProviderEnum.Openrouter:
+      default:
+        return AiModelRequestProviderEnum.Openrouter;
+    }
   }
 }

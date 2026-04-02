@@ -1,4 +1,4 @@
-import { AsyncJob } from '@/core/api';
+import { AsyncJobStatusEnum, type AsyncJob } from '@/core/api';
 import { JobService } from '@/core/services/job.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { Z_MODAL_DATA, ZardDialogRef } from '@/shared/components/dialog';
@@ -28,13 +28,13 @@ export interface JobProgressData {
     <div class="flex flex-col items-center justify-center py-6 space-y-4">
       @if (!isFinished()) {
         <z-loader size="xl" variant="primary"></z-loader>
-      } @else if (job()?.status === 'completed') {
+      } @else if (job()?.status === jobStatusEnum.Completed) {
         <div
           class="flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600"
         >
           <z-icon zType="check" class="w-8 h-8"></z-icon>
         </div>
-      } @else if (job()?.status === 'failed') {
+      } @else if (job()?.status === jobStatusEnum.Failed) {
         <div
           class="flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600"
         >
@@ -57,7 +57,7 @@ export interface JobProgressData {
         }
       </div>
 
-      @if (job()?.status === 'failed') {
+      @if (job()?.status === jobStatusEnum.Failed) {
         <div
           class="w-full p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm overflow-auto max-h-32"
         >
@@ -78,6 +78,7 @@ export interface JobProgressData {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class JobProgressDialogComponent implements OnInit {
+  readonly jobStatusEnum = AsyncJobStatusEnum;
   private jobService = inject(JobService);
   private dialogRef = inject(ZardDialogRef);
   private destroyRef = inject(DestroyRef);
@@ -96,7 +97,7 @@ export class JobProgressDialogComponent implements OnInit {
             this.job.set(job);
             if (this.jobService.isFinished(job)) {
               this.isFinished.set(true);
-              if (job.status === 'completed') {
+              if (job.status === AsyncJobStatusEnum.Completed) {
                 // Automatically close on success after a short delay
                 setTimeout(() => this.dialogRef.close(job), 1500);
               }
@@ -105,11 +106,18 @@ export class JobProgressDialogComponent implements OnInit {
           error: (err) => {
             this.isFinished.set(true);
             this.job.set({
-              status: 'failed' as any,
-              errorMessage: 'Lost connection to server.',
-              message: 'Failed to track task',
+              id: this.data.jobId,
+              jobId: this.data.jobId,
+              taskName: 'Task',
+              status: AsyncJobStatusEnum.Failed,
               progress: 100,
-            } as any);
+              message: 'Failed to track task',
+              result: {},
+              errorMessage: 'Lost connection to server.',
+              createdAt: '',
+              updatedAt: '',
+              createdBy: null,
+            });
           },
         });
     }

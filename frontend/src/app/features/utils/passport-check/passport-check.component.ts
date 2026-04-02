@@ -25,6 +25,7 @@ import { AppDatePipe } from '../../../shared/pipes/app-date-pipe';
 import { HelpService } from '../../../shared/services/help.service';
 import { buildLocalFilePreview } from '../../../shared/utils/document-preview-source';
 import { extractServerErrorMessage } from '../../../shared/utils/form-errors';
+import { AsyncJobStatusEnum } from '../../../core/api';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -402,11 +403,11 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
         this.progressMessage.set(message);
         this.appendProcessStep(message);
 
-        if (job?.status === 'completed') {
+        if (job?.status === AsyncJobStatusEnum.Completed) {
           this.isChecking.set(false);
           this.result.set(normalizePassportCheckResult(job?.result));
           this.stopProgressStream();
-        } else if (job?.status === 'failed') {
+        } else if (job?.status === AsyncJobStatusEnum.Failed) {
           this.isChecking.set(false);
           this.toast.error(job?.errorMessage || 'Verification failed');
           this.stopProgressStream();

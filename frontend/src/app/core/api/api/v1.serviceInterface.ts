@@ -11,11 +11,11 @@ import { HttpHeaders } from '@angular/common/http';
 
 import { Observable } from 'rxjs';
 
-import { AdminPushNotificationSend } from '../model/models';
+import { AdminPushNotificationDispatchResult } from '../model/models';
 import { AdminPushNotificationSendRequest } from '../model/models';
-import { AdminWhatsappTestSend } from '../model/models';
-import { AdminWhatsappTestSendRequest } from '../model/models';
 import { AdminPushNotificationUser } from '../model/models';
+import { AdminWhatsappTestSendRequest } from '../model/models';
+import { AdminWhatsappTestSendResponse } from '../model/models';
 import { AiModel } from '../model/models';
 import { AiModelRequest } from '../model/models';
 import { AsyncJob } from '../model/models';
@@ -33,7 +33,11 @@ import { CustomTokenObtainRequest } from '../model/models';
 import { CustomTokenRefresh } from '../model/models';
 import { CustomTokenRefreshRequest } from '../model/models';
 import { Customer } from '../model/models';
+import { CustomerApplicationsBulkDeleteRequestRequest } from '../model/models';
+import { CustomerApplicationsBulkDeleteResponse } from '../model/models';
 import { CustomerRequest } from '../model/models';
+import { CustomersBulkDeleteRequestRequest } from '../model/models';
+import { CustomersBulkDeleteResponse } from '../model/models';
 import { DashboardStats } from '../model/models';
 import { DeleteMultipleBackupsRequest } from '../model/models';
 import { DocApplicationCreateUpdate } from '../model/models';
@@ -53,9 +57,19 @@ import { Holiday } from '../model/models';
 import { HolidayRequest } from '../model/models';
 import { InvoiceCreateUpdate } from '../model/models';
 import { InvoiceCreateUpdateRequest } from '../model/models';
+import { InvoiceDeletePreviewResponse } from '../model/models';
 import { InvoiceDetail } from '../model/models';
+import { InvoiceForceDeleteRequestRequest } from '../model/models';
+import { InvoiceForceDeleteResponse } from '../model/models';
+import { InvoiceFromApplicationPrefillResponse } from '../model/models';
 import { InvoiceList } from '../model/models';
+import { InvoiceMarkAsPaidRequestRequest } from '../model/models';
+import { InvoiceMarkAsPaidResponse } from '../model/models';
+import { InvoiceProposalResponse } from '../model/models';
+import { InvoicesBulkDeleteRequestRequest } from '../model/models';
+import { InvoicesBulkDeleteResponse } from '../model/models';
 import { MediaCleanupRequestRequest } from '../model/models';
+import { PaginatedBillableProductRowList } from '../model/models';
 import { PaginatedCalendarReminderList } from '../model/models';
 import { PaginatedCustomerApplicationHistoryList } from '../model/models';
 import { PaginatedCustomerList } from '../model/models';
@@ -65,6 +79,7 @@ import { PaginatedDocApplicationListList } from '../model/models';
 import { PaginatedInvoiceListList } from '../model/models';
 import { PaginatedPaymentList } from '../model/models';
 import { PaginatedProductList } from '../model/models';
+import { PaginatedPushNotificationUserList } from '../model/models';
 import { Payment } from '../model/models';
 import { PaymentRequest } from '../model/models';
 import { Product } from '../model/models';
@@ -75,8 +90,11 @@ import { ProductDetail } from '../model/models';
 import { ProductImportStartResponse } from '../model/models';
 import { ProductPriceListPrintStartResponse } from '../model/models';
 import { ProductRequest } from '../model/models';
-import { PushNotificationTest } from '../model/models';
+import { ProductsBulkDeleteRequestRequest } from '../model/models';
+import { ProductsBulkDeleteResponse } from '../model/models';
+import { PushNotificationDispatchResult } from '../model/models';
 import { PushNotificationTestRequest } from '../model/models';
+import { PushNotificationUnregisterResponse } from '../model/models';
 import { RbacPermissions } from '../model/models';
 import { SuratPermohonanCustomerData } from '../model/models';
 import { SuratPermohonanRequestRequest } from '../model/models';
@@ -84,7 +102,6 @@ import { UserProfile } from '../model/models';
 import { UserSettings } from '../model/models';
 import { UserSettingsRequest } from '../model/models';
 import { WebPushSubscription } from '../model/models';
-import { WebPushSubscriptionDelete } from '../model/models';
 import { WebPushSubscriptionDeleteRequest } from '../model/models';
 import { WebPushSubscriptionUpsert } from '../model/models';
 import { WebPushSubscriptionUpsertRequest } from '../model/models';
@@ -219,6 +236,13 @@ export interface V1CalendarRemindersUpdateRequestParams {
   calendarReminderCreateRequest: CalendarReminderCreateRequest;
 }
 
+export interface V1CalendarRemindersUsersListRequestParams {
+  ordering?: string;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+}
+
 export interface V1CalendarRetrieveRequestParams {
   id: string;
 }
@@ -248,7 +272,7 @@ export interface V1CustomerApplicationsAdvanceWorkflowCreateRequestParams {
 }
 
 export interface V1CustomerApplicationsBulkDeleteCreateRequestParams {
-  docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest;
+  customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest;
 }
 
 export interface V1CustomerApplicationsCreateRequestParams {
@@ -318,7 +342,7 @@ export interface V1CustomersApplicationsHistoryListRequestParams {
 }
 
 export interface V1CustomersBulkDeleteCreateRequestParams {
-  customerRequest?: CustomerRequest;
+  customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest;
 }
 
 export interface V1CustomersCheckPassportCreateRequestParams {
@@ -506,7 +530,7 @@ export interface V1HolidaysUpdateRequestParams {
 }
 
 export interface V1InvoicesBulkDeleteCreateRequestParams {
-  requestBody?: { [key: string]: any };
+  invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest;
 }
 
 export interface V1InvoicesCreateRequestParams {
@@ -545,16 +569,20 @@ export interface V1InvoicesDownloadRetrieveRequestParams {
 
 export interface V1InvoicesForceDeleteCreateRequestParams {
   id: number;
-  requestBody?: { [key: string]: any };
+  invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest;
 }
 
 export interface V1InvoicesFromApplicationPrefillRetrieveRequestParams {
   applicationId: number;
 }
 
-export interface V1InvoicesGetBillableProductsRetrieveRequestParams {
+export interface V1InvoicesGetBillableProductsListRequestParams {
   customerId: number;
   currentInvoiceId?: number;
+  ordering?: string;
+  page?: number;
+  pageSize?: number;
+  search?: string;
 }
 
 export interface V1InvoicesGetCustomerApplicationsListRequestParams {
@@ -604,7 +632,7 @@ export interface V1InvoicesListRequestParams {
 
 export interface V1InvoicesMarkAsPaidCreateRequestParams {
   id: number;
-  requestBody?: { [key: string]: any };
+  invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest;
 }
 
 export interface V1InvoicesPartialUpdateRequestParams {
@@ -669,7 +697,7 @@ export interface V1PaymentsUpdateRequestParams {
 }
 
 export interface V1ProductsBulkDeleteCreateRequestParams {
-  productRequest: ProductRequest;
+  productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest;
 }
 
 export interface V1ProductsCanDeleteRetrieveRequestParams {
@@ -870,7 +898,6 @@ export interface V1UserSettingsMePartialUpdateRequestParams {
 
 export interface V1WorkflowNotificationsCancelCreateRequestParams {
   id: number;
-  workflowNotificationRequest: WorkflowNotificationRequest;
 }
 
 export interface V1WorkflowNotificationsCreateRequestParams {
@@ -893,7 +920,6 @@ export interface V1WorkflowNotificationsPartialUpdateRequestParams {
 
 export interface V1WorkflowNotificationsResendCreateRequestParams {
   id: number;
-  workflowNotificationRequest: WorkflowNotificationRequest;
 }
 
 export interface V1WorkflowNotificationsRetrieveRequestParams {
@@ -1266,8 +1292,12 @@ export interface V1ServiceInterface {
    *
    *
    * @endpoint get /api/v1/calendar-reminders/users/
+   * @param requestParameters
    */
-  v1CalendarRemindersUsersRetrieve(extraHttpRequestParams?: any): Observable<CalendarReminder>;
+  v1CalendarRemindersUsersList(
+    requestParameters: V1CalendarRemindersUsersListRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<PaginatedPushNotificationUserList>;
 
   /**
    *
@@ -1344,7 +1374,7 @@ export interface V1ServiceInterface {
   v1CustomerApplicationsBulkDeleteCreate(
     requestParameters: V1CustomerApplicationsBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<DocApplicationSerializerWithRelations>;
+  ): Observable<CustomerApplicationsBulkDeleteResponse>;
 
   /**
    *
@@ -1487,7 +1517,7 @@ export interface V1ServiceInterface {
   v1CustomersBulkDeleteCreate(
     requestParameters: V1CustomersBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<Customer>;
+  ): Observable<CustomersBulkDeleteResponse>;
 
   /**
    *
@@ -1889,7 +1919,7 @@ export interface V1ServiceInterface {
   v1InvoicesBulkDeleteCreate(
     requestParameters: V1InvoicesBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoicesBulkDeleteResponse>;
 
   /**
    *
@@ -1911,7 +1941,7 @@ export interface V1ServiceInterface {
   v1InvoicesDeletePreviewRetrieve(
     requestParameters: V1InvoicesDeletePreviewRetrieveRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceDeletePreviewResponse>;
 
   /**
    *
@@ -1988,7 +2018,7 @@ export interface V1ServiceInterface {
   v1InvoicesForceDeleteCreate(
     requestParameters: V1InvoicesForceDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceForceDeleteResponse>;
 
   /**
    *
@@ -1999,7 +2029,7 @@ export interface V1ServiceInterface {
   v1InvoicesFromApplicationPrefillRetrieve(
     requestParameters: V1InvoicesFromApplicationPrefillRetrieveRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceFromApplicationPrefillResponse>;
 
   /**
    *
@@ -2007,10 +2037,10 @@ export interface V1ServiceInterface {
    * @endpoint get /api/v1/invoices/get_billable_products/{customerId}/
    * @param requestParameters
    */
-  v1InvoicesGetBillableProductsRetrieve(
-    requestParameters: V1InvoicesGetBillableProductsRetrieveRequestParams,
+  v1InvoicesGetBillableProductsList(
+    requestParameters: V1InvoicesGetBillableProductsListRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<PaginatedBillableProductRowList>;
 
   /**
    *
@@ -2105,7 +2135,7 @@ export interface V1ServiceInterface {
   v1InvoicesMarkAsPaidCreate(
     requestParameters: V1InvoicesMarkAsPaidCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<InvoiceList>;
+  ): Observable<InvoiceMarkAsPaidResponse>;
 
   /**
    *
@@ -2127,7 +2157,7 @@ export interface V1ServiceInterface {
   v1InvoicesProposeRetrieve(
     requestParameters: V1InvoicesProposeRetrieveRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<InvoiceList>;
+  ): Observable<InvoiceProposalResponse>;
 
   /**
    *
@@ -2277,7 +2307,7 @@ export interface V1ServiceInterface {
   v1ProductsBulkDeleteCreate(
     requestParameters: V1ProductsBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<Product>;
+  ): Observable<ProductsBulkDeleteResponse>;
 
   /**
    *
@@ -2502,7 +2532,7 @@ export interface V1ServiceInterface {
   v1PushNotificationsSendTestCreate(
     requestParameters: V1PushNotificationsSendTestCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<AdminPushNotificationSend>;
+  ): Observable<AdminPushNotificationDispatchResult>;
 
   /**
    *
@@ -2513,7 +2543,7 @@ export interface V1ServiceInterface {
   v1PushNotificationsSendTestWhatsappCreate(
     requestParameters: V1PushNotificationsSendTestWhatsappCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<AdminWhatsappTestSend>;
+  ): Observable<AdminWhatsappTestSendResponse>;
 
   /**
    *
@@ -2533,7 +2563,7 @@ export interface V1ServiceInterface {
   v1PushNotificationsTestCreate(
     requestParameters: V1PushNotificationsTestCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<PushNotificationTest>;
+  ): Observable<PushNotificationDispatchResult>;
 
   /**
    *
@@ -2544,14 +2574,16 @@ export interface V1ServiceInterface {
   v1PushNotificationsUnregisterCreate(
     requestParameters: V1PushNotificationsUnregisterCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<WebPushSubscriptionDelete>;
+  ): Observable<PushNotificationUnregisterResponse>;
 
   /**
    *
    *
    * @endpoint get /api/v1/push-notifications/users/
    */
-  v1PushNotificationsUsersList(extraHttpRequestParams?: any): Observable<Array<AdminPushNotificationUser>>;
+  v1PushNotificationsUsersList(
+    extraHttpRequestParams?: any,
+  ): Observable<Array<AdminPushNotificationUser>>;
 
   /**
    *

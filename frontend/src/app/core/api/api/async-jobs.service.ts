@@ -28,11 +28,15 @@ import { AsyncJob } from '../model/async-job';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  AsyncJobsServiceInterface,
+  AsyncJobsRetrieveRequestParams,
+} from './async-jobs.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class AsyncJobsService extends BaseService {
+export class AsyncJobsService extends BaseService implements AsyncJobsServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -133,13 +137,13 @@ export class AsyncJobsService extends BaseService {
   /**
    * ViewSet for polling AsyncJob status if SSE is not used.
    * @endpoint get /api/async-jobs/{id}/
-   * @param id A UUID string identifying this async job.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public asyncJobsRetrieve(
-    id: string,
+    requestParameters: AsyncJobsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -149,7 +153,7 @@ export class AsyncJobsService extends BaseService {
     },
   ): Observable<AsyncJob>;
   public asyncJobsRetrieve(
-    id: string,
+    requestParameters: AsyncJobsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -159,7 +163,7 @@ export class AsyncJobsService extends BaseService {
     },
   ): Observable<HttpResponse<AsyncJob>>;
   public asyncJobsRetrieve(
-    id: string,
+    requestParameters: AsyncJobsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -169,7 +173,7 @@ export class AsyncJobsService extends BaseService {
     },
   ): Observable<HttpEvent<AsyncJob>>;
   public asyncJobsRetrieve(
-    id: string,
+    requestParameters: AsyncJobsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -178,6 +182,7 @@ export class AsyncJobsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling asyncJobsRetrieve.',

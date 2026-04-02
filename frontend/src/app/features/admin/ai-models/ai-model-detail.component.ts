@@ -100,7 +100,7 @@ export class AiModelDetailComponent extends BaseDetailComponent<AiModel> impleme
   }
 
   protected override loadItem(id: number): Observable<AiModel> {
-    return this.aiModelsApi.aiModelsRetrieve(id);
+    return this.aiModelsApi.aiModelsRetrieve({ id });
   }
 
   override ngOnInit(): void {
@@ -128,7 +128,7 @@ export class AiModelDetailComponent extends BaseDetailComponent<AiModel> impleme
   }
 
   protected override deleteItem(id: number): Observable<any> {
-    return this.aiModelsApi.aiModelsDestroy(id);
+    return this.aiModelsApi.aiModelsDestroy({ id });
   }
 
   badgeType(value?: boolean): 'success' | 'secondary' {

@@ -28,11 +28,15 @@ import { CustomTokenObtainRequest } from '../model/custom-token-obtain-request';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  ApiTokenAuthServiceInterface,
+  ApiTokenAuthCreateRequestParams,
+} from './api-token-auth.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class ApiTokenAuthService extends BaseService {
+export class ApiTokenAuthService extends BaseService implements ApiTokenAuthServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -44,35 +48,36 @@ export class ApiTokenAuthService extends BaseService {
   /**
    * Takes a set of user credentials and returns an access and refresh JSON web token pair to prove the authentication of those credentials.
    * @endpoint post /api/api-token-auth/
-   * @param customTokenObtainRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public apiTokenAuthCreate(
-    customTokenObtainRequest: CustomTokenObtainRequest,
+    requestParameters: ApiTokenAuthCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public apiTokenAuthCreate(
-    customTokenObtainRequest: CustomTokenObtainRequest,
+    requestParameters: ApiTokenAuthCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public apiTokenAuthCreate(
-    customTokenObtainRequest: CustomTokenObtainRequest,
+    requestParameters: ApiTokenAuthCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public apiTokenAuthCreate(
-    customTokenObtainRequest: CustomTokenObtainRequest,
+    requestParameters: ApiTokenAuthCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const customTokenObtainRequest = requestParameters?.customTokenObtainRequest;
     if (customTokenObtainRequest === null || customTokenObtainRequest === undefined) {
       throw new Error(
         'Required parameter customTokenObtainRequest was null or undefined when calling apiTokenAuthCreate.',

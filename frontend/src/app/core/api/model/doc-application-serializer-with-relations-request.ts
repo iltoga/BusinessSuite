@@ -17,17 +17,14 @@ export interface DocApplicationSerializerWithRelationsRequest {
   /**
    * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
    */
-  status?: DocApplicationSerializerWithRelationsRequest.StatusEnum;
+  status?: DocApplicationSerializerWithRelationsRequestStatusEnum;
   notes?: string | null;
   createdBy: number;
   updatedBy?: number | null;
 }
-export namespace DocApplicationSerializerWithRelationsRequest {
-  export const StatusEnum = {
-    Pending: 'pending',
-    Processing: 'processing',
-    Completed: 'completed',
-    Rejected: 'rejected',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum DocApplicationSerializerWithRelationsRequestStatusEnum {
+  Pending = 'pending',
+  Processing = 'processing',
+  Completed = 'completed',
+  Rejected = 'rejected',
 }

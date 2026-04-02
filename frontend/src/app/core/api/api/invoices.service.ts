@@ -58,11 +58,38 @@ import { PaginatedInvoiceListList } from '../model/paginated-invoice-list-list';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  InvoicesServiceInterface,
+  InvoicesBulkDeleteCreateRequestParams,
+  InvoicesCreateRequestParams,
+  InvoicesDeletePreviewRetrieveRequestParams,
+  InvoicesDestroyRequestParams,
+  InvoicesDownloadAsyncCreateRequestParams,
+  InvoicesDownloadAsyncFileRetrieveRequestParams,
+  InvoicesDownloadAsyncStatusRetrieveRequestParams,
+  InvoicesDownloadAsyncStreamRetrieveRequestParams,
+  InvoicesDownloadRetrieveRequestParams,
+  InvoicesForceDeleteCreateRequestParams,
+  InvoicesFromApplicationPrefillRetrieveRequestParams,
+  InvoicesGetBillableProductsListRequestParams,
+  InvoicesGetCustomerApplicationsListRequestParams,
+  InvoicesGetInvoiceApplicationDueAmountRetrieveRequestParams,
+  InvoicesImportBatchCreateRequestParams,
+  InvoicesImportSingleCreateRequestParams,
+  InvoicesImportStatusRetrieveRequestParams,
+  InvoicesImportStreamRetrieveRequestParams,
+  InvoicesListRequestParams,
+  InvoicesMarkAsPaidCreateRequestParams,
+  InvoicesPartialUpdateRequestParams,
+  InvoicesProposeRetrieveRequestParams,
+  InvoicesRetrieveRequestParams,
+  InvoicesUpdateRequestParams,
+} from './invoices.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class InvoicesService extends BaseService {
+export class InvoicesService extends BaseService implements InvoicesServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -73,13 +100,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint post /api/invoices/bulk-delete/
-   * @param invoicesBulkDeleteRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesBulkDeleteCreate(
-    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
+    requestParameters?: InvoicesBulkDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -89,7 +116,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoicesBulkDeleteResponse>;
   public invoicesBulkDeleteCreate(
-    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
+    requestParameters?: InvoicesBulkDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -99,7 +126,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoicesBulkDeleteResponse>>;
   public invoicesBulkDeleteCreate(
-    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
+    requestParameters?: InvoicesBulkDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -109,7 +136,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoicesBulkDeleteResponse>>;
   public invoicesBulkDeleteCreate(
-    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
+    requestParameters?: InvoicesBulkDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -118,6 +145,8 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const invoicesBulkDeleteRequestRequest = requestParameters?.invoicesBulkDeleteRequestRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -183,13 +212,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint post /api/invoices/
-   * @param invoiceCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesCreate(
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -199,7 +228,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceCreateUpdate>;
   public invoicesCreate(
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -209,7 +238,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public invoicesCreate(
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -219,7 +248,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public invoicesCreate(
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -228,6 +257,7 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const invoiceCreateUpdateRequest = requestParameters?.invoiceCreateUpdateRequest;
     if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter invoiceCreateUpdateRequest was null or undefined when calling invoicesCreate.',
@@ -295,13 +325,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/{id}/delete-preview/
-   * @param id A unique integer value identifying this invoice.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesDeletePreviewRetrieve(
-    id: number,
+    requestParameters: InvoicesDeletePreviewRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -311,7 +341,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceDeletePreviewResponse>;
   public invoicesDeletePreviewRetrieve(
-    id: number,
+    requestParameters: InvoicesDeletePreviewRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -321,7 +351,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceDeletePreviewResponse>>;
   public invoicesDeletePreviewRetrieve(
-    id: number,
+    requestParameters: InvoicesDeletePreviewRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -331,7 +361,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceDeletePreviewResponse>>;
   public invoicesDeletePreviewRetrieve(
-    id: number,
+    requestParameters: InvoicesDeletePreviewRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -340,6 +370,7 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling invoicesDeletePreviewRetrieve.',
@@ -398,35 +429,36 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint delete /api/invoices/{id}/
-   * @param id A unique integer value identifying this invoice.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesDestroy(
-    id: number,
+    requestParameters: InvoicesDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public invoicesDestroy(
-    id: number,
+    requestParameters: InvoicesDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public invoicesDestroy(
-    id: number,
+    requestParameters: InvoicesDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public invoicesDestroy(
-    id: number,
+    requestParameters: InvoicesDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling invoicesDestroy.');
     }
@@ -479,15 +511,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint post /api/invoices/{id}/download-async/
-   * @param id A unique integer value identifying this invoice.
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesDownloadAsyncCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: InvoicesDownloadAsyncCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -497,8 +527,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public invoicesDownloadAsyncCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: InvoicesDownloadAsyncCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -508,8 +537,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public invoicesDownloadAsyncCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: InvoicesDownloadAsyncCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -519,8 +547,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public invoicesDownloadAsyncCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: InvoicesDownloadAsyncCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -529,11 +556,13 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling invoicesDownloadAsyncCreate.',
       );
     }
+    const requestBody = requestParameters?.requestBody;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -596,13 +625,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/download-async/file/{jobId}/
-   * @param jobId Download job UUID
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesDownloadAsyncFileRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncFileRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -612,7 +641,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceList>;
   public invoicesDownloadAsyncFileRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncFileRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -622,7 +651,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceList>>;
   public invoicesDownloadAsyncFileRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncFileRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -632,7 +661,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceList>>;
   public invoicesDownloadAsyncFileRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncFileRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -641,6 +670,7 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling invoicesDownloadAsyncFileRetrieve.',
@@ -695,13 +725,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/download-async/status/{jobId}/
-   * @param jobId Download job UUID
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesDownloadAsyncStatusRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncStatusRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -711,7 +741,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public invoicesDownloadAsyncStatusRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncStatusRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -721,7 +751,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public invoicesDownloadAsyncStatusRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncStatusRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -731,7 +761,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public invoicesDownloadAsyncStatusRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncStatusRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -740,6 +770,7 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling invoicesDownloadAsyncStatusRetrieve.',
@@ -794,13 +825,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/download-async/stream/{jobId}/
-   * @param jobId Download job UUID
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesDownloadAsyncStreamRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncStreamRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -810,7 +841,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceList>;
   public invoicesDownloadAsyncStreamRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncStreamRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -820,7 +851,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceList>>;
   public invoicesDownloadAsyncStreamRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncStreamRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -830,7 +861,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceList>>;
   public invoicesDownloadAsyncStreamRetrieve(
-    jobId: string,
+    requestParameters: InvoicesDownloadAsyncStreamRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -839,6 +870,7 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling invoicesDownloadAsyncStreamRetrieve.',
@@ -893,15 +925,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/{id}/download/
-   * @param id A unique integer value identifying this invoice.
-   * @param fileFormat The format of the downloaded invoice (docx or pdf).
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesDownloadRetrieve(
-    id: number,
-    fileFormat?: 'docx' | 'pdf',
+    requestParameters: InvoicesDownloadRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -911,8 +941,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<Blob>;
   public invoicesDownloadRetrieve(
-    id: number,
-    fileFormat?: 'docx' | 'pdf',
+    requestParameters: InvoicesDownloadRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -922,8 +951,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public invoicesDownloadRetrieve(
-    id: number,
-    fileFormat?: 'docx' | 'pdf',
+    requestParameters: InvoicesDownloadRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -933,8 +961,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public invoicesDownloadRetrieve(
-    id: number,
-    fileFormat?: 'docx' | 'pdf',
+    requestParameters: InvoicesDownloadRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -943,11 +970,13 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling invoicesDownloadRetrieve.',
       );
     }
+    const fileFormat = requestParameters?.fileFormat;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -997,15 +1026,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint post /api/invoices/{id}/force-delete/
-   * @param id A unique integer value identifying this invoice.
-   * @param invoiceForceDeleteRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesForceDeleteCreate(
-    id: number,
-    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
+    requestParameters: InvoicesForceDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1015,8 +1042,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceForceDeleteResponse>;
   public invoicesForceDeleteCreate(
-    id: number,
-    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
+    requestParameters: InvoicesForceDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1026,8 +1052,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceForceDeleteResponse>>;
   public invoicesForceDeleteCreate(
-    id: number,
-    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
+    requestParameters: InvoicesForceDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1037,8 +1062,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceForceDeleteResponse>>;
   public invoicesForceDeleteCreate(
-    id: number,
-    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
+    requestParameters: InvoicesForceDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1047,11 +1071,13 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling invoicesForceDeleteCreate.',
       );
     }
+    const invoiceForceDeleteRequestRequest = requestParameters?.invoiceForceDeleteRequestRequest;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -1118,13 +1144,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/from_application_prefill/{applicationId}/
-   * @param applicationId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesFromApplicationPrefillRetrieve(
-    applicationId: number,
+    requestParameters: InvoicesFromApplicationPrefillRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1134,7 +1160,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceFromApplicationPrefillResponse>;
   public invoicesFromApplicationPrefillRetrieve(
-    applicationId: number,
+    requestParameters: InvoicesFromApplicationPrefillRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1144,7 +1170,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceFromApplicationPrefillResponse>>;
   public invoicesFromApplicationPrefillRetrieve(
-    applicationId: number,
+    requestParameters: InvoicesFromApplicationPrefillRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1154,7 +1180,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceFromApplicationPrefillResponse>>;
   public invoicesFromApplicationPrefillRetrieve(
-    applicationId: number,
+    requestParameters: InvoicesFromApplicationPrefillRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1163,6 +1189,7 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const applicationId = requestParameters?.applicationId;
     if (applicationId === null || applicationId === undefined) {
       throw new Error(
         'Required parameter applicationId was null or undefined when calling invoicesFromApplicationPrefillRetrieve.',
@@ -1221,23 +1248,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/get_billable_products/{customerId}/
-   * @param customerId
-   * @param currentInvoiceId Include already linked applications for this invoice in pending groups.
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesGetBillableProductsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: InvoicesGetBillableProductsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1247,12 +1264,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<PaginatedBillableProductRowList>;
   public invoicesGetBillableProductsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: InvoicesGetBillableProductsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1262,12 +1274,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedBillableProductRowList>>;
   public invoicesGetBillableProductsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: InvoicesGetBillableProductsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1277,12 +1284,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedBillableProductRowList>>;
   public invoicesGetBillableProductsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: InvoicesGetBillableProductsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1291,11 +1293,17 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customerId = requestParameters?.customerId;
     if (customerId === null || customerId === undefined) {
       throw new Error(
         'Required parameter customerId was null or undefined when calling invoicesGetBillableProductsList.',
       );
     }
+    const currentInvoiceId = requestParameters?.currentInvoiceId;
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -1392,29 +1400,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/get_customer_applications/{customerId}/
-   * @param customerId
-   * @param currentInvoiceId
-   * @param excludeIncompleteDocumentCollection
-   * @param excludeStatuses
-   * @param excludeWithInvoices
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesGetCustomerApplicationsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    excludeIncompleteDocumentCollection?: boolean,
-    excludeStatuses?: string,
-    excludeWithInvoices?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: InvoicesGetCustomerApplicationsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1424,15 +1416,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<PaginatedDocApplicationInvoiceList>;
   public invoicesGetCustomerApplicationsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    excludeIncompleteDocumentCollection?: boolean,
-    excludeStatuses?: string,
-    excludeWithInvoices?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: InvoicesGetCustomerApplicationsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1442,15 +1426,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedDocApplicationInvoiceList>>;
   public invoicesGetCustomerApplicationsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    excludeIncompleteDocumentCollection?: boolean,
-    excludeStatuses?: string,
-    excludeWithInvoices?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: InvoicesGetCustomerApplicationsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1460,15 +1436,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedDocApplicationInvoiceList>>;
   public invoicesGetCustomerApplicationsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    excludeIncompleteDocumentCollection?: boolean,
-    excludeStatuses?: string,
-    excludeWithInvoices?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: InvoicesGetCustomerApplicationsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1477,11 +1445,21 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customerId = requestParameters?.customerId;
     if (customerId === null || customerId === undefined) {
       throw new Error(
         'Required parameter customerId was null or undefined when calling invoicesGetCustomerApplicationsList.',
       );
     }
+    const currentInvoiceId = requestParameters?.currentInvoiceId;
+    const excludeIncompleteDocumentCollection =
+      requestParameters?.excludeIncompleteDocumentCollection;
+    const excludeStatuses = requestParameters?.excludeStatuses;
+    const excludeWithInvoices = requestParameters?.excludeWithInvoices;
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -1602,13 +1580,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/
-   * @param invoiceApplicationId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesGetInvoiceApplicationDueAmountRetrieve(
-    invoiceApplicationId: number,
+    requestParameters: InvoicesGetInvoiceApplicationDueAmountRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1618,7 +1596,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceList>;
   public invoicesGetInvoiceApplicationDueAmountRetrieve(
-    invoiceApplicationId: number,
+    requestParameters: InvoicesGetInvoiceApplicationDueAmountRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1628,7 +1606,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceList>>;
   public invoicesGetInvoiceApplicationDueAmountRetrieve(
-    invoiceApplicationId: number,
+    requestParameters: InvoicesGetInvoiceApplicationDueAmountRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1638,7 +1616,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceList>>;
   public invoicesGetInvoiceApplicationDueAmountRetrieve(
-    invoiceApplicationId: number,
+    requestParameters: InvoicesGetInvoiceApplicationDueAmountRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1647,6 +1625,7 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const invoiceApplicationId = requestParameters?.invoiceApplicationId;
     if (invoiceApplicationId === null || invoiceApplicationId === undefined) {
       throw new Error(
         'Required parameter invoiceApplicationId was null or undefined when calling invoicesGetInvoiceApplicationDueAmountRetrieve.',
@@ -1702,19 +1681,13 @@ export class InvoicesService extends BaseService {
   /**
    * Import multiple invoice files with SSE progress streaming.
    * @endpoint post /api/invoices/import/batch/
-   * @param files
-   * @param paidStatus
-   * @param llmProvider
-   * @param llmModel
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesImportBatchCreate(
-    files: Array<Blob>,
-    paidStatus?: Array<string>,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: InvoicesImportBatchCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1724,10 +1697,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public invoicesImportBatchCreate(
-    files: Array<Blob>,
-    paidStatus?: Array<string>,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: InvoicesImportBatchCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1737,10 +1707,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public invoicesImportBatchCreate(
-    files: Array<Blob>,
-    paidStatus?: Array<string>,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: InvoicesImportBatchCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1750,10 +1717,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public invoicesImportBatchCreate(
-    files: Array<Blob>,
-    paidStatus?: Array<string>,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: InvoicesImportBatchCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1762,11 +1726,15 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const files = requestParameters?.files;
     if (files === null || files === undefined) {
       throw new Error(
         'Required parameter files was null or undefined when calling invoicesImportBatchCreate.',
       );
     }
+    const paidStatus = requestParameters?.paidStatus;
+    const llmProvider = requestParameters?.llmProvider;
+    const llmModel = requestParameters?.llmModel;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -1959,17 +1927,13 @@ export class InvoicesService extends BaseService {
   /**
    * Import a single invoice file using AI parsing.
    * @endpoint post /api/invoices/import/single/
-   * @param file
-   * @param llmProvider
-   * @param llmModel
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesImportSingleCreate(
-    file: Blob,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: InvoicesImportSingleCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1979,9 +1943,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public invoicesImportSingleCreate(
-    file: Blob,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: InvoicesImportSingleCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1991,9 +1953,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public invoicesImportSingleCreate(
-    file: Blob,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: InvoicesImportSingleCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2003,9 +1963,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public invoicesImportSingleCreate(
-    file: Blob,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: InvoicesImportSingleCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2014,11 +1972,14 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const file = requestParameters?.file;
     if (file === null || file === undefined) {
       throw new Error(
         'Required parameter file was null or undefined when calling invoicesImportSingleCreate.',
       );
     }
+    const llmProvider = requestParameters?.llmProvider;
+    const llmModel = requestParameters?.llmModel;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -2100,13 +2061,13 @@ export class InvoicesService extends BaseService {
   /**
    * Get status of an invoice import job.
    * @endpoint get /api/invoices/import/status/{jobId}/
-   * @param jobId Import job UUID
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesImportStatusRetrieve(
-    jobId: string,
+    requestParameters: InvoicesImportStatusRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2116,7 +2077,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public invoicesImportStatusRetrieve(
-    jobId: string,
+    requestParameters: InvoicesImportStatusRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2126,7 +2087,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public invoicesImportStatusRetrieve(
-    jobId: string,
+    requestParameters: InvoicesImportStatusRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2136,7 +2097,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public invoicesImportStatusRetrieve(
-    jobId: string,
+    requestParameters: InvoicesImportStatusRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2145,6 +2106,7 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling invoicesImportStatusRetrieve.',
@@ -2200,13 +2162,13 @@ export class InvoicesService extends BaseService {
   /**
    * Stream SSE updates for a running import job.
    * @endpoint get /api/invoices/import/stream/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesImportStreamRetrieve(
-    jobId: string,
+    requestParameters: InvoicesImportStreamRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2216,7 +2178,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceList>;
   public invoicesImportStreamRetrieve(
-    jobId: string,
+    requestParameters: InvoicesImportStreamRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2226,7 +2188,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceList>>;
   public invoicesImportStreamRetrieve(
-    jobId: string,
+    requestParameters: InvoicesImportStreamRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2236,7 +2198,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceList>>;
   public invoicesImportStreamRetrieve(
-    jobId: string,
+    requestParameters: InvoicesImportStreamRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2245,6 +2207,7 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling invoicesImportStreamRetrieve.',
@@ -2299,21 +2262,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/
-   * @param hidePaid
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesList(
-    hidePaid?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: InvoicesListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2323,11 +2278,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<PaginatedInvoiceListList>;
   public invoicesList(
-    hidePaid?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: InvoicesListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2337,11 +2288,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedInvoiceListList>>;
   public invoicesList(
-    hidePaid?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: InvoicesListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2351,11 +2298,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedInvoiceListList>>;
   public invoicesList(
-    hidePaid?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: InvoicesListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2364,6 +2307,12 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const hidePaid = requestParameters?.hidePaid;
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -2455,15 +2404,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint post /api/invoices/{id}/mark-as-paid/
-   * @param id A unique integer value identifying this invoice.
-   * @param invoiceMarkAsPaidRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesMarkAsPaidCreate(
-    id: number,
-    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
+    requestParameters: InvoicesMarkAsPaidCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2473,8 +2420,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceMarkAsPaidResponse>;
   public invoicesMarkAsPaidCreate(
-    id: number,
-    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
+    requestParameters: InvoicesMarkAsPaidCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2484,8 +2430,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceMarkAsPaidResponse>>;
   public invoicesMarkAsPaidCreate(
-    id: number,
-    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
+    requestParameters: InvoicesMarkAsPaidCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2495,8 +2440,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceMarkAsPaidResponse>>;
   public invoicesMarkAsPaidCreate(
-    id: number,
-    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
+    requestParameters: InvoicesMarkAsPaidCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2505,11 +2449,13 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling invoicesMarkAsPaidCreate.',
       );
     }
+    const invoiceMarkAsPaidRequestRequest = requestParameters?.invoiceMarkAsPaidRequestRequest;
     if (invoiceMarkAsPaidRequestRequest === null || invoiceMarkAsPaidRequestRequest === undefined) {
       throw new Error(
         'Required parameter invoiceMarkAsPaidRequestRequest was null or undefined when calling invoicesMarkAsPaidCreate.',
@@ -2581,15 +2527,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint patch /api/invoices/{id}/
-   * @param id A unique integer value identifying this invoice.
-   * @param invoiceCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesPartialUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2599,8 +2543,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceCreateUpdate>;
   public invoicesPartialUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2610,8 +2553,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public invoicesPartialUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2621,8 +2563,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public invoicesPartialUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2631,11 +2572,13 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling invoicesPartialUpdate.',
       );
     }
+    const invoiceCreateUpdateRequest = requestParameters?.invoiceCreateUpdateRequest;
     if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter invoiceCreateUpdateRequest was null or undefined when calling invoicesPartialUpdate.',
@@ -2704,13 +2647,13 @@ export class InvoicesService extends BaseService {
   /**
    * Propose the next available invoice number for a given invoice_date.
    * @endpoint get /api/invoices/propose/
-   * @param invoiceDate
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesProposeRetrieve(
-    invoiceDate?: string,
+    requestParameters?: InvoicesProposeRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2720,7 +2663,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceProposalResponse>;
   public invoicesProposeRetrieve(
-    invoiceDate?: string,
+    requestParameters?: InvoicesProposeRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2730,7 +2673,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceProposalResponse>>;
   public invoicesProposeRetrieve(
-    invoiceDate?: string,
+    requestParameters?: InvoicesProposeRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2740,7 +2683,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceProposalResponse>>;
   public invoicesProposeRetrieve(
-    invoiceDate?: string,
+    requestParameters?: InvoicesProposeRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2749,6 +2692,8 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const invoiceDate = requestParameters?.invoiceDate;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -2808,13 +2753,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint get /api/invoices/{id}/
-   * @param id A unique integer value identifying this invoice.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesRetrieve(
-    id: number,
+    requestParameters: InvoicesRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2824,7 +2769,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceDetail>;
   public invoicesRetrieve(
-    id: number,
+    requestParameters: InvoicesRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2834,7 +2779,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceDetail>>;
   public invoicesRetrieve(
-    id: number,
+    requestParameters: InvoicesRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2844,7 +2789,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceDetail>>;
   public invoicesRetrieve(
-    id: number,
+    requestParameters: InvoicesRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2853,6 +2798,7 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling invoicesRetrieve.');
     }
@@ -2905,15 +2851,13 @@ export class InvoicesService extends BaseService {
 
   /**
    * @endpoint put /api/invoices/{id}/
-   * @param id A unique integer value identifying this invoice.
-   * @param invoiceCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public invoicesUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2923,8 +2867,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<InvoiceCreateUpdate>;
   public invoicesUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2934,8 +2877,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public invoicesUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2945,8 +2887,7 @@ export class InvoicesService extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public invoicesUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: InvoicesUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2955,9 +2896,11 @@ export class InvoicesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling invoicesUpdate.');
     }
+    const invoiceCreateUpdateRequest = requestParameters?.invoiceCreateUpdateRequest;
     if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter invoiceCreateUpdateRequest was null or undefined when calling invoicesUpdate.',

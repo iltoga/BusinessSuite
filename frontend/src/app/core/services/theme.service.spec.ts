@@ -3,11 +3,44 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 import { ThemeService } from './theme.service';
 
+const originalLocalStorage = window.localStorage;
+
+const createLocalStorageMock = (seed: Record<string, string> = {}): Storage => {
+  const store = new Map(Object.entries(seed));
+  return {
+    clear: vi.fn(() => {
+      store.clear();
+    }),
+    getItem: vi.fn((key: string) => (store.has(key) ? store.get(key)! : null)),
+    key: vi.fn((index: number) => Array.from(store.keys())[index] ?? null),
+    length: 0,
+    removeItem: vi.fn((key: string) => {
+      store.delete(key);
+    }),
+    setItem: vi.fn((key: string, value: string) => {
+      store.set(key, String(value));
+    }),
+  } as unknown as Storage;
+};
+
+const installLocalStorageMock = (mock: Storage) => {
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: mock,
+  });
+};
+
+const restoreLocalStorage = () => {
+  installLocalStorageMock(originalLocalStorage);
+};
+
 describe('ThemeService', () => {
   let service: ThemeService;
+  let localStorageMock: Storage;
 
   beforeEach(() => {
-    localStorage.clear();
+    localStorageMock = createLocalStorageMock();
+    installLocalStorageMock(localStorageMock);
     document.documentElement.className = '';
     document.documentElement.style.cssText = '';
     service = new ThemeService();
@@ -16,7 +49,7 @@ describe('ThemeService', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
-    localStorage.clear();
+    restoreLocalStorage();
     document.documentElement.className = '';
     document.documentElement.style.cssText = '';
     TestBed.resetTestingModule();
@@ -27,8 +60,8 @@ describe('ThemeService', () => {
 
     expect(service.currentTheme()).toBe('gundam');
     expect(service.isDarkMode()).toBe(true);
-    expect(localStorage.getItem('theme')).toBe('gundam');
-    expect(localStorage.getItem('darkMode')).toBe('true');
+    expect(localStorageMock.getItem('theme')).toBe('gundam');
+    expect(localStorageMock.getItem('darkMode')).toBe('true');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
     expect(document.documentElement.style.getPropertyValue('--background')).toContain('oklch');
   });
@@ -49,13 +82,13 @@ describe('ThemeService', () => {
     service.toggleDarkMode();
 
     expect(service.isDarkMode()).toBe(true);
-    expect(localStorage.getItem('darkMode')).toBe('true');
+    expect(localStorageMock.getItem('darkMode')).toBe('true');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
   it('initializeTheme prefers saved localStorage values over system preference', () => {
-    localStorage.setItem('theme', 'teal');
-    localStorage.setItem('darkMode', 'false');
+    localStorageMock.setItem('theme', 'teal');
+    localStorageMock.setItem('darkMode', 'false');
     const originalMatchMedia = window.matchMedia;
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
@@ -79,7 +112,7 @@ describe('ThemeService', () => {
   });
 
   it('initializeTheme follows the system preference when no saved dark mode exists', () => {
-    localStorage.setItem('theme', 'silver');
+    localStorageMock.setItem('theme', 'silver');
     const originalMatchMedia = window.matchMedia;
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
@@ -125,7 +158,7 @@ describe('ThemeService', () => {
 
     expect(service.currentTheme()).toBe('legacy');
     expect(service.isDarkMode()).toBe(false);
-    expect(localStorage.getItem('theme')).toBeNull();
+    expect(localStorageMock.getItem('theme')).toBeNull();
 
     getStorageSpy.mockRestore();
     Object.defineProperty(window, 'matchMedia', {

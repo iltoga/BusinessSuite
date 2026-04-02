@@ -25,11 +25,16 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  SyncServiceInterface,
+  SyncChangesPullRetrieveRequestParams,
+  SyncMediaManifestRetrieveRequestParams,
+} from './sync.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class SyncService extends BaseService {
+export class SyncService extends BaseService implements SyncServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -41,15 +46,13 @@ export class SyncService extends BaseService {
   /**
    * Pull sync changes
    * @endpoint get /api/sync/changes/pull/
-   * @param afterSeq
-   * @param limit
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public syncChangesPullRetrieve(
-    afterSeq?: number,
-    limit?: number,
+    requestParameters?: SyncChangesPullRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -59,8 +62,7 @@ export class SyncService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public syncChangesPullRetrieve(
-    afterSeq?: number,
-    limit?: number,
+    requestParameters?: SyncChangesPullRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -70,8 +72,7 @@ export class SyncService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public syncChangesPullRetrieve(
-    afterSeq?: number,
-    limit?: number,
+    requestParameters?: SyncChangesPullRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -81,8 +82,7 @@ export class SyncService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public syncChangesPullRetrieve(
-    afterSeq?: number,
-    limit?: number,
+    requestParameters?: SyncChangesPullRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -91,6 +91,9 @@ export class SyncService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const afterSeq = requestParameters?.afterSeq;
+    const limit = requestParameters?.limit;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -307,15 +310,13 @@ export class SyncService extends BaseService {
   /**
    * Get media manifest
    * @endpoint get /api/sync/media/manifest/
-   * @param afterUpdatedAt
-   * @param limit
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public syncMediaManifestRetrieve(
-    afterUpdatedAt?: string,
-    limit?: number,
+    requestParameters?: SyncMediaManifestRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -325,8 +326,7 @@ export class SyncService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public syncMediaManifestRetrieve(
-    afterUpdatedAt?: string,
-    limit?: number,
+    requestParameters?: SyncMediaManifestRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -336,8 +336,7 @@ export class SyncService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public syncMediaManifestRetrieve(
-    afterUpdatedAt?: string,
-    limit?: number,
+    requestParameters?: SyncMediaManifestRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -347,8 +346,7 @@ export class SyncService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public syncMediaManifestRetrieve(
-    afterUpdatedAt?: string,
-    limit?: number,
+    requestParameters?: SyncMediaManifestRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -357,6 +355,9 @@ export class SyncService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const afterUpdatedAt = requestParameters?.afterUpdatedAt;
+    const limit = requestParameters?.limit;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(

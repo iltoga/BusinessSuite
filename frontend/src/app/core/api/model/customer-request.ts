@@ -15,11 +15,11 @@ export interface CustomerRequest {
   /**
    * * `` - --------- * `Mr` - Mr * `Mrs` - Mrs * `Ms` - Ms * `Miss` - Miss * `Dr` - Dr * `Prof` - Prof
    */
-  title?: CustomerRequest.TitleEnum | null;
+  title?: CustomerRequestTitleEnum | null;
   /**
    * * `person` - Person * `company` - Company
    */
-  customerType?: CustomerRequest.CustomerTypeEnum;
+  customerType?: CustomerRequestCustomerTypeEnum;
   firstName?: string | null;
   lastName?: string | null;
   companyName?: string | null;
@@ -42,45 +42,39 @@ export interface CustomerRequest {
   /**
    * * `` - --------- * `M` - Male * `F` - Female
    */
-  gender?: CustomerRequest.GenderEnum | null;
+  gender?: CustomerRequestGenderEnum | null;
   addressBali?: string | null;
   addressAbroad?: string | null;
   notifyDocumentsExpiration?: boolean;
   /**
    * * `` - --------- * `Email` - Email * `SMS` - SMS * `WhatsApp` - WhatsApp * `Telegram` - Telegram * `Telephone` - Telephone
    */
-  notifyBy?: CustomerRequest.NotifyByEnum | null;
+  notifyBy?: CustomerRequestNotifyByEnum | null;
   active?: boolean;
 }
-export namespace CustomerRequest {
-  export const TitleEnum = {
-    Empty: '',
-    Mr: 'Mr',
-    Mrs: 'Mrs',
-    Ms: 'Ms',
-    Miss: 'Miss',
-    Dr: 'Dr',
-    Prof: 'Prof',
-  } as const;
-  export type TitleEnum = (typeof TitleEnum)[keyof typeof TitleEnum];
-  export const CustomerTypeEnum = {
-    Person: 'person',
-    Company: 'company',
-  } as const;
-  export type CustomerTypeEnum = (typeof CustomerTypeEnum)[keyof typeof CustomerTypeEnum];
-  export const GenderEnum = {
-    Empty: '',
-    M: 'M',
-    F: 'F',
-  } as const;
-  export type GenderEnum = (typeof GenderEnum)[keyof typeof GenderEnum];
-  export const NotifyByEnum = {
-    Empty: '',
-    Email: 'Email',
-    Sms: 'SMS',
-    WhatsApp: 'WhatsApp',
-    Telegram: 'Telegram',
-    Telephone: 'Telephone',
-  } as const;
-  export type NotifyByEnum = (typeof NotifyByEnum)[keyof typeof NotifyByEnum];
+export enum CustomerRequestTitleEnum {
+  Empty = '',
+  Mr = 'Mr',
+  Mrs = 'Mrs',
+  Ms = 'Ms',
+  Miss = 'Miss',
+  Dr = 'Dr',
+  Prof = 'Prof',
+}
+export enum CustomerRequestCustomerTypeEnum {
+  Person = 'person',
+  Company = 'company',
+}
+export enum CustomerRequestGenderEnum {
+  Empty = '',
+  M = 'M',
+  F = 'F',
+}
+export enum CustomerRequestNotifyByEnum {
+  Empty = '',
+  Email = 'Email',
+  Sms = 'SMS',
+  WhatsApp = 'WhatsApp',
+  Telegram = 'Telegram',
+  Telephone = 'Telephone',
 }

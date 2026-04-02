@@ -154,7 +154,12 @@ export class ReminderInboxService {
 
   markRead(ids: number[] = []): void {
     this.calendarRemindersApi
-      .calendarRemindersInboxMarkReadCreate({ ids, deviceLabel: this.deviceLabel() })
+      .calendarRemindersInboxMarkReadCreate({
+        calendarReminderInboxMarkReadRequest: {
+          ids,
+          deviceLabel: this.deviceLabel(),
+        },
+      })
       .pipe(
         catchError((error) => {
           console.error('[ReminderInboxService] Failed to mark reminders as read', error);

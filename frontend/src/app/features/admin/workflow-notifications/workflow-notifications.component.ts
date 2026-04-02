@@ -127,7 +127,7 @@ export class WorkflowNotificationsComponent {
         switchMap((showError) => {
           this.loading.set(true);
           return this.workflowNotificationsApi
-            .workflowNotificationsList()
+            .workflowNotificationsList({})
             .pipe(
               map((res) => res ?? []),
               catchError((error) => {
@@ -221,7 +221,7 @@ export class WorkflowNotificationsComponent {
     }
 
     this.setResending(id, true);
-    this.workflowNotificationsApi.workflowNotificationsResendCreate(id).subscribe({
+    this.workflowNotificationsApi.workflowNotificationsResendCreate({ id }).subscribe({
         next: (response: any) => {
           this.setResending(id, false);
           const status = String(response?.status || 'updated');
@@ -244,14 +244,14 @@ export class WorkflowNotificationsComponent {
   }
 
   cancel(id: number): void {
-    this.workflowNotificationsApi.workflowNotificationsCancelCreate(id).subscribe({
+    this.workflowNotificationsApi.workflowNotificationsCancelCreate({ id }).subscribe({
         next: () => this.load(false),
         error: () => this.toast.error('Failed to cancel notification'),
       });
   }
 
   remove(id: number): void {
-    this.workflowNotificationsApi.workflowNotificationsDestroy(id).subscribe({
+    this.workflowNotificationsApi.workflowNotificationsDestroy({ id }).subscribe({
       next: () => this.load(false),
       error: () => this.toast.error('Failed to delete notification'),
     });
@@ -371,7 +371,7 @@ export class WorkflowNotificationsComponent {
 
     this.sendingPush.set(true);
     this.pushNotificationsApi
-      .pushNotificationsSendTestCreate(payload)
+      .pushNotificationsSendTestCreate({ adminPushNotificationSendRequest: payload })
       .subscribe({
         next: (response: any) => {
           this.sendingPush.set(false);
@@ -411,7 +411,7 @@ export class WorkflowNotificationsComponent {
 
     this.sendingWhatsapp.set(true);
     this.pushNotificationsApi
-      .pushNotificationsSendTestWhatsappCreate(payload)
+      .pushNotificationsSendTestWhatsappCreate({ adminWhatsappTestSendRequest: payload })
       .subscribe({
         next: (response: any) => {
           this.sendingWhatsapp.set(false);

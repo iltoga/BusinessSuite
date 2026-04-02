@@ -28,11 +28,12 @@ import { DashboardStats } from '../model/dashboard-stats';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import { DashboardStatsServiceInterface } from './dashboard-stats.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class DashboardStatsService extends BaseService {
+export class DashboardStatsService extends BaseService implements DashboardStatsServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],

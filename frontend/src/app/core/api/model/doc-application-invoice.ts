@@ -20,16 +20,13 @@ export interface DocApplicationInvoice {
   /**
    * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
    */
-  readonly status: DocApplicationInvoice.StatusEnum;
+  readonly status: DocApplicationInvoiceStatusEnum;
   readonly notes: string | null;
   readonly strField: string;
 }
-export namespace DocApplicationInvoice {
-  export const StatusEnum = {
-    Pending: 'pending',
-    Processing: 'processing',
-    Completed: 'completed',
-    Rejected: 'rejected',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum DocApplicationInvoiceStatusEnum {
+  Pending = 'pending',
+  Processing = 'processing',
+  Completed = 'completed',
+  Rejected = 'rejected',
 }

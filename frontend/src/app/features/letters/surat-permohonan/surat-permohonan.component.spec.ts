@@ -87,12 +87,14 @@ describe('SuratPermohonanComponent', () => {
     component.generateLetter();
 
     expect(lettersService.lettersSuratPermohonanCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        customerId: 1,
-        docDate: '2026-01-01',
-        visaType: 'voa',
-        name: 'Test User',
-      }),
+      {
+        suratPermohonanRequestRequest: expect.objectContaining({
+          customerId: 1,
+          docDate: '2026-01-01',
+          visaType: 'voa',
+          name: 'Test User',
+        }),
+      },
       'response',
     );
   });

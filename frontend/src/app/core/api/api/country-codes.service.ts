@@ -28,11 +28,16 @@ import { CountryCode } from '../model/country-code';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  CountryCodesServiceInterface,
+  CountryCodesListRequestParams,
+  CountryCodesRetrieveRequestParams,
+} from './country-codes.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class CountryCodesService extends BaseService {
+export class CountryCodesService extends BaseService implements CountryCodesServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -43,15 +48,13 @@ export class CountryCodesService extends BaseService {
 
   /**
    * @endpoint get /api/country-codes/
-   * @param ordering Which field to use when ordering the results.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public countryCodesList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: CountryCodesListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -61,8 +64,7 @@ export class CountryCodesService extends BaseService {
     },
   ): Observable<Array<CountryCode>>;
   public countryCodesList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: CountryCodesListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -72,8 +74,7 @@ export class CountryCodesService extends BaseService {
     },
   ): Observable<HttpResponse<Array<CountryCode>>>;
   public countryCodesList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: CountryCodesListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -83,8 +84,7 @@ export class CountryCodesService extends BaseService {
     },
   ): Observable<HttpEvent<Array<CountryCode>>>;
   public countryCodesList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: CountryCodesListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -93,6 +93,9 @@ export class CountryCodesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -160,13 +163,13 @@ export class CountryCodesService extends BaseService {
 
   /**
    * @endpoint get /api/country-codes/{alpha3Code}/
-   * @param alpha3Code A unique value identifying this country code.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public countryCodesRetrieve(
-    alpha3Code: string,
+    requestParameters: CountryCodesRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -176,7 +179,7 @@ export class CountryCodesService extends BaseService {
     },
   ): Observable<CountryCode>;
   public countryCodesRetrieve(
-    alpha3Code: string,
+    requestParameters: CountryCodesRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -186,7 +189,7 @@ export class CountryCodesService extends BaseService {
     },
   ): Observable<HttpResponse<CountryCode>>;
   public countryCodesRetrieve(
-    alpha3Code: string,
+    requestParameters: CountryCodesRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -196,7 +199,7 @@ export class CountryCodesService extends BaseService {
     },
   ): Observable<HttpEvent<CountryCode>>;
   public countryCodesRetrieve(
-    alpha3Code: string,
+    requestParameters: CountryCodesRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -205,6 +208,7 @@ export class CountryCodesService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const alpha3Code = requestParameters?.alpha3Code;
     if (alpha3Code === null || alpha3Code === undefined) {
       throw new Error(
         'Required parameter alpha3Code was null or undefined when calling countryCodesRetrieve.',

@@ -11,15 +11,15 @@ import { HttpHeaders } from '@angular/common/http';
 
 import { Observable } from 'rxjs';
 
-import { AdminPushNotificationSend } from '../model/models';
+import { AdminPushNotificationDispatchResult } from '../model/models';
 import { AdminPushNotificationSendRequest } from '../model/models';
-import { AdminWhatsappTestSend } from '../model/models';
-import { AdminWhatsappTestSendRequest } from '../model/models';
 import { AdminPushNotificationUser } from '../model/models';
-import { PushNotificationTest } from '../model/models';
+import { AdminWhatsappTestSendRequest } from '../model/models';
+import { AdminWhatsappTestSendResponse } from '../model/models';
+import { PushNotificationDispatchResult } from '../model/models';
 import { PushNotificationTestRequest } from '../model/models';
+import { PushNotificationUnregisterResponse } from '../model/models';
 import { WebPushSubscription } from '../model/models';
-import { WebPushSubscriptionDelete } from '../model/models';
 import { WebPushSubscriptionDeleteRequest } from '../model/models';
 import { WebPushSubscriptionUpsert } from '../model/models';
 import { WebPushSubscriptionUpsertRequest } from '../model/models';
@@ -88,7 +88,7 @@ export interface PushNotificationsServiceInterface {
   pushNotificationsSendTestCreate(
     requestParameters: PushNotificationsSendTestCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<AdminPushNotificationSend>;
+  ): Observable<AdminPushNotificationDispatchResult>;
 
   /**
    *
@@ -99,7 +99,7 @@ export interface PushNotificationsServiceInterface {
   pushNotificationsSendTestWhatsappCreate(
     requestParameters: PushNotificationsSendTestWhatsappCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<AdminWhatsappTestSend>;
+  ): Observable<AdminWhatsappTestSendResponse>;
 
   /**
    *
@@ -119,7 +119,7 @@ export interface PushNotificationsServiceInterface {
   pushNotificationsTestCreate(
     requestParameters: PushNotificationsTestCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<PushNotificationTest>;
+  ): Observable<PushNotificationDispatchResult>;
 
   /**
    *
@@ -130,12 +130,14 @@ export interface PushNotificationsServiceInterface {
   pushNotificationsUnregisterCreate(
     requestParameters: PushNotificationsUnregisterCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<WebPushSubscriptionDelete>;
+  ): Observable<PushNotificationUnregisterResponse>;
 
   /**
    *
    *
    * @endpoint get /api/push-notifications/users/
    */
-  pushNotificationsUsersList(extraHttpRequestParams?: any): Observable<Array<AdminPushNotificationUser>>;
+  pushNotificationsUsersList(
+    extraHttpRequestParams?: any,
+  ): Observable<Array<AdminPushNotificationUser>>;
 }

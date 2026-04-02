@@ -206,28 +206,35 @@ export class ApplicationsService {
   private ocrService = inject(OcrService);
 
   getApplication(applicationId: number): Observable<any> {
-    return this.customerApplicationsService.customerApplicationsRetrieve(applicationId, 'body');
+    return this.customerApplicationsService.customerApplicationsRetrieve({ id: applicationId });
   }
 
   deleteApplication(applicationId: number, deleteInvoices: boolean = false): Observable<any> {
     return this.customerApplicationsService.customerApplicationsDestroy(
-      applicationId,
-      deleteInvoices,
+      {
+        id: applicationId,
+        deleteInvoices,
+        deleteInvoices2: deleteInvoices,
+      },
     );
   }
 
   advanceWorkflow(applicationId: number): Observable<any> {
     return this.customerApplicationsService.customerApplicationsAdvanceWorkflowCreate(
-      applicationId,
-      {} as any,
+      {
+        id: applicationId,
+        docApplicationSerializerWithRelationsRequest: {} as any,
+      },
     );
   }
 
   updateWorkflowStatus(applicationId: number, workflowId: number, status: string): Observable<any> {
     return this.customerApplicationsService.customerApplicationsWorkflowsStatusCreate(
-      applicationId,
-      workflowId,
-      { status },
+      {
+        id: applicationId,
+        workflowId,
+        requestBody: { status },
+      },
     );
   }
 
@@ -236,8 +243,10 @@ export class ApplicationsService {
     payload: Record<string, unknown>,
   ): Observable<any> {
     return this.customerApplicationsService.customerApplicationsPartialUpdate(
-      applicationId,
-      payload as any,
+      {
+        id: applicationId,
+        docApplicationCreateUpdateRequest: payload as any,
+      },
     );
   }
 
@@ -247,29 +256,35 @@ export class ApplicationsService {
     dueDate: string,
   ): Observable<any> {
     return this.customerApplicationsService.customerApplicationsWorkflowsDueDateCreate(
-      applicationId,
-      workflowId,
-      { dueDate },
+      {
+        id: applicationId,
+        workflowId,
+        requestBody: { dueDate },
+      },
     );
   }
 
   rollbackWorkflow(applicationId: number, workflowId: number): Observable<any> {
     return this.customerApplicationsService.customerApplicationsWorkflowsRollbackCreate(
-      applicationId,
-      workflowId,
-      {} as any,
+      {
+        id: applicationId,
+        workflowId,
+        requestBody: {},
+      },
     );
   }
 
   reopenApplication(applicationId: number): Observable<any> {
     return this.customerApplicationsService.customerApplicationsReopenCreate(
-      applicationId,
-      {} as any,
+      {
+        id: applicationId,
+        docApplicationSerializerWithRelationsRequest: {} as any,
+      },
     );
   }
 
   forceClose(applicationId: number): Observable<any> {
-    return this.customerApplicationsService.customerApplicationsForceCloseCreate(applicationId);
+    return this.customerApplicationsService.customerApplicationsForceCloseCreate({ id: applicationId });
   }
 
   updateDocument(

@@ -214,13 +214,13 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
   protected override createListLoader(
     params: ListRequestParams,
   ): Observable<PaginatedResponse<InvoiceList>> {
-    return this.invoicesApi.invoicesList(
-      this.hidePaid() ? true : undefined,
-      params.ordering ?? undefined,
-      params.page,
-      params.pageSize,
-      params.query || undefined,
-    );
+    return this.invoicesApi.invoicesList({
+      hidePaid: this.hidePaid() ? true : undefined,
+      ordering: params.ordering ?? undefined,
+      page: params.page,
+      pageSize: params.pageSize,
+      search: params.query || undefined,
+    });
   }
 
   /**
@@ -381,9 +381,11 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
 
     this.invoicesApi
       .invoicesBulkDeleteCreate({
-        searchQuery: context.query || '',
-        hidePaid: context.hidePaid,
-        deleteCustomerApplications: result.extraChecked,
+        invoicesBulkDeleteRequestRequest: {
+          searchQuery: context.query || '',
+          hidePaid: context.hidePaid,
+          deleteCustomerApplications: result.extraChecked,
+        },
       })
       .subscribe({
         next: (response) => {
@@ -425,7 +427,7 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
     }
 
     this.pendingInvoiceId.set(invoice.id);
-    this.invoicesApi.invoicesDeletePreviewRetrieve(invoice.id).subscribe({
+    this.invoicesApi.invoicesDeletePreviewRetrieve({ id: invoice.id }).subscribe({
       next: (response) => {
         const payload = response as {
           invoiceNoDisplay?: string;
@@ -483,9 +485,12 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
     }
 
     this.invoicesApi
-      .invoicesForceDeleteCreate(invoiceId, {
-        forceDeleteConfirmed: true,
-        deleteCustomerApplications: result.deleteCustomerApplications,
+      .invoicesForceDeleteCreate({
+        id: invoiceId,
+        invoiceForceDeleteRequestRequest: {
+          forceDeleteConfirmed: true,
+          deleteCustomerApplications: result.deleteCustomerApplications,
+        },
       })
       .subscribe({
         next: () => {

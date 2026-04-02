@@ -389,7 +389,9 @@ export class InvoiceFormComponent implements OnInit {
       page: Number.isFinite(page) && page > 0 ? Math.floor(page) : undefined,
     };
     if (this.isEditMode() && this.invoice()) {
-      this.invoicesApi.invoicesUpdate(this.invoice()!.id, payload).subscribe({
+      this.invoicesApi
+        .invoicesUpdate({ id: this.invoice()!.id, invoiceCreateUpdateRequest: payload })
+        .subscribe({
         next: (invoice: InvoiceCreateUpdate) => {
           this.toast.success('Invoice updated');
           this.router.navigate(['/invoices', invoice.id], { state: detailState });
@@ -407,7 +409,7 @@ export class InvoiceFormComponent implements OnInit {
       return;
     }
 
-    this.invoicesApi.invoicesCreate(payload).subscribe({
+    this.invoicesApi.invoicesCreate({ invoiceCreateUpdateRequest: payload }).subscribe({
       next: (invoice: InvoiceCreateUpdate) => {
         this.toast.success('Invoice created');
         this.router.navigate(['/invoices', invoice.id], { state: detailState });
@@ -636,7 +638,9 @@ export class InvoiceFormComponent implements OnInit {
   private loadFromApplication(applicationId: number): void {
     this.isLoading.set(true);
 
-    this.invoicesApi.invoicesFromApplicationPrefillRetrieve(applicationId).subscribe({
+    this.invoicesApi
+      .invoicesFromApplicationPrefillRetrieve({ applicationId })
+      .subscribe({
       next: (response) => {
         const payload = unwrapApiRecord(response) as Record<string, any> | null;
         const customerId = payload?.['customer']?.id ?? null;
@@ -705,7 +709,7 @@ export class InvoiceFormComponent implements OnInit {
 
   private loadInvoice(id: number): void {
     this.isLoading.set(true);
-    this.invoicesApi.invoicesRetrieve(id).subscribe({
+    this.invoicesApi.invoicesRetrieve({ id }).subscribe({
       next: (invoice: InvoiceDetail) => {
         this.invoice.set(invoice);
         this.form.patchValue({
@@ -796,7 +800,7 @@ export class InvoiceFormComponent implements OnInit {
 
   private fetchBillableProducts(customerId: number, currentInvoiceId?: number) {
     return this.invoicesApi
-      .invoicesGetBillableProductsList(customerId, currentInvoiceId)
+      .invoicesGetBillableProductsList({ customerId, currentInvoiceId })
       .pipe(map((rows) => normalizeBillableRows(rows)));
   }
 
@@ -810,7 +814,7 @@ export class InvoiceFormComponent implements OnInit {
     const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
 
-    this.invoicesApi.invoicesProposeRetrieve(dateStr).subscribe({
+    this.invoicesApi.invoicesProposeRetrieve({ invoiceDate: dateStr }).subscribe({
       next: (res) => {
         const ctrl = this.form.get('invoiceNo');
         if (ctrl && !ctrl.dirty) {

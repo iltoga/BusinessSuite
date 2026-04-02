@@ -30,11 +30,20 @@ import { HolidayRequest } from '../model/holiday-request';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  HolidaysServiceInterface,
+  HolidaysCreateRequestParams,
+  HolidaysDestroyRequestParams,
+  HolidaysListRequestParams,
+  HolidaysPartialUpdateRequestParams,
+  HolidaysRetrieveRequestParams,
+  HolidaysUpdateRequestParams,
+} from './holidays.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class HolidaysService extends BaseService {
+export class HolidaysService extends BaseService implements HolidaysServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -45,13 +54,13 @@ export class HolidaysService extends BaseService {
 
   /**
    * @endpoint post /api/holidays/
-   * @param holidayRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public holidaysCreate(
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -61,7 +70,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<Holiday>;
   public holidaysCreate(
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -71,7 +80,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpResponse<Holiday>>;
   public holidaysCreate(
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -81,7 +90,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpEvent<Holiday>>;
   public holidaysCreate(
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -90,6 +99,7 @@ export class HolidaysService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const holidayRequest = requestParameters?.holidayRequest;
     if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
         'Required parameter holidayRequest was null or undefined when calling holidaysCreate.',
@@ -157,35 +167,36 @@ export class HolidaysService extends BaseService {
 
   /**
    * @endpoint delete /api/holidays/{id}/
-   * @param id A unique integer value identifying this holiday.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public holidaysDestroy(
-    id: number,
+    requestParameters: HolidaysDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public holidaysDestroy(
-    id: number,
+    requestParameters: HolidaysDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public holidaysDestroy(
-    id: number,
+    requestParameters: HolidaysDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public holidaysDestroy(
-    id: number,
+    requestParameters: HolidaysDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling holidaysDestroy.');
     }
@@ -238,15 +249,13 @@ export class HolidaysService extends BaseService {
 
   /**
    * @endpoint get /api/holidays/
-   * @param ordering Which field to use when ordering the results.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public holidaysList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: HolidaysListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -256,8 +265,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<Array<Holiday>>;
   public holidaysList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: HolidaysListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -267,8 +275,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpResponse<Array<Holiday>>>;
   public holidaysList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: HolidaysListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -278,8 +285,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpEvent<Array<Holiday>>>;
   public holidaysList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: HolidaysListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -288,6 +294,9 @@ export class HolidaysService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -355,15 +364,13 @@ export class HolidaysService extends BaseService {
 
   /**
    * @endpoint patch /api/holidays/{id}/
-   * @param id A unique integer value identifying this holiday.
-   * @param holidayRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public holidaysPartialUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -373,8 +380,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<Holiday>;
   public holidaysPartialUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -384,8 +390,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpResponse<Holiday>>;
   public holidaysPartialUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -395,8 +400,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpEvent<Holiday>>;
   public holidaysPartialUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -405,11 +409,13 @@ export class HolidaysService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling holidaysPartialUpdate.',
       );
     }
+    const holidayRequest = requestParameters?.holidayRequest;
     if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
         'Required parameter holidayRequest was null or undefined when calling holidaysPartialUpdate.',
@@ -477,13 +483,13 @@ export class HolidaysService extends BaseService {
 
   /**
    * @endpoint get /api/holidays/{id}/
-   * @param id A unique integer value identifying this holiday.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public holidaysRetrieve(
-    id: number,
+    requestParameters: HolidaysRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -493,7 +499,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<Holiday>;
   public holidaysRetrieve(
-    id: number,
+    requestParameters: HolidaysRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -503,7 +509,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpResponse<Holiday>>;
   public holidaysRetrieve(
-    id: number,
+    requestParameters: HolidaysRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -513,7 +519,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpEvent<Holiday>>;
   public holidaysRetrieve(
-    id: number,
+    requestParameters: HolidaysRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -522,6 +528,7 @@ export class HolidaysService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling holidaysRetrieve.');
     }
@@ -574,15 +581,13 @@ export class HolidaysService extends BaseService {
 
   /**
    * @endpoint put /api/holidays/{id}/
-   * @param id A unique integer value identifying this holiday.
-   * @param holidayRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public holidaysUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -592,8 +597,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<Holiday>;
   public holidaysUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -603,8 +607,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpResponse<Holiday>>;
   public holidaysUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -614,8 +617,7 @@ export class HolidaysService extends BaseService {
     },
   ): Observable<HttpEvent<Holiday>>;
   public holidaysUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: HolidaysUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -624,9 +626,11 @@ export class HolidaysService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling holidaysUpdate.');
     }
+    const holidayRequest = requestParameters?.holidayRequest;
     if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
         'Required parameter holidayRequest was null or undefined when calling holidaysUpdate.',

@@ -21,21 +21,18 @@ export interface InvoiceApplicationDetail {
   /**
    * * `pending` - Pending * `partial_payment` - Partial Payment * `paid` - Paid * `overdue` - Overdue * `disputed` - Disputed * `cancelled` - Cancelled * `refunded` - Refunded * `write_off` - Write Off
    */
-  status?: InvoiceApplicationDetail.StatusEnum;
+  status?: InvoiceApplicationDetailStatusEnum;
   readonly paidAmount: string;
   readonly dueAmount: string;
   readonly payments: Array<Payment>;
 }
-export namespace InvoiceApplicationDetail {
-  export const StatusEnum = {
-    Pending: 'pending',
-    PartialPayment: 'partial_payment',
-    Paid: 'paid',
-    Overdue: 'overdue',
-    Disputed: 'disputed',
-    Cancelled: 'cancelled',
-    Refunded: 'refunded',
-    WriteOff: 'write_off',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum InvoiceApplicationDetailStatusEnum {
+  Pending = 'pending',
+  PartialPayment = 'partial_payment',
+  Paid = 'paid',
+  Overdue = 'overdue',
+  Disputed = 'disputed',
+  Cancelled = 'cancelled',
+  Refunded = 'refunded',
+  WriteOff = 'write_off',
 }

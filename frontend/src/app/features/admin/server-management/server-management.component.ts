@@ -149,7 +149,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
     this.startServerAction('clearCache');
     this.isLoading.set(true);
     this.serverManagementApi
-      .serverManagementClearCacheCreate()
+      .serverManagementClearCacheCreate({})
       .pipe(
         catchError(() => {
           this.toast.error('Failed to clear cache');
@@ -215,7 +215,7 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
   clearAllCache(): void {
     this.cacheLoading.set(true);
     this.serverManagementApi
-      .serverManagementClearCacheCreate()
+      .serverManagementClearCacheCreate({})
       .pipe(
         catchError(() => {
           this.toast.error('Failed to clear cache');
@@ -265,7 +265,9 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
     this.localResilienceSaving.set(true);
     this.serverManagementApi
       .serverManagementLocalResiliencePartialUpdate({
-        enabled: !current.enabled,
+        requestBody: {
+          enabled: !current.enabled,
+        },
       })
       .pipe(
         catchError(() => {
@@ -545,7 +547,9 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
     this.uiSettingsSaving.set(true);
     this.serverManagementApi
       .serverManagementUiSettingsPartialUpdate({
-        useOverlayMenu: !current.useOverlayMenu,
+        requestBody: {
+          useOverlayMenu: !current.useOverlayMenu,
+        },
       })
       .pipe(
         catchError(() => {

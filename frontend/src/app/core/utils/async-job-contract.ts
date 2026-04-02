@@ -1,4 +1,4 @@
-import { type AsyncJob } from '@/core/api';
+import { AsyncJobStatusEnum, type AsyncJob } from '@/core/api';
 import { unwrapApiEnvelope } from '@/core/utils/api-envelope';
 
 export function firstDefined<T>(...values: Array<T | null | undefined>): T | undefined {
@@ -135,10 +135,10 @@ export function normalizeAsyncJobUpdate(update: unknown): AsyncJob {
     extractJobIdFromRecord(record),
     nested ? extractJobIdFromRecord(nested) : undefined,
   ) ?? '';
-  const status = firstDefined(
+  const status = normalizeAsyncJobStatus(
     toOptionalString(record['status']),
     nested ? toOptionalString(nested['status']) : undefined,
-  ) ?? '';
+  );
   const progress = firstDefined(
     toOptionalNumber(record['progress']),
     nested ? toOptionalNumber(nested['progress']) : undefined,
@@ -147,17 +147,19 @@ export function normalizeAsyncJobUpdate(update: unknown): AsyncJob {
     toOptionalString(record['taskName']),
     nested ? toOptionalString(nested['taskName']) : undefined,
   ) ?? '';
+  const resultValue = firstDefined(record['result'], nested?.['result']);
 
   const job: Record<string, unknown> = {
+    id: jobId,
     jobId,
     taskName,
-    status: status as AsyncJob.StatusEnum,
+    status,
     progress,
     message: firstDefined(
       toOptionalString(record['message']),
       nested ? toOptionalString(nested['message']) : undefined,
     ) ?? null,
-    result: firstDefined(record['result'], nested?.['result']) ?? null,
+    result: isRecord(resultValue) ? resultValue : {},
     errorMessage: firstDefined(
       toOptionalString(record['errorMessage']),
       nested ? toOptionalString(nested['errorMessage']) : undefined,
@@ -176,9 +178,33 @@ export function normalizeAsyncJobUpdate(update: unknown): AsyncJob {
     ) ?? null,
   };
 
-  return job as AsyncJob;
+  return job as unknown as AsyncJob;
 }
 
 export function isTerminalAsyncJob(job: Pick<AsyncJob, 'status'> | null | undefined): boolean {
-  return job?.status === 'completed' || job?.status === 'failed';
+  return (
+    job?.status === AsyncJobStatusEnum.Completed || job?.status === AsyncJobStatusEnum.Failed
+  );
+}
+
+function normalizeAsyncJobStatus(
+  ...values: Array<string | null | undefined>
+): AsyncJobStatusEnum {
+  for (const value of values) {
+    const normalized = String(value ?? '').trim().toLowerCase();
+    switch (normalized) {
+      case AsyncJobStatusEnum.Pending:
+        return AsyncJobStatusEnum.Pending;
+      case AsyncJobStatusEnum.Processing:
+        return AsyncJobStatusEnum.Processing;
+      case AsyncJobStatusEnum.Completed:
+        return AsyncJobStatusEnum.Completed;
+      case AsyncJobStatusEnum.Failed:
+        return AsyncJobStatusEnum.Failed;
+      default:
+        break;
+    }
+  }
+
+  return AsyncJobStatusEnum.Pending;
 }

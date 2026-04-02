@@ -137,7 +137,7 @@ describe('AiModelFormComponent', () => {
 
     component.ngOnInit();
 
-    expect(aiModelsApiMock.aiModelsRetrieve).toHaveBeenCalledWith(19);
+    expect(aiModelsApiMock.aiModelsRetrieve).toHaveBeenCalledWith({ id: 19 });
     expect(component.form.get('model_id')?.value).toBe('openrouter/qwen3.5-flash');
     expect(component.form.get('provider_name')?.value).toBe('OpenRouter');
     expect(component.form.get('top_provider_id')?.value).toBe('openrouter');
@@ -194,7 +194,10 @@ describe('AiModelFormComponent', () => {
 
     component['loadModels']('qwen');
 
-    expect(aiModelsApiMock.aiModelsOpenrouterSearchRetrieve).toHaveBeenCalledWith(10, 'qwen');
+    expect(aiModelsApiMock.aiModelsOpenrouterSearchRetrieve).toHaveBeenCalledWith({
+      limit: 10,
+      q: 'qwen',
+    });
     expect(component.modelOptions()).toHaveLength(1);
     expect(component.modelOptions()[0].label).toBe('Qwen: Qwen3.5-Flash');
     expect(component.modelOptions()[0].model.pricingDisplay?.promptPricePerMillionTokens).toBe(

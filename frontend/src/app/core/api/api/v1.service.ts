@@ -218,11 +218,181 @@ import { WorkflowNotificationRequest } from '../model/workflow-notification-requ
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  V1ServiceInterface,
+  V1AiModelsCreateRequestParams,
+  V1AiModelsDestroyRequestParams,
+  V1AiModelsListRequestParams,
+  V1AiModelsOpenrouterSearchRetrieveRequestParams,
+  V1AiModelsPartialUpdateRequestParams,
+  V1AiModelsRetrieveRequestParams,
+  V1AiModelsUpdateRequestParams,
+  V1ApiTokenAuthCreateRequestParams,
+  V1AsyncJobsRetrieveRequestParams,
+  V1BackupsDeleteDestroyRequestParams,
+  V1BackupsDeleteMultipleCreateRequestParams,
+  V1BackupsDownloadRetrieveRequestParams,
+  V1BackupsRestoreCreateRequestParams,
+  V1BackupsStartRetrieveRequestParams,
+  V1CalendarCreateRequestParams,
+  V1CalendarDestroyRequestParams,
+  V1CalendarPartialUpdateRequestParams,
+  V1CalendarRemindersAckCreateRequestParams,
+  V1CalendarRemindersBulkCreateCreateRequestParams,
+  V1CalendarRemindersCreateRequestParams,
+  V1CalendarRemindersDestroyRequestParams,
+  V1CalendarRemindersInboxMarkReadCreateRequestParams,
+  V1CalendarRemindersInboxSnoozeCreateRequestParams,
+  V1CalendarRemindersListRequestParams,
+  V1CalendarRemindersPartialUpdateRequestParams,
+  V1CalendarRemindersRetrieveRequestParams,
+  V1CalendarRemindersUpdateRequestParams,
+  V1CalendarRemindersUsersListRequestParams,
+  V1CalendarRetrieveRequestParams,
+  V1CalendarUpdateRequestParams,
+  V1ComputeDocWorkflowDueDateRetrieveRequestParams,
+  V1CountryCodesListRequestParams,
+  V1CountryCodesRetrieveRequestParams,
+  V1CustomerApplicationsAdvanceWorkflowCreateRequestParams,
+  V1CustomerApplicationsBulkDeleteCreateRequestParams,
+  V1CustomerApplicationsCreateRequestParams,
+  V1CustomerApplicationsDestroyRequestParams,
+  V1CustomerApplicationsForceCloseCreateRequestParams,
+  V1CustomerApplicationsListRequestParams,
+  V1CustomerApplicationsPartialUpdateRequestParams,
+  V1CustomerApplicationsReopenCreateRequestParams,
+  V1CustomerApplicationsRetrieveRequestParams,
+  V1CustomerApplicationsUpdateRequestParams,
+  V1CustomerApplicationsWorkflowsDueDateCreateRequestParams,
+  V1CustomerApplicationsWorkflowsRollbackCreateRequestParams,
+  V1CustomerApplicationsWorkflowsStatusCreateRequestParams,
+  V1CustomersApplicationsHistoryListRequestParams,
+  V1CustomersBulkDeleteCreateRequestParams,
+  V1CustomersCheckPassportCreateRequestParams,
+  V1CustomersCreateRequestParams,
+  V1CustomersDestroyRequestParams,
+  V1CustomersListRequestParams,
+  V1CustomersPartialUpdateRequestParams,
+  V1CustomersRetrieveRequestParams,
+  V1CustomersToggleActiveCreateRequestParams,
+  V1CustomersUninvoicedApplicationsListRequestParams,
+  V1CustomersUpdateRequestParams,
+  V1DocumentOcrStatusRetrieveRequestParams,
+  V1DocumentOcrStreamRetrieveRequestParams,
+  V1DocumentTypesCanDeleteRetrieveRequestParams,
+  V1DocumentTypesCreateRequestParams,
+  V1DocumentTypesDeprecationImpactRetrieveRequestParams,
+  V1DocumentTypesDestroyRequestParams,
+  V1DocumentTypesListRequestParams,
+  V1DocumentTypesPartialUpdateRequestParams,
+  V1DocumentTypesRetrieveRequestParams,
+  V1DocumentTypesUpdateRequestParams,
+  V1DocumentsActionsCreateRequestParams,
+  V1DocumentsCreateRequestParams,
+  V1DocumentsDownloadRetrieveRequestParams,
+  V1DocumentsMergePdfCreateRequestParams,
+  V1DocumentsPartialUpdateRequestParams,
+  V1DocumentsPrintRetrieveRequestParams,
+  V1DocumentsRetrieveRequestParams,
+  V1DocumentsUpdateRequestParams,
+  V1HolidaysCreateRequestParams,
+  V1HolidaysDestroyRequestParams,
+  V1HolidaysListRequestParams,
+  V1HolidaysPartialUpdateRequestParams,
+  V1HolidaysRetrieveRequestParams,
+  V1HolidaysUpdateRequestParams,
+  V1InvoicesBulkDeleteCreateRequestParams,
+  V1InvoicesCreateRequestParams,
+  V1InvoicesDeletePreviewRetrieveRequestParams,
+  V1InvoicesDestroyRequestParams,
+  V1InvoicesDownloadAsyncCreateRequestParams,
+  V1InvoicesDownloadAsyncFileRetrieveRequestParams,
+  V1InvoicesDownloadAsyncStatusRetrieveRequestParams,
+  V1InvoicesDownloadAsyncStreamRetrieveRequestParams,
+  V1InvoicesDownloadRetrieveRequestParams,
+  V1InvoicesForceDeleteCreateRequestParams,
+  V1InvoicesFromApplicationPrefillRetrieveRequestParams,
+  V1InvoicesGetBillableProductsListRequestParams,
+  V1InvoicesGetCustomerApplicationsListRequestParams,
+  V1InvoicesGetInvoiceApplicationDueAmountRetrieveRequestParams,
+  V1InvoicesImportBatchCreateRequestParams,
+  V1InvoicesImportSingleCreateRequestParams,
+  V1InvoicesImportStatusRetrieveRequestParams,
+  V1InvoicesImportStreamRetrieveRequestParams,
+  V1InvoicesListRequestParams,
+  V1InvoicesMarkAsPaidCreateRequestParams,
+  V1InvoicesPartialUpdateRequestParams,
+  V1InvoicesProposeRetrieveRequestParams,
+  V1InvoicesRetrieveRequestParams,
+  V1InvoicesUpdateRequestParams,
+  V1LettersCustomerDataRetrieveRequestParams,
+  V1LettersSuratPermohonanCreateRequestParams,
+  V1OcrStatusRetrieveRequestParams,
+  V1OcrStreamRetrieveRequestParams,
+  V1PaymentsCreateRequestParams,
+  V1PaymentsDestroyRequestParams,
+  V1PaymentsListRequestParams,
+  V1PaymentsPartialUpdateRequestParams,
+  V1PaymentsRetrieveRequestParams,
+  V1PaymentsUpdateRequestParams,
+  V1ProductsBulkDeleteCreateRequestParams,
+  V1ProductsCanDeleteRetrieveRequestParams,
+  V1ProductsCategoryOptionsListRequestParams,
+  V1ProductsCreateRequestParams,
+  V1ProductsDeletePreviewRetrieveRequestParams,
+  V1ProductsDestroyRequestParams,
+  V1ProductsExportDownloadRetrieveRequestParams,
+  V1ProductsExportStartCreateRequestParams,
+  V1ProductsForceDeleteCreateRequestParams,
+  V1ProductsGetProductByIdRetrieveRequestParams,
+  V1ProductsGetProductsByProductTypeRetrieveRequestParams,
+  V1ProductsImportStartCreateRequestParams,
+  V1ProductsListRequestParams,
+  V1ProductsPartialUpdateRequestParams,
+  V1ProductsPriceListPrintDownloadRetrieveRequestParams,
+  V1ProductsRetrieveRequestParams,
+  V1ProductsUpdateRequestParams,
+  V1PushNotificationsRegisterCreateRequestParams,
+  V1PushNotificationsSendTestCreateRequestParams,
+  V1PushNotificationsSendTestWhatsappCreateRequestParams,
+  V1PushNotificationsTestCreateRequestParams,
+  V1PushNotificationsUnregisterCreateRequestParams,
+  V1ServerManagementAppSettingsCreateRequestParams,
+  V1ServerManagementAppSettingsDestroyRequestParams,
+  V1ServerManagementAppSettingsPartialUpdateRequestParams,
+  V1ServerManagementCalendarSyncHealthRetrieveRequestParams,
+  V1ServerManagementClearCacheCreateRequestParams,
+  V1ServerManagementLocalResiliencePartialUpdateRequestParams,
+  V1ServerManagementMediaCleanupCreateRequestParams,
+  V1ServerManagementOpenrouterStatusPartialUpdateRequestParams,
+  V1ServerManagementUiSettingsPartialUpdateRequestParams,
+  V1SyncChangesPullRetrieveRequestParams,
+  V1SyncMediaManifestRetrieveRequestParams,
+  V1TasksCreateRequestParams,
+  V1TasksDestroyRequestParams,
+  V1TasksPartialUpdateRequestParams,
+  V1TasksRetrieveRequestParams,
+  V1TasksUpdateRequestParams,
+  V1TokenRefreshCreateRequestParams,
+  V1UserProfileChangePasswordCreateRequestParams,
+  V1UserProfileLogoutCreateRequestParams,
+  V1UserProfileUpdateProfilePartialUpdateRequestParams,
+  V1UserProfileUploadAvatarCreateRequestParams,
+  V1UserSettingsMePartialUpdateRequestParams,
+  V1WorkflowNotificationsCancelCreateRequestParams,
+  V1WorkflowNotificationsCreateRequestParams,
+  V1WorkflowNotificationsDestroyRequestParams,
+  V1WorkflowNotificationsListRequestParams,
+  V1WorkflowNotificationsPartialUpdateRequestParams,
+  V1WorkflowNotificationsResendCreateRequestParams,
+  V1WorkflowNotificationsRetrieveRequestParams,
+  V1WorkflowNotificationsUpdateRequestParams,
+} from './v1.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class V1Service extends BaseService {
+export class V1Service extends BaseService implements V1ServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -321,13 +491,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/ai-models/
-   * @param aiModelRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AiModelsCreate(
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -337,7 +507,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<AiModel>;
   public v1AiModelsCreate(
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -347,7 +517,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public v1AiModelsCreate(
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -357,7 +527,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public v1AiModelsCreate(
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -366,6 +536,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const aiModelRequest = requestParameters?.aiModelRequest;
     if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
         'Required parameter aiModelRequest was null or undefined when calling v1AiModelsCreate.',
@@ -433,35 +604,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint delete /api/v1/ai-models/{id}/
-   * @param id A unique integer value identifying this ai model.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AiModelsDestroy(
-    id: number,
+    requestParameters: V1AiModelsDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1AiModelsDestroy(
-    id: number,
+    requestParameters: V1AiModelsDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1AiModelsDestroy(
-    id: number,
+    requestParameters: V1AiModelsDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1AiModelsDestroy(
-    id: number,
+    requestParameters: V1AiModelsDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1AiModelsDestroy.',
@@ -516,15 +688,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/ai-models/
-   * @param ordering Which field to use when ordering the results.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AiModelsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1AiModelsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -534,8 +704,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Array<AiModel>>;
   public v1AiModelsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1AiModelsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -545,8 +714,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Array<AiModel>>>;
   public v1AiModelsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1AiModelsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -556,8 +724,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Array<AiModel>>>;
   public v1AiModelsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1AiModelsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -566,6 +733,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -633,15 +803,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/ai-models/openrouter-search/
-   * @param limit
-   * @param q
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AiModelsOpenrouterSearchRetrieve(
-    limit?: number,
-    q?: string,
+    requestParameters?: V1AiModelsOpenrouterSearchRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -651,8 +819,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<AiModel>;
   public v1AiModelsOpenrouterSearchRetrieve(
-    limit?: number,
-    q?: string,
+    requestParameters?: V1AiModelsOpenrouterSearchRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -662,8 +829,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public v1AiModelsOpenrouterSearchRetrieve(
-    limit?: number,
-    q?: string,
+    requestParameters?: V1AiModelsOpenrouterSearchRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -673,8 +839,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public v1AiModelsOpenrouterSearchRetrieve(
-    limit?: number,
-    q?: string,
+    requestParameters?: V1AiModelsOpenrouterSearchRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -683,6 +848,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const limit = requestParameters?.limit;
+    const q = requestParameters?.q;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -750,15 +918,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/ai-models/{id}/
-   * @param id A unique integer value identifying this ai model.
-   * @param aiModelRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AiModelsPartialUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -768,8 +934,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<AiModel>;
   public v1AiModelsPartialUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -779,8 +944,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public v1AiModelsPartialUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -790,8 +954,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public v1AiModelsPartialUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -800,11 +963,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1AiModelsPartialUpdate.',
       );
     }
+    const aiModelRequest = requestParameters?.aiModelRequest;
     if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
         'Required parameter aiModelRequest was null or undefined when calling v1AiModelsPartialUpdate.',
@@ -872,13 +1037,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/ai-models/{id}/
-   * @param id A unique integer value identifying this ai model.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AiModelsRetrieve(
-    id: number,
+    requestParameters: V1AiModelsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -888,7 +1053,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<AiModel>;
   public v1AiModelsRetrieve(
-    id: number,
+    requestParameters: V1AiModelsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -898,7 +1063,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public v1AiModelsRetrieve(
-    id: number,
+    requestParameters: V1AiModelsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -908,7 +1073,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public v1AiModelsRetrieve(
-    id: number,
+    requestParameters: V1AiModelsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -917,6 +1082,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1AiModelsRetrieve.',
@@ -971,15 +1137,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/ai-models/{id}/
-   * @param id A unique integer value identifying this ai model.
-   * @param aiModelRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AiModelsUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -989,8 +1153,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<AiModel>;
   public v1AiModelsUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1000,8 +1163,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<AiModel>>;
   public v1AiModelsUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1011,8 +1173,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<AiModel>>;
   public v1AiModelsUpdate(
-    id: number,
-    aiModelRequest: AiModelRequest,
+    requestParameters: V1AiModelsUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1021,9 +1182,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1AiModelsUpdate.');
     }
+    const aiModelRequest = requestParameters?.aiModelRequest;
     if (aiModelRequest === null || aiModelRequest === undefined) {
       throw new Error(
         'Required parameter aiModelRequest was null or undefined when calling v1AiModelsUpdate.',
@@ -1092,35 +1255,36 @@ export class V1Service extends BaseService {
   /**
    * Takes a set of user credentials and returns an access and refresh JSON web token pair to prove the authentication of those credentials.
    * @endpoint post /api/v1/api-token-auth/
-   * @param customTokenObtainRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ApiTokenAuthCreate(
-    customTokenObtainRequest: CustomTokenObtainRequest,
+    requestParameters: V1ApiTokenAuthCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1ApiTokenAuthCreate(
-    customTokenObtainRequest: CustomTokenObtainRequest,
+    requestParameters: V1ApiTokenAuthCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1ApiTokenAuthCreate(
-    customTokenObtainRequest: CustomTokenObtainRequest,
+    requestParameters: V1ApiTokenAuthCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1ApiTokenAuthCreate(
-    customTokenObtainRequest: CustomTokenObtainRequest,
+    requestParameters: V1ApiTokenAuthCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const customTokenObtainRequest = requestParameters?.customTokenObtainRequest;
     if (customTokenObtainRequest === null || customTokenObtainRequest === undefined) {
       throw new Error(
         'Required parameter customTokenObtainRequest was null or undefined when calling v1ApiTokenAuthCreate.',
@@ -1268,13 +1432,13 @@ export class V1Service extends BaseService {
   /**
    * ViewSet for polling AsyncJob status if SSE is not used.
    * @endpoint get /api/v1/async-jobs/{id}/
-   * @param id A UUID string identifying this async job.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1AsyncJobsRetrieve(
-    id: string,
+    requestParameters: V1AsyncJobsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1284,7 +1448,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<AsyncJob>;
   public v1AsyncJobsRetrieve(
-    id: string,
+    requestParameters: V1AsyncJobsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1294,7 +1458,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<AsyncJob>>;
   public v1AsyncJobsRetrieve(
-    id: string,
+    requestParameters: V1AsyncJobsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1304,7 +1468,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<AsyncJob>>;
   public v1AsyncJobsRetrieve(
-    id: string,
+    requestParameters: V1AsyncJobsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1313,6 +1477,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1AsyncJobsRetrieve.',
@@ -1459,13 +1624,13 @@ export class V1Service extends BaseService {
    * Delete a backup file
    * Delete a single backup file.
    * @endpoint delete /api/v1/backups/delete/{filename}/
-   * @param filename
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1BackupsDeleteDestroy(
-    filename: string,
+    requestParameters: V1BackupsDeleteDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1475,7 +1640,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1BackupsDeleteDestroy(
-    filename: string,
+    requestParameters: V1BackupsDeleteDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1485,7 +1650,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1BackupsDeleteDestroy(
-    filename: string,
+    requestParameters: V1BackupsDeleteDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1495,7 +1660,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1BackupsDeleteDestroy(
-    filename: string,
+    requestParameters: V1BackupsDeleteDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1504,6 +1669,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const filename = requestParameters?.filename;
     if (filename === null || filename === undefined) {
       throw new Error(
         'Required parameter filename was null or undefined when calling v1BackupsDeleteDestroy.',
@@ -1560,13 +1726,13 @@ export class V1Service extends BaseService {
    * Delete multiple backup files
    * Delete multiple backup files.
    * @endpoint post /api/v1/backups/delete-multiple/
-   * @param deleteMultipleBackupsRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1BackupsDeleteMultipleCreate(
-    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
+    requestParameters: V1BackupsDeleteMultipleCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1576,7 +1742,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1BackupsDeleteMultipleCreate(
-    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
+    requestParameters: V1BackupsDeleteMultipleCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1586,7 +1752,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1BackupsDeleteMultipleCreate(
-    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
+    requestParameters: V1BackupsDeleteMultipleCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1596,7 +1762,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1BackupsDeleteMultipleCreate(
-    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
+    requestParameters: V1BackupsDeleteMultipleCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1605,6 +1771,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const deleteMultipleBackupsRequest = requestParameters?.deleteMultipleBackupsRequest;
     if (deleteMultipleBackupsRequest === null || deleteMultipleBackupsRequest === undefined) {
       throw new Error(
         'Required parameter deleteMultipleBackupsRequest was null or undefined when calling v1BackupsDeleteMultipleCreate.',
@@ -1674,13 +1841,13 @@ export class V1Service extends BaseService {
    * Download backup file
    * Download backup file.
    * @endpoint get /api/v1/backups/download/{filename}/
-   * @param filename
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1BackupsDownloadRetrieve(
-    filename: string,
+    requestParameters: V1BackupsDownloadRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1690,7 +1857,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Blob>;
   public v1BackupsDownloadRetrieve(
-    filename: string,
+    requestParameters: V1BackupsDownloadRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1700,7 +1867,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public v1BackupsDownloadRetrieve(
-    filename: string,
+    requestParameters: V1BackupsDownloadRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1710,7 +1877,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public v1BackupsDownloadRetrieve(
-    filename: string,
+    requestParameters: V1BackupsDownloadRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1719,6 +1886,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const filename = requestParameters?.filename;
     if (filename === null || filename === undefined) {
       throw new Error(
         'Required parameter filename was null or undefined when calling v1BackupsDownloadRetrieve.',
@@ -1764,17 +1932,13 @@ export class V1Service extends BaseService {
    * Restore from backup
    * Trigger stream-backed SSE restore execution.
    * @endpoint post /api/v1/backups/restore/
-   * @param file
-   * @param includeUsers
-   * @param replay Set true to replay existing stream events without enqueuing a new restore job.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1BackupsRestoreCreate(
-    file?: string,
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: V1BackupsRestoreCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1784,9 +1948,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1BackupsRestoreCreate(
-    file?: string,
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: V1BackupsRestoreCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1796,9 +1958,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1BackupsRestoreCreate(
-    file?: string,
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: V1BackupsRestoreCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1808,9 +1968,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1BackupsRestoreCreate(
-    file?: string,
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: V1BackupsRestoreCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1819,6 +1977,10 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const file = requestParameters?.file;
+    const includeUsers = requestParameters?.includeUsers;
+    const replay = requestParameters?.replay;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -1986,15 +2148,13 @@ export class V1Service extends BaseService {
    * Start backup process
    * Trigger stream-backed SSE backup execution.
    * @endpoint get /api/v1/backups/start/
-   * @param includeUsers
-   * @param replay Set true to replay existing stream events without enqueuing a new backup job.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1BackupsStartRetrieve(
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: V1BackupsStartRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2004,8 +2164,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1BackupsStartRetrieve(
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: V1BackupsStartRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2015,8 +2174,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1BackupsStartRetrieve(
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: V1BackupsStartRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2026,8 +2184,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1BackupsStartRetrieve(
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: V1BackupsStartRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2036,6 +2193,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const includeUsers = requestParameters?.includeUsers;
+    const replay = requestParameters?.replay;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -2194,13 +2354,13 @@ export class V1Service extends BaseService {
   /**
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint post /api/v1/calendar/
-   * @param googleCalendarEventRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarCreate(
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2210,7 +2370,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<GoogleCalendarEvent>;
   public v1CalendarCreate(
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2220,7 +2380,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<GoogleCalendarEvent>>;
   public v1CalendarCreate(
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2230,7 +2390,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<GoogleCalendarEvent>>;
   public v1CalendarCreate(
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2239,6 +2399,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const googleCalendarEventRequest = requestParameters?.googleCalendarEventRequest;
     if (googleCalendarEventRequest === null || googleCalendarEventRequest === undefined) {
       throw new Error(
         'Required parameter googleCalendarEventRequest was null or undefined when calling v1CalendarCreate.',
@@ -2307,35 +2468,36 @@ export class V1Service extends BaseService {
   /**
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint delete /api/v1/calendar/{id}/
-   * @param id
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarDestroy(
-    id: string,
+    requestParameters: V1CalendarDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1CalendarDestroy(
-    id: string,
+    requestParameters: V1CalendarDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1CalendarDestroy(
-    id: string,
+    requestParameters: V1CalendarDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1CalendarDestroy(
-    id: string,
+    requestParameters: V1CalendarDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CalendarDestroy.',
@@ -2484,15 +2646,13 @@ export class V1Service extends BaseService {
   /**
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint patch /api/v1/calendar/{id}/
-   * @param id
-   * @param googleCalendarEventRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarPartialUpdate(
-    id: string,
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2502,8 +2662,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<GoogleCalendarEvent>;
   public v1CalendarPartialUpdate(
-    id: string,
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2513,8 +2672,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<GoogleCalendarEvent>>;
   public v1CalendarPartialUpdate(
-    id: string,
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2524,8 +2682,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<GoogleCalendarEvent>>;
   public v1CalendarPartialUpdate(
-    id: string,
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2534,11 +2691,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CalendarPartialUpdate.',
       );
     }
+    const googleCalendarEventRequest = requestParameters?.googleCalendarEventRequest;
     if (googleCalendarEventRequest === null || googleCalendarEventRequest === undefined) {
       throw new Error(
         'Required parameter googleCalendarEventRequest was null or undefined when calling v1CalendarPartialUpdate.',
@@ -2607,15 +2766,13 @@ export class V1Service extends BaseService {
   /**
    * Record delivery channel for a reminder (in_app or system).
    * @endpoint post /api/v1/calendar-reminders/{id}/ack/
-   * @param id A unique integer value identifying this calendar reminder.
-   * @param calendarReminderRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersAckCreate(
-    id: number,
-    calendarReminderRequest: CalendarReminderRequest,
+    requestParameters: V1CalendarRemindersAckCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2625,8 +2782,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CalendarReminder>;
   public v1CalendarRemindersAckCreate(
-    id: number,
-    calendarReminderRequest: CalendarReminderRequest,
+    requestParameters: V1CalendarRemindersAckCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2636,8 +2792,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminder>>;
   public v1CalendarRemindersAckCreate(
-    id: number,
-    calendarReminderRequest: CalendarReminderRequest,
+    requestParameters: V1CalendarRemindersAckCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2647,8 +2802,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminder>>;
   public v1CalendarRemindersAckCreate(
-    id: number,
-    calendarReminderRequest: CalendarReminderRequest,
+    requestParameters: V1CalendarRemindersAckCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2657,11 +2811,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CalendarRemindersAckCreate.',
       );
     }
+    const calendarReminderRequest = requestParameters?.calendarReminderRequest;
     if (calendarReminderRequest === null || calendarReminderRequest === undefined) {
       throw new Error(
         'Required parameter calendarReminderRequest was null or undefined when calling v1CalendarRemindersAckCreate.',
@@ -2729,21 +2885,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/calendar-reminders/bulk-create/
-   * @param calendarReminderBulkCreateRequest
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CalendarRemindersBulkCreateCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2753,11 +2901,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedCalendarReminderList>;
   public v1CalendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CalendarRemindersBulkCreateCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2767,11 +2911,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCalendarReminderList>>;
   public v1CalendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CalendarRemindersBulkCreateCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2781,11 +2921,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCalendarReminderList>>;
   public v1CalendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CalendarRemindersBulkCreateCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2794,6 +2930,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const calendarReminderBulkCreateRequest = requestParameters?.calendarReminderBulkCreateRequest;
     if (
       calendarReminderBulkCreateRequest === null ||
       calendarReminderBulkCreateRequest === undefined
@@ -2802,6 +2939,10 @@ export class V1Service extends BaseService {
         'Required parameter calendarReminderBulkCreateRequest was null or undefined when calling v1CalendarRemindersBulkCreateCreate.',
       );
     }
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -2903,13 +3044,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/calendar-reminders/
-   * @param calendarReminderCreateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersCreate(
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2919,7 +3060,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CalendarReminderCreate>;
   public v1CalendarRemindersCreate(
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2929,7 +3070,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderCreate>>;
   public v1CalendarRemindersCreate(
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2939,7 +3080,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderCreate>>;
   public v1CalendarRemindersCreate(
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2948,6 +3089,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const calendarReminderCreateRequest = requestParameters?.calendarReminderCreateRequest;
     if (calendarReminderCreateRequest === null || calendarReminderCreateRequest === undefined) {
       throw new Error(
         'Required parameter calendarReminderCreateRequest was null or undefined when calling v1CalendarRemindersCreate.',
@@ -3015,35 +3157,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint delete /api/v1/calendar-reminders/{id}/
-   * @param id A unique integer value identifying this calendar reminder.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersDestroy(
-    id: number,
+    requestParameters: V1CalendarRemindersDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1CalendarRemindersDestroy(
-    id: number,
+    requestParameters: V1CalendarRemindersDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1CalendarRemindersDestroy(
-    id: number,
+    requestParameters: V1CalendarRemindersDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1CalendarRemindersDestroy(
-    id: number,
+    requestParameters: V1CalendarRemindersDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CalendarRemindersDestroy.',
@@ -3098,13 +3241,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/calendar-reminders/inbox/mark-read/
-   * @param calendarReminderInboxMarkReadRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
+    requestParameters?: V1CalendarRemindersInboxMarkReadCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3114,7 +3257,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CalendarReminderInboxMarkRead>;
   public v1CalendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
+    requestParameters?: V1CalendarRemindersInboxMarkReadCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3124,7 +3267,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderInboxMarkRead>>;
   public v1CalendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
+    requestParameters?: V1CalendarRemindersInboxMarkReadCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3134,7 +3277,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderInboxMarkRead>>;
   public v1CalendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
+    requestParameters?: V1CalendarRemindersInboxMarkReadCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3143,6 +3286,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const calendarReminderInboxMarkReadRequest =
+      requestParameters?.calendarReminderInboxMarkReadRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -3296,13 +3442,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/calendar-reminders/inbox/snooze/
-   * @param calendarReminderInboxSnoozeRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
+    requestParameters: V1CalendarRemindersInboxSnoozeCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3312,7 +3458,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CalendarReminderInboxSnooze>;
   public v1CalendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
+    requestParameters: V1CalendarRemindersInboxSnoozeCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3322,7 +3468,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderInboxSnooze>>;
   public v1CalendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
+    requestParameters: V1CalendarRemindersInboxSnoozeCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3332,7 +3478,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderInboxSnooze>>;
   public v1CalendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
+    requestParameters: V1CalendarRemindersInboxSnoozeCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3341,6 +3487,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const calendarReminderInboxSnoozeRequest =
+      requestParameters?.calendarReminderInboxSnoozeRequest;
     if (
       calendarReminderInboxSnoozeRequest === null ||
       calendarReminderInboxSnoozeRequest === undefined
@@ -3415,19 +3563,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/calendar-reminders/
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CalendarRemindersListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3437,10 +3579,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedCalendarReminderList>;
   public v1CalendarRemindersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CalendarRemindersListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3450,10 +3589,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCalendarReminderList>>;
   public v1CalendarRemindersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CalendarRemindersListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3463,10 +3599,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCalendarReminderList>>;
   public v1CalendarRemindersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CalendarRemindersListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3475,6 +3608,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -3562,15 +3700,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/calendar-reminders/{id}/
-   * @param id A unique integer value identifying this calendar reminder.
-   * @param calendarReminderCreateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersPartialUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3580,8 +3716,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CalendarReminderCreate>;
   public v1CalendarRemindersPartialUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3591,8 +3726,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderCreate>>;
   public v1CalendarRemindersPartialUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3602,8 +3736,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderCreate>>;
   public v1CalendarRemindersPartialUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3612,11 +3745,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CalendarRemindersPartialUpdate.',
       );
     }
+    const calendarReminderCreateRequest = requestParameters?.calendarReminderCreateRequest;
     if (calendarReminderCreateRequest === null || calendarReminderCreateRequest === undefined) {
       throw new Error(
         'Required parameter calendarReminderCreateRequest was null or undefined when calling v1CalendarRemindersPartialUpdate.',
@@ -3684,13 +3819,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/calendar-reminders/{id}/
-   * @param id A unique integer value identifying this calendar reminder.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersRetrieve(
-    id: number,
+    requestParameters: V1CalendarRemindersRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3700,7 +3835,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CalendarReminder>;
   public v1CalendarRemindersRetrieve(
-    id: number,
+    requestParameters: V1CalendarRemindersRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3710,7 +3845,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminder>>;
   public v1CalendarRemindersRetrieve(
-    id: number,
+    requestParameters: V1CalendarRemindersRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3720,7 +3855,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminder>>;
   public v1CalendarRemindersRetrieve(
-    id: number,
+    requestParameters: V1CalendarRemindersRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3729,6 +3864,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CalendarRemindersRetrieve.',
@@ -3871,15 +4007,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/calendar-reminders/{id}/
-   * @param id A unique integer value identifying this calendar reminder.
-   * @param calendarReminderCreateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -3889,8 +4023,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CalendarReminderCreate>;
   public v1CalendarRemindersUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -3900,8 +4033,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderCreate>>;
   public v1CalendarRemindersUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -3911,8 +4043,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderCreate>>;
   public v1CalendarRemindersUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: V1CalendarRemindersUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -3921,11 +4052,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CalendarRemindersUpdate.',
       );
     }
+    const calendarReminderCreateRequest = requestParameters?.calendarReminderCreateRequest;
     if (calendarReminderCreateRequest === null || calendarReminderCreateRequest === undefined) {
       throw new Error(
         'Required parameter calendarReminderCreateRequest was null or undefined when calling v1CalendarRemindersUpdate.',
@@ -3993,19 +4126,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/calendar-reminders/users/
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRemindersUsersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CalendarRemindersUsersListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4015,10 +4142,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedPushNotificationUserList>;
   public v1CalendarRemindersUsersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CalendarRemindersUsersListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4028,10 +4152,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedPushNotificationUserList>>;
   public v1CalendarRemindersUsersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CalendarRemindersUsersListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4041,10 +4162,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedPushNotificationUserList>>;
   public v1CalendarRemindersUsersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CalendarRemindersUsersListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4053,6 +4171,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -4141,13 +4264,13 @@ export class V1Service extends BaseService {
   /**
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint get /api/v1/calendar/{id}/
-   * @param id
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarRetrieve(
-    id: string,
+    requestParameters: V1CalendarRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4157,7 +4280,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<GoogleCalendarEvent>;
   public v1CalendarRetrieve(
-    id: string,
+    requestParameters: V1CalendarRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4167,7 +4290,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<GoogleCalendarEvent>>;
   public v1CalendarRetrieve(
-    id: string,
+    requestParameters: V1CalendarRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4177,7 +4300,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<GoogleCalendarEvent>>;
   public v1CalendarRetrieve(
-    id: string,
+    requestParameters: V1CalendarRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4186,6 +4309,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CalendarRetrieve.',
@@ -4241,15 +4365,13 @@ export class V1Service extends BaseService {
   /**
    * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Dramatiq tasks.
    * @endpoint put /api/v1/calendar/{id}/
-   * @param id
-   * @param googleCalendarEventRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CalendarUpdate(
-    id: string,
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4259,8 +4381,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<GoogleCalendarEvent>;
   public v1CalendarUpdate(
-    id: string,
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4270,8 +4391,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<GoogleCalendarEvent>>;
   public v1CalendarUpdate(
-    id: string,
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4281,8 +4401,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<GoogleCalendarEvent>>;
   public v1CalendarUpdate(
-    id: string,
-    googleCalendarEventRequest: GoogleCalendarEventRequest,
+    requestParameters: V1CalendarUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4291,9 +4410,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1CalendarUpdate.');
     }
+    const googleCalendarEventRequest = requestParameters?.googleCalendarEventRequest;
     if (googleCalendarEventRequest === null || googleCalendarEventRequest === undefined) {
       throw new Error(
         'Required parameter googleCalendarEventRequest was null or undefined when calling v1CalendarUpdate.',
@@ -4361,45 +4482,42 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/compute/doc_workflow_due_date/{taskId}/{startDate}/
-   * @param startDate
-   * @param taskId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ComputeDocWorkflowDueDateRetrieve(
-    startDate: string,
-    taskId: number,
+    requestParameters: V1ComputeDocWorkflowDueDateRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1ComputeDocWorkflowDueDateRetrieve(
-    startDate: string,
-    taskId: number,
+    requestParameters: V1ComputeDocWorkflowDueDateRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1ComputeDocWorkflowDueDateRetrieve(
-    startDate: string,
-    taskId: number,
+    requestParameters: V1ComputeDocWorkflowDueDateRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1ComputeDocWorkflowDueDateRetrieve(
-    startDate: string,
-    taskId: number,
+    requestParameters: V1ComputeDocWorkflowDueDateRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const startDate = requestParameters?.startDate;
     if (startDate === null || startDate === undefined) {
       throw new Error(
         'Required parameter startDate was null or undefined when calling v1ComputeDocWorkflowDueDateRetrieve.',
       );
     }
+    const taskId = requestParameters?.taskId;
     if (taskId === null || taskId === undefined) {
       throw new Error(
         'Required parameter taskId was null or undefined when calling v1ComputeDocWorkflowDueDateRetrieve.',
@@ -4454,15 +4572,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/country-codes/
-   * @param ordering Which field to use when ordering the results.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CountryCodesList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1CountryCodesListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4472,8 +4588,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Array<CountryCode>>;
   public v1CountryCodesList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1CountryCodesListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4483,8 +4598,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Array<CountryCode>>>;
   public v1CountryCodesList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1CountryCodesListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4494,8 +4608,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Array<CountryCode>>>;
   public v1CountryCodesList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1CountryCodesListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4504,6 +4617,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -4571,13 +4687,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/country-codes/{alpha3Code}/
-   * @param alpha3Code A unique value identifying this country code.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CountryCodesRetrieve(
-    alpha3Code: string,
+    requestParameters: V1CountryCodesRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4587,7 +4703,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CountryCode>;
   public v1CountryCodesRetrieve(
-    alpha3Code: string,
+    requestParameters: V1CountryCodesRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4597,7 +4713,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CountryCode>>;
   public v1CountryCodesRetrieve(
-    alpha3Code: string,
+    requestParameters: V1CountryCodesRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4607,7 +4723,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CountryCode>>;
   public v1CountryCodesRetrieve(
-    alpha3Code: string,
+    requestParameters: V1CountryCodesRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4616,6 +4732,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const alpha3Code = requestParameters?.alpha3Code;
     if (alpha3Code === null || alpha3Code === undefined) {
       throw new Error(
         'Required parameter alpha3Code was null or undefined when calling v1CountryCodesRetrieve.',
@@ -4671,15 +4788,13 @@ export class V1Service extends BaseService {
   /**
    * Complete current workflow synchronously and queue calendar sync in Dramatiq.
    * @endpoint post /api/v1/customer-applications/{id}/advance-workflow/
-   * @param id A unique integer value identifying this doc application.
-   * @param docApplicationSerializerWithRelationsRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsAdvanceWorkflowCreate(
-    id: number,
-    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
+    requestParameters: V1CustomerApplicationsAdvanceWorkflowCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4689,8 +4804,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocApplicationSerializerWithRelations>;
   public v1CustomerApplicationsAdvanceWorkflowCreate(
-    id: number,
-    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
+    requestParameters: V1CustomerApplicationsAdvanceWorkflowCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4700,8 +4814,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocApplicationSerializerWithRelations>>;
   public v1CustomerApplicationsAdvanceWorkflowCreate(
-    id: number,
-    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
+    requestParameters: V1CustomerApplicationsAdvanceWorkflowCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4711,8 +4824,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocApplicationSerializerWithRelations>>;
   public v1CustomerApplicationsAdvanceWorkflowCreate(
-    id: number,
-    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
+    requestParameters: V1CustomerApplicationsAdvanceWorkflowCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4721,11 +4833,14 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomerApplicationsAdvanceWorkflowCreate.',
       );
     }
+    const docApplicationSerializerWithRelationsRequest =
+      requestParameters?.docApplicationSerializerWithRelationsRequest;
     if (
       docApplicationSerializerWithRelationsRequest === null ||
       docApplicationSerializerWithRelationsRequest === undefined
@@ -4800,13 +4915,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/customer-applications/bulk-delete/
-   * @param customerApplicationsBulkDeleteRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsBulkDeleteCreate(
-    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
+    requestParameters?: V1CustomerApplicationsBulkDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4816,7 +4931,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CustomerApplicationsBulkDeleteResponse>;
   public v1CustomerApplicationsBulkDeleteCreate(
-    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
+    requestParameters?: V1CustomerApplicationsBulkDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4826,7 +4941,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CustomerApplicationsBulkDeleteResponse>>;
   public v1CustomerApplicationsBulkDeleteCreate(
-    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
+    requestParameters?: V1CustomerApplicationsBulkDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4836,7 +4951,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CustomerApplicationsBulkDeleteResponse>>;
   public v1CustomerApplicationsBulkDeleteCreate(
-    customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest,
+    requestParameters?: V1CustomerApplicationsBulkDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4845,6 +4960,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customerApplicationsBulkDeleteRequestRequest =
+      requestParameters?.customerApplicationsBulkDeleteRequestRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -4911,13 +5029,13 @@ export class V1Service extends BaseService {
   /**
    * Create application synchronously and queue calendar sync in Dramatiq.
    * @endpoint post /api/v1/customer-applications/
-   * @param docApplicationCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsCreate(
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -4927,7 +5045,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocApplicationDetail>;
   public v1CustomerApplicationsCreate(
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -4937,7 +5055,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocApplicationDetail>>;
   public v1CustomerApplicationsCreate(
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -4947,7 +5065,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocApplicationDetail>>;
   public v1CustomerApplicationsCreate(
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -4956,6 +5074,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const docApplicationCreateUpdateRequest = requestParameters?.docApplicationCreateUpdateRequest;
     if (
       docApplicationCreateUpdateRequest === null ||
       docApplicationCreateUpdateRequest === undefined
@@ -5027,50 +5146,43 @@ export class V1Service extends BaseService {
   /**
    * Delete application synchronously and queue calendar cleanup in Dramatiq.
    * @endpoint delete /api/v1/customer-applications/{id}/
-   * @param id A unique integer value identifying this doc application.
-   * @param deleteInvoices
-   * @param deleteInvoices2
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsDestroy(
-    id: number,
-    deleteInvoices?: boolean,
-    deleteInvoices2?: boolean,
+    requestParameters: V1CustomerApplicationsDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1CustomerApplicationsDestroy(
-    id: number,
-    deleteInvoices?: boolean,
-    deleteInvoices2?: boolean,
+    requestParameters: V1CustomerApplicationsDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1CustomerApplicationsDestroy(
-    id: number,
-    deleteInvoices?: boolean,
-    deleteInvoices2?: boolean,
+    requestParameters: V1CustomerApplicationsDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1CustomerApplicationsDestroy(
-    id: number,
-    deleteInvoices?: boolean,
-    deleteInvoices2?: boolean,
+    requestParameters: V1CustomerApplicationsDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomerApplicationsDestroy.',
       );
     }
+    const deleteInvoices = requestParameters?.deleteInvoices;
+    const deleteInvoices2 = requestParameters?.deleteInvoices2;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -5140,13 +5252,13 @@ export class V1Service extends BaseService {
   /**
    * Force close an application by setting its status to completed.  This mirrors the legacy Django view behavior and bypasses automatic status recalculation by saving with skip_status_calculation&#x3D;True.
    * @endpoint post /api/v1/customer-applications/{id}/force-close/
-   * @param id A unique integer value identifying this doc application.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsForceCloseCreate(
-    id: number,
+    requestParameters: V1CustomerApplicationsForceCloseCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -5156,7 +5268,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocApplicationDetail>;
   public v1CustomerApplicationsForceCloseCreate(
-    id: number,
+    requestParameters: V1CustomerApplicationsForceCloseCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -5166,7 +5278,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocApplicationDetail>>;
   public v1CustomerApplicationsForceCloseCreate(
-    id: number,
+    requestParameters: V1CustomerApplicationsForceCloseCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -5176,7 +5288,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocApplicationDetail>>;
   public v1CustomerApplicationsForceCloseCreate(
-    id: number,
+    requestParameters: V1CustomerApplicationsForceCloseCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -5185,6 +5297,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomerApplicationsForceCloseCreate.',
@@ -5239,19 +5352,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/customer-applications/
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search Search applications by customer, product, dates, or full application ID such as #329.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CustomerApplicationsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -5261,10 +5368,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedDocApplicationListList>;
   public v1CustomerApplicationsList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CustomerApplicationsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -5274,10 +5378,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedDocApplicationListList>>;
   public v1CustomerApplicationsList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CustomerApplicationsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -5287,10 +5388,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedDocApplicationListList>>;
   public v1CustomerApplicationsList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CustomerApplicationsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -5299,6 +5397,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -5386,15 +5489,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/customer-applications/{id}/
-   * @param id A unique integer value identifying this doc application.
-   * @param docApplicationCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsPartialUpdate(
-    id: number,
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -5404,8 +5505,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocApplicationCreateUpdate>;
   public v1CustomerApplicationsPartialUpdate(
-    id: number,
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -5415,8 +5515,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocApplicationCreateUpdate>>;
   public v1CustomerApplicationsPartialUpdate(
-    id: number,
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -5426,8 +5525,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocApplicationCreateUpdate>>;
   public v1CustomerApplicationsPartialUpdate(
-    id: number,
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -5436,11 +5534,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomerApplicationsPartialUpdate.',
       );
     }
+    const docApplicationCreateUpdateRequest = requestParameters?.docApplicationCreateUpdateRequest;
     if (
       docApplicationCreateUpdateRequest === null ||
       docApplicationCreateUpdateRequest === undefined
@@ -5516,15 +5616,13 @@ export class V1Service extends BaseService {
   /**
    * Re-open a completed application.
    * @endpoint post /api/v1/customer-applications/{id}/reopen/
-   * @param id A unique integer value identifying this doc application.
-   * @param docApplicationSerializerWithRelationsRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsReopenCreate(
-    id: number,
-    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
+    requestParameters: V1CustomerApplicationsReopenCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -5534,8 +5632,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1CustomerApplicationsReopenCreate(
-    id: number,
-    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
+    requestParameters: V1CustomerApplicationsReopenCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -5545,8 +5642,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1CustomerApplicationsReopenCreate(
-    id: number,
-    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
+    requestParameters: V1CustomerApplicationsReopenCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -5556,8 +5652,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1CustomerApplicationsReopenCreate(
-    id: number,
-    docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest,
+    requestParameters: V1CustomerApplicationsReopenCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -5566,11 +5661,14 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomerApplicationsReopenCreate.',
       );
     }
+    const docApplicationSerializerWithRelationsRequest =
+      requestParameters?.docApplicationSerializerWithRelationsRequest;
     if (
       docApplicationSerializerWithRelationsRequest === null ||
       docApplicationSerializerWithRelationsRequest === undefined
@@ -5641,13 +5739,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/customer-applications/{id}/
-   * @param id A unique integer value identifying this doc application.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsRetrieve(
-    id: number,
+    requestParameters: V1CustomerApplicationsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -5657,7 +5755,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocApplicationDetail>;
   public v1CustomerApplicationsRetrieve(
-    id: number,
+    requestParameters: V1CustomerApplicationsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -5667,7 +5765,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocApplicationDetail>>;
   public v1CustomerApplicationsRetrieve(
-    id: number,
+    requestParameters: V1CustomerApplicationsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -5677,7 +5775,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocApplicationDetail>>;
   public v1CustomerApplicationsRetrieve(
-    id: number,
+    requestParameters: V1CustomerApplicationsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -5686,6 +5784,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomerApplicationsRetrieve.',
@@ -5741,15 +5840,13 @@ export class V1Service extends BaseService {
   /**
    * Update application synchronously and queue calendar sync in Dramatiq.
    * @endpoint put /api/v1/customer-applications/{id}/
-   * @param id A unique integer value identifying this doc application.
-   * @param docApplicationCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsUpdate(
-    id: number,
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -5759,8 +5856,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocApplicationDetail>;
   public v1CustomerApplicationsUpdate(
-    id: number,
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -5770,8 +5866,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocApplicationDetail>>;
   public v1CustomerApplicationsUpdate(
-    id: number,
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -5781,8 +5876,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocApplicationDetail>>;
   public v1CustomerApplicationsUpdate(
-    id: number,
-    docApplicationCreateUpdateRequest: DocApplicationCreateUpdateRequest,
+    requestParameters: V1CustomerApplicationsUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -5791,11 +5885,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomerApplicationsUpdate.',
       );
     }
+    const docApplicationCreateUpdateRequest = requestParameters?.docApplicationCreateUpdateRequest;
     if (
       docApplicationCreateUpdateRequest === null ||
       docApplicationCreateUpdateRequest === undefined
@@ -5867,17 +5963,13 @@ export class V1Service extends BaseService {
   /**
    * Update the due date for the current workflow step and sync application due date.
    * @endpoint post /api/v1/customer-applications/{id}/workflows/{workflowId}/due-date/
-   * @param id A unique integer value identifying this doc application.
-   * @param workflowId
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsWorkflowsDueDateCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsDueDateCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -5887,9 +5979,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocWorkflow>;
   public v1CustomerApplicationsWorkflowsDueDateCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsDueDateCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -5899,9 +5989,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocWorkflow>>;
   public v1CustomerApplicationsWorkflowsDueDateCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsDueDateCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -5911,9 +5999,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocWorkflow>>;
   public v1CustomerApplicationsWorkflowsDueDateCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsDueDateCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -5922,16 +6008,19 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomerApplicationsWorkflowsDueDateCreate.',
       );
     }
+    const workflowId = requestParameters?.workflowId;
     if (workflowId === null || workflowId === undefined) {
       throw new Error(
         'Required parameter workflowId was null or undefined when calling v1CustomerApplicationsWorkflowsDueDateCreate.',
       );
     }
+    const requestBody = requestParameters?.requestBody;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -5995,17 +6084,13 @@ export class V1Service extends BaseService {
   /**
    * Remove the current workflow step and reopen the previous step.
    * @endpoint post /api/v1/customer-applications/{id}/workflows/{workflowId}/rollback/
-   * @param id A unique integer value identifying this doc application.
-   * @param workflowId
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsWorkflowsRollbackCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsRollbackCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -6015,9 +6100,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocApplicationDetail>;
   public v1CustomerApplicationsWorkflowsRollbackCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsRollbackCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -6027,9 +6110,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocApplicationDetail>>;
   public v1CustomerApplicationsWorkflowsRollbackCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsRollbackCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -6039,9 +6120,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocApplicationDetail>>;
   public v1CustomerApplicationsWorkflowsRollbackCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsRollbackCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -6050,16 +6129,19 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomerApplicationsWorkflowsRollbackCreate.',
       );
     }
+    const workflowId = requestParameters?.workflowId;
     if (workflowId === null || workflowId === undefined) {
       throw new Error(
         'Required parameter workflowId was null or undefined when calling v1CustomerApplicationsWorkflowsRollbackCreate.',
       );
     }
+    const requestBody = requestParameters?.requestBody;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -6123,17 +6205,13 @@ export class V1Service extends BaseService {
   /**
    * Update the status of a workflow step for an application.
    * @endpoint post /api/v1/customer-applications/{id}/workflows/{workflowId}/status/
-   * @param id A unique integer value identifying this doc application.
-   * @param workflowId
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomerApplicationsWorkflowsStatusCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsStatusCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -6143,9 +6221,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocWorkflow>;
   public v1CustomerApplicationsWorkflowsStatusCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsStatusCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -6155,9 +6231,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocWorkflow>>;
   public v1CustomerApplicationsWorkflowsStatusCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsStatusCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -6167,9 +6241,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocWorkflow>>;
   public v1CustomerApplicationsWorkflowsStatusCreate(
-    id: number,
-    workflowId: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1CustomerApplicationsWorkflowsStatusCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -6178,16 +6250,19 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomerApplicationsWorkflowsStatusCreate.',
       );
     }
+    const workflowId = requestParameters?.workflowId;
     if (workflowId === null || workflowId === undefined) {
       throw new Error(
         'Required parameter workflowId was null or undefined when calling v1CustomerApplicationsWorkflowsStatusCreate.',
       );
     }
+    const requestBody = requestParameters?.requestBody;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -6250,21 +6325,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/customers/{id}/applications-history/
-   * @param id A unique integer value identifying this customer.
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersApplicationsHistoryList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CustomersApplicationsHistoryListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -6274,11 +6341,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedCustomerApplicationHistoryList>;
   public v1CustomersApplicationsHistoryList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CustomersApplicationsHistoryListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -6288,11 +6351,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCustomerApplicationHistoryList>>;
   public v1CustomersApplicationsHistoryList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CustomersApplicationsHistoryListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -6302,11 +6361,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCustomerApplicationHistoryList>>;
   public v1CustomersApplicationsHistoryList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CustomersApplicationsHistoryListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -6315,11 +6370,16 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomersApplicationsHistoryList.',
       );
     }
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -6408,13 +6468,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/customers/bulk-delete/
-   * @param customersBulkDeleteRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersBulkDeleteCreate(
-    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
+    requestParameters?: V1CustomersBulkDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -6424,7 +6484,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CustomersBulkDeleteResponse>;
   public v1CustomersBulkDeleteCreate(
-    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
+    requestParameters?: V1CustomersBulkDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -6434,7 +6494,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CustomersBulkDeleteResponse>>;
   public v1CustomersBulkDeleteCreate(
-    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
+    requestParameters?: V1CustomersBulkDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -6444,7 +6504,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CustomersBulkDeleteResponse>>;
   public v1CustomersBulkDeleteCreate(
-    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
+    requestParameters?: V1CustomersBulkDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -6453,6 +6513,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customersBulkDeleteRequestRequest = requestParameters?.customersBulkDeleteRequestRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -6519,45 +6581,42 @@ export class V1Service extends BaseService {
   /**
    * Check passport uploadability asynchronously. Returns an AsyncJob ID to track progress via SSE.
    * @endpoint post /api/v1/customers/check-passport/
-   * @param file Passport image file
-   * @param method Verification method  * &#x60;ai&#x60; - ai * &#x60;hybrid&#x60; - hybrid
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersCheckPassportCreate(
-    file: Blob,
-    method?: string,
+    requestParameters: V1CustomersCheckPassportCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1CustomersCheckPassportCreate(
-    file: Blob,
-    method?: string,
+    requestParameters: V1CustomersCheckPassportCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1CustomersCheckPassportCreate(
-    file: Blob,
-    method?: string,
+    requestParameters: V1CustomersCheckPassportCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1CustomersCheckPassportCreate(
-    file: Blob,
-    method?: string,
+    requestParameters: V1CustomersCheckPassportCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const file = requestParameters?.file;
     if (file === null || file === undefined) {
       throw new Error(
         'Required parameter file was null or undefined when calling v1CustomersCheckPassportCreate.',
       );
     }
+    const method = requestParameters?.method;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -6634,13 +6693,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/customers/
-   * @param customerRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersCreate(
-    customerRequest?: CustomerRequest,
+    requestParameters?: V1CustomersCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -6650,7 +6709,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Customer>;
   public v1CustomersCreate(
-    customerRequest?: CustomerRequest,
+    requestParameters?: V1CustomersCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -6660,7 +6719,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public v1CustomersCreate(
-    customerRequest?: CustomerRequest,
+    requestParameters?: V1CustomersCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -6670,7 +6729,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public v1CustomersCreate(
-    customerRequest?: CustomerRequest,
+    requestParameters?: V1CustomersCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -6679,6 +6738,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customerRequest = requestParameters?.customerRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -6740,35 +6801,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint delete /api/v1/customers/{id}/
-   * @param id
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersDestroy(
-    id: number,
+    requestParameters: V1CustomersDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1CustomersDestroy(
-    id: number,
+    requestParameters: V1CustomersDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1CustomersDestroy(
-    id: number,
+    requestParameters: V1CustomersDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1CustomersDestroy(
-    id: number,
+    requestParameters: V1CustomersDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomersDestroy.',
@@ -6823,19 +6885,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/customers/
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CustomersListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -6845,10 +6901,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedCustomerList>;
   public v1CustomersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CustomersListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -6858,10 +6911,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCustomerList>>;
   public v1CustomersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CustomersListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -6871,10 +6921,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCustomerList>>;
   public v1CustomersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1CustomersListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -6883,6 +6930,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -6966,15 +7018,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/customers/{id}/
-   * @param id
-   * @param customerRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersPartialUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -6984,8 +7034,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Customer>;
   public v1CustomersPartialUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -6995,8 +7044,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public v1CustomersPartialUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -7006,8 +7054,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public v1CustomersPartialUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -7016,11 +7063,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomersPartialUpdate.',
       );
     }
+    const customerRequest = requestParameters?.customerRequest;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -7083,13 +7132,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/customers/{id}/
-   * @param id
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersRetrieve(
-    id: number,
+    requestParameters: V1CustomersRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -7099,7 +7148,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Customer>;
   public v1CustomersRetrieve(
-    id: number,
+    requestParameters: V1CustomersRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -7109,7 +7158,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public v1CustomersRetrieve(
-    id: number,
+    requestParameters: V1CustomersRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -7119,7 +7168,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public v1CustomersRetrieve(
-    id: number,
+    requestParameters: V1CustomersRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -7128,6 +7177,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomersRetrieve.',
@@ -7270,15 +7320,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/customers/{id}/toggle-active/
-   * @param id A unique integer value identifying this customer.
-   * @param customerRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersToggleActiveCreate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersToggleActiveCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -7288,8 +7336,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Customer>;
   public v1CustomersToggleActiveCreate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersToggleActiveCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -7299,8 +7346,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public v1CustomersToggleActiveCreate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersToggleActiveCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -7310,8 +7356,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public v1CustomersToggleActiveCreate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersToggleActiveCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -7320,11 +7365,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomersToggleActiveCreate.',
       );
     }
+    const customerRequest = requestParameters?.customerRequest;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -7387,21 +7434,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/customers/{id}/uninvoiced-applications/
-   * @param id A unique integer value identifying this customer.
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersUninvoicedApplicationsList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CustomersUninvoicedApplicationsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -7411,11 +7450,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedCustomerUninvoicedApplicationList>;
   public v1CustomersUninvoicedApplicationsList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CustomersUninvoicedApplicationsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -7425,11 +7460,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCustomerUninvoicedApplicationList>>;
   public v1CustomersUninvoicedApplicationsList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CustomersUninvoicedApplicationsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -7439,11 +7470,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCustomerUninvoicedApplicationList>>;
   public v1CustomersUninvoicedApplicationsList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1CustomersUninvoicedApplicationsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -7452,11 +7479,16 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomersUninvoicedApplicationsList.',
       );
     }
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -7545,15 +7577,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/customers/{id}/
-   * @param id
-   * @param customerRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1CustomersUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -7563,8 +7593,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Customer>;
   public v1CustomersUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -7574,8 +7603,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public v1CustomersUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -7585,8 +7613,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public v1CustomersUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: V1CustomersUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -7595,11 +7622,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1CustomersUpdate.',
       );
     }
+    const customerRequest = requestParameters?.customerRequest;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -7822,35 +7851,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/document-ocr/status/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentOcrStatusRetrieve(
-    jobId: string,
+    requestParameters: V1DocumentOcrStatusRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1DocumentOcrStatusRetrieve(
-    jobId: string,
+    requestParameters: V1DocumentOcrStatusRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1DocumentOcrStatusRetrieve(
-    jobId: string,
+    requestParameters: V1DocumentOcrStatusRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1DocumentOcrStatusRetrieve(
-    jobId: string,
+    requestParameters: V1DocumentOcrStatusRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1DocumentOcrStatusRetrieve.',
@@ -7905,35 +7935,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/document-ocr/stream/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentOcrStreamRetrieve(
-    jobId: string,
+    requestParameters: V1DocumentOcrStreamRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1DocumentOcrStreamRetrieve(
-    jobId: string,
+    requestParameters: V1DocumentOcrStreamRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1DocumentOcrStreamRetrieve(
-    jobId: string,
+    requestParameters: V1DocumentOcrStreamRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1DocumentOcrStreamRetrieve(
-    jobId: string,
+    requestParameters: V1DocumentOcrStreamRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1DocumentOcrStreamRetrieve.',
@@ -7990,13 +8021,13 @@ export class V1Service extends BaseService {
    * Check if a document type can be deleted
    * Check if document type can be safely deleted.
    * @endpoint get /api/v1/document-types/{id}/can-delete/
-   * @param id A unique integer value identifying this document type.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesCanDeleteRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesCanDeleteRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -8006,7 +8037,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1DocumentTypesCanDeleteRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesCanDeleteRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -8016,7 +8047,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1DocumentTypesCanDeleteRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesCanDeleteRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -8026,7 +8057,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1DocumentTypesCanDeleteRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesCanDeleteRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -8035,6 +8066,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentTypesCanDeleteRetrieve.',
@@ -8089,13 +8121,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/document-types/
-   * @param documentTypeRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesCreate(
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -8105,7 +8137,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocumentType>;
   public v1DocumentTypesCreate(
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -8115,7 +8147,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public v1DocumentTypesCreate(
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -8125,7 +8157,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public v1DocumentTypesCreate(
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -8134,6 +8166,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const documentTypeRequest = requestParameters?.documentTypeRequest;
     if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
         'Required parameter documentTypeRequest was null or undefined when calling v1DocumentTypesCreate.',
@@ -8201,13 +8234,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/document-types/{id}/deprecation-impact/
-   * @param id A unique integer value identifying this document type.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesDeprecationImpactRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesDeprecationImpactRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -8217,7 +8250,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocumentType>;
   public v1DocumentTypesDeprecationImpactRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesDeprecationImpactRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -8227,7 +8260,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public v1DocumentTypesDeprecationImpactRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesDeprecationImpactRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -8237,7 +8270,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public v1DocumentTypesDeprecationImpactRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesDeprecationImpactRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -8246,6 +8279,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentTypesDeprecationImpactRetrieve.',
@@ -8300,35 +8334,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint delete /api/v1/document-types/{id}/
-   * @param id A unique integer value identifying this document type.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesDestroy(
-    id: number,
+    requestParameters: V1DocumentTypesDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1DocumentTypesDestroy(
-    id: number,
+    requestParameters: V1DocumentTypesDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1DocumentTypesDestroy(
-    id: number,
+    requestParameters: V1DocumentTypesDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1DocumentTypesDestroy(
-    id: number,
+    requestParameters: V1DocumentTypesDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentTypesDestroy.',
@@ -8383,21 +8418,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/document-types/
-   * @param deprecated Filter by explicit deprecated status.
-   * @param hideDeprecated When true (default), hide deprecated document types.
-   * @param ordering Which field to use when ordering the results.
-   * @param search A search term.
-   * @param usesCustomerAppWorkflow Filter products by workflow-enabled flag.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1DocumentTypesListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -8407,11 +8434,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Array<DocumentType>>;
   public v1DocumentTypesList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1DocumentTypesListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -8421,11 +8444,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Array<DocumentType>>>;
   public v1DocumentTypesList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1DocumentTypesListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -8435,11 +8454,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Array<DocumentType>>>;
   public v1DocumentTypesList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1DocumentTypesListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -8448,6 +8463,12 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const deprecated = requestParameters?.deprecated;
+    const hideDeprecated = requestParameters?.hideDeprecated;
+    const ordering = requestParameters?.ordering;
+    const search = requestParameters?.search;
+    const usesCustomerAppWorkflow = requestParameters?.usesCustomerAppWorkflow;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -8539,15 +8560,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/document-types/{id}/
-   * @param id A unique integer value identifying this document type.
-   * @param documentTypeRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesPartialUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -8557,8 +8576,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocumentType>;
   public v1DocumentTypesPartialUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -8568,8 +8586,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public v1DocumentTypesPartialUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -8579,8 +8596,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public v1DocumentTypesPartialUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -8589,11 +8605,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentTypesPartialUpdate.',
       );
     }
+    const documentTypeRequest = requestParameters?.documentTypeRequest;
     if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
         'Required parameter documentTypeRequest was null or undefined when calling v1DocumentTypesPartialUpdate.',
@@ -8661,13 +8679,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/document-types/{id}/
-   * @param id A unique integer value identifying this document type.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -8677,7 +8695,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocumentType>;
   public v1DocumentTypesRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -8687,7 +8705,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public v1DocumentTypesRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -8697,7 +8715,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public v1DocumentTypesRetrieve(
-    id: number,
+    requestParameters: V1DocumentTypesRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -8706,6 +8724,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentTypesRetrieve.',
@@ -8760,15 +8779,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/document-types/{id}/
-   * @param id A unique integer value identifying this document type.
-   * @param documentTypeRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentTypesUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -8778,8 +8795,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<DocumentType>;
   public v1DocumentTypesUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -8789,8 +8805,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<DocumentType>>;
   public v1DocumentTypesUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -8800,8 +8815,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<DocumentType>>;
   public v1DocumentTypesUpdate(
-    id: number,
-    documentTypeRequest: DocumentTypeRequest,
+    requestParameters: V1DocumentTypesUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -8810,11 +8824,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentTypesUpdate.',
       );
     }
+    const documentTypeRequest = requestParameters?.documentTypeRequest;
     if (documentTypeRequest === null || documentTypeRequest === undefined) {
       throw new Error(
         'Required parameter documentTypeRequest was null or undefined when calling v1DocumentTypesUpdate.',
@@ -8883,31 +8899,13 @@ export class V1Service extends BaseService {
   /**
    * Execute a document type hook action.  Args:     pk: The document ID.     action_name: The name of the action to execute.  Returns:     JSON response with success status and message or error.
    * @endpoint post /api/v1/documents/{id}/actions/{actionName}/
-   * @param actionName
-   * @param id A unique integer value identifying this document.
-   * @param docTypeId
-   * @param docNumber
-   * @param expirationDate
-   * @param details
-   * @param metadata
-   * @param required
-   * @param aiValidationStatusOverride * &#x60;&#x60; -  * &#x60;valid&#x60; - valid * &#x60;invalid&#x60; - invalid * &#x60;error&#x60; - error
-   * @param aiValidationResultOverride
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentsActionsCreate(
-    actionName: string,
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsActionsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -8917,16 +8915,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Document>;
   public v1DocumentsActionsCreate(
-    actionName: string,
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsActionsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -8936,16 +8925,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public v1DocumentsActionsCreate(
-    actionName: string,
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsActionsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -8955,16 +8935,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public v1DocumentsActionsCreate(
-    actionName: string,
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsActionsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -8973,16 +8944,26 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const actionName = requestParameters?.actionName;
     if (actionName === null || actionName === undefined) {
       throw new Error(
         'Required parameter actionName was null or undefined when calling v1DocumentsActionsCreate.',
       );
     }
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentsActionsCreate.',
       );
     }
+    const docTypeId = requestParameters?.docTypeId;
+    const docNumber = requestParameters?.docNumber;
+    const expirationDate = requestParameters?.expirationDate;
+    const details = requestParameters?.details;
+    const metadata = requestParameters?.metadata;
+    const required = requestParameters?.required;
+    const aiValidationStatusOverride = requestParameters?.aiValidationStatusOverride;
+    const aiValidationResultOverride = requestParameters?.aiValidationResultOverride;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -9091,27 +9072,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/documents/
-   * @param docTypeId
-   * @param docNumber
-   * @param expirationDate
-   * @param details
-   * @param metadata
-   * @param required
-   * @param aiValidationStatusOverride * &#x60;&#x60; -  * &#x60;valid&#x60; - valid * &#x60;invalid&#x60; - invalid * &#x60;error&#x60; - error
-   * @param aiValidationResultOverride
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentsCreate(
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters?: V1DocumentsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -9121,14 +9088,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Document>;
   public v1DocumentsCreate(
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters?: V1DocumentsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -9138,14 +9098,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public v1DocumentsCreate(
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters?: V1DocumentsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -9155,14 +9108,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public v1DocumentsCreate(
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters?: V1DocumentsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -9171,6 +9117,15 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const docTypeId = requestParameters?.docTypeId;
+    const docNumber = requestParameters?.docNumber;
+    const expirationDate = requestParameters?.expirationDate;
+    const details = requestParameters?.details;
+    const metadata = requestParameters?.metadata;
+    const required = requestParameters?.required;
+    const aiValidationStatusOverride = requestParameters?.aiValidationStatusOverride;
+    const aiValidationResultOverride = requestParameters?.aiValidationResultOverride;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -9279,13 +9234,13 @@ export class V1Service extends BaseService {
   /**
    * Download the document file with authentication.
    * @endpoint get /api/v1/documents/{id}/download/
-   * @param id A unique integer value identifying this document.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentsDownloadRetrieve(
-    id: number,
+    requestParameters: V1DocumentsDownloadRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -9295,7 +9250,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Document>;
   public v1DocumentsDownloadRetrieve(
-    id: number,
+    requestParameters: V1DocumentsDownloadRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -9305,7 +9260,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public v1DocumentsDownloadRetrieve(
-    id: number,
+    requestParameters: V1DocumentsDownloadRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -9315,7 +9270,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public v1DocumentsDownloadRetrieve(
-    id: number,
+    requestParameters: V1DocumentsDownloadRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -9324,6 +9279,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentsDownloadRetrieve.',
@@ -9467,13 +9423,13 @@ export class V1Service extends BaseService {
   /**
    * Merge selected documents into a single PDF.  Expects JSON: {\&quot;document_ids\&quot;: [1, 2, 3]}
    * @endpoint post /api/v1/documents/merge-pdf/
-   * @param documentIds Ordered list of document IDs to merge.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentsMergePdfCreate(
-    documentIds: Array<number>,
+    requestParameters: V1DocumentsMergePdfCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -9483,7 +9439,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Blob>;
   public v1DocumentsMergePdfCreate(
-    documentIds: Array<number>,
+    requestParameters: V1DocumentsMergePdfCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -9493,7 +9449,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public v1DocumentsMergePdfCreate(
-    documentIds: Array<number>,
+    requestParameters: V1DocumentsMergePdfCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -9503,7 +9459,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public v1DocumentsMergePdfCreate(
-    documentIds: Array<number>,
+    requestParameters: V1DocumentsMergePdfCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -9512,6 +9468,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const documentIds = requestParameters?.documentIds;
     if (documentIds === null || documentIds === undefined) {
       throw new Error(
         'Required parameter documentIds was null or undefined when calling v1DocumentsMergePdfCreate.',
@@ -9590,29 +9547,13 @@ export class V1Service extends BaseService {
   /**
    * Override to trigger AI validation when requested.
    * @endpoint patch /api/v1/documents/{id}/
-   * @param id A unique integer value identifying this document.
-   * @param docTypeId
-   * @param docNumber
-   * @param expirationDate
-   * @param details
-   * @param metadata
-   * @param required
-   * @param aiValidationStatusOverride * &#x60;&#x60; -  * &#x60;valid&#x60; - valid * &#x60;invalid&#x60; - invalid * &#x60;error&#x60; - error
-   * @param aiValidationResultOverride
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentsPartialUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -9622,15 +9563,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Document>;
   public v1DocumentsPartialUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -9640,15 +9573,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public v1DocumentsPartialUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -9658,15 +9583,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public v1DocumentsPartialUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -9675,11 +9592,20 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentsPartialUpdate.',
       );
     }
+    const docTypeId = requestParameters?.docTypeId;
+    const docNumber = requestParameters?.docNumber;
+    const expirationDate = requestParameters?.expirationDate;
+    const details = requestParameters?.details;
+    const metadata = requestParameters?.metadata;
+    const required = requestParameters?.required;
+    const aiValidationStatusOverride = requestParameters?.aiValidationStatusOverride;
+    const aiValidationResultOverride = requestParameters?.aiValidationResultOverride;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -9789,13 +9715,13 @@ export class V1Service extends BaseService {
   /**
    * Get document data for print view.  Returns the document with nested doc_application data including customer info.
    * @endpoint get /api/v1/documents/{id}/print/
-   * @param id A unique integer value identifying this document.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentsPrintRetrieve(
-    id: number,
+    requestParameters: V1DocumentsPrintRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -9805,7 +9731,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Document>;
   public v1DocumentsPrintRetrieve(
-    id: number,
+    requestParameters: V1DocumentsPrintRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -9815,7 +9741,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public v1DocumentsPrintRetrieve(
-    id: number,
+    requestParameters: V1DocumentsPrintRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -9825,7 +9751,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public v1DocumentsPrintRetrieve(
-    id: number,
+    requestParameters: V1DocumentsPrintRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -9834,6 +9760,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentsPrintRetrieve.',
@@ -9888,13 +9815,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/documents/{id}/
-   * @param id A unique integer value identifying this document.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentsRetrieve(
-    id: number,
+    requestParameters: V1DocumentsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -9904,7 +9831,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Document>;
   public v1DocumentsRetrieve(
-    id: number,
+    requestParameters: V1DocumentsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -9914,7 +9841,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public v1DocumentsRetrieve(
-    id: number,
+    requestParameters: V1DocumentsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -9924,7 +9851,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public v1DocumentsRetrieve(
-    id: number,
+    requestParameters: V1DocumentsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -9933,6 +9860,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentsRetrieve.',
@@ -9987,29 +9915,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/documents/{id}/
-   * @param id A unique integer value identifying this document.
-   * @param docTypeId
-   * @param docNumber
-   * @param expirationDate
-   * @param details
-   * @param metadata
-   * @param required
-   * @param aiValidationStatusOverride * &#x60;&#x60; -  * &#x60;valid&#x60; - valid * &#x60;invalid&#x60; - invalid * &#x60;error&#x60; - error
-   * @param aiValidationResultOverride
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1DocumentsUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -10019,15 +9931,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Document>;
   public v1DocumentsUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -10037,15 +9941,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public v1DocumentsUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -10055,15 +9951,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public v1DocumentsUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: V1DocumentsUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -10072,11 +9960,20 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1DocumentsUpdate.',
       );
     }
+    const docTypeId = requestParameters?.docTypeId;
+    const docNumber = requestParameters?.docNumber;
+    const expirationDate = requestParameters?.expirationDate;
+    const details = requestParameters?.details;
+    const metadata = requestParameters?.metadata;
+    const required = requestParameters?.required;
+    const aiValidationStatusOverride = requestParameters?.aiValidationStatusOverride;
+    const aiValidationResultOverride = requestParameters?.aiValidationResultOverride;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -10185,13 +10082,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/holidays/
-   * @param holidayRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1HolidaysCreate(
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -10201,7 +10098,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Holiday>;
   public v1HolidaysCreate(
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -10211,7 +10108,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Holiday>>;
   public v1HolidaysCreate(
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -10221,7 +10118,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Holiday>>;
   public v1HolidaysCreate(
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -10230,6 +10127,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const holidayRequest = requestParameters?.holidayRequest;
     if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
         'Required parameter holidayRequest was null or undefined when calling v1HolidaysCreate.',
@@ -10297,35 +10195,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint delete /api/v1/holidays/{id}/
-   * @param id A unique integer value identifying this holiday.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1HolidaysDestroy(
-    id: number,
+    requestParameters: V1HolidaysDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1HolidaysDestroy(
-    id: number,
+    requestParameters: V1HolidaysDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1HolidaysDestroy(
-    id: number,
+    requestParameters: V1HolidaysDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1HolidaysDestroy(
-    id: number,
+    requestParameters: V1HolidaysDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1HolidaysDestroy.',
@@ -10380,15 +10279,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/holidays/
-   * @param ordering Which field to use when ordering the results.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1HolidaysList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1HolidaysListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -10398,8 +10295,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Array<Holiday>>;
   public v1HolidaysList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1HolidaysListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -10409,8 +10305,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Array<Holiday>>>;
   public v1HolidaysList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1HolidaysListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -10420,8 +10315,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Array<Holiday>>>;
   public v1HolidaysList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1HolidaysListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -10430,6 +10324,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -10497,15 +10394,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/holidays/{id}/
-   * @param id A unique integer value identifying this holiday.
-   * @param holidayRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1HolidaysPartialUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -10515,8 +10410,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Holiday>;
   public v1HolidaysPartialUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -10526,8 +10420,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Holiday>>;
   public v1HolidaysPartialUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -10537,8 +10430,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Holiday>>;
   public v1HolidaysPartialUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -10547,11 +10439,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1HolidaysPartialUpdate.',
       );
     }
+    const holidayRequest = requestParameters?.holidayRequest;
     if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
         'Required parameter holidayRequest was null or undefined when calling v1HolidaysPartialUpdate.',
@@ -10619,13 +10513,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/holidays/{id}/
-   * @param id A unique integer value identifying this holiday.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1HolidaysRetrieve(
-    id: number,
+    requestParameters: V1HolidaysRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -10635,7 +10529,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Holiday>;
   public v1HolidaysRetrieve(
-    id: number,
+    requestParameters: V1HolidaysRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -10645,7 +10539,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Holiday>>;
   public v1HolidaysRetrieve(
-    id: number,
+    requestParameters: V1HolidaysRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -10655,7 +10549,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Holiday>>;
   public v1HolidaysRetrieve(
-    id: number,
+    requestParameters: V1HolidaysRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -10664,6 +10558,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1HolidaysRetrieve.',
@@ -10718,15 +10613,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/holidays/{id}/
-   * @param id A unique integer value identifying this holiday.
-   * @param holidayRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1HolidaysUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -10736,8 +10629,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Holiday>;
   public v1HolidaysUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -10747,8 +10639,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Holiday>>;
   public v1HolidaysUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -10758,8 +10649,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Holiday>>;
   public v1HolidaysUpdate(
-    id: number,
-    holidayRequest: HolidayRequest,
+    requestParameters: V1HolidaysUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -10768,9 +10658,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1HolidaysUpdate.');
     }
+    const holidayRequest = requestParameters?.holidayRequest;
     if (holidayRequest === null || holidayRequest === undefined) {
       throw new Error(
         'Required parameter holidayRequest was null or undefined when calling v1HolidaysUpdate.',
@@ -10838,13 +10730,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/invoices/bulk-delete/
-   * @param invoicesBulkDeleteRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesBulkDeleteCreate(
-    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
+    requestParameters?: V1InvoicesBulkDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -10854,7 +10746,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoicesBulkDeleteResponse>;
   public v1InvoicesBulkDeleteCreate(
-    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
+    requestParameters?: V1InvoicesBulkDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -10864,7 +10756,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoicesBulkDeleteResponse>>;
   public v1InvoicesBulkDeleteCreate(
-    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
+    requestParameters?: V1InvoicesBulkDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -10874,7 +10766,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoicesBulkDeleteResponse>>;
   public v1InvoicesBulkDeleteCreate(
-    invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest,
+    requestParameters?: V1InvoicesBulkDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -10883,6 +10775,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const invoicesBulkDeleteRequestRequest = requestParameters?.invoicesBulkDeleteRequestRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -10948,13 +10842,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/invoices/
-   * @param invoiceCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesCreate(
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -10964,7 +10858,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceCreateUpdate>;
   public v1InvoicesCreate(
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -10974,7 +10868,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public v1InvoicesCreate(
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -10984,7 +10878,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public v1InvoicesCreate(
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -10993,6 +10887,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const invoiceCreateUpdateRequest = requestParameters?.invoiceCreateUpdateRequest;
     if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter invoiceCreateUpdateRequest was null or undefined when calling v1InvoicesCreate.',
@@ -11060,13 +10955,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/{id}/delete-preview/
-   * @param id A unique integer value identifying this invoice.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesDeletePreviewRetrieve(
-    id: number,
+    requestParameters: V1InvoicesDeletePreviewRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11076,7 +10971,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceDeletePreviewResponse>;
   public v1InvoicesDeletePreviewRetrieve(
-    id: number,
+    requestParameters: V1InvoicesDeletePreviewRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11086,7 +10981,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceDeletePreviewResponse>>;
   public v1InvoicesDeletePreviewRetrieve(
-    id: number,
+    requestParameters: V1InvoicesDeletePreviewRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11096,7 +10991,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceDeletePreviewResponse>>;
   public v1InvoicesDeletePreviewRetrieve(
-    id: number,
+    requestParameters: V1InvoicesDeletePreviewRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11105,6 +11000,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1InvoicesDeletePreviewRetrieve.',
@@ -11163,35 +11059,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint delete /api/v1/invoices/{id}/
-   * @param id A unique integer value identifying this invoice.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesDestroy(
-    id: number,
+    requestParameters: V1InvoicesDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1InvoicesDestroy(
-    id: number,
+    requestParameters: V1InvoicesDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1InvoicesDestroy(
-    id: number,
+    requestParameters: V1InvoicesDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1InvoicesDestroy(
-    id: number,
+    requestParameters: V1InvoicesDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1InvoicesDestroy.',
@@ -11246,15 +11143,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/invoices/{id}/download-async/
-   * @param id A unique integer value identifying this invoice.
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesDownloadAsyncCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1InvoicesDownloadAsyncCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11264,8 +11159,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1InvoicesDownloadAsyncCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1InvoicesDownloadAsyncCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11275,8 +11169,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1InvoicesDownloadAsyncCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1InvoicesDownloadAsyncCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11286,8 +11179,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1InvoicesDownloadAsyncCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1InvoicesDownloadAsyncCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11296,11 +11188,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1InvoicesDownloadAsyncCreate.',
       );
     }
+    const requestBody = requestParameters?.requestBody;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -11363,13 +11257,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/download-async/file/{jobId}/
-   * @param jobId Download job UUID
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesDownloadAsyncFileRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncFileRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11379,7 +11273,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceList>;
   public v1InvoicesDownloadAsyncFileRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncFileRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11389,7 +11283,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceList>>;
   public v1InvoicesDownloadAsyncFileRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncFileRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11399,7 +11293,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceList>>;
   public v1InvoicesDownloadAsyncFileRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncFileRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11408,6 +11302,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1InvoicesDownloadAsyncFileRetrieve.',
@@ -11462,13 +11357,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/download-async/status/{jobId}/
-   * @param jobId Download job UUID
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesDownloadAsyncStatusRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncStatusRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11478,7 +11373,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1InvoicesDownloadAsyncStatusRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncStatusRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11488,7 +11383,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1InvoicesDownloadAsyncStatusRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncStatusRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11498,7 +11393,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1InvoicesDownloadAsyncStatusRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncStatusRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11507,6 +11402,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1InvoicesDownloadAsyncStatusRetrieve.',
@@ -11561,13 +11457,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/download-async/stream/{jobId}/
-   * @param jobId Download job UUID
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesDownloadAsyncStreamRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncStreamRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11577,7 +11473,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceList>;
   public v1InvoicesDownloadAsyncStreamRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncStreamRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11587,7 +11483,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceList>>;
   public v1InvoicesDownloadAsyncStreamRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncStreamRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11597,7 +11493,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceList>>;
   public v1InvoicesDownloadAsyncStreamRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesDownloadAsyncStreamRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11606,6 +11502,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1InvoicesDownloadAsyncStreamRetrieve.',
@@ -11660,15 +11557,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/{id}/download/
-   * @param id A unique integer value identifying this invoice.
-   * @param fileFormat The format of the downloaded invoice (docx or pdf).
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesDownloadRetrieve(
-    id: number,
-    fileFormat?: 'docx' | 'pdf',
+    requestParameters: V1InvoicesDownloadRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11678,8 +11573,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Blob>;
   public v1InvoicesDownloadRetrieve(
-    id: number,
-    fileFormat?: 'docx' | 'pdf',
+    requestParameters: V1InvoicesDownloadRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11689,8 +11583,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public v1InvoicesDownloadRetrieve(
-    id: number,
-    fileFormat?: 'docx' | 'pdf',
+    requestParameters: V1InvoicesDownloadRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11700,8 +11593,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public v1InvoicesDownloadRetrieve(
-    id: number,
-    fileFormat?: 'docx' | 'pdf',
+    requestParameters: V1InvoicesDownloadRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11710,11 +11602,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1InvoicesDownloadRetrieve.',
       );
     }
+    const fileFormat = requestParameters?.fileFormat;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -11764,15 +11658,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/invoices/{id}/force-delete/
-   * @param id A unique integer value identifying this invoice.
-   * @param invoiceForceDeleteRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesForceDeleteCreate(
-    id: number,
-    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
+    requestParameters: V1InvoicesForceDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11782,8 +11674,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceForceDeleteResponse>;
   public v1InvoicesForceDeleteCreate(
-    id: number,
-    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
+    requestParameters: V1InvoicesForceDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11793,8 +11684,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceForceDeleteResponse>>;
   public v1InvoicesForceDeleteCreate(
-    id: number,
-    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
+    requestParameters: V1InvoicesForceDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11804,8 +11694,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceForceDeleteResponse>>;
   public v1InvoicesForceDeleteCreate(
-    id: number,
-    invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest,
+    requestParameters: V1InvoicesForceDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11814,11 +11703,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1InvoicesForceDeleteCreate.',
       );
     }
+    const invoiceForceDeleteRequestRequest = requestParameters?.invoiceForceDeleteRequestRequest;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -11885,13 +11776,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/from_application_prefill/{applicationId}/
-   * @param applicationId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesFromApplicationPrefillRetrieve(
-    applicationId: number,
+    requestParameters: V1InvoicesFromApplicationPrefillRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -11901,7 +11792,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceFromApplicationPrefillResponse>;
   public v1InvoicesFromApplicationPrefillRetrieve(
-    applicationId: number,
+    requestParameters: V1InvoicesFromApplicationPrefillRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -11911,7 +11802,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceFromApplicationPrefillResponse>>;
   public v1InvoicesFromApplicationPrefillRetrieve(
-    applicationId: number,
+    requestParameters: V1InvoicesFromApplicationPrefillRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -11921,7 +11812,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceFromApplicationPrefillResponse>>;
   public v1InvoicesFromApplicationPrefillRetrieve(
-    applicationId: number,
+    requestParameters: V1InvoicesFromApplicationPrefillRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -11930,6 +11821,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const applicationId = requestParameters?.applicationId;
     if (applicationId === null || applicationId === undefined) {
       throw new Error(
         'Required parameter applicationId was null or undefined when calling v1InvoicesFromApplicationPrefillRetrieve.',
@@ -11988,23 +11880,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/get_billable_products/{customerId}/
-   * @param customerId
-   * @param currentInvoiceId Include already linked applications for this invoice in pending groups.
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesGetBillableProductsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1InvoicesGetBillableProductsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -12014,12 +11896,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedBillableProductRowList>;
   public v1InvoicesGetBillableProductsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1InvoicesGetBillableProductsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -12029,12 +11906,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedBillableProductRowList>>;
   public v1InvoicesGetBillableProductsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1InvoicesGetBillableProductsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -12044,12 +11916,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedBillableProductRowList>>;
   public v1InvoicesGetBillableProductsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1InvoicesGetBillableProductsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -12058,11 +11925,17 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customerId = requestParameters?.customerId;
     if (customerId === null || customerId === undefined) {
       throw new Error(
         'Required parameter customerId was null or undefined when calling v1InvoicesGetBillableProductsList.',
       );
     }
+    const currentInvoiceId = requestParameters?.currentInvoiceId;
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -12159,29 +12032,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/get_customer_applications/{customerId}/
-   * @param customerId
-   * @param currentInvoiceId
-   * @param excludeIncompleteDocumentCollection
-   * @param excludeStatuses
-   * @param excludeWithInvoices
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesGetCustomerApplicationsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    excludeIncompleteDocumentCollection?: boolean,
-    excludeStatuses?: string,
-    excludeWithInvoices?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1InvoicesGetCustomerApplicationsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -12191,15 +12048,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedDocApplicationInvoiceList>;
   public v1InvoicesGetCustomerApplicationsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    excludeIncompleteDocumentCollection?: boolean,
-    excludeStatuses?: string,
-    excludeWithInvoices?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1InvoicesGetCustomerApplicationsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -12209,15 +12058,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedDocApplicationInvoiceList>>;
   public v1InvoicesGetCustomerApplicationsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    excludeIncompleteDocumentCollection?: boolean,
-    excludeStatuses?: string,
-    excludeWithInvoices?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1InvoicesGetCustomerApplicationsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -12227,15 +12068,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedDocApplicationInvoiceList>>;
   public v1InvoicesGetCustomerApplicationsList(
-    customerId: number,
-    currentInvoiceId?: number,
-    excludeIncompleteDocumentCollection?: boolean,
-    excludeStatuses?: string,
-    excludeWithInvoices?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: V1InvoicesGetCustomerApplicationsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -12244,11 +12077,21 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customerId = requestParameters?.customerId;
     if (customerId === null || customerId === undefined) {
       throw new Error(
         'Required parameter customerId was null or undefined when calling v1InvoicesGetCustomerApplicationsList.',
       );
     }
+    const currentInvoiceId = requestParameters?.currentInvoiceId;
+    const excludeIncompleteDocumentCollection =
+      requestParameters?.excludeIncompleteDocumentCollection;
+    const excludeStatuses = requestParameters?.excludeStatuses;
+    const excludeWithInvoices = requestParameters?.excludeWithInvoices;
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -12369,13 +12212,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/
-   * @param invoiceApplicationId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesGetInvoiceApplicationDueAmountRetrieve(
-    invoiceApplicationId: number,
+    requestParameters: V1InvoicesGetInvoiceApplicationDueAmountRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -12385,7 +12228,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceList>;
   public v1InvoicesGetInvoiceApplicationDueAmountRetrieve(
-    invoiceApplicationId: number,
+    requestParameters: V1InvoicesGetInvoiceApplicationDueAmountRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -12395,7 +12238,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceList>>;
   public v1InvoicesGetInvoiceApplicationDueAmountRetrieve(
-    invoiceApplicationId: number,
+    requestParameters: V1InvoicesGetInvoiceApplicationDueAmountRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -12405,7 +12248,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceList>>;
   public v1InvoicesGetInvoiceApplicationDueAmountRetrieve(
-    invoiceApplicationId: number,
+    requestParameters: V1InvoicesGetInvoiceApplicationDueAmountRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -12414,6 +12257,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const invoiceApplicationId = requestParameters?.invoiceApplicationId;
     if (invoiceApplicationId === null || invoiceApplicationId === undefined) {
       throw new Error(
         'Required parameter invoiceApplicationId was null or undefined when calling v1InvoicesGetInvoiceApplicationDueAmountRetrieve.',
@@ -12469,19 +12313,13 @@ export class V1Service extends BaseService {
   /**
    * Import multiple invoice files with SSE progress streaming.
    * @endpoint post /api/v1/invoices/import/batch/
-   * @param files
-   * @param paidStatus
-   * @param llmProvider
-   * @param llmModel
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesImportBatchCreate(
-    files: Array<Blob>,
-    paidStatus?: Array<string>,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: V1InvoicesImportBatchCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -12491,10 +12329,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1InvoicesImportBatchCreate(
-    files: Array<Blob>,
-    paidStatus?: Array<string>,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: V1InvoicesImportBatchCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -12504,10 +12339,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1InvoicesImportBatchCreate(
-    files: Array<Blob>,
-    paidStatus?: Array<string>,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: V1InvoicesImportBatchCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -12517,10 +12349,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1InvoicesImportBatchCreate(
-    files: Array<Blob>,
-    paidStatus?: Array<string>,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: V1InvoicesImportBatchCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -12529,11 +12358,15 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const files = requestParameters?.files;
     if (files === null || files === undefined) {
       throw new Error(
         'Required parameter files was null or undefined when calling v1InvoicesImportBatchCreate.',
       );
     }
+    const paidStatus = requestParameters?.paidStatus;
+    const llmProvider = requestParameters?.llmProvider;
+    const llmModel = requestParameters?.llmModel;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -12726,17 +12559,13 @@ export class V1Service extends BaseService {
   /**
    * Import a single invoice file using AI parsing.
    * @endpoint post /api/v1/invoices/import/single/
-   * @param file
-   * @param llmProvider
-   * @param llmModel
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesImportSingleCreate(
-    file: Blob,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: V1InvoicesImportSingleCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -12746,9 +12575,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1InvoicesImportSingleCreate(
-    file: Blob,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: V1InvoicesImportSingleCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -12758,9 +12585,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1InvoicesImportSingleCreate(
-    file: Blob,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: V1InvoicesImportSingleCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -12770,9 +12595,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1InvoicesImportSingleCreate(
-    file: Blob,
-    llmProvider?: string,
-    llmModel?: string,
+    requestParameters: V1InvoicesImportSingleCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -12781,11 +12604,14 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const file = requestParameters?.file;
     if (file === null || file === undefined) {
       throw new Error(
         'Required parameter file was null or undefined when calling v1InvoicesImportSingleCreate.',
       );
     }
+    const llmProvider = requestParameters?.llmProvider;
+    const llmModel = requestParameters?.llmModel;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -12867,13 +12693,13 @@ export class V1Service extends BaseService {
   /**
    * Get status of an invoice import job.
    * @endpoint get /api/v1/invoices/import/status/{jobId}/
-   * @param jobId Import job UUID
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesImportStatusRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesImportStatusRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -12883,7 +12709,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1InvoicesImportStatusRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesImportStatusRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -12893,7 +12719,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1InvoicesImportStatusRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesImportStatusRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -12903,7 +12729,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1InvoicesImportStatusRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesImportStatusRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -12912,6 +12738,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1InvoicesImportStatusRetrieve.',
@@ -12967,13 +12794,13 @@ export class V1Service extends BaseService {
   /**
    * Stream SSE updates for a running import job.
    * @endpoint get /api/v1/invoices/import/stream/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesImportStreamRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesImportStreamRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -12983,7 +12810,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceList>;
   public v1InvoicesImportStreamRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesImportStreamRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -12993,7 +12820,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceList>>;
   public v1InvoicesImportStreamRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesImportStreamRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -13003,7 +12830,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceList>>;
   public v1InvoicesImportStreamRetrieve(
-    jobId: string,
+    requestParameters: V1InvoicesImportStreamRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -13012,6 +12839,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1InvoicesImportStreamRetrieve.',
@@ -13066,21 +12894,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/
-   * @param hidePaid
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesList(
-    hidePaid?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1InvoicesListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -13090,11 +12910,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedInvoiceListList>;
   public v1InvoicesList(
-    hidePaid?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1InvoicesListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -13104,11 +12920,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedInvoiceListList>>;
   public v1InvoicesList(
-    hidePaid?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1InvoicesListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -13118,11 +12930,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedInvoiceListList>>;
   public v1InvoicesList(
-    hidePaid?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: V1InvoicesListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -13131,6 +12939,12 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const hidePaid = requestParameters?.hidePaid;
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -13222,15 +13036,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/invoices/{id}/mark-as-paid/
-   * @param id A unique integer value identifying this invoice.
-   * @param invoiceMarkAsPaidRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesMarkAsPaidCreate(
-    id: number,
-    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
+    requestParameters: V1InvoicesMarkAsPaidCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -13240,8 +13052,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceMarkAsPaidResponse>;
   public v1InvoicesMarkAsPaidCreate(
-    id: number,
-    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
+    requestParameters: V1InvoicesMarkAsPaidCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -13251,8 +13062,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceMarkAsPaidResponse>>;
   public v1InvoicesMarkAsPaidCreate(
-    id: number,
-    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
+    requestParameters: V1InvoicesMarkAsPaidCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -13262,8 +13072,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceMarkAsPaidResponse>>;
   public v1InvoicesMarkAsPaidCreate(
-    id: number,
-    invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest,
+    requestParameters: V1InvoicesMarkAsPaidCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -13272,11 +13081,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1InvoicesMarkAsPaidCreate.',
       );
     }
+    const invoiceMarkAsPaidRequestRequest = requestParameters?.invoiceMarkAsPaidRequestRequest;
     if (invoiceMarkAsPaidRequestRequest === null || invoiceMarkAsPaidRequestRequest === undefined) {
       throw new Error(
         'Required parameter invoiceMarkAsPaidRequestRequest was null or undefined when calling v1InvoicesMarkAsPaidCreate.',
@@ -13348,15 +13159,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/invoices/{id}/
-   * @param id A unique integer value identifying this invoice.
-   * @param invoiceCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesPartialUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -13366,8 +13175,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceCreateUpdate>;
   public v1InvoicesPartialUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -13377,8 +13185,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public v1InvoicesPartialUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -13388,8 +13195,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public v1InvoicesPartialUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -13398,11 +13204,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1InvoicesPartialUpdate.',
       );
     }
+    const invoiceCreateUpdateRequest = requestParameters?.invoiceCreateUpdateRequest;
     if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter invoiceCreateUpdateRequest was null or undefined when calling v1InvoicesPartialUpdate.',
@@ -13471,13 +13279,13 @@ export class V1Service extends BaseService {
   /**
    * Propose the next available invoice number for a given invoice_date.
    * @endpoint get /api/v1/invoices/propose/
-   * @param invoiceDate
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesProposeRetrieve(
-    invoiceDate?: string,
+    requestParameters?: V1InvoicesProposeRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -13487,7 +13295,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceProposalResponse>;
   public v1InvoicesProposeRetrieve(
-    invoiceDate?: string,
+    requestParameters?: V1InvoicesProposeRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -13497,7 +13305,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceProposalResponse>>;
   public v1InvoicesProposeRetrieve(
-    invoiceDate?: string,
+    requestParameters?: V1InvoicesProposeRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -13507,7 +13315,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceProposalResponse>>;
   public v1InvoicesProposeRetrieve(
-    invoiceDate?: string,
+    requestParameters?: V1InvoicesProposeRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -13516,6 +13324,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const invoiceDate = requestParameters?.invoiceDate;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -13575,13 +13385,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/invoices/{id}/
-   * @param id A unique integer value identifying this invoice.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesRetrieve(
-    id: number,
+    requestParameters: V1InvoicesRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -13591,7 +13401,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceDetail>;
   public v1InvoicesRetrieve(
-    id: number,
+    requestParameters: V1InvoicesRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -13601,7 +13411,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceDetail>>;
   public v1InvoicesRetrieve(
-    id: number,
+    requestParameters: V1InvoicesRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -13611,7 +13421,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceDetail>>;
   public v1InvoicesRetrieve(
-    id: number,
+    requestParameters: V1InvoicesRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -13620,6 +13430,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1InvoicesRetrieve.',
@@ -13674,15 +13485,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/invoices/{id}/
-   * @param id A unique integer value identifying this invoice.
-   * @param invoiceCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1InvoicesUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -13692,8 +13501,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<InvoiceCreateUpdate>;
   public v1InvoicesUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -13703,8 +13511,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<InvoiceCreateUpdate>>;
   public v1InvoicesUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -13714,8 +13521,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<InvoiceCreateUpdate>>;
   public v1InvoicesUpdate(
-    id: number,
-    invoiceCreateUpdateRequest: InvoiceCreateUpdateRequest,
+    requestParameters: V1InvoicesUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -13724,9 +13530,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1InvoicesUpdate.');
     }
+    const invoiceCreateUpdateRequest = requestParameters?.invoiceCreateUpdateRequest;
     if (invoiceCreateUpdateRequest === null || invoiceCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter invoiceCreateUpdateRequest was null or undefined when calling v1InvoicesUpdate.',
@@ -13794,13 +13602,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/letters/customer-data/{customerId}/
-   * @param customerId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1LettersCustomerDataRetrieve(
-    customerId: number,
+    requestParameters: V1LettersCustomerDataRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -13810,7 +13618,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<SuratPermohonanCustomerData>;
   public v1LettersCustomerDataRetrieve(
-    customerId: number,
+    requestParameters: V1LettersCustomerDataRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -13820,7 +13628,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<SuratPermohonanCustomerData>>;
   public v1LettersCustomerDataRetrieve(
-    customerId: number,
+    requestParameters: V1LettersCustomerDataRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -13830,7 +13638,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<SuratPermohonanCustomerData>>;
   public v1LettersCustomerDataRetrieve(
-    customerId: number,
+    requestParameters: V1LettersCustomerDataRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -13839,6 +13647,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customerId = requestParameters?.customerId;
     if (customerId === null || customerId === undefined) {
       throw new Error(
         'Required parameter customerId was null or undefined when calling v1LettersCustomerDataRetrieve.',
@@ -13897,13 +13706,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/letters/surat-permohonan/
-   * @param suratPermohonanRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1LettersSuratPermohonanCreate(
-    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
+    requestParameters: V1LettersSuratPermohonanCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -13913,7 +13722,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Blob>;
   public v1LettersSuratPermohonanCreate(
-    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
+    requestParameters: V1LettersSuratPermohonanCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -13923,7 +13732,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public v1LettersSuratPermohonanCreate(
-    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
+    requestParameters: V1LettersSuratPermohonanCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -13933,7 +13742,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public v1LettersSuratPermohonanCreate(
-    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
+    requestParameters: V1LettersSuratPermohonanCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -13942,6 +13751,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const suratPermohonanRequestRequest = requestParameters?.suratPermohonanRequestRequest;
     if (suratPermohonanRequestRequest === null || suratPermohonanRequestRequest === undefined) {
       throw new Error(
         'Required parameter suratPermohonanRequestRequest was null or undefined when calling v1LettersSuratPermohonanCreate.',
@@ -14070,35 +13880,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/ocr/status/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1OcrStatusRetrieve(
-    jobId: string,
+    requestParameters: V1OcrStatusRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1OcrStatusRetrieve(
-    jobId: string,
+    requestParameters: V1OcrStatusRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1OcrStatusRetrieve(
-    jobId: string,
+    requestParameters: V1OcrStatusRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1OcrStatusRetrieve(
-    jobId: string,
+    requestParameters: V1OcrStatusRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1OcrStatusRetrieve.',
@@ -14153,35 +13964,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/ocr/stream/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1OcrStreamRetrieve(
-    jobId: string,
+    requestParameters: V1OcrStreamRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1OcrStreamRetrieve(
-    jobId: string,
+    requestParameters: V1OcrStreamRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1OcrStreamRetrieve(
-    jobId: string,
+    requestParameters: V1OcrStreamRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1OcrStreamRetrieve(
-    jobId: string,
+    requestParameters: V1OcrStreamRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1OcrStreamRetrieve.',
@@ -14236,13 +14048,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/payments/
-   * @param paymentRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PaymentsCreate(
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -14252,7 +14064,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Payment>;
   public v1PaymentsCreate(
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -14262,7 +14074,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Payment>>;
   public v1PaymentsCreate(
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -14272,7 +14084,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Payment>>;
   public v1PaymentsCreate(
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -14281,6 +14093,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const paymentRequest = requestParameters?.paymentRequest;
     if (paymentRequest === null || paymentRequest === undefined) {
       throw new Error(
         'Required parameter paymentRequest was null or undefined when calling v1PaymentsCreate.',
@@ -14348,35 +14161,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint delete /api/v1/payments/{id}/
-   * @param id A unique integer value identifying this payment.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PaymentsDestroy(
-    id: number,
+    requestParameters: V1PaymentsDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1PaymentsDestroy(
-    id: number,
+    requestParameters: V1PaymentsDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1PaymentsDestroy(
-    id: number,
+    requestParameters: V1PaymentsDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1PaymentsDestroy(
-    id: number,
+    requestParameters: V1PaymentsDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1PaymentsDestroy.',
@@ -14431,15 +14245,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/payments/
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PaymentsList(
-    page?: number,
-    pageSize?: number,
+    requestParameters?: V1PaymentsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -14449,8 +14261,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedPaymentList>;
   public v1PaymentsList(
-    page?: number,
-    pageSize?: number,
+    requestParameters?: V1PaymentsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -14460,8 +14271,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedPaymentList>>;
   public v1PaymentsList(
-    page?: number,
-    pageSize?: number,
+    requestParameters?: V1PaymentsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -14471,8 +14281,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedPaymentList>>;
   public v1PaymentsList(
-    page?: number,
-    pageSize?: number,
+    requestParameters?: V1PaymentsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -14481,6 +14290,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -14548,15 +14360,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/payments/{id}/
-   * @param id A unique integer value identifying this payment.
-   * @param paymentRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PaymentsPartialUpdate(
-    id: number,
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -14566,8 +14376,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Payment>;
   public v1PaymentsPartialUpdate(
-    id: number,
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -14577,8 +14386,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Payment>>;
   public v1PaymentsPartialUpdate(
-    id: number,
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -14588,8 +14396,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Payment>>;
   public v1PaymentsPartialUpdate(
-    id: number,
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -14598,11 +14405,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1PaymentsPartialUpdate.',
       );
     }
+    const paymentRequest = requestParameters?.paymentRequest;
     if (paymentRequest === null || paymentRequest === undefined) {
       throw new Error(
         'Required parameter paymentRequest was null or undefined when calling v1PaymentsPartialUpdate.',
@@ -14670,13 +14479,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/payments/{id}/
-   * @param id A unique integer value identifying this payment.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PaymentsRetrieve(
-    id: number,
+    requestParameters: V1PaymentsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -14686,7 +14495,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Payment>;
   public v1PaymentsRetrieve(
-    id: number,
+    requestParameters: V1PaymentsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -14696,7 +14505,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Payment>>;
   public v1PaymentsRetrieve(
-    id: number,
+    requestParameters: V1PaymentsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -14706,7 +14515,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Payment>>;
   public v1PaymentsRetrieve(
-    id: number,
+    requestParameters: V1PaymentsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -14715,6 +14524,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1PaymentsRetrieve.',
@@ -14769,15 +14579,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/payments/{id}/
-   * @param id A unique integer value identifying this payment.
-   * @param paymentRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PaymentsUpdate(
-    id: number,
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -14787,8 +14595,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Payment>;
   public v1PaymentsUpdate(
-    id: number,
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -14798,8 +14605,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Payment>>;
   public v1PaymentsUpdate(
-    id: number,
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -14809,8 +14615,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Payment>>;
   public v1PaymentsUpdate(
-    id: number,
-    paymentRequest: PaymentRequest,
+    requestParameters: V1PaymentsUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -14819,9 +14624,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1PaymentsUpdate.');
     }
+    const paymentRequest = requestParameters?.paymentRequest;
     if (paymentRequest === null || paymentRequest === undefined) {
       throw new Error(
         'Required parameter paymentRequest was null or undefined when calling v1PaymentsUpdate.',
@@ -14889,13 +14696,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/products/bulk-delete/
-   * @param productsBulkDeleteRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsBulkDeleteCreate(
-    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
+    requestParameters?: V1ProductsBulkDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -14905,7 +14712,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<ProductsBulkDeleteResponse>;
   public v1ProductsBulkDeleteCreate(
-    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
+    requestParameters?: V1ProductsBulkDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -14915,7 +14722,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<ProductsBulkDeleteResponse>>;
   public v1ProductsBulkDeleteCreate(
-    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
+    requestParameters?: V1ProductsBulkDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -14925,7 +14732,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<ProductsBulkDeleteResponse>>;
   public v1ProductsBulkDeleteCreate(
-    productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest,
+    requestParameters?: V1ProductsBulkDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -14934,6 +14741,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const productsBulkDeleteRequestRequest = requestParameters?.productsBulkDeleteRequestRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -14999,13 +14808,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/products/{id}/can-delete/
-   * @param id A unique integer value identifying this product.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsCanDeleteRetrieve(
-    id: number,
+    requestParameters: V1ProductsCanDeleteRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15015,7 +14824,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Product>;
   public v1ProductsCanDeleteRetrieve(
-    id: number,
+    requestParameters: V1ProductsCanDeleteRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15025,7 +14834,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public v1ProductsCanDeleteRetrieve(
-    id: number,
+    requestParameters: V1ProductsCanDeleteRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15035,7 +14844,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public v1ProductsCanDeleteRetrieve(
-    id: number,
+    requestParameters: V1ProductsCanDeleteRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15044,6 +14853,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1ProductsCanDeleteRetrieve.',
@@ -15098,19 +14908,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/products/category-options/
-   * @param deprecated Filter category options by explicit deprecated product status.
-   * @param hideDeprecated When true (default), hide categories that only belong to deprecated products.
-   * @param productType Restrict category options to a product type.
-   * @param usesCustomerAppWorkflow Restrict category options to workflow-enabled products.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsCategoryOptionsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    productType?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1ProductsCategoryOptionsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15120,10 +14924,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Array<ProductCategoryFilterOption>>;
   public v1ProductsCategoryOptionsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    productType?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1ProductsCategoryOptionsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15133,10 +14934,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Array<ProductCategoryFilterOption>>>;
   public v1ProductsCategoryOptionsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    productType?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1ProductsCategoryOptionsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15146,10 +14944,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Array<ProductCategoryFilterOption>>>;
   public v1ProductsCategoryOptionsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    productType?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1ProductsCategoryOptionsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15158,6 +14953,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const deprecated = requestParameters?.deprecated;
+    const hideDeprecated = requestParameters?.hideDeprecated;
+    const productType = requestParameters?.productType;
+    const usesCustomerAppWorkflow = requestParameters?.usesCustomerAppWorkflow;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -15245,13 +15045,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/products/
-   * @param productCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsCreate(
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15261,7 +15061,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<ProductCreateUpdate>;
   public v1ProductsCreate(
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15271,7 +15071,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public v1ProductsCreate(
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15281,7 +15081,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public v1ProductsCreate(
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15290,6 +15090,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const productCreateUpdateRequest = requestParameters?.productCreateUpdateRequest;
     if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter productCreateUpdateRequest was null or undefined when calling v1ProductsCreate.',
@@ -15357,13 +15158,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/products/{id}/delete-preview/
-   * @param id A unique integer value identifying this product.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsDeletePreviewRetrieve(
-    id: number,
+    requestParameters: V1ProductsDeletePreviewRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15373,7 +15174,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ProductsDeletePreviewRetrieve(
-    id: number,
+    requestParameters: V1ProductsDeletePreviewRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15383,7 +15184,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ProductsDeletePreviewRetrieve(
-    id: number,
+    requestParameters: V1ProductsDeletePreviewRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15393,7 +15194,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ProductsDeletePreviewRetrieve(
-    id: number,
+    requestParameters: V1ProductsDeletePreviewRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15402,6 +15203,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1ProductsDeletePreviewRetrieve.',
@@ -15456,35 +15258,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint delete /api/v1/products/{id}/
-   * @param id A unique integer value identifying this product.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsDestroy(
-    id: number,
+    requestParameters: V1ProductsDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1ProductsDestroy(
-    id: number,
+    requestParameters: V1ProductsDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1ProductsDestroy(
-    id: number,
+    requestParameters: V1ProductsDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1ProductsDestroy(
-    id: number,
+    requestParameters: V1ProductsDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1ProductsDestroy.',
@@ -15539,13 +15342,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/products/export/download/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsExportDownloadRetrieve(
-    jobId: string,
+    requestParameters: V1ProductsExportDownloadRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15555,7 +15358,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Product>;
   public v1ProductsExportDownloadRetrieve(
-    jobId: string,
+    requestParameters: V1ProductsExportDownloadRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15565,7 +15368,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public v1ProductsExportDownloadRetrieve(
-    jobId: string,
+    requestParameters: V1ProductsExportDownloadRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15575,7 +15378,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public v1ProductsExportDownloadRetrieve(
-    jobId: string,
+    requestParameters: V1ProductsExportDownloadRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15584,6 +15387,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1ProductsExportDownloadRetrieve.',
@@ -15638,13 +15442,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/products/export/start/
-   * @param productRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsExportStartCreate(
-    productRequest: ProductRequest,
+    requestParameters: V1ProductsExportStartCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15654,7 +15458,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Product>;
   public v1ProductsExportStartCreate(
-    productRequest: ProductRequest,
+    requestParameters: V1ProductsExportStartCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15664,7 +15468,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public v1ProductsExportStartCreate(
-    productRequest: ProductRequest,
+    requestParameters: V1ProductsExportStartCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15674,7 +15478,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public v1ProductsExportStartCreate(
-    productRequest: ProductRequest,
+    requestParameters: V1ProductsExportStartCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15683,6 +15487,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const productRequest = requestParameters?.productRequest;
     if (productRequest === null || productRequest === undefined) {
       throw new Error(
         'Required parameter productRequest was null or undefined when calling v1ProductsExportStartCreate.',
@@ -15750,15 +15555,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/products/{id}/force-delete/
-   * @param id A unique integer value identifying this product.
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsForceDeleteCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1ProductsForceDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15768,8 +15571,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ProductsForceDeleteCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1ProductsForceDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15779,8 +15581,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ProductsForceDeleteCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1ProductsForceDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15790,8 +15591,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ProductsForceDeleteCreate(
-    id: number,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1ProductsForceDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15800,11 +15600,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1ProductsForceDeleteCreate.',
       );
     }
+    const requestBody = requestParameters?.requestBody;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -15867,13 +15669,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/products/get_product_by_id/{productId}/
-   * @param productId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsGetProductByIdRetrieve(
-    productId: number,
+    requestParameters: V1ProductsGetProductByIdRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15883,7 +15685,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Product>;
   public v1ProductsGetProductByIdRetrieve(
-    productId: number,
+    requestParameters: V1ProductsGetProductByIdRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15893,7 +15695,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public v1ProductsGetProductByIdRetrieve(
-    productId: number,
+    requestParameters: V1ProductsGetProductByIdRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -15903,7 +15705,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public v1ProductsGetProductByIdRetrieve(
-    productId: number,
+    requestParameters: V1ProductsGetProductByIdRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -15912,6 +15714,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const productId = requestParameters?.productId;
     if (productId === null || productId === undefined) {
       throw new Error(
         'Required parameter productId was null or undefined when calling v1ProductsGetProductByIdRetrieve.',
@@ -15966,13 +15769,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/products/get_products_by_product_type/{productType}/
-   * @param productType Product type (visa|other).
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsGetProductsByProductTypeRetrieve(
-    productType: string,
+    requestParameters: V1ProductsGetProductsByProductTypeRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -15982,7 +15785,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Product>;
   public v1ProductsGetProductsByProductTypeRetrieve(
-    productType: string,
+    requestParameters: V1ProductsGetProductsByProductTypeRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -15992,7 +15795,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Product>>;
   public v1ProductsGetProductsByProductTypeRetrieve(
-    productType: string,
+    requestParameters: V1ProductsGetProductsByProductTypeRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -16002,7 +15805,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Product>>;
   public v1ProductsGetProductsByProductTypeRetrieve(
-    productType: string,
+    requestParameters: V1ProductsGetProductsByProductTypeRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -16011,6 +15814,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const productType = requestParameters?.productType;
     if (productType === null || productType === undefined) {
       throw new Error(
         'Required parameter productType was null or undefined when calling v1ProductsGetProductsByProductTypeRetrieve.',
@@ -16065,13 +15869,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/products/import/start/
-   * @param file
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsImportStartCreate(
-    file: Blob,
+    requestParameters: V1ProductsImportStartCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -16081,7 +15885,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<ProductImportStartResponse>;
   public v1ProductsImportStartCreate(
-    file: Blob,
+    requestParameters: V1ProductsImportStartCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -16091,7 +15895,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<ProductImportStartResponse>>;
   public v1ProductsImportStartCreate(
-    file: Blob,
+    requestParameters: V1ProductsImportStartCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -16101,7 +15905,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<ProductImportStartResponse>>;
   public v1ProductsImportStartCreate(
-    file: Blob,
+    requestParameters: V1ProductsImportStartCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -16110,6 +15914,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const file = requestParameters?.file;
     if (file === null || file === undefined) {
       throw new Error(
         'Required parameter file was null or undefined when calling v1ProductsImportStartCreate.',
@@ -16193,27 +15998,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/products/
-   * @param deprecated Filter by explicit deprecated status.
-   * @param hideDeprecated When true (default), hide deprecated products.
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param productCategory Filter by product category name (comma-separated).
-   * @param search A search term.
-   * @param usesCustomerAppWorkflow Filter products by whether they use customer-application workflows.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    productCategory?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1ProductsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -16223,14 +16014,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PaginatedProductList>;
   public v1ProductsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    productCategory?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1ProductsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -16240,14 +16024,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedProductList>>;
   public v1ProductsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    productCategory?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1ProductsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -16257,14 +16034,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedProductList>>;
   public v1ProductsList(
-    deprecated?: boolean,
-    hideDeprecated?: boolean,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    productCategory?: string,
-    search?: string,
-    usesCustomerAppWorkflow?: boolean,
+    requestParameters?: V1ProductsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -16273,6 +16043,15 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const deprecated = requestParameters?.deprecated;
+    const hideDeprecated = requestParameters?.hideDeprecated;
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const productCategory = requestParameters?.productCategory;
+    const search = requestParameters?.search;
+    const usesCustomerAppWorkflow = requestParameters?.usesCustomerAppWorkflow;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -16388,15 +16167,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/products/{id}/
-   * @param id A unique integer value identifying this product.
-   * @param productCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsPartialUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -16406,8 +16183,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<ProductCreateUpdate>;
   public v1ProductsPartialUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -16417,8 +16193,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public v1ProductsPartialUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -16428,8 +16203,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public v1ProductsPartialUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -16438,11 +16212,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1ProductsPartialUpdate.',
       );
     }
+    const productCreateUpdateRequest = requestParameters?.productCreateUpdateRequest;
     if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter productCreateUpdateRequest was null or undefined when calling v1ProductsPartialUpdate.',
@@ -16510,13 +16286,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/products/price-list/print/download/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsPriceListPrintDownloadRetrieve(
-    jobId: string,
+    requestParameters: V1ProductsPriceListPrintDownloadRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -16526,7 +16302,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Blob>;
   public v1ProductsPriceListPrintDownloadRetrieve(
-    jobId: string,
+    requestParameters: V1ProductsPriceListPrintDownloadRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -16536,7 +16312,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public v1ProductsPriceListPrintDownloadRetrieve(
-    jobId: string,
+    requestParameters: V1ProductsPriceListPrintDownloadRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -16546,7 +16322,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public v1ProductsPriceListPrintDownloadRetrieve(
-    jobId: string,
+    requestParameters: V1ProductsPriceListPrintDownloadRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -16555,6 +16331,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling v1ProductsPriceListPrintDownloadRetrieve.',
@@ -16690,13 +16467,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/products/{id}/
-   * @param id A unique integer value identifying this product.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsRetrieve(
-    id: number,
+    requestParameters: V1ProductsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -16706,7 +16483,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<ProductDetail>;
   public v1ProductsRetrieve(
-    id: number,
+    requestParameters: V1ProductsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -16716,7 +16493,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<ProductDetail>>;
   public v1ProductsRetrieve(
-    id: number,
+    requestParameters: V1ProductsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -16726,7 +16503,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<ProductDetail>>;
   public v1ProductsRetrieve(
-    id: number,
+    requestParameters: V1ProductsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -16735,6 +16512,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1ProductsRetrieve.',
@@ -16789,15 +16567,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/products/{id}/
-   * @param id A unique integer value identifying this product.
-   * @param productCreateUpdateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ProductsUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -16807,8 +16583,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<ProductCreateUpdate>;
   public v1ProductsUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -16818,8 +16593,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<ProductCreateUpdate>>;
   public v1ProductsUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -16829,8 +16603,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<ProductCreateUpdate>>;
   public v1ProductsUpdate(
-    id: number,
-    productCreateUpdateRequest: ProductCreateUpdateRequest,
+    requestParameters: V1ProductsUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -16839,9 +16612,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1ProductsUpdate.');
     }
+    const productCreateUpdateRequest = requestParameters?.productCreateUpdateRequest;
     if (productCreateUpdateRequest === null || productCreateUpdateRequest === undefined) {
       throw new Error(
         'Required parameter productCreateUpdateRequest was null or undefined when calling v1ProductsUpdate.',
@@ -17087,13 +16862,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/push-notifications/register/
-   * @param webPushSubscriptionUpsertRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsRegisterCreate(
-    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
+    requestParameters: V1PushNotificationsRegisterCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17103,7 +16878,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<WebPushSubscriptionUpsert>;
   public v1PushNotificationsRegisterCreate(
-    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
+    requestParameters: V1PushNotificationsRegisterCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17113,7 +16888,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WebPushSubscriptionUpsert>>;
   public v1PushNotificationsRegisterCreate(
-    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
+    requestParameters: V1PushNotificationsRegisterCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17123,7 +16898,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WebPushSubscriptionUpsert>>;
   public v1PushNotificationsRegisterCreate(
-    webPushSubscriptionUpsertRequest: WebPushSubscriptionUpsertRequest,
+    requestParameters: V1PushNotificationsRegisterCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17132,6 +16907,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const webPushSubscriptionUpsertRequest = requestParameters?.webPushSubscriptionUpsertRequest;
     if (
       webPushSubscriptionUpsertRequest === null ||
       webPushSubscriptionUpsertRequest === undefined
@@ -17206,13 +16982,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/push-notifications/send-test/
-   * @param adminPushNotificationSendRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsSendTestCreate(
-    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
+    requestParameters: V1PushNotificationsSendTestCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17222,7 +16998,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<AdminPushNotificationDispatchResult>;
   public v1PushNotificationsSendTestCreate(
-    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
+    requestParameters: V1PushNotificationsSendTestCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17232,7 +17008,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<AdminPushNotificationDispatchResult>>;
   public v1PushNotificationsSendTestCreate(
-    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
+    requestParameters: V1PushNotificationsSendTestCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17242,7 +17018,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<AdminPushNotificationDispatchResult>>;
   public v1PushNotificationsSendTestCreate(
-    adminPushNotificationSendRequest: AdminPushNotificationSendRequest,
+    requestParameters: V1PushNotificationsSendTestCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17251,6 +17027,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const adminPushNotificationSendRequest = requestParameters?.adminPushNotificationSendRequest;
     if (
       adminPushNotificationSendRequest === null ||
       adminPushNotificationSendRequest === undefined
@@ -17325,13 +17102,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/push-notifications/send-test-whatsapp/
-   * @param adminWhatsappTestSendRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
+    requestParameters?: V1PushNotificationsSendTestWhatsappCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17341,7 +17118,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<AdminWhatsappTestSendResponse>;
   public v1PushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
+    requestParameters?: V1PushNotificationsSendTestWhatsappCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17351,7 +17128,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<AdminWhatsappTestSendResponse>>;
   public v1PushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
+    requestParameters?: V1PushNotificationsSendTestWhatsappCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17361,7 +17138,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<AdminWhatsappTestSendResponse>>;
   public v1PushNotificationsSendTestWhatsappCreate(
-    adminWhatsappTestSendRequest?: AdminWhatsappTestSendRequest,
+    requestParameters?: V1PushNotificationsSendTestWhatsappCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17370,6 +17147,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const adminWhatsappTestSendRequest = requestParameters?.adminWhatsappTestSendRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -17523,13 +17302,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/push-notifications/test/
-   * @param pushNotificationTestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsTestCreate(
-    pushNotificationTestRequest?: PushNotificationTestRequest,
+    requestParameters?: V1PushNotificationsTestCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17539,7 +17318,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PushNotificationDispatchResult>;
   public v1PushNotificationsTestCreate(
-    pushNotificationTestRequest?: PushNotificationTestRequest,
+    requestParameters?: V1PushNotificationsTestCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17549,7 +17328,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PushNotificationDispatchResult>>;
   public v1PushNotificationsTestCreate(
-    pushNotificationTestRequest?: PushNotificationTestRequest,
+    requestParameters?: V1PushNotificationsTestCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17559,7 +17338,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PushNotificationDispatchResult>>;
   public v1PushNotificationsTestCreate(
-    pushNotificationTestRequest?: PushNotificationTestRequest,
+    requestParameters?: V1PushNotificationsTestCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17568,6 +17347,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const pushNotificationTestRequest = requestParameters?.pushNotificationTestRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -17633,13 +17414,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/push-notifications/unregister/
-   * @param webPushSubscriptionDeleteRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1PushNotificationsUnregisterCreate(
-    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
+    requestParameters: V1PushNotificationsUnregisterCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17649,7 +17430,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<PushNotificationUnregisterResponse>;
   public v1PushNotificationsUnregisterCreate(
-    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
+    requestParameters: V1PushNotificationsUnregisterCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17659,7 +17440,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<PushNotificationUnregisterResponse>>;
   public v1PushNotificationsUnregisterCreate(
-    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
+    requestParameters: V1PushNotificationsUnregisterCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17669,7 +17450,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<PushNotificationUnregisterResponse>>;
   public v1PushNotificationsUnregisterCreate(
-    webPushSubscriptionDeleteRequest: WebPushSubscriptionDeleteRequest,
+    requestParameters: V1PushNotificationsUnregisterCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17678,6 +17459,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const webPushSubscriptionDeleteRequest = requestParameters?.webPushSubscriptionDeleteRequest;
     if (
       webPushSubscriptionDeleteRequest === null ||
       webPushSubscriptionDeleteRequest === undefined
@@ -17934,13 +17716,13 @@ export class V1Service extends BaseService {
   /**
    * List and create application settings
    * @endpoint post /api/v1/server-management/app-settings/
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ServerManagementAppSettingsCreate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementAppSettingsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -17950,7 +17732,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ServerManagementAppSettingsCreate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementAppSettingsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -17960,7 +17742,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ServerManagementAppSettingsCreate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementAppSettingsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -17970,7 +17752,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ServerManagementAppSettingsCreate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementAppSettingsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -17979,6 +17761,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const requestBody = requestParameters?.requestBody;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -18041,13 +17825,13 @@ export class V1Service extends BaseService {
   /**
    * Update or delete single application setting
    * @endpoint delete /api/v1/server-management/app-settings/{name}/
-   * @param name Case-insensitive application setting name.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ServerManagementAppSettingsDestroy(
-    name: string,
+    requestParameters: V1ServerManagementAppSettingsDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -18057,7 +17841,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ServerManagementAppSettingsDestroy(
-    name: string,
+    requestParameters: V1ServerManagementAppSettingsDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -18067,7 +17851,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ServerManagementAppSettingsDestroy(
-    name: string,
+    requestParameters: V1ServerManagementAppSettingsDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -18077,7 +17861,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ServerManagementAppSettingsDestroy(
-    name: string,
+    requestParameters: V1ServerManagementAppSettingsDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -18086,6 +17870,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const name = requestParameters?.name;
     if (name === null || name === undefined) {
       throw new Error(
         'Required parameter name was null or undefined when calling v1ServerManagementAppSettingsDestroy.',
@@ -18141,15 +17926,13 @@ export class V1Service extends BaseService {
   /**
    * Update or delete single application setting
    * @endpoint patch /api/v1/server-management/app-settings/{name}/
-   * @param name Case-insensitive application setting name.
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ServerManagementAppSettingsPartialUpdate(
-    name: string,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1ServerManagementAppSettingsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -18159,8 +17942,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ServerManagementAppSettingsPartialUpdate(
-    name: string,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1ServerManagementAppSettingsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -18170,8 +17952,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ServerManagementAppSettingsPartialUpdate(
-    name: string,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1ServerManagementAppSettingsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -18181,8 +17962,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ServerManagementAppSettingsPartialUpdate(
-    name: string,
-    requestBody?: { [key: string]: any },
+    requestParameters: V1ServerManagementAppSettingsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -18191,11 +17971,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const name = requestParameters?.name;
     if (name === null || name === undefined) {
       throw new Error(
         'Required parameter name was null or undefined when calling v1ServerManagementAppSettingsPartialUpdate.',
       );
     }
+    const requestBody = requestParameters?.requestBody;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -18709,15 +18491,13 @@ export class V1Service extends BaseService {
    * Run calendar sync health check
    * Report stuck pending application calendar sync events.
    * @endpoint get /api/v1/server-management/calendar-sync-health/
-   * @param sampleLimit Maximum number of stuck event samples returned.
-   * @param stuckAfterMinutes Pending sync threshold in minutes.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ServerManagementCalendarSyncHealthRetrieve(
-    sampleLimit?: number,
-    stuckAfterMinutes?: number,
+    requestParameters?: V1ServerManagementCalendarSyncHealthRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -18727,8 +18507,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ServerManagementCalendarSyncHealthRetrieve(
-    sampleLimit?: number,
-    stuckAfterMinutes?: number,
+    requestParameters?: V1ServerManagementCalendarSyncHealthRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -18738,8 +18517,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ServerManagementCalendarSyncHealthRetrieve(
-    sampleLimit?: number,
-    stuckAfterMinutes?: number,
+    requestParameters?: V1ServerManagementCalendarSyncHealthRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -18749,8 +18527,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ServerManagementCalendarSyncHealthRetrieve(
-    sampleLimit?: number,
-    stuckAfterMinutes?: number,
+    requestParameters?: V1ServerManagementCalendarSyncHealthRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -18759,6 +18536,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const sampleLimit = requestParameters?.sampleLimit;
+    const stuckAfterMinutes = requestParameters?.stuckAfterMinutes;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -18828,13 +18608,13 @@ export class V1Service extends BaseService {
    * Clear application cache
    * Clear application cache.  Supports two modes: 1. Global cache clear (default): Clears all cache entries 2. Per-user cache clear: Increments user\&#39;s cache version for O(1) invalidation  Query Parameters:     user_id (optional): User ID for per-user cache clearing
    * @endpoint post /api/v1/server-management/clear-cache/
-   * @param userId Optional user ID for per-user cache clearing. If omitted, clears global cache.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ServerManagementClearCacheCreate(
-    userId?: number,
+    requestParameters?: V1ServerManagementClearCacheCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -18844,7 +18624,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ServerManagementClearCacheCreate(
-    userId?: number,
+    requestParameters?: V1ServerManagementClearCacheCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -18854,7 +18634,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ServerManagementClearCacheCreate(
-    userId?: number,
+    requestParameters?: V1ServerManagementClearCacheCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -18864,7 +18644,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ServerManagementClearCacheCreate(
-    userId?: number,
+    requestParameters?: V1ServerManagementClearCacheCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -18873,6 +18653,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const userId = requestParameters?.userId;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -18933,13 +18715,13 @@ export class V1Service extends BaseService {
   /**
    * Get or update local resilience settings
    * @endpoint patch /api/v1/server-management/local-resilience/
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ServerManagementLocalResiliencePartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementLocalResiliencePartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -18949,7 +18731,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ServerManagementLocalResiliencePartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementLocalResiliencePartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -18959,7 +18741,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ServerManagementLocalResiliencePartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementLocalResiliencePartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -18969,7 +18751,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ServerManagementLocalResiliencePartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementLocalResiliencePartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -18978,6 +18760,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const requestBody = requestParameters?.requestBody;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -19219,13 +19003,13 @@ export class V1Service extends BaseService {
    * Clean unlinked media files
    * Delete unlinked media files from the active media store.
    * @endpoint post /api/v1/server-management/media-cleanup/
-   * @param mediaCleanupRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ServerManagementMediaCleanupCreate(
-    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
+    requestParameters?: V1ServerManagementMediaCleanupCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -19235,7 +19019,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ServerManagementMediaCleanupCreate(
-    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
+    requestParameters?: V1ServerManagementMediaCleanupCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -19245,7 +19029,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ServerManagementMediaCleanupCreate(
-    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
+    requestParameters?: V1ServerManagementMediaCleanupCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -19255,7 +19039,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ServerManagementMediaCleanupCreate(
-    mediaCleanupRequestRequest?: MediaCleanupRequestRequest,
+    requestParameters?: V1ServerManagementMediaCleanupCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -19264,6 +19048,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const mediaCleanupRequestRequest = requestParameters?.mediaCleanupRequestRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -19507,13 +19293,13 @@ export class V1Service extends BaseService {
    * Get or update OpenRouter status and AI model usage
    * Return OpenRouter credit status and AI model usage by feature.  PATCH accepts DB overrides for supported AI runtime setting names.
    * @endpoint patch /api/v1/server-management/openrouter-status/
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ServerManagementOpenrouterStatusPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementOpenrouterStatusPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -19523,7 +19309,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ServerManagementOpenrouterStatusPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementOpenrouterStatusPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -19533,7 +19319,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ServerManagementOpenrouterStatusPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementOpenrouterStatusPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -19543,7 +19329,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ServerManagementOpenrouterStatusPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementOpenrouterStatusPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -19552,6 +19338,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const requestBody = requestParameters?.requestBody;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -19704,13 +19492,13 @@ export class V1Service extends BaseService {
   /**
    * Get or update global UI settings
    * @endpoint patch /api/v1/server-management/ui-settings/
-   * @param requestBody
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1ServerManagementUiSettingsPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementUiSettingsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -19720,7 +19508,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1ServerManagementUiSettingsPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementUiSettingsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -19730,7 +19518,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1ServerManagementUiSettingsPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementUiSettingsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -19740,7 +19528,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1ServerManagementUiSettingsPartialUpdate(
-    requestBody?: { [key: string]: any },
+    requestParameters?: V1ServerManagementUiSettingsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -19749,6 +19537,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const requestBody = requestParameters?.requestBody;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -19900,15 +19690,13 @@ export class V1Service extends BaseService {
   /**
    * Pull sync changes
    * @endpoint get /api/v1/sync/changes/pull/
-   * @param afterSeq
-   * @param limit
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1SyncChangesPullRetrieve(
-    afterSeq?: number,
-    limit?: number,
+    requestParameters?: V1SyncChangesPullRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -19918,8 +19706,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1SyncChangesPullRetrieve(
-    afterSeq?: number,
-    limit?: number,
+    requestParameters?: V1SyncChangesPullRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -19929,8 +19716,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1SyncChangesPullRetrieve(
-    afterSeq?: number,
-    limit?: number,
+    requestParameters?: V1SyncChangesPullRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -19940,8 +19726,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1SyncChangesPullRetrieve(
-    afterSeq?: number,
-    limit?: number,
+    requestParameters?: V1SyncChangesPullRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -19950,6 +19735,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const afterSeq = requestParameters?.afterSeq;
+    const limit = requestParameters?.limit;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -20166,15 +19954,13 @@ export class V1Service extends BaseService {
   /**
    * Get media manifest
    * @endpoint get /api/v1/sync/media/manifest/
-   * @param afterUpdatedAt
-   * @param limit
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1SyncMediaManifestRetrieve(
-    afterUpdatedAt?: string,
-    limit?: number,
+    requestParameters?: V1SyncMediaManifestRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -20184,8 +19970,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public v1SyncMediaManifestRetrieve(
-    afterUpdatedAt?: string,
-    limit?: number,
+    requestParameters?: V1SyncMediaManifestRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -20195,8 +19980,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public v1SyncMediaManifestRetrieve(
-    afterUpdatedAt?: string,
-    limit?: number,
+    requestParameters?: V1SyncMediaManifestRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -20206,8 +19990,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public v1SyncMediaManifestRetrieve(
-    afterUpdatedAt?: string,
-    limit?: number,
+    requestParameters?: V1SyncMediaManifestRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -20216,6 +19999,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const afterUpdatedAt = requestParameters?.afterUpdatedAt;
+    const limit = requestParameters?.limit;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -20352,13 +20138,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/tasks/
-   * @param googleTaskRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1TasksCreate(
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -20368,7 +20154,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<GoogleTask>;
   public v1TasksCreate(
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -20378,7 +20164,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<GoogleTask>>;
   public v1TasksCreate(
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -20388,7 +20174,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<GoogleTask>>;
   public v1TasksCreate(
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -20397,6 +20183,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const googleTaskRequest = requestParameters?.googleTaskRequest;
     if (googleTaskRequest === null || googleTaskRequest === undefined) {
       throw new Error(
         'Required parameter googleTaskRequest was null or undefined when calling v1TasksCreate.',
@@ -20464,35 +20251,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint delete /api/v1/tasks/{id}/
-   * @param id
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1TasksDestroy(
-    id: string,
+    requestParameters: V1TasksDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1TasksDestroy(
-    id: string,
+    requestParameters: V1TasksDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1TasksDestroy(
-    id: string,
+    requestParameters: V1TasksDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1TasksDestroy(
-    id: string,
+    requestParameters: V1TasksDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1TasksDestroy.');
     }
@@ -20633,15 +20421,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/tasks/{id}/
-   * @param id
-   * @param googleTaskRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1TasksPartialUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -20651,8 +20437,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<GoogleTask>;
   public v1TasksPartialUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -20662,8 +20447,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<GoogleTask>>;
   public v1TasksPartialUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -20673,8 +20457,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<GoogleTask>>;
   public v1TasksPartialUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -20683,11 +20466,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1TasksPartialUpdate.',
       );
     }
+    const googleTaskRequest = requestParameters?.googleTaskRequest;
     if (googleTaskRequest === null || googleTaskRequest === undefined) {
       throw new Error(
         'Required parameter googleTaskRequest was null or undefined when calling v1TasksPartialUpdate.',
@@ -20755,13 +20540,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/tasks/{id}/
-   * @param id
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1TasksRetrieve(
-    id: string,
+    requestParameters: V1TasksRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -20771,7 +20556,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<GoogleTask>;
   public v1TasksRetrieve(
-    id: string,
+    requestParameters: V1TasksRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -20781,7 +20566,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<GoogleTask>>;
   public v1TasksRetrieve(
-    id: string,
+    requestParameters: V1TasksRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -20791,7 +20576,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<GoogleTask>>;
   public v1TasksRetrieve(
-    id: string,
+    requestParameters: V1TasksRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -20800,6 +20585,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1TasksRetrieve.');
     }
@@ -20852,15 +20638,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/tasks/{id}/
-   * @param id
-   * @param googleTaskRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1TasksUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -20870,8 +20654,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<GoogleTask>;
   public v1TasksUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -20881,8 +20664,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<GoogleTask>>;
   public v1TasksUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -20892,8 +20674,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<GoogleTask>>;
   public v1TasksUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: V1TasksUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -20902,9 +20683,11 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling v1TasksUpdate.');
     }
+    const googleTaskRequest = requestParameters?.googleTaskRequest;
     if (googleTaskRequest === null || googleTaskRequest === undefined) {
       throw new Error(
         'Required parameter googleTaskRequest was null or undefined when calling v1TasksUpdate.',
@@ -20973,13 +20756,13 @@ export class V1Service extends BaseService {
   /**
    * Takes a refresh type JSON web token and returns an access type JSON web token if the refresh token is valid.
    * @endpoint post /api/v1/token/refresh/
-   * @param customTokenRefreshRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1TokenRefreshCreate(
-    customTokenRefreshRequest?: CustomTokenRefreshRequest,
+    requestParameters?: V1TokenRefreshCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -20989,7 +20772,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<CustomTokenRefresh>;
   public v1TokenRefreshCreate(
-    customTokenRefreshRequest?: CustomTokenRefreshRequest,
+    requestParameters?: V1TokenRefreshCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -20999,7 +20782,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<CustomTokenRefresh>>;
   public v1TokenRefreshCreate(
-    customTokenRefreshRequest?: CustomTokenRefreshRequest,
+    requestParameters?: V1TokenRefreshCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -21009,7 +20792,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<CustomTokenRefresh>>;
   public v1TokenRefreshCreate(
-    customTokenRefreshRequest?: CustomTokenRefreshRequest,
+    requestParameters?: V1TokenRefreshCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -21018,6 +20801,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customTokenRefreshRequest = requestParameters?.customTokenRefreshRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     const localVarHttpHeaderAcceptSelected: string | undefined =
@@ -21069,45 +20854,42 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/user-profile/change_password/
-   * @param oldPassword
-   * @param newPassword
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1UserProfileChangePasswordCreate(
-    oldPassword: string,
-    newPassword: string,
+    requestParameters: V1UserProfileChangePasswordCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1UserProfileChangePasswordCreate(
-    oldPassword: string,
-    newPassword: string,
+    requestParameters: V1UserProfileChangePasswordCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1UserProfileChangePasswordCreate(
-    oldPassword: string,
-    newPassword: string,
+    requestParameters: V1UserProfileChangePasswordCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1UserProfileChangePasswordCreate(
-    oldPassword: string,
-    newPassword: string,
+    requestParameters: V1UserProfileChangePasswordCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const oldPassword = requestParameters?.oldPassword;
     if (oldPassword === null || oldPassword === undefined) {
       throw new Error(
         'Required parameter oldPassword was null or undefined when calling v1UserProfileChangePasswordCreate.',
       );
     }
+    const newPassword = requestParameters?.newPassword;
     if (newPassword === null || newPassword === undefined) {
       throw new Error(
         'Required parameter newPassword was null or undefined when calling v1UserProfileChangePasswordCreate.',
@@ -21191,17 +20973,13 @@ export class V1Service extends BaseService {
   /**
    * Logout current user and record it in Django.
    * @endpoint post /api/v1/user-profile/logout/
-   * @param email
-   * @param firstName
-   * @param lastName
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1UserProfileLogoutCreate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: V1UserProfileLogoutCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -21211,9 +20989,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<UserProfile>;
   public v1UserProfileLogoutCreate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: V1UserProfileLogoutCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -21223,9 +20999,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<UserProfile>>;
   public v1UserProfileLogoutCreate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: V1UserProfileLogoutCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -21235,9 +21009,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<UserProfile>>;
   public v1UserProfileLogoutCreate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: V1UserProfileLogoutCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -21246,6 +21018,10 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const email = requestParameters?.email;
+    const firstName = requestParameters?.firstName;
+    const lastName = requestParameters?.lastName;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -21415,17 +21191,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/user-profile/update_profile/
-   * @param email
-   * @param firstName
-   * @param lastName
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1UserProfileUpdateProfilePartialUpdate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: V1UserProfileUpdateProfilePartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -21435,9 +21207,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<UserProfile>;
   public v1UserProfileUpdateProfilePartialUpdate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: V1UserProfileUpdateProfilePartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -21447,9 +21217,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<UserProfile>>;
   public v1UserProfileUpdateProfilePartialUpdate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: V1UserProfileUpdateProfilePartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -21459,9 +21227,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<UserProfile>>;
   public v1UserProfileUpdateProfilePartialUpdate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: V1UserProfileUpdateProfilePartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -21470,6 +21236,10 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const email = requestParameters?.email;
+    const firstName = requestParameters?.firstName;
+    const lastName = requestParameters?.lastName;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -21551,13 +21321,13 @@ export class V1Service extends BaseService {
   /**
    * Upload user profile picture.
    * @endpoint post /api/v1/user-profile/upload_avatar/
-   * @param avatar
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1UserProfileUploadAvatarCreate(
-    avatar: Blob,
+    requestParameters: V1UserProfileUploadAvatarCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -21567,7 +21337,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<UserProfile>;
   public v1UserProfileUploadAvatarCreate(
-    avatar: Blob,
+    requestParameters: V1UserProfileUploadAvatarCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -21577,7 +21347,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<UserProfile>>;
   public v1UserProfileUploadAvatarCreate(
-    avatar: Blob,
+    requestParameters: V1UserProfileUploadAvatarCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -21587,7 +21357,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<UserProfile>>;
   public v1UserProfileUploadAvatarCreate(
-    avatar: Blob,
+    requestParameters: V1UserProfileUploadAvatarCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -21596,6 +21366,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const avatar = requestParameters?.avatar;
     if (avatar === null || avatar === undefined) {
       throw new Error(
         'Required parameter avatar was null or undefined when calling v1UserProfileUploadAvatarCreate.',
@@ -21674,13 +21445,13 @@ export class V1Service extends BaseService {
   /**
    * Retrieve or partially update current user\&#39;s settings.  Supports GET and PATCH on the same URL &#x60;/me/&#x60;.
    * @endpoint patch /api/v1/user-settings/me/
-   * @param userSettingsRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1UserSettingsMePartialUpdate(
-    userSettingsRequest?: UserSettingsRequest,
+    requestParameters?: V1UserSettingsMePartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -21690,7 +21461,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<UserSettings>;
   public v1UserSettingsMePartialUpdate(
-    userSettingsRequest?: UserSettingsRequest,
+    requestParameters?: V1UserSettingsMePartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -21700,7 +21471,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<UserSettings>>;
   public v1UserSettingsMePartialUpdate(
-    userSettingsRequest?: UserSettingsRequest,
+    requestParameters?: V1UserSettingsMePartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -21710,7 +21481,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<UserSettings>>;
   public v1UserSettingsMePartialUpdate(
-    userSettingsRequest?: UserSettingsRequest,
+    requestParameters?: V1UserSettingsMePartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -21719,6 +21490,8 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const userSettingsRequest = requestParameters?.userSettingsRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -21869,13 +21642,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/workflow-notifications/{id}/cancel/
-   * @param id A unique integer value identifying this workflow notification.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsCancelCreate(
-    id: number,
+    requestParameters: V1WorkflowNotificationsCancelCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -21885,7 +21658,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsCancelCreate(
-    id: number,
+    requestParameters: V1WorkflowNotificationsCancelCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -21895,7 +21668,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsCancelCreate(
-    id: number,
+    requestParameters: V1WorkflowNotificationsCancelCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -21905,7 +21678,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsCancelCreate(
-    id: number,
+    requestParameters: V1WorkflowNotificationsCancelCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -21914,6 +21687,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1WorkflowNotificationsCancelCreate.',
@@ -21968,13 +21742,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/workflow-notifications/
-   * @param workflowNotificationRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsCreate(
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -21984,7 +21758,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsCreate(
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -21994,7 +21768,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsCreate(
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -22004,7 +21778,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsCreate(
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -22013,6 +21787,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const workflowNotificationRequest = requestParameters?.workflowNotificationRequest;
     if (workflowNotificationRequest === null || workflowNotificationRequest === undefined) {
       throw new Error(
         'Required parameter workflowNotificationRequest was null or undefined when calling v1WorkflowNotificationsCreate.',
@@ -22080,35 +21855,36 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint delete /api/v1/workflow-notifications/{id}/
-   * @param id A unique integer value identifying this workflow notification.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsDestroy(
-    id: number,
+    requestParameters: V1WorkflowNotificationsDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public v1WorkflowNotificationsDestroy(
-    id: number,
+    requestParameters: V1WorkflowNotificationsDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public v1WorkflowNotificationsDestroy(
-    id: number,
+    requestParameters: V1WorkflowNotificationsDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public v1WorkflowNotificationsDestroy(
-    id: number,
+    requestParameters: V1WorkflowNotificationsDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1WorkflowNotificationsDestroy.',
@@ -22163,15 +21939,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/workflow-notifications/
-   * @param ordering Which field to use when ordering the results.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1WorkflowNotificationsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -22181,8 +21955,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<Array<WorkflowNotification>>;
   public v1WorkflowNotificationsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1WorkflowNotificationsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -22192,8 +21965,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<Array<WorkflowNotification>>>;
   public v1WorkflowNotificationsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1WorkflowNotificationsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -22203,8 +21975,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<Array<WorkflowNotification>>>;
   public v1WorkflowNotificationsList(
-    ordering?: string,
-    search?: string,
+    requestParameters?: V1WorkflowNotificationsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -22213,6 +21984,9 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -22284,15 +22058,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint patch /api/v1/workflow-notifications/{id}/
-   * @param id A unique integer value identifying this workflow notification.
-   * @param workflowNotificationRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsPartialUpdate(
-    id: number,
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -22302,8 +22074,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsPartialUpdate(
-    id: number,
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -22313,8 +22084,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsPartialUpdate(
-    id: number,
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -22324,8 +22094,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsPartialUpdate(
-    id: number,
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -22334,11 +22103,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1WorkflowNotificationsPartialUpdate.',
       );
     }
+    const workflowNotificationRequest = requestParameters?.workflowNotificationRequest;
     if (workflowNotificationRequest === null || workflowNotificationRequest === undefined) {
       throw new Error(
         'Required parameter workflowNotificationRequest was null or undefined when calling v1WorkflowNotificationsPartialUpdate.',
@@ -22406,13 +22177,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint post /api/v1/workflow-notifications/{id}/resend/
-   * @param id A unique integer value identifying this workflow notification.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsResendCreate(
-    id: number,
+    requestParameters: V1WorkflowNotificationsResendCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -22422,7 +22193,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsResendCreate(
-    id: number,
+    requestParameters: V1WorkflowNotificationsResendCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -22432,7 +22203,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsResendCreate(
-    id: number,
+    requestParameters: V1WorkflowNotificationsResendCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -22442,7 +22213,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsResendCreate(
-    id: number,
+    requestParameters: V1WorkflowNotificationsResendCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -22451,6 +22222,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1WorkflowNotificationsResendCreate.',
@@ -22505,13 +22277,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint get /api/v1/workflow-notifications/{id}/
-   * @param id A unique integer value identifying this workflow notification.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsRetrieve(
-    id: number,
+    requestParameters: V1WorkflowNotificationsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -22521,7 +22293,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsRetrieve(
-    id: number,
+    requestParameters: V1WorkflowNotificationsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -22531,7 +22303,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsRetrieve(
-    id: number,
+    requestParameters: V1WorkflowNotificationsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -22541,7 +22313,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsRetrieve(
-    id: number,
+    requestParameters: V1WorkflowNotificationsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -22550,6 +22322,7 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1WorkflowNotificationsRetrieve.',
@@ -22604,15 +22377,13 @@ export class V1Service extends BaseService {
 
   /**
    * @endpoint put /api/v1/workflow-notifications/{id}/
-   * @param id A unique integer value identifying this workflow notification.
-   * @param workflowNotificationRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public v1WorkflowNotificationsUpdate(
-    id: number,
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -22622,8 +22393,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<WorkflowNotification>;
   public v1WorkflowNotificationsUpdate(
-    id: number,
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -22633,8 +22403,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpResponse<WorkflowNotification>>;
   public v1WorkflowNotificationsUpdate(
-    id: number,
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -22644,8 +22413,7 @@ export class V1Service extends BaseService {
     },
   ): Observable<HttpEvent<WorkflowNotification>>;
   public v1WorkflowNotificationsUpdate(
-    id: number,
-    workflowNotificationRequest: WorkflowNotificationRequest,
+    requestParameters: V1WorkflowNotificationsUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -22654,11 +22422,13 @@ export class V1Service extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling v1WorkflowNotificationsUpdate.',
       );
     }
+    const workflowNotificationRequest = requestParameters?.workflowNotificationRequest;
     if (workflowNotificationRequest === null || workflowNotificationRequest === undefined) {
       throw new Error(
         'Required parameter workflowNotificationRequest was null or undefined when calling v1WorkflowNotificationsUpdate.',

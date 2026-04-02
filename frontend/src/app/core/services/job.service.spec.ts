@@ -1,12 +1,12 @@
 import { firstValueFrom, of, Subject, throwError, takeWhile } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AsyncJob } from '@/core/api';
+import { AsyncJobStatusEnum, type AsyncJob } from '@/core/api';
 import { JobService } from './job.service';
 
 type JobUpdate = {
   jobId: string;
-  status: AsyncJob.StatusEnum;
+  status: AsyncJobStatusEnum;
   progress: number;
   result?: Record<string, unknown>;
 };
@@ -15,13 +15,15 @@ describe('JobService.watchJob', () => {
   it('uses the per-job SSE endpoint as the primary stream', async () => {
     const service = Object.create(JobService.prototype) as any;
     service.realtimeService = {
-      watchJob: vi.fn(() => of({ jobId: 'job-1', status: 'completed', progress: 100 })),
+      watchJob: vi.fn(() =>
+        of({ jobId: 'job-1', status: AsyncJobStatusEnum.Completed, progress: 100 }),
+      ),
     };
     service.sseService = {
       connect: vi.fn(() =>
         of({
           jobId: 'job-1',
-          status: 'processing',
+          status: AsyncJobStatusEnum.Processing,
           progress: 25,
           message: 'Reading passport image...',
         }),
@@ -54,10 +56,10 @@ describe('JobService.watchJob', () => {
       complete: completeSpy,
     });
 
-    updates$.next({ jobId: 'job-1', status: 'processing', progress: 25 });
+    updates$.next({ jobId: 'job-1', status: AsyncJobStatusEnum.Processing, progress: 25 });
     expect(completeSpy).not.toHaveBeenCalled();
 
-    updates$.next({ jobId: 'job-1', status: 'completed', progress: 100 });
+    updates$.next({ jobId: 'job-1', status: AsyncJobStatusEnum.Completed, progress: 100 });
 
     expect(nextSpy).toHaveBeenCalledTimes(2);
     expect(completeSpy).toHaveBeenCalledTimes(1);
@@ -70,7 +72,14 @@ describe('JobService.watchJob', () => {
     const updates$ = new Subject<JobUpdate>();
     service.realtimeService = {
       watchJob: vi.fn(() =>
-        updates$.pipe(takeWhile((job) => job.status !== 'completed' && job.status !== 'failed', true)),
+        updates$.pipe(
+          takeWhile(
+            (job) =>
+              job.status !== AsyncJobStatusEnum.Completed &&
+              job.status !== AsyncJobStatusEnum.Failed,
+            true,
+          ),
+        ),
       ),
     };
     service.sseService = {
@@ -84,10 +93,10 @@ describe('JobService.watchJob', () => {
       complete: completeSpy,
     });
 
-    updates$.next({ jobId: 'job-2', status: 'processing', progress: 25 });
+    updates$.next({ jobId: 'job-2', status: AsyncJobStatusEnum.Processing, progress: 25 });
     updates$.next({
       jobId: 'job-2',
-      status: 'completed',
+      status: AsyncJobStatusEnum.Completed,
       progress: 100,
       result: { isValid: true },
     });

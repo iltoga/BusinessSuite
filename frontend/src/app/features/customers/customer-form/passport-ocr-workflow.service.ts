@@ -2,7 +2,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { type FormGroup } from '@angular/forms';
 import { Subscription } from 'rxjs';
 
-import { AsyncJob } from '@/core/api';
+import { AsyncJobStatusEnum, type AsyncJob } from '@/core/api';
 import { JobService } from '@/core/services/job.service';
 import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service';
 import { extractJobId } from '@/core/utils/async-job-contract';
@@ -82,7 +82,7 @@ export class PassportOcrWorkflowService {
 
     this.pollSub = this.jobService.watchJob(jobId).subscribe({
       next: (jobStatus: AsyncJob) => {
-        if (jobStatus.status === 'completed') {
+        if (jobStatus.status === AsyncJobStatusEnum.Completed) {
           const jobResult = (jobStatus.result as AsyncJobResultPayload) || {};
           const result: OcrStatusResponse = {
             ...jobResult,
@@ -94,7 +94,7 @@ export class PassportOcrWorkflowService {
           return;
         }
 
-        if (jobStatus.status === 'failed') {
+        if (jobStatus.status === AsyncJobStatusEnum.Failed) {
           this.clearAsyncTracking();
           this.ocrProcessing.set(false);
           const jobResult = (jobStatus.result as AsyncJobResultPayload) || {};

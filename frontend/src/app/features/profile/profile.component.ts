@@ -198,7 +198,7 @@ export class ProfileComponent implements OnInit {
   private uploadAvatar(file: File): void {
     this.isSaving.set(true);
     this.userProfileService
-      .userProfileUploadAvatarCreate(file)
+      .userProfileUploadAvatarCreate({ avatar: file })
       .pipe(finalize(() => this.isSaving.set(false)))
       .subscribe({
         next: (updated) => {
@@ -220,11 +220,11 @@ export class ProfileComponent implements OnInit {
 
     this.isSaving.set(true);
     this.userProfileService
-      .userProfileUpdateProfilePartialUpdate(
-        rawValues.email,
-        rawValues.firstName,
-        rawValues.lastName,
-      )
+      .userProfileUpdateProfilePartialUpdate({
+        email: rawValues.email,
+        firstName: rawValues.firstName,
+        lastName: rawValues.lastName,
+      })
       .pipe(finalize(() => this.isSaving.set(false)))
       .subscribe({
         next: (updated) => {
@@ -249,7 +249,7 @@ export class ProfileComponent implements OnInit {
     const { oldPassword, newPassword } = this.passwordForm.getRawValue();
     this.isSaving.set(true);
     this.userProfileService
-      .userProfileChangePasswordCreate(oldPassword, newPassword)
+      .userProfileChangePasswordCreate({ oldPassword, newPassword })
       .pipe(finalize(() => this.isSaving.set(false)))
       .subscribe({
         next: () => {
@@ -379,8 +379,9 @@ export class ProfileComponent implements OnInit {
 
   clearUserCache(): void {
     this.cacheLoading.set(true);
+    const profile = this.profile();
     this.serverManagementApi
-      .serverManagementClearCacheCreate()
+      .serverManagementClearCacheCreate({ userId: profile?.id })
       .pipe(finalize(() => this.cacheLoading.set(false)))
       .subscribe({
         next: (response) => {

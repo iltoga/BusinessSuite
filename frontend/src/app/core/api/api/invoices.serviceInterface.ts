@@ -13,15 +13,25 @@ import { Observable } from 'rxjs';
 
 import { InvoiceCreateUpdate } from '../model/models';
 import { InvoiceCreateUpdateRequest } from '../model/models';
+import { InvoiceDeletePreviewResponse } from '../model/models';
 import { InvoiceDetail } from '../model/models';
+import { InvoiceForceDeleteRequestRequest } from '../model/models';
+import { InvoiceForceDeleteResponse } from '../model/models';
+import { InvoiceFromApplicationPrefillResponse } from '../model/models';
 import { InvoiceList } from '../model/models';
+import { InvoiceMarkAsPaidRequestRequest } from '../model/models';
+import { InvoiceMarkAsPaidResponse } from '../model/models';
+import { InvoiceProposalResponse } from '../model/models';
+import { InvoicesBulkDeleteRequestRequest } from '../model/models';
+import { InvoicesBulkDeleteResponse } from '../model/models';
+import { PaginatedBillableProductRowList } from '../model/models';
 import { PaginatedDocApplicationInvoiceList } from '../model/models';
 import { PaginatedInvoiceListList } from '../model/models';
 
 import { Configuration } from '../configuration';
 
 export interface InvoicesBulkDeleteCreateRequestParams {
-  requestBody?: { [key: string]: any };
+  invoicesBulkDeleteRequestRequest?: InvoicesBulkDeleteRequestRequest;
 }
 
 export interface InvoicesCreateRequestParams {
@@ -60,16 +70,20 @@ export interface InvoicesDownloadRetrieveRequestParams {
 
 export interface InvoicesForceDeleteCreateRequestParams {
   id: number;
-  requestBody?: { [key: string]: any };
+  invoiceForceDeleteRequestRequest?: InvoiceForceDeleteRequestRequest;
 }
 
 export interface InvoicesFromApplicationPrefillRetrieveRequestParams {
   applicationId: number;
 }
 
-export interface InvoicesGetBillableProductsRetrieveRequestParams {
+export interface InvoicesGetBillableProductsListRequestParams {
   customerId: number;
   currentInvoiceId?: number;
+  ordering?: string;
+  page?: number;
+  pageSize?: number;
+  search?: string;
 }
 
 export interface InvoicesGetCustomerApplicationsListRequestParams {
@@ -119,7 +133,7 @@ export interface InvoicesListRequestParams {
 
 export interface InvoicesMarkAsPaidCreateRequestParams {
   id: number;
-  requestBody?: { [key: string]: any };
+  invoiceMarkAsPaidRequestRequest: InvoiceMarkAsPaidRequestRequest;
 }
 
 export interface InvoicesPartialUpdateRequestParams {
@@ -153,7 +167,7 @@ export interface InvoicesServiceInterface {
   invoicesBulkDeleteCreate(
     requestParameters: InvoicesBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoicesBulkDeleteResponse>;
 
   /**
    *
@@ -175,7 +189,7 @@ export interface InvoicesServiceInterface {
   invoicesDeletePreviewRetrieve(
     requestParameters: InvoicesDeletePreviewRetrieveRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceDeletePreviewResponse>;
 
   /**
    *
@@ -252,7 +266,7 @@ export interface InvoicesServiceInterface {
   invoicesForceDeleteCreate(
     requestParameters: InvoicesForceDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceForceDeleteResponse>;
 
   /**
    *
@@ -263,7 +277,7 @@ export interface InvoicesServiceInterface {
   invoicesFromApplicationPrefillRetrieve(
     requestParameters: InvoicesFromApplicationPrefillRetrieveRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<InvoiceFromApplicationPrefillResponse>;
 
   /**
    *
@@ -271,10 +285,10 @@ export interface InvoicesServiceInterface {
    * @endpoint get /api/invoices/get_billable_products/{customerId}/
    * @param requestParameters
    */
-  invoicesGetBillableProductsRetrieve(
-    requestParameters: InvoicesGetBillableProductsRetrieveRequestParams,
+  invoicesGetBillableProductsList(
+    requestParameters: InvoicesGetBillableProductsListRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<PaginatedBillableProductRowList>;
 
   /**
    *
@@ -369,7 +383,7 @@ export interface InvoicesServiceInterface {
   invoicesMarkAsPaidCreate(
     requestParameters: InvoicesMarkAsPaidCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<InvoiceList>;
+  ): Observable<InvoiceMarkAsPaidResponse>;
 
   /**
    *
@@ -391,7 +405,7 @@ export interface InvoicesServiceInterface {
   invoicesProposeRetrieve(
     requestParameters: InvoicesProposeRetrieveRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<InvoiceList>;
+  ): Observable<InvoiceProposalResponse>;
 
   /**
    *

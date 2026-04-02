@@ -20,7 +20,7 @@ export interface CustomerApplicationHistory {
   /**
    * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
    */
-  readonly status: CustomerApplicationHistory.StatusEnum;
+  readonly status: CustomerApplicationHistoryStatusEnum;
   readonly notes: string | null;
   readonly strField: string;
   readonly statusDisplay: string;
@@ -35,12 +35,9 @@ export interface CustomerApplicationHistory {
   readonly invoiceStatusDisplay: string;
   readonly submissionWindowLastDate: string | null;
 }
-export namespace CustomerApplicationHistory {
-  export const StatusEnum = {
-    Pending: 'pending',
-    Processing: 'processing',
-    Completed: 'completed',
-    Rejected: 'rejected',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum CustomerApplicationHistoryStatusEnum {
+  Pending = 'pending',
+  Processing = 'processing',
+  Completed = 'completed',
+  Rejected = 'rejected',
 }

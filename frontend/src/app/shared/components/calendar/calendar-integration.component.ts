@@ -1,7 +1,10 @@
 import { CalendarService } from '@/core/api/api/calendar.service';
 import { HolidaysService as HolidayService } from '@/core/api/api/holidays.service';
-import { GoogleCalendarEvent } from '@/core/api/model/google-calendar-event';
-import { GoogleCalendarEventRequest } from '@/core/api/model/google-calendar-event-request';
+import type { GoogleCalendarEvent } from '@/core/api/model/google-calendar-event';
+import {
+  GoogleCalendarEventRequestColorIdEnum,
+  type GoogleCalendarEventRequest,
+} from '@/core/api/model/google-calendar-event-request';
 import { Holiday } from '@/core/api/model/holiday';
 import { AppConfig } from '@/core/config/app.config';
 import { ConfigService } from '@/core/services/config.service';
@@ -336,7 +339,7 @@ export class CalendarIntegrationComponent implements OnInit {
   }
 
   loadHolidays(): void {
-    this.holidayService.holidaysList('date').subscribe({
+    this.holidayService.holidaysList({ ordering: 'date' }).subscribe({
       next: (data) => {
         const indonesiaHolidays = (data ?? []).filter((holiday) =>
           this.isIndonesiaHolidayCountry(holiday.country),
@@ -570,7 +573,10 @@ export class CalendarIntegrationComponent implements OnInit {
     const targetColorId = this.doneColorId();
 
     this.calendarService
-      .calendarPartialUpdate(event.id, this.buildCalendarUpdateRequest(event, { done: true }))
+      .calendarPartialUpdate({
+        id: event.id,
+        googleCalendarEventRequest: this.buildCalendarUpdateRequest(event, { done: true }),
+      })
       .pipe(finalize(() => this.setEventUpdating(event.id, false)))
       .subscribe({
         next: (updatedEvent) => {
@@ -787,7 +793,7 @@ export class CalendarIntegrationComponent implements OnInit {
       description: event.description,
       attendees: event.attendees,
       notifications: event.notifications,
-      colorId: event.colorId as GoogleCalendarEventRequest.ColorIdEnum | undefined,
+      colorId: event.colorId as GoogleCalendarEventRequestColorIdEnum | undefined,
       ...overrides,
     };
   }

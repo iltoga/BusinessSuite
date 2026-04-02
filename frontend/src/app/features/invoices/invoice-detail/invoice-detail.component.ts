@@ -118,7 +118,7 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
    * Load invoice from service
    */
   protected override loadItem(id: number): Observable<InvoiceDetail> {
-    return this.invoicesApi.invoicesRetrieve(id);
+    return this.invoicesApi.invoicesRetrieve({ id });
   }
 
   /**
@@ -341,7 +341,7 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
 
     this.isDeletingPayment.set(true);
 
-    this.paymentsApi.paymentsDestroy(payment.id).subscribe({
+    this.paymentsApi.paymentsDestroy({ id: payment.id }).subscribe({
       next: () => {
         this.toast.success('Payment deleted');
         this.isDeletingPayment.set(false);
@@ -438,7 +438,7 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
    */
   private loadInvoice(id: number): void {
     this.isLoading.set(true);
-    this.invoicesApi.invoicesRetrieve(id).subscribe({
+    this.invoicesApi.invoicesRetrieve({ id }).subscribe({
       next: (invoice: InvoiceDetail) => {
         this.item.set(invoice);
         this.isLoading.set(false);

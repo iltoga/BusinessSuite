@@ -125,7 +125,7 @@ export class SuratPermohonanComponent implements OnInit {
 
     this.isGenerating.set(true);
     this.lettersApi
-      .lettersSuratPermohonanCreate(payload, 'response')
+      .lettersSuratPermohonanCreate({ suratPermohonanRequestRequest: payload }, 'response')
       .pipe(
         finalize(() => {
           this.isGenerating.set(false);
@@ -157,7 +157,7 @@ export class SuratPermohonanComponent implements OnInit {
   }
 
   private loadCountries(): void {
-    this.countriesApi.countryCodesList(undefined, undefined).subscribe({
+    this.countriesApi.countryCodesList({}).subscribe({
       next: (countries) => {
         this.countries.set(countries ?? []);
       },
@@ -168,7 +168,7 @@ export class SuratPermohonanComponent implements OnInit {
   }
 
   private loadCustomerData(customerId: number): void {
-    this.lettersApi.lettersCustomerDataRetrieve(customerId).subscribe({
+    this.lettersApi.lettersCustomerDataRetrieve({ customerId }).subscribe({
       next: (data: SuratPermohonanCustomerData) => {
         this.form.patchValue({
           name: data.name ?? '',

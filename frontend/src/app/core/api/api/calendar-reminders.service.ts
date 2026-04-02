@@ -48,11 +48,28 @@ import { PaginatedPushNotificationUserList } from '../model/paginated-push-notif
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  CalendarRemindersServiceInterface,
+  CalendarRemindersAckCreateRequestParams,
+  CalendarRemindersBulkCreateCreateRequestParams,
+  CalendarRemindersCreateRequestParams,
+  CalendarRemindersDestroyRequestParams,
+  CalendarRemindersInboxMarkReadCreateRequestParams,
+  CalendarRemindersInboxSnoozeCreateRequestParams,
+  CalendarRemindersListRequestParams,
+  CalendarRemindersPartialUpdateRequestParams,
+  CalendarRemindersRetrieveRequestParams,
+  CalendarRemindersUpdateRequestParams,
+  CalendarRemindersUsersListRequestParams,
+} from './calendar-reminders.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class CalendarRemindersService extends BaseService {
+export class CalendarRemindersService
+  extends BaseService
+  implements CalendarRemindersServiceInterface
+{
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -64,15 +81,13 @@ export class CalendarRemindersService extends BaseService {
   /**
    * Record delivery channel for a reminder (in_app or system).
    * @endpoint post /api/calendar-reminders/{id}/ack/
-   * @param id A unique integer value identifying this calendar reminder.
-   * @param calendarReminderRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersAckCreate(
-    id: number,
-    calendarReminderRequest: CalendarReminderRequest,
+    requestParameters: CalendarRemindersAckCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -82,8 +97,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<CalendarReminder>;
   public calendarRemindersAckCreate(
-    id: number,
-    calendarReminderRequest: CalendarReminderRequest,
+    requestParameters: CalendarRemindersAckCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -93,8 +107,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminder>>;
   public calendarRemindersAckCreate(
-    id: number,
-    calendarReminderRequest: CalendarReminderRequest,
+    requestParameters: CalendarRemindersAckCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -104,8 +117,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminder>>;
   public calendarRemindersAckCreate(
-    id: number,
-    calendarReminderRequest: CalendarReminderRequest,
+    requestParameters: CalendarRemindersAckCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -114,11 +126,13 @@ export class CalendarRemindersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling calendarRemindersAckCreate.',
       );
     }
+    const calendarReminderRequest = requestParameters?.calendarReminderRequest;
     if (calendarReminderRequest === null || calendarReminderRequest === undefined) {
       throw new Error(
         'Required parameter calendarReminderRequest was null or undefined when calling calendarRemindersAckCreate.',
@@ -186,21 +200,13 @@ export class CalendarRemindersService extends BaseService {
 
   /**
    * @endpoint post /api/calendar-reminders/bulk-create/
-   * @param calendarReminderBulkCreateRequest
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CalendarRemindersBulkCreateCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -210,11 +216,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<PaginatedCalendarReminderList>;
   public calendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CalendarRemindersBulkCreateCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -224,11 +226,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCalendarReminderList>>;
   public calendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CalendarRemindersBulkCreateCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -238,11 +236,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCalendarReminderList>>;
   public calendarRemindersBulkCreateCreate(
-    calendarReminderBulkCreateRequest: CalendarReminderBulkCreateRequest,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CalendarRemindersBulkCreateCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -251,6 +245,7 @@ export class CalendarRemindersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const calendarReminderBulkCreateRequest = requestParameters?.calendarReminderBulkCreateRequest;
     if (
       calendarReminderBulkCreateRequest === null ||
       calendarReminderBulkCreateRequest === undefined
@@ -259,6 +254,10 @@ export class CalendarRemindersService extends BaseService {
         'Required parameter calendarReminderBulkCreateRequest was null or undefined when calling calendarRemindersBulkCreateCreate.',
       );
     }
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -360,13 +359,13 @@ export class CalendarRemindersService extends BaseService {
 
   /**
    * @endpoint post /api/calendar-reminders/
-   * @param calendarReminderCreateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersCreate(
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -376,7 +375,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<CalendarReminderCreate>;
   public calendarRemindersCreate(
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -386,7 +385,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderCreate>>;
   public calendarRemindersCreate(
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -396,7 +395,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderCreate>>;
   public calendarRemindersCreate(
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -405,6 +404,7 @@ export class CalendarRemindersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const calendarReminderCreateRequest = requestParameters?.calendarReminderCreateRequest;
     if (calendarReminderCreateRequest === null || calendarReminderCreateRequest === undefined) {
       throw new Error(
         'Required parameter calendarReminderCreateRequest was null or undefined when calling calendarRemindersCreate.',
@@ -472,35 +472,36 @@ export class CalendarRemindersService extends BaseService {
 
   /**
    * @endpoint delete /api/calendar-reminders/{id}/
-   * @param id A unique integer value identifying this calendar reminder.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersDestroy(
-    id: number,
+    requestParameters: CalendarRemindersDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public calendarRemindersDestroy(
-    id: number,
+    requestParameters: CalendarRemindersDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public calendarRemindersDestroy(
-    id: number,
+    requestParameters: CalendarRemindersDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public calendarRemindersDestroy(
-    id: number,
+    requestParameters: CalendarRemindersDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling calendarRemindersDestroy.',
@@ -555,13 +556,13 @@ export class CalendarRemindersService extends BaseService {
 
   /**
    * @endpoint post /api/calendar-reminders/inbox/mark-read/
-   * @param calendarReminderInboxMarkReadRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
+    requestParameters?: CalendarRemindersInboxMarkReadCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -571,7 +572,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<CalendarReminderInboxMarkRead>;
   public calendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
+    requestParameters?: CalendarRemindersInboxMarkReadCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -581,7 +582,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderInboxMarkRead>>;
   public calendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
+    requestParameters?: CalendarRemindersInboxMarkReadCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -591,7 +592,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderInboxMarkRead>>;
   public calendarRemindersInboxMarkReadCreate(
-    calendarReminderInboxMarkReadRequest?: CalendarReminderInboxMarkReadRequest,
+    requestParameters?: CalendarRemindersInboxMarkReadCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -600,6 +601,9 @@ export class CalendarRemindersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const calendarReminderInboxMarkReadRequest =
+      requestParameters?.calendarReminderInboxMarkReadRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -753,13 +757,13 @@ export class CalendarRemindersService extends BaseService {
 
   /**
    * @endpoint post /api/calendar-reminders/inbox/snooze/
-   * @param calendarReminderInboxSnoozeRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
+    requestParameters: CalendarRemindersInboxSnoozeCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -769,7 +773,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<CalendarReminderInboxSnooze>;
   public calendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
+    requestParameters: CalendarRemindersInboxSnoozeCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -779,7 +783,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderInboxSnooze>>;
   public calendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
+    requestParameters: CalendarRemindersInboxSnoozeCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -789,7 +793,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderInboxSnooze>>;
   public calendarRemindersInboxSnoozeCreate(
-    calendarReminderInboxSnoozeRequest: CalendarReminderInboxSnoozeRequest,
+    requestParameters: CalendarRemindersInboxSnoozeCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -798,6 +802,8 @@ export class CalendarRemindersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const calendarReminderInboxSnoozeRequest =
+      requestParameters?.calendarReminderInboxSnoozeRequest;
     if (
       calendarReminderInboxSnoozeRequest === null ||
       calendarReminderInboxSnoozeRequest === undefined
@@ -872,19 +878,13 @@ export class CalendarRemindersService extends BaseService {
 
   /**
    * @endpoint get /api/calendar-reminders/
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CalendarRemindersListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -894,10 +894,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<PaginatedCalendarReminderList>;
   public calendarRemindersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CalendarRemindersListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -907,10 +904,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCalendarReminderList>>;
   public calendarRemindersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CalendarRemindersListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -920,10 +914,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCalendarReminderList>>;
   public calendarRemindersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CalendarRemindersListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -932,6 +923,11 @@ export class CalendarRemindersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -1019,15 +1015,13 @@ export class CalendarRemindersService extends BaseService {
 
   /**
    * @endpoint patch /api/calendar-reminders/{id}/
-   * @param id A unique integer value identifying this calendar reminder.
-   * @param calendarReminderCreateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersPartialUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1037,8 +1031,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<CalendarReminderCreate>;
   public calendarRemindersPartialUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1048,8 +1041,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderCreate>>;
   public calendarRemindersPartialUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1059,8 +1051,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderCreate>>;
   public calendarRemindersPartialUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1069,11 +1060,13 @@ export class CalendarRemindersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling calendarRemindersPartialUpdate.',
       );
     }
+    const calendarReminderCreateRequest = requestParameters?.calendarReminderCreateRequest;
     if (calendarReminderCreateRequest === null || calendarReminderCreateRequest === undefined) {
       throw new Error(
         'Required parameter calendarReminderCreateRequest was null or undefined when calling calendarRemindersPartialUpdate.',
@@ -1141,13 +1134,13 @@ export class CalendarRemindersService extends BaseService {
 
   /**
    * @endpoint get /api/calendar-reminders/{id}/
-   * @param id A unique integer value identifying this calendar reminder.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersRetrieve(
-    id: number,
+    requestParameters: CalendarRemindersRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1157,7 +1150,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<CalendarReminder>;
   public calendarRemindersRetrieve(
-    id: number,
+    requestParameters: CalendarRemindersRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1167,7 +1160,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminder>>;
   public calendarRemindersRetrieve(
-    id: number,
+    requestParameters: CalendarRemindersRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1177,7 +1170,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminder>>;
   public calendarRemindersRetrieve(
-    id: number,
+    requestParameters: CalendarRemindersRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1186,6 +1179,7 @@ export class CalendarRemindersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling calendarRemindersRetrieve.',
@@ -1328,15 +1322,13 @@ export class CalendarRemindersService extends BaseService {
 
   /**
    * @endpoint put /api/calendar-reminders/{id}/
-   * @param id A unique integer value identifying this calendar reminder.
-   * @param calendarReminderCreateRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1346,8 +1338,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<CalendarReminderCreate>;
   public calendarRemindersUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1357,8 +1348,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpResponse<CalendarReminderCreate>>;
   public calendarRemindersUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1368,8 +1358,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpEvent<CalendarReminderCreate>>;
   public calendarRemindersUpdate(
-    id: number,
-    calendarReminderCreateRequest: CalendarReminderCreateRequest,
+    requestParameters: CalendarRemindersUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1378,11 +1367,13 @@ export class CalendarRemindersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling calendarRemindersUpdate.',
       );
     }
+    const calendarReminderCreateRequest = requestParameters?.calendarReminderCreateRequest;
     if (calendarReminderCreateRequest === null || calendarReminderCreateRequest === undefined) {
       throw new Error(
         'Required parameter calendarReminderCreateRequest was null or undefined when calling calendarRemindersUpdate.',
@@ -1450,19 +1441,13 @@ export class CalendarRemindersService extends BaseService {
 
   /**
    * @endpoint get /api/calendar-reminders/users/
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public calendarRemindersUsersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CalendarRemindersUsersListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1472,10 +1457,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<PaginatedPushNotificationUserList>;
   public calendarRemindersUsersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CalendarRemindersUsersListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1485,10 +1467,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedPushNotificationUserList>>;
   public calendarRemindersUsersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CalendarRemindersUsersListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1498,10 +1477,7 @@ export class CalendarRemindersService extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedPushNotificationUserList>>;
   public calendarRemindersUsersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CalendarRemindersUsersListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1510,6 +1486,11 @@ export class CalendarRemindersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(

@@ -297,12 +297,12 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
   protected override createListLoader(
     params: ListRequestParams,
   ): Observable<PaginatedResponse<DocApplicationList>> {
-    return this.service.customerApplicationsList(
-      params.ordering,
-      params.page,
-      params.pageSize,
-      params.query,
-    );
+    return this.service.customerApplicationsList({
+      ordering: params.ordering,
+      page: params.page,
+      pageSize: params.pageSize,
+      search: params.query,
+    });
   }
 
   /**
@@ -341,7 +341,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       return;
     }
 
-    this.service.customerApplicationsDestroy(row.id).subscribe({
+    this.service.customerApplicationsDestroy({ id: row.id }).subscribe({
       next: () => {
         this.toast.success('Application deleted');
         this.reload();
@@ -385,7 +385,9 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       return;
     }
 
-    this.service.customerApplicationsDestroy(row.id, true).subscribe({
+    this.service
+      .customerApplicationsDestroy({ id: row.id, deleteInvoices: true, deleteInvoices2: true })
+      .subscribe({
       next: () => {
         this.toast.success('Application deleted');
         this.reload();
@@ -447,7 +449,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
     }
 
     if (confirm(`Force close application #${row.id}? This will mark it as completed.`)) {
-      this.service.customerApplicationsForceCloseCreate(row.id).subscribe({
+      this.service.customerApplicationsForceCloseCreate({ id: row.id }).subscribe({
         next: () => {
           this.toast.success('Application force closed');
           this.reload();
@@ -505,7 +507,9 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
     >[0];
 
     this.service
-      .customerApplicationsBulkDeleteCreate(bulkDeletePayload)
+      .customerApplicationsBulkDeleteCreate({
+        customerApplicationsBulkDeleteRequestRequest: bulkDeletePayload as any,
+      })
       .subscribe({
         next: (response) => {
           const payload = unwrapApiRecord(response) as {

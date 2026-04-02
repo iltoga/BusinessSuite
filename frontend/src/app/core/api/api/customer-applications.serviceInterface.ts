@@ -11,6 +11,8 @@ import { HttpHeaders } from '@angular/common/http';
 
 import { Observable } from 'rxjs';
 
+import { CustomerApplicationsBulkDeleteRequestRequest } from '../model/models';
+import { CustomerApplicationsBulkDeleteResponse } from '../model/models';
 import { DocApplicationCreateUpdate } from '../model/models';
 import { DocApplicationCreateUpdateRequest } from '../model/models';
 import { DocApplicationDetail } from '../model/models';
@@ -27,7 +29,7 @@ export interface CustomerApplicationsAdvanceWorkflowCreateRequestParams {
 }
 
 export interface CustomerApplicationsBulkDeleteCreateRequestParams {
-  docApplicationSerializerWithRelationsRequest: DocApplicationSerializerWithRelationsRequest;
+  customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest;
 }
 
 export interface CustomerApplicationsCreateRequestParams {
@@ -112,7 +114,7 @@ export interface CustomerApplicationsServiceInterface {
   customerApplicationsBulkDeleteCreate(
     requestParameters: CustomerApplicationsBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<DocApplicationSerializerWithRelations>;
+  ): Observable<CustomerApplicationsBulkDeleteResponse>;
 
   /**
    *

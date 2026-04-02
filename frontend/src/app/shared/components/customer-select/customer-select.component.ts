@@ -166,7 +166,14 @@ export class CustomerSelectComponent implements ControlValueAccessor {
 
   private loadCustomers(search?: string): void {
     this.isLoading.set(true);
-    this.customersService.customersList(CUSTOMER_ORDERING, 1, this.pageSize(), search).subscribe({
+    this.customersService
+      .customersList({
+        ordering: CUSTOMER_ORDERING,
+        page: 1,
+        pageSize: this.pageSize(),
+        search,
+      })
+      .subscribe({
       next: (response) => {
         const items = (response.results ?? []) as CustomerOptionSource[];
         this.options.set(this.sortCustomerOptions(items.map((customer) => this.mapCustomerOption(customer))));
@@ -190,7 +197,7 @@ export class CustomerSelectComponent implements ControlValueAccessor {
     if (exists) {
       return;
     }
-    this.customersService.customersRetrieve(customerId).subscribe({
+    this.customersService.customersRetrieve({ id: customerId }).subscribe({
       next: (customer) => {
         const nextOption = this.mapCustomerOption(customer);
         this.options.update((current) => this.sortCustomerOptions([...current, nextOption]));

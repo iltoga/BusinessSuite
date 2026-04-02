@@ -18,7 +18,6 @@ import { Configuration } from '../configuration';
 
 export interface WorkflowNotificationsCancelCreateRequestParams {
   id: number;
-  workflowNotificationRequest: WorkflowNotificationRequest;
 }
 
 export interface WorkflowNotificationsCreateRequestParams {
@@ -41,7 +40,6 @@ export interface WorkflowNotificationsPartialUpdateRequestParams {
 
 export interface WorkflowNotificationsResendCreateRequestParams {
   id: number;
-  workflowNotificationRequest: WorkflowNotificationRequest;
 }
 
 export interface WorkflowNotificationsRetrieveRequestParams {
