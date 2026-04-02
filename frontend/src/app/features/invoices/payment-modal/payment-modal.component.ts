@@ -19,6 +19,7 @@ import {
   type InvoiceApplicationDetail,
   type Payment,
   type PaymentRequest,
+  PaymentRequestPaymentTypeEnum,
 } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -242,8 +243,8 @@ export class PaymentModalComponent {
     };
 
     const request$ = payment
-      ? this.paymentsApi.paymentsUpdate(payment.id, payload)
-      : this.paymentsApi.paymentsCreate(payload);
+      ? this.paymentsApi.paymentsUpdate({ id: payment.id, paymentRequest: payload })
+      : this.paymentsApi.paymentsCreate({ paymentRequest: payload });
 
     request$.subscribe({
       next: () => {
@@ -264,7 +265,7 @@ export class PaymentModalComponent {
 
   private submitFullPayment(
     paymentDate: string,
-    paymentType: PaymentRequest.PaymentTypeEnum,
+    paymentType: PaymentRequestPaymentTypeEnum,
     notes: string,
   ): void {
     const applications = this.fullPaymentApplications();
@@ -278,11 +279,13 @@ export class PaymentModalComponent {
 
     const requests = applications.map((application) =>
       this.paymentsApi.paymentsCreate({
-        invoiceApplication: application.id,
-        paymentDate,
-        paymentType,
-        amount: String(Number(application.dueAmount ?? 0)),
-        notes,
+        paymentRequest: {
+          invoiceApplication: application.id,
+          paymentDate,
+          paymentType,
+          amount: String(Number(application.dueAmount ?? 0)),
+          notes,
+        },
       }),
     );
 
@@ -355,16 +358,20 @@ export class PaymentModalComponent {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
 
-  private normalizePaymentType(value: unknown): PaymentRequest.PaymentTypeEnum {
+  private normalizePaymentType(value: unknown): PaymentRequestPaymentTypeEnum {
     switch (value) {
-      case 'credit_card':
-      case 'wire_transfer':
-      case 'crypto':
-      case 'paypal':
-      case 'cash':
-        return value;
+      case PaymentRequestPaymentTypeEnum.CreditCard:
+        return PaymentRequestPaymentTypeEnum.CreditCard;
+      case PaymentRequestPaymentTypeEnum.WireTransfer:
+        return PaymentRequestPaymentTypeEnum.WireTransfer;
+      case PaymentRequestPaymentTypeEnum.Crypto:
+        return PaymentRequestPaymentTypeEnum.Crypto;
+      case PaymentRequestPaymentTypeEnum.Paypal:
+        return PaymentRequestPaymentTypeEnum.Paypal;
+      case PaymentRequestPaymentTypeEnum.Cash:
+        return PaymentRequestPaymentTypeEnum.Cash;
       default:
-        return 'cash';
+        return PaymentRequestPaymentTypeEnum.Cash;
     }
   }
 }

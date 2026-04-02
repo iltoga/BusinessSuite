@@ -28,11 +28,19 @@ import { DeleteMultipleBackupsRequest } from '../model/delete-multiple-backups-r
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  BackupsServiceInterface,
+  BackupsDeleteDestroyRequestParams,
+  BackupsDeleteMultipleCreateRequestParams,
+  BackupsDownloadRetrieveRequestParams,
+  BackupsRestoreCreateRequestParams,
+  BackupsStartRetrieveRequestParams,
+} from './backups.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class BackupsService extends BaseService {
+export class BackupsService extends BaseService implements BackupsServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -135,13 +143,13 @@ export class BackupsService extends BaseService {
    * Delete a backup file
    * Delete a single backup file.
    * @endpoint delete /api/backups/delete/{filename}/
-   * @param filename
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public backupsDeleteDestroy(
-    filename: string,
+    requestParameters: BackupsDeleteDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -151,7 +159,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public backupsDeleteDestroy(
-    filename: string,
+    requestParameters: BackupsDeleteDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -161,7 +169,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public backupsDeleteDestroy(
-    filename: string,
+    requestParameters: BackupsDeleteDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -171,7 +179,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public backupsDeleteDestroy(
-    filename: string,
+    requestParameters: BackupsDeleteDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -180,6 +188,7 @@ export class BackupsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const filename = requestParameters?.filename;
     if (filename === null || filename === undefined) {
       throw new Error(
         'Required parameter filename was null or undefined when calling backupsDeleteDestroy.',
@@ -236,13 +245,13 @@ export class BackupsService extends BaseService {
    * Delete multiple backup files
    * Delete multiple backup files.
    * @endpoint post /api/backups/delete-multiple/
-   * @param deleteMultipleBackupsRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public backupsDeleteMultipleCreate(
-    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
+    requestParameters: BackupsDeleteMultipleCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -252,7 +261,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public backupsDeleteMultipleCreate(
-    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
+    requestParameters: BackupsDeleteMultipleCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -262,7 +271,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public backupsDeleteMultipleCreate(
-    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
+    requestParameters: BackupsDeleteMultipleCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -272,7 +281,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public backupsDeleteMultipleCreate(
-    deleteMultipleBackupsRequest: DeleteMultipleBackupsRequest,
+    requestParameters: BackupsDeleteMultipleCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -281,6 +290,7 @@ export class BackupsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const deleteMultipleBackupsRequest = requestParameters?.deleteMultipleBackupsRequest;
     if (deleteMultipleBackupsRequest === null || deleteMultipleBackupsRequest === undefined) {
       throw new Error(
         'Required parameter deleteMultipleBackupsRequest was null or undefined when calling backupsDeleteMultipleCreate.',
@@ -350,13 +360,13 @@ export class BackupsService extends BaseService {
    * Download backup file
    * Download backup file.
    * @endpoint get /api/backups/download/{filename}/
-   * @param filename
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public backupsDownloadRetrieve(
-    filename: string,
+    requestParameters: BackupsDownloadRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -366,7 +376,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<Blob>;
   public backupsDownloadRetrieve(
-    filename: string,
+    requestParameters: BackupsDownloadRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -376,7 +386,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public backupsDownloadRetrieve(
-    filename: string,
+    requestParameters: BackupsDownloadRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -386,7 +396,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public backupsDownloadRetrieve(
-    filename: string,
+    requestParameters: BackupsDownloadRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -395,6 +405,7 @@ export class BackupsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const filename = requestParameters?.filename;
     if (filename === null || filename === undefined) {
       throw new Error(
         'Required parameter filename was null or undefined when calling backupsDownloadRetrieve.',
@@ -440,17 +451,13 @@ export class BackupsService extends BaseService {
    * Restore from backup
    * Trigger stream-backed SSE restore execution.
    * @endpoint post /api/backups/restore/
-   * @param file
-   * @param includeUsers
-   * @param replay Set true to replay existing stream events without enqueuing a new restore job.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public backupsRestoreCreate(
-    file?: string,
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: BackupsRestoreCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -460,9 +467,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public backupsRestoreCreate(
-    file?: string,
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: BackupsRestoreCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -472,9 +477,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public backupsRestoreCreate(
-    file?: string,
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: BackupsRestoreCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -484,9 +487,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public backupsRestoreCreate(
-    file?: string,
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: BackupsRestoreCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -495,6 +496,10 @@ export class BackupsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const file = requestParameters?.file;
+    const includeUsers = requestParameters?.includeUsers;
+    const replay = requestParameters?.replay;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -662,15 +667,13 @@ export class BackupsService extends BaseService {
    * Start backup process
    * Trigger stream-backed SSE backup execution.
    * @endpoint get /api/backups/start/
-   * @param includeUsers
-   * @param replay Set true to replay existing stream events without enqueuing a new backup job.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public backupsStartRetrieve(
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: BackupsStartRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -680,8 +683,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<{ [key: string]: any }>;
   public backupsStartRetrieve(
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: BackupsStartRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -691,8 +693,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public backupsStartRetrieve(
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: BackupsStartRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -702,8 +703,7 @@ export class BackupsService extends BaseService {
     },
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public backupsStartRetrieve(
-    includeUsers?: boolean,
-    replay?: boolean,
+    requestParameters?: BackupsStartRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -712,6 +712,9 @@ export class BackupsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const includeUsers = requestParameters?.includeUsers;
+    const replay = requestParameters?.replay;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(

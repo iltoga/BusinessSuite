@@ -30,11 +30,16 @@ import { SuratPermohonanRequestRequest } from '../model/surat-permohonan-request
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  LettersServiceInterface,
+  LettersCustomerDataRetrieveRequestParams,
+  LettersSuratPermohonanCreateRequestParams,
+} from './letters.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class LettersService extends BaseService {
+export class LettersService extends BaseService implements LettersServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -45,13 +50,13 @@ export class LettersService extends BaseService {
 
   /**
    * @endpoint get /api/letters/customer-data/{customerId}/
-   * @param customerId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public lettersCustomerDataRetrieve(
-    customerId: number,
+    requestParameters: LettersCustomerDataRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -61,7 +66,7 @@ export class LettersService extends BaseService {
     },
   ): Observable<SuratPermohonanCustomerData>;
   public lettersCustomerDataRetrieve(
-    customerId: number,
+    requestParameters: LettersCustomerDataRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -71,7 +76,7 @@ export class LettersService extends BaseService {
     },
   ): Observable<HttpResponse<SuratPermohonanCustomerData>>;
   public lettersCustomerDataRetrieve(
-    customerId: number,
+    requestParameters: LettersCustomerDataRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -81,7 +86,7 @@ export class LettersService extends BaseService {
     },
   ): Observable<HttpEvent<SuratPermohonanCustomerData>>;
   public lettersCustomerDataRetrieve(
-    customerId: number,
+    requestParameters: LettersCustomerDataRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -90,6 +95,7 @@ export class LettersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customerId = requestParameters?.customerId;
     if (customerId === null || customerId === undefined) {
       throw new Error(
         'Required parameter customerId was null or undefined when calling lettersCustomerDataRetrieve.',
@@ -148,13 +154,13 @@ export class LettersService extends BaseService {
 
   /**
    * @endpoint post /api/letters/surat-permohonan/
-   * @param suratPermohonanRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public lettersSuratPermohonanCreate(
-    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
+    requestParameters: LettersSuratPermohonanCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -164,7 +170,7 @@ export class LettersService extends BaseService {
     },
   ): Observable<Blob>;
   public lettersSuratPermohonanCreate(
-    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
+    requestParameters: LettersSuratPermohonanCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -174,7 +180,7 @@ export class LettersService extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public lettersSuratPermohonanCreate(
-    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
+    requestParameters: LettersSuratPermohonanCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -184,7 +190,7 @@ export class LettersService extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public lettersSuratPermohonanCreate(
-    suratPermohonanRequestRequest: SuratPermohonanRequestRequest,
+    requestParameters: LettersSuratPermohonanCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -193,6 +199,7 @@ export class LettersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const suratPermohonanRequestRequest = requestParameters?.suratPermohonanRequestRequest;
     if (suratPermohonanRequestRequest === null || suratPermohonanRequestRequest === undefined) {
       throw new Error(
         'Required parameter suratPermohonanRequestRequest was null or undefined when calling lettersSuratPermohonanCreate.',

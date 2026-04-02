@@ -13,6 +13,8 @@ import { Observable } from 'rxjs';
 
 import { Customer } from '../model/models';
 import { CustomerRequest } from '../model/models';
+import { CustomersBulkDeleteRequestRequest } from '../model/models';
+import { CustomersBulkDeleteResponse } from '../model/models';
 import { PaginatedCustomerApplicationHistoryList } from '../model/models';
 import { PaginatedCustomerList } from '../model/models';
 import { PaginatedCustomerUninvoicedApplicationList } from '../model/models';
@@ -28,7 +30,7 @@ export interface CustomersApplicationsHistoryListRequestParams {
 }
 
 export interface CustomersBulkDeleteCreateRequestParams {
-  customerRequest?: CustomerRequest;
+  customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest;
 }
 
 export interface CustomersCheckPassportCreateRequestParams {
@@ -102,7 +104,7 @@ export interface CustomersServiceInterface {
   customersBulkDeleteCreate(
     requestParameters: CustomersBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<Customer>;
+  ): Observable<CustomersBulkDeleteResponse>;
 
   /**
    *

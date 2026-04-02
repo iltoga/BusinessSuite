@@ -25,11 +25,15 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  ComputeServiceInterface,
+  ComputeDocWorkflowDueDateRetrieveRequestParams,
+} from './compute.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class ComputeService extends BaseService {
+export class ComputeService extends BaseService implements ComputeServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -40,45 +44,42 @@ export class ComputeService extends BaseService {
 
   /**
    * @endpoint get /api/compute/doc_workflow_due_date/{taskId}/{startDate}/
-   * @param startDate
-   * @param taskId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public computeDocWorkflowDueDateRetrieve(
-    startDate: string,
-    taskId: number,
+    requestParameters: ComputeDocWorkflowDueDateRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public computeDocWorkflowDueDateRetrieve(
-    startDate: string,
-    taskId: number,
+    requestParameters: ComputeDocWorkflowDueDateRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public computeDocWorkflowDueDateRetrieve(
-    startDate: string,
-    taskId: number,
+    requestParameters: ComputeDocWorkflowDueDateRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public computeDocWorkflowDueDateRetrieve(
-    startDate: string,
-    taskId: number,
+    requestParameters: ComputeDocWorkflowDueDateRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const startDate = requestParameters?.startDate;
     if (startDate === null || startDate === undefined) {
       throw new Error(
         'Required parameter startDate was null or undefined when calling computeDocWorkflowDueDateRetrieve.',
       );
     }
+    const taskId = requestParameters?.taskId;
     if (taskId === null || taskId === undefined) {
       throw new Error(
         'Required parameter taskId was null or undefined when calling computeDocWorkflowDueDateRetrieve.',

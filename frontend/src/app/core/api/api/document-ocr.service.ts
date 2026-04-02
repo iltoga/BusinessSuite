@@ -25,11 +25,16 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  DocumentOcrServiceInterface,
+  DocumentOcrStatusRetrieveRequestParams,
+  DocumentOcrStreamRetrieveRequestParams,
+} from './document-ocr.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class DocumentOcrService extends BaseService {
+export class DocumentOcrService extends BaseService implements DocumentOcrServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -112,35 +117,36 @@ export class DocumentOcrService extends BaseService {
 
   /**
    * @endpoint get /api/document-ocr/status/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentOcrStatusRetrieve(
-    jobId: string,
+    requestParameters: DocumentOcrStatusRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public documentOcrStatusRetrieve(
-    jobId: string,
+    requestParameters: DocumentOcrStatusRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public documentOcrStatusRetrieve(
-    jobId: string,
+    requestParameters: DocumentOcrStatusRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public documentOcrStatusRetrieve(
-    jobId: string,
+    requestParameters: DocumentOcrStatusRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling documentOcrStatusRetrieve.',
@@ -195,35 +201,36 @@ export class DocumentOcrService extends BaseService {
 
   /**
    * @endpoint get /api/document-ocr/stream/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentOcrStreamRetrieve(
-    jobId: string,
+    requestParameters: DocumentOcrStreamRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public documentOcrStreamRetrieve(
-    jobId: string,
+    requestParameters: DocumentOcrStreamRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public documentOcrStreamRetrieve(
-    jobId: string,
+    requestParameters: DocumentOcrStreamRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public documentOcrStreamRetrieve(
-    jobId: string,
+    requestParameters: DocumentOcrStreamRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling documentOcrStreamRetrieve.',

@@ -15,6 +15,7 @@ import {
   ProductsService,
   type DocumentType,
   type ProductCreateUpdateRequest,
+  ProductCreateUpdateRequestProductTypeEnum,
   type ProductDetail,
 } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
@@ -199,7 +200,7 @@ export class ProductFormComponent
    * Load product for edit mode
    */
   protected override loadItem(id: number): Observable<ProductDetail> {
-    return this.productsApi.productsRetrieve(id);
+    return this.productsApi.productsRetrieve({ id });
   }
 
   /**
@@ -220,7 +221,7 @@ export class ProductFormComponent
    * Save new product
    */
   protected override saveCreate(dto: ProductCreateUpdateRequest): Observable<any> {
-    return this.productsApi.productsCreate(dto).pipe(
+    return this.productsApi.productsCreate({ productCreateUpdateRequest: dto }).pipe(
       tap((item) => {
         const createdId = this.parsePositiveInteger(item?.id);
         if (createdId !== null) {
@@ -234,13 +235,15 @@ export class ProductFormComponent
    * Update existing product
    */
   protected override saveUpdate(dto: ProductCreateUpdateRequest): Observable<any> {
-    return this.productsApi.productsPartialUpdate(this.itemId!, dto).pipe(
-      switchMap(() => this.productsApi.productsRetrieve(this.itemId!)),
-      tap((item) => {
-        this.item.set(item);
-        this.patchForm(item);
-      }),
-    );
+    return this.productsApi
+      .productsPartialUpdate({ id: this.itemId!, productCreateUpdateRequest: dto })
+      .pipe(
+        switchMap(() => this.productsApi.productsRetrieve({ id: this.itemId! })),
+        tap((item) => {
+          this.item.set(item);
+          this.patchForm(item);
+        }),
+      );
   }
 
   /**
@@ -468,7 +471,7 @@ export class ProductFormComponent
       name: rawValue.name ?? '',
       code: rawValue.code ?? '',
       description: rawValue.description ?? '',
-      productType: rawValue.productType as ProductCreateUpdateRequest.ProductTypeEnum,
+      productType: this.normalizeProductType(rawValue.productType),
       basePrice: basePrice !== null ? String(basePrice) : null,
       retailPrice: rawValue.retailPrice !== null ? String(rawValue.retailPrice) : undefined,
       currency:
@@ -504,7 +507,7 @@ export class ProductFormComponent
   }
 
   private loadDocumentTypes(): void {
-    this.documentTypesApi.documentTypesList().subscribe({
+    this.documentTypesApi.documentTypesList({}).subscribe({
       next: (items: DocumentType[]) => this.documentTypes.set(items ?? []),
       error: () => this.toast.error('Failed to load document types'),
     });
@@ -564,6 +567,16 @@ export class ProductFormComponent
       return { retailPriceBelowBase: true };
     }
     return null;
+  }
+
+  private normalizeProductType(value: unknown): ProductCreateUpdateRequestProductTypeEnum {
+    switch (String(value ?? '').trim().toLowerCase()) {
+      case ProductCreateUpdateRequestProductTypeEnum.Other:
+        return ProductCreateUpdateRequestProductTypeEnum.Other;
+      case ProductCreateUpdateRequestProductTypeEnum.Visa:
+      default:
+        return ProductCreateUpdateRequestProductTypeEnum.Visa;
+    }
   }
 
   protected override getNavigationState(): ProductNavigationState {

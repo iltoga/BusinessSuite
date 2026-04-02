@@ -30,11 +30,12 @@ import { CustomTokenRefreshRequest } from '../model/custom-token-refresh-request
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import { TokenServiceInterface, TokenRefreshCreateRequestParams } from './token.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class TokenService extends BaseService {
+export class TokenService extends BaseService implements TokenServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -46,13 +47,13 @@ export class TokenService extends BaseService {
   /**
    * Takes a refresh type JSON web token and returns an access type JSON web token if the refresh token is valid.
    * @endpoint post /api/token/refresh/
-   * @param customTokenRefreshRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public tokenRefreshCreate(
-    customTokenRefreshRequest?: CustomTokenRefreshRequest,
+    requestParameters?: TokenRefreshCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -62,7 +63,7 @@ export class TokenService extends BaseService {
     },
   ): Observable<CustomTokenRefresh>;
   public tokenRefreshCreate(
-    customTokenRefreshRequest?: CustomTokenRefreshRequest,
+    requestParameters?: TokenRefreshCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -72,7 +73,7 @@ export class TokenService extends BaseService {
     },
   ): Observable<HttpResponse<CustomTokenRefresh>>;
   public tokenRefreshCreate(
-    customTokenRefreshRequest?: CustomTokenRefreshRequest,
+    requestParameters?: TokenRefreshCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -82,7 +83,7 @@ export class TokenService extends BaseService {
     },
   ): Observable<HttpEvent<CustomTokenRefresh>>;
   public tokenRefreshCreate(
-    customTokenRefreshRequest?: CustomTokenRefreshRequest,
+    requestParameters?: TokenRefreshCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -91,6 +92,8 @@ export class TokenService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customTokenRefreshRequest = requestParameters?.customTokenRefreshRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     const localVarHttpHeaderAcceptSelected: string | undefined =

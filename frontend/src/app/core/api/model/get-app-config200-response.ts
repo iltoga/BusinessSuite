@@ -9,21 +9,17 @@
  */
 
 export interface GetAppConfig200Response {
-  mOCKAUTHENABLED: GetAppConfig200Response.MOCKAUTHENABLEDEnum;
-  theme: GetAppConfig200Response.ThemeEnum;
+  mOCKAUTHENABLED: GetAppConfig200ResponseMOCKAUTHENABLEDEnum;
+  theme: GetAppConfig200ResponseThemeEnum;
   dateFormat?: string;
   baseCurrency?: string;
   title?: string;
   logoFilename?: string;
   logoInvertedFilename?: string;
 }
-export namespace GetAppConfig200Response {
-  export const MOCKAUTHENABLEDEnum = {
-    True: 'True',
-  } as const;
-  export type MOCKAUTHENABLEDEnum = (typeof MOCKAUTHENABLEDEnum)[keyof typeof MOCKAUTHENABLEDEnum];
-  export const ThemeEnum = {
-    Neutral: 'neutral',
-  } as const;
-  export type ThemeEnum = (typeof ThemeEnum)[keyof typeof ThemeEnum];
+export enum GetAppConfig200ResponseMOCKAUTHENABLEDEnum {
+  True = 'True',
+}
+export enum GetAppConfig200ResponseThemeEnum {
+  Neutral = 'neutral',
 }

@@ -30,11 +30,19 @@ import { GoogleTaskRequest } from '../model/google-task-request';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  TasksServiceInterface,
+  TasksCreateRequestParams,
+  TasksDestroyRequestParams,
+  TasksPartialUpdateRequestParams,
+  TasksRetrieveRequestParams,
+  TasksUpdateRequestParams,
+} from './tasks.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class TasksService extends BaseService {
+export class TasksService extends BaseService implements TasksServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -45,13 +53,13 @@ export class TasksService extends BaseService {
 
   /**
    * @endpoint post /api/tasks/
-   * @param googleTaskRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public tasksCreate(
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -61,7 +69,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<GoogleTask>;
   public tasksCreate(
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -71,7 +79,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<HttpResponse<GoogleTask>>;
   public tasksCreate(
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -81,7 +89,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<HttpEvent<GoogleTask>>;
   public tasksCreate(
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -90,6 +98,7 @@ export class TasksService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const googleTaskRequest = requestParameters?.googleTaskRequest;
     if (googleTaskRequest === null || googleTaskRequest === undefined) {
       throw new Error(
         'Required parameter googleTaskRequest was null or undefined when calling tasksCreate.',
@@ -157,35 +166,36 @@ export class TasksService extends BaseService {
 
   /**
    * @endpoint delete /api/tasks/{id}/
-   * @param id
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public tasksDestroy(
-    id: string,
+    requestParameters: TasksDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public tasksDestroy(
-    id: string,
+    requestParameters: TasksDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public tasksDestroy(
-    id: string,
+    requestParameters: TasksDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public tasksDestroy(
-    id: string,
+    requestParameters: TasksDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling tasksDestroy.');
     }
@@ -326,15 +336,13 @@ export class TasksService extends BaseService {
 
   /**
    * @endpoint patch /api/tasks/{id}/
-   * @param id
-   * @param googleTaskRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public tasksPartialUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -344,8 +352,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<GoogleTask>;
   public tasksPartialUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -355,8 +362,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<HttpResponse<GoogleTask>>;
   public tasksPartialUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -366,8 +372,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<HttpEvent<GoogleTask>>;
   public tasksPartialUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -376,11 +381,13 @@ export class TasksService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling tasksPartialUpdate.',
       );
     }
+    const googleTaskRequest = requestParameters?.googleTaskRequest;
     if (googleTaskRequest === null || googleTaskRequest === undefined) {
       throw new Error(
         'Required parameter googleTaskRequest was null or undefined when calling tasksPartialUpdate.',
@@ -448,13 +455,13 @@ export class TasksService extends BaseService {
 
   /**
    * @endpoint get /api/tasks/{id}/
-   * @param id
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public tasksRetrieve(
-    id: string,
+    requestParameters: TasksRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -464,7 +471,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<GoogleTask>;
   public tasksRetrieve(
-    id: string,
+    requestParameters: TasksRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -474,7 +481,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<HttpResponse<GoogleTask>>;
   public tasksRetrieve(
-    id: string,
+    requestParameters: TasksRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -484,7 +491,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<HttpEvent<GoogleTask>>;
   public tasksRetrieve(
-    id: string,
+    requestParameters: TasksRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -493,6 +500,7 @@ export class TasksService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling tasksRetrieve.');
     }
@@ -545,15 +553,13 @@ export class TasksService extends BaseService {
 
   /**
    * @endpoint put /api/tasks/{id}/
-   * @param id
-   * @param googleTaskRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public tasksUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -563,8 +569,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<GoogleTask>;
   public tasksUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -574,8 +579,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<HttpResponse<GoogleTask>>;
   public tasksUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -585,8 +589,7 @@ export class TasksService extends BaseService {
     },
   ): Observable<HttpEvent<GoogleTask>>;
   public tasksUpdate(
-    id: string,
-    googleTaskRequest: GoogleTaskRequest,
+    requestParameters: TasksUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -595,9 +598,11 @@ export class TasksService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling tasksUpdate.');
     }
+    const googleTaskRequest = requestParameters?.googleTaskRequest;
     if (googleTaskRequest === null || googleTaskRequest === undefined) {
       throw new Error(
         'Required parameter googleTaskRequest was null or undefined when calling tasksUpdate.',

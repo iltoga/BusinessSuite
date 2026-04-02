@@ -24,7 +24,7 @@ echo "Generating backend/schema.yaml via Django schema command..."
 echo "Generating frontend API client..."
 (
   cd "$FRONTEND_DIR"
-  bun run generate:api
+  bun run generate:api:modern
 )
 
 echo "Done."

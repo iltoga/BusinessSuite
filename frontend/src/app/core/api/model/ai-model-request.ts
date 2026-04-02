@@ -12,7 +12,7 @@ export interface AiModelRequest {
   /**
    * * `openrouter` - OpenRouter * `openai` - OpenAI * `groq` - Groq
    */
-  provider: AiModelRequest.ProviderEnum;
+  provider: AiModelRequestProviderEnum;
   modelId: string;
   name: string;
   description?: string;
@@ -48,11 +48,8 @@ export interface AiModelRequest {
   source?: string;
   rawMetadata?: any | null;
 }
-export namespace AiModelRequest {
-  export const ProviderEnum = {
-    Openrouter: 'openrouter',
-    Openai: 'openai',
-    Groq: 'groq',
-  } as const;
-  export type ProviderEnum = (typeof ProviderEnum)[keyof typeof ProviderEnum];
+export enum AiModelRequestProviderEnum {
+  Openrouter = 'openrouter',
+  Openai = 'openai',
+  Groq = 'groq',
 }

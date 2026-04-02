@@ -105,8 +105,8 @@ describe('InvoiceFormComponent source application merge', () => {
 
     component.save();
 
-    expect(component.invoicesApi.invoicesCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
+    expect(component.invoicesApi.invoicesCreate).toHaveBeenCalledWith({
+      invoiceCreateUpdateRequest: expect.objectContaining({
         invoiceApplications: [
           {
             id: 71,
@@ -126,7 +126,7 @@ describe('InvoiceFormComponent source application merge', () => {
           },
         ],
       }),
-    );
+    });
     expect(component.router.navigate).toHaveBeenCalledWith(['/invoices', 44], {
       state: {
         from: 'invoices',
@@ -154,9 +154,9 @@ describe('InvoiceFormComponent source application merge', () => {
 
     component.save();
 
-    expect(component.invoicesApi.invoicesUpdate).toHaveBeenCalledWith(
-      54,
-      expect.objectContaining({
+    expect(component.invoicesApi.invoicesUpdate).toHaveBeenCalledWith({
+      id: 54,
+      invoiceCreateUpdateRequest: expect.objectContaining({
         customer: 9,
         invoiceNo: 'INV-9',
         invoiceApplications: [
@@ -178,7 +178,7 @@ describe('InvoiceFormComponent source application merge', () => {
           },
         ],
       }),
-    );
+    });
     expect(component.router.navigate).toHaveBeenCalledWith(['/invoices', 54], {
       state: {
         from: 'invoices',

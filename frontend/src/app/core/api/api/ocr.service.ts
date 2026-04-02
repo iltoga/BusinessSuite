@@ -25,11 +25,16 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  OcrServiceInterface,
+  OcrStatusRetrieveRequestParams,
+  OcrStreamRetrieveRequestParams,
+} from './ocr.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class OcrService extends BaseService {
+export class OcrService extends BaseService implements OcrServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -112,35 +117,36 @@ export class OcrService extends BaseService {
 
   /**
    * @endpoint get /api/ocr/status/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public ocrStatusRetrieve(
-    jobId: string,
+    requestParameters: OcrStatusRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public ocrStatusRetrieve(
-    jobId: string,
+    requestParameters: OcrStatusRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public ocrStatusRetrieve(
-    jobId: string,
+    requestParameters: OcrStatusRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public ocrStatusRetrieve(
-    jobId: string,
+    requestParameters: OcrStatusRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling ocrStatusRetrieve.',
@@ -195,35 +201,36 @@ export class OcrService extends BaseService {
 
   /**
    * @endpoint get /api/ocr/stream/{jobId}/
-   * @param jobId
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public ocrStreamRetrieve(
-    jobId: string,
+    requestParameters: OcrStreamRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public ocrStreamRetrieve(
-    jobId: string,
+    requestParameters: OcrStreamRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public ocrStreamRetrieve(
-    jobId: string,
+    requestParameters: OcrStreamRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public ocrStreamRetrieve(
-    jobId: string,
+    requestParameters: OcrStreamRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const jobId = requestParameters?.jobId;
     if (jobId === null || jobId === undefined) {
       throw new Error(
         'Required parameter jobId was null or undefined when calling ocrStreamRetrieve.',

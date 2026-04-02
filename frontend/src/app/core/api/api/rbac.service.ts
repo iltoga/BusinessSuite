@@ -28,11 +28,12 @@ import { RbacPermissions } from '../model/rbac-permissions';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import { RbacServiceInterface } from './rbac.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class RbacService extends BaseService {
+export class RbacService extends BaseService implements RbacServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],

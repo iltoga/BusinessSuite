@@ -78,16 +78,13 @@ export class ProductSelectComponent implements ControlValueAccessor {
   // Loader function for Typeahead wrapper
   readonly productLoader = (q?: string, page = 1) => {
     return this.productsService
-      .productsList(
-        undefined,
-        true,
-        undefined,
+      .productsList({
+        hideDeprecated: true,
         page,
-        this.pageSize(),
-        undefined,
-        q,
-        this.usesCustomerAppWorkflow(),
-      )
+        pageSize: this.pageSize(),
+        search: q,
+        usesCustomerAppWorkflow: this.usesCustomerAppWorkflow(),
+      })
       .pipe(map((resp: any) => resp.results ?? []));
   };
 
@@ -135,7 +132,7 @@ export class ProductSelectComponent implements ControlValueAccessor {
     if (this.options().some((opt) => opt.value === String(productId))) return;
 
     // Load specifically to ensure we can display the label
-    this.productsService.productsGetProductByIdRetrieve(productId).subscribe({
+    this.productsService.productsGetProductByIdRetrieve({ productId }).subscribe({
       next: (product) => {
         const opt = this.mapProductOption(product as any);
         this.options.update((curr) => [opt, ...curr]);

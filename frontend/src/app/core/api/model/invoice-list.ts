@@ -20,7 +20,7 @@ export interface InvoiceList {
   /**
    * * `created` - Created * `pending_payment` - Pending Payment * `partial_payment` - Partial Payment * `paid` - Paid * `overdue` - Overdue * `disputed` - Disputed * `cancelled` - Cancelled * `partially_refunded` - Partially Refunded * `refunded` - Refunded * `write_off` - Write Off * `overpaid` - Overpaid
    */
-  status?: InvoiceList.StatusEnum;
+  status?: InvoiceListStatusEnum;
   totalAmount?: string;
   readonly totalPaidAmount: string;
   readonly totalDueAmount: string;
@@ -39,19 +39,16 @@ export interface InvoiceList {
   readonly updatedBy: string;
   readonly invoiceApplications: Array<InvoiceApplicationSummary>;
 }
-export namespace InvoiceList {
-  export const StatusEnum = {
-    Created: 'created',
-    PendingPayment: 'pending_payment',
-    PartialPayment: 'partial_payment',
-    Paid: 'paid',
-    Overdue: 'overdue',
-    Disputed: 'disputed',
-    Cancelled: 'cancelled',
-    PartiallyRefunded: 'partially_refunded',
-    Refunded: 'refunded',
-    WriteOff: 'write_off',
-    Overpaid: 'overpaid',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum InvoiceListStatusEnum {
+  Created = 'created',
+  PendingPayment = 'pending_payment',
+  PartialPayment = 'partial_payment',
+  Paid = 'paid',
+  Overdue = 'overdue',
+  Disputed = 'disputed',
+  Cancelled = 'cancelled',
+  PartiallyRefunded = 'partially_refunded',
+  Refunded = 'refunded',
+  WriteOff = 'write_off',
+  Overpaid = 'overpaid',
 }

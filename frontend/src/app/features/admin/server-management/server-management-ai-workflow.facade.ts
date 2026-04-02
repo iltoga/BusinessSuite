@@ -639,7 +639,9 @@ export class ServerManagementAiWorkflowFacade {
 
     this.serverManagementApi
       .serverManagementOpenrouterStatusPartialUpdate({
-        settings: normalizedUpdates,
+        requestBody: {
+          settings: normalizedUpdates,
+        },
       })
       .pipe(
         catchError((error) => {

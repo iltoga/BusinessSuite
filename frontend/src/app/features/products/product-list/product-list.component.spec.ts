@@ -128,40 +128,43 @@ describe('ProductListComponent', () => {
   it('shows all products by default and applies deprecated filters only when selected', () => {
     loadCurrentPage();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
-      undefined,
-      false,
-      'name',
-      1,
-      10,
-      undefined,
-      undefined,
-      undefined,
+      expect.objectContaining({
+        deprecated: undefined,
+        hideDeprecated: false,
+        ordering: 'name',
+        page: 1,
+        pageSize: 10,
+        productCategory: undefined,
+        search: undefined,
+      }),
     );
 
     component.onColumnFilterChange({ column: 'deprecated', values: ['deprecated'] });
     loadCurrentPage();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
-      true,
-      false,
-      'name',
-      1,
-      10,
-      undefined,
-      undefined,
-      undefined,
+      expect.objectContaining({
+        deprecated: true,
+        hideDeprecated: false,
+        ordering: 'name',
+        page: 1,
+        pageSize: 10,
+        productCategory: undefined,
+        search: undefined,
+      }),
     );
 
     component.onColumnFilterChange({ column: 'deprecated', values: [] });
     loadCurrentPage();
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
-      undefined,
-      false,
-      'name',
-      1,
-      10,
-      undefined,
-      undefined,
-      undefined,
+      expect.objectContaining({
+        deprecated: undefined,
+        hideDeprecated: false,
+        ordering: 'name',
+        page: 1,
+        pageSize: 10,
+        productCategory: undefined,
+        search: undefined,
+      }),
     );
   });
 
@@ -174,19 +177,21 @@ describe('ProductListComponent', () => {
     loadCurrentPage();
 
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
-      true,
-      false,
-      'name',
-      1,
-      10,
-      'Visa Category,Zeta Category',
-      undefined,
-      undefined,
+      expect.objectContaining({
+        deprecated: true,
+        hideDeprecated: false,
+        ordering: 'name',
+        page: 1,
+        pageSize: 10,
+        productCategory: 'Visa Category,Zeta Category',
+        search: undefined,
+      }),
     );
     expect(mockProductsService.productsCategoryOptionsList).toHaveBeenLastCalledWith(
-      true,
-      false,
-      undefined,
+      expect.objectContaining({
+        deprecated: true,
+        hideDeprecated: false,
+      }),
     );
   });
 
@@ -199,14 +204,15 @@ describe('ProductListComponent', () => {
     loadCurrentPage();
 
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
-      undefined,
-      false,
-      'name',
-      1,
-      10,
-      'Visa Category',
-      undefined,
-      undefined,
+      expect.objectContaining({
+        deprecated: undefined,
+        hideDeprecated: false,
+        ordering: 'name',
+        page: 1,
+        pageSize: 10,
+        productCategory: 'Visa Category',
+        search: undefined,
+      }),
     );
   });
 
@@ -215,23 +221,25 @@ describe('ProductListComponent', () => {
     loadCurrentPage();
 
     expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
-      undefined,
-      false,
-      'name',
-      1,
-      10,
-      undefined,
-      undefined,
-      undefined,
+      expect.objectContaining({
+        deprecated: undefined,
+        hideDeprecated: false,
+        ordering: 'name',
+        page: 1,
+        pageSize: 10,
+        productCategory: undefined,
+        search: undefined,
+      }),
     );
   });
 
   it('loads category filter options from the server instead of deriving them from the current page', () => {
     loadCurrentPage();
     expect(mockProductsService.productsCategoryOptionsList).toHaveBeenLastCalledWith(
-      undefined,
-      false,
-      undefined,
+      expect.objectContaining({
+        deprecated: undefined,
+        hideDeprecated: false,
+      }),
     );
     expect(component.categoryFilterOptions()).toEqual([
       { value: 'Visa Category', label: 'Visa Category' },
@@ -281,8 +289,11 @@ describe('ProductListComponent', () => {
     expect(activateAction?.isVisible?.(activeRow)).toBe(false);
     deprecateAction?.action(activeRow);
 
-    expect(mockProductsService.productsPartialUpdate).toHaveBeenCalledWith(1, {
-      deprecated: true,
+    expect(mockProductsService.productsPartialUpdate).toHaveBeenCalledWith({
+      id: 1,
+      productCreateUpdateRequest: {
+        deprecated: true,
+      },
     });
     expect(mockToastService.success).toHaveBeenCalledWith('Product deprecated');
     expect(reloadSpy).toHaveBeenCalledTimes(1);
@@ -291,8 +302,11 @@ describe('ProductListComponent', () => {
     expect(activateAction?.isVisible?.(deprecatedRow)).toBe(true);
     activateAction?.action(deprecatedRow);
 
-    expect(mockProductsService.productsPartialUpdate).toHaveBeenLastCalledWith(2, {
-      deprecated: false,
+    expect(mockProductsService.productsPartialUpdate).toHaveBeenLastCalledWith({
+      id: 2,
+      productCreateUpdateRequest: {
+        deprecated: false,
+      },
     });
     expect(mockToastService.success).toHaveBeenLastCalledWith('Product activated');
     expect(reloadSpy).toHaveBeenCalledTimes(2);

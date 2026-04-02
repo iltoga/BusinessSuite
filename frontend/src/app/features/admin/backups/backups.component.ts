@@ -349,7 +349,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
    */
   downloadBackup(filename: string): void {
     this.backupsApi
-      .backupsDownloadRetrieve(filename)
+      .backupsDownloadRetrieve({ filename })
       .pipe(
         catchError(() => {
           this.toast.error('Failed to download backup');
@@ -475,7 +475,7 @@ export class BackupsComponent extends BaseListComponent<Backup> {
 
     this.isOperationRunning.set(true);
     this.backupsApi
-      .backupsDeleteDestroy(filename)
+      .backupsDeleteDestroy({ filename })
       .pipe(
         catchError(() => {
           this.toast.error('Failed to delete backup');
@@ -539,7 +539,11 @@ export class BackupsComponent extends BaseListComponent<Backup> {
 
     this.isOperationRunning.set(true);
     this.backupsApi
-      .backupsDeleteMultipleCreate({ filenames: selectedFilenames })
+      .backupsDeleteMultipleCreate({
+        deleteMultipleBackupsRequest: {
+          filenames: selectedFilenames,
+        },
+      })
       .pipe(
         catchError((err) => {
           this.toast.error('Failed to delete selected backups');

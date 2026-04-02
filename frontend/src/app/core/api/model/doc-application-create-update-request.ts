@@ -19,15 +19,11 @@ export interface DocApplicationCreateUpdateRequest {
   /**
    * * `email` - Email * `whatsapp` - WhatsApp
    */
-  notifyCustomerChannel?: DocApplicationCreateUpdateRequest.NotifyCustomerChannelEnum | null;
+  notifyCustomerChannel?: DocApplicationCreateUpdateRequestNotifyCustomerChannelEnum | null;
   documentTypes?: Array<{ [key: string]: any }>;
 }
-export namespace DocApplicationCreateUpdateRequest {
-  export const NotifyCustomerChannelEnum = {
-    Email: 'email',
-    Whatsapp: 'whatsapp',
-    Empty: '',
-  } as const;
-  export type NotifyCustomerChannelEnum =
-    (typeof NotifyCustomerChannelEnum)[keyof typeof NotifyCustomerChannelEnum];
+export enum DocApplicationCreateUpdateRequestNotifyCustomerChannelEnum {
+  Email = 'email',
+  Whatsapp = 'whatsapp',
+  Empty = '',
 }

@@ -94,10 +94,10 @@ describe('CalendarIntegrationComponent', () => {
 
     component.toggleEventDone(todoEvent);
 
-    expect(calendarServiceMock.calendarPartialUpdate).toHaveBeenCalledWith(
-      '1',
-      expect.objectContaining({ done: true }),
-    );
+    expect(calendarServiceMock.calendarPartialUpdate).toHaveBeenCalledWith({
+      id: '1',
+      googleCalendarEventRequest: expect.objectContaining({ done: true }),
+    });
   });
 
   it('does not allow moving a done event back to todo', () => {

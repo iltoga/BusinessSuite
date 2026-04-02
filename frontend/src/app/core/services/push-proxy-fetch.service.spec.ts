@@ -9,11 +9,20 @@ describe('PushProxyFetchService', () => {
   let authServiceMock: { getToken: ReturnType<typeof vi.fn> };
   let fetchStub: ReturnType<typeof vi.fn>;
   let originalFetch: typeof window.fetch;
+  let localStorageMock: { getItem: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     authServiceMock = {
       getToken: vi.fn().mockReturnValue('live-jwt-token'),
     };
+
+    localStorageMock = {
+      getItem: vi.fn().mockReturnValue('stale-local-token'),
+    };
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: localStorageMock,
+    });
 
     fetchStub = vi.fn(() => Promise.resolve(new Response('ok', { status: 200 })));
     originalFetch = window.fetch;
@@ -36,9 +45,6 @@ describe('PushProxyFetchService', () => {
   });
 
   it('proxies firebase installations calls with the live auth token instead of localStorage', async () => {
-    const localStorageSpy = vi.spyOn(window.localStorage, 'getItem');
-    localStorageSpy.mockReturnValue('stale-local-token');
-
     await service.runWithGoogleApisProxy(async () => {
       const response = await window.fetch(
         'https://firebaseinstallations.googleapis.com/v1/projects/demo-project/installations/abc123/authTokens:generate',
@@ -66,5 +72,6 @@ describe('PushProxyFetchService', () => {
     expect(headers.get('X-Firebase-Auth')).toBe('fis-token-xyz');
     expect((init as RequestInit).body).toBe(JSON.stringify({ installation: { appId: 'app-123' } }));
     expect(authServiceMock.getToken).toHaveBeenCalled();
+    expect(localStorageMock.getItem).not.toHaveBeenCalled();
   });
 });

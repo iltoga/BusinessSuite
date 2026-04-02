@@ -120,7 +120,9 @@ export class AiModelListComponent extends BaseListComponent<AiModelItem> {
     const ordering = params.ordering ?? 'provider,name';
     const search = params.query;
 
-    return this.aiModelsApi.aiModelsList(ordering, search || undefined).pipe(
+    return this.aiModelsApi
+      .aiModelsList({ ordering, search: search || undefined })
+      .pipe(
       map((rows) => {
         const mappedRows = (rows ?? []).map((item) => this.mapAiModel(item));
         return {
@@ -182,7 +184,7 @@ export class AiModelListComponent extends BaseListComponent<AiModelItem> {
     const model = this.pendingDelete();
     if (!model) return;
 
-    this.aiModelsApi.aiModelsDestroy(model.id).subscribe({
+    this.aiModelsApi.aiModelsDestroy({ id: model.id }).subscribe({
       next: () => {
         this.toast.success('Model deleted');
         this.pendingDelete.set(null);

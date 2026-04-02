@@ -15,7 +15,7 @@ export interface AsyncJob {
   /**
    * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `failed` - Failed
    */
-  readonly status: AsyncJob.StatusEnum;
+  readonly status: AsyncJobStatusEnum;
   readonly progress: number;
   readonly message: string | null;
   readonly result: { [key: string]: any };
@@ -24,12 +24,9 @@ export interface AsyncJob {
   readonly updatedAt: string;
   readonly createdBy: number | null;
 }
-export namespace AsyncJob {
-  export const StatusEnum = {
-    Pending: 'pending',
-    Processing: 'processing',
-    Completed: 'completed',
-    Failed: 'failed',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum AsyncJobStatusEnum {
+  Pending = 'pending',
+  Processing = 'processing',
+  Completed = 'completed',
+  Failed = 'failed',
 }

@@ -28,11 +28,22 @@ import { Document } from '../model/document';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  DocumentsServiceInterface,
+  DocumentsActionsCreateRequestParams,
+  DocumentsCreateRequestParams,
+  DocumentsDownloadRetrieveRequestParams,
+  DocumentsMergePdfCreateRequestParams,
+  DocumentsPartialUpdateRequestParams,
+  DocumentsPrintRetrieveRequestParams,
+  DocumentsRetrieveRequestParams,
+  DocumentsUpdateRequestParams,
+} from './documents.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class DocumentsService extends BaseService {
+export class DocumentsService extends BaseService implements DocumentsServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -44,31 +55,13 @@ export class DocumentsService extends BaseService {
   /**
    * Execute a document type hook action.  Args:     pk: The document ID.     action_name: The name of the action to execute.  Returns:     JSON response with success status and message or error.
    * @endpoint post /api/documents/{id}/actions/{actionName}/
-   * @param actionName
-   * @param id A unique integer value identifying this document.
-   * @param docTypeId
-   * @param docNumber
-   * @param expirationDate
-   * @param details
-   * @param metadata
-   * @param required
-   * @param aiValidationStatusOverride * &#x60;&#x60; -  * &#x60;valid&#x60; - valid * &#x60;invalid&#x60; - invalid * &#x60;error&#x60; - error
-   * @param aiValidationResultOverride
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentsActionsCreate(
-    actionName: string,
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsActionsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -78,16 +71,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<Document>;
   public documentsActionsCreate(
-    actionName: string,
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsActionsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -97,16 +81,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public documentsActionsCreate(
-    actionName: string,
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsActionsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -116,16 +91,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public documentsActionsCreate(
-    actionName: string,
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsActionsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -134,16 +100,26 @@ export class DocumentsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const actionName = requestParameters?.actionName;
     if (actionName === null || actionName === undefined) {
       throw new Error(
         'Required parameter actionName was null or undefined when calling documentsActionsCreate.',
       );
     }
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentsActionsCreate.',
       );
     }
+    const docTypeId = requestParameters?.docTypeId;
+    const docNumber = requestParameters?.docNumber;
+    const expirationDate = requestParameters?.expirationDate;
+    const details = requestParameters?.details;
+    const metadata = requestParameters?.metadata;
+    const required = requestParameters?.required;
+    const aiValidationStatusOverride = requestParameters?.aiValidationStatusOverride;
+    const aiValidationResultOverride = requestParameters?.aiValidationResultOverride;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -252,27 +228,13 @@ export class DocumentsService extends BaseService {
 
   /**
    * @endpoint post /api/documents/
-   * @param docTypeId
-   * @param docNumber
-   * @param expirationDate
-   * @param details
-   * @param metadata
-   * @param required
-   * @param aiValidationStatusOverride * &#x60;&#x60; -  * &#x60;valid&#x60; - valid * &#x60;invalid&#x60; - invalid * &#x60;error&#x60; - error
-   * @param aiValidationResultOverride
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentsCreate(
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters?: DocumentsCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -282,14 +244,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<Document>;
   public documentsCreate(
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters?: DocumentsCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -299,14 +254,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public documentsCreate(
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters?: DocumentsCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -316,14 +264,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public documentsCreate(
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters?: DocumentsCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -332,6 +273,15 @@ export class DocumentsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const docTypeId = requestParameters?.docTypeId;
+    const docNumber = requestParameters?.docNumber;
+    const expirationDate = requestParameters?.expirationDate;
+    const details = requestParameters?.details;
+    const metadata = requestParameters?.metadata;
+    const required = requestParameters?.required;
+    const aiValidationStatusOverride = requestParameters?.aiValidationStatusOverride;
+    const aiValidationResultOverride = requestParameters?.aiValidationResultOverride;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -440,13 +390,13 @@ export class DocumentsService extends BaseService {
   /**
    * Download the document file with authentication.
    * @endpoint get /api/documents/{id}/download/
-   * @param id A unique integer value identifying this document.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentsDownloadRetrieve(
-    id: number,
+    requestParameters: DocumentsDownloadRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -456,7 +406,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<Document>;
   public documentsDownloadRetrieve(
-    id: number,
+    requestParameters: DocumentsDownloadRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -466,7 +416,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public documentsDownloadRetrieve(
-    id: number,
+    requestParameters: DocumentsDownloadRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -476,7 +426,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public documentsDownloadRetrieve(
-    id: number,
+    requestParameters: DocumentsDownloadRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -485,6 +435,7 @@ export class DocumentsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentsDownloadRetrieve.',
@@ -628,13 +579,13 @@ export class DocumentsService extends BaseService {
   /**
    * Merge selected documents into a single PDF.  Expects JSON: {\&quot;document_ids\&quot;: [1, 2, 3]}
    * @endpoint post /api/documents/merge-pdf/
-   * @param documentIds Ordered list of document IDs to merge.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentsMergePdfCreate(
-    documentIds: Array<number>,
+    requestParameters: DocumentsMergePdfCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -644,7 +595,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<Blob>;
   public documentsMergePdfCreate(
-    documentIds: Array<number>,
+    requestParameters: DocumentsMergePdfCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -654,7 +605,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpResponse<Blob>>;
   public documentsMergePdfCreate(
-    documentIds: Array<number>,
+    requestParameters: DocumentsMergePdfCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -664,7 +615,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpEvent<Blob>>;
   public documentsMergePdfCreate(
-    documentIds: Array<number>,
+    requestParameters: DocumentsMergePdfCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -673,6 +624,7 @@ export class DocumentsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const documentIds = requestParameters?.documentIds;
     if (documentIds === null || documentIds === undefined) {
       throw new Error(
         'Required parameter documentIds was null or undefined when calling documentsMergePdfCreate.',
@@ -751,29 +703,13 @@ export class DocumentsService extends BaseService {
   /**
    * Override to trigger AI validation when requested.
    * @endpoint patch /api/documents/{id}/
-   * @param id A unique integer value identifying this document.
-   * @param docTypeId
-   * @param docNumber
-   * @param expirationDate
-   * @param details
-   * @param metadata
-   * @param required
-   * @param aiValidationStatusOverride * &#x60;&#x60; -  * &#x60;valid&#x60; - valid * &#x60;invalid&#x60; - invalid * &#x60;error&#x60; - error
-   * @param aiValidationResultOverride
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentsPartialUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -783,15 +719,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<Document>;
   public documentsPartialUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -801,15 +729,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public documentsPartialUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -819,15 +739,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public documentsPartialUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -836,11 +748,20 @@ export class DocumentsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentsPartialUpdate.',
       );
     }
+    const docTypeId = requestParameters?.docTypeId;
+    const docNumber = requestParameters?.docNumber;
+    const expirationDate = requestParameters?.expirationDate;
+    const details = requestParameters?.details;
+    const metadata = requestParameters?.metadata;
+    const required = requestParameters?.required;
+    const aiValidationStatusOverride = requestParameters?.aiValidationStatusOverride;
+    const aiValidationResultOverride = requestParameters?.aiValidationResultOverride;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -950,13 +871,13 @@ export class DocumentsService extends BaseService {
   /**
    * Get document data for print view.  Returns the document with nested doc_application data including customer info.
    * @endpoint get /api/documents/{id}/print/
-   * @param id A unique integer value identifying this document.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentsPrintRetrieve(
-    id: number,
+    requestParameters: DocumentsPrintRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -966,7 +887,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<Document>;
   public documentsPrintRetrieve(
-    id: number,
+    requestParameters: DocumentsPrintRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -976,7 +897,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public documentsPrintRetrieve(
-    id: number,
+    requestParameters: DocumentsPrintRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -986,7 +907,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public documentsPrintRetrieve(
-    id: number,
+    requestParameters: DocumentsPrintRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -995,6 +916,7 @@ export class DocumentsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentsPrintRetrieve.',
@@ -1049,13 +971,13 @@ export class DocumentsService extends BaseService {
 
   /**
    * @endpoint get /api/documents/{id}/
-   * @param id A unique integer value identifying this document.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentsRetrieve(
-    id: number,
+    requestParameters: DocumentsRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1065,7 +987,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<Document>;
   public documentsRetrieve(
-    id: number,
+    requestParameters: DocumentsRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1075,7 +997,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public documentsRetrieve(
-    id: number,
+    requestParameters: DocumentsRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1085,7 +1007,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public documentsRetrieve(
-    id: number,
+    requestParameters: DocumentsRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1094,6 +1016,7 @@ export class DocumentsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling documentsRetrieve.',
@@ -1148,29 +1071,13 @@ export class DocumentsService extends BaseService {
 
   /**
    * @endpoint put /api/documents/{id}/
-   * @param id A unique integer value identifying this document.
-   * @param docTypeId
-   * @param docNumber
-   * @param expirationDate
-   * @param details
-   * @param metadata
-   * @param required
-   * @param aiValidationStatusOverride * &#x60;&#x60; -  * &#x60;valid&#x60; - valid * &#x60;invalid&#x60; - invalid * &#x60;error&#x60; - error
-   * @param aiValidationResultOverride
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public documentsUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1180,15 +1087,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<Document>;
   public documentsUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1198,15 +1097,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpResponse<Document>>;
   public documentsUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1216,15 +1107,7 @@ export class DocumentsService extends BaseService {
     },
   ): Observable<HttpEvent<Document>>;
   public documentsUpdate(
-    id: number,
-    docTypeId?: number,
-    docNumber?: string,
-    expirationDate?: string,
-    details?: string,
-    metadata?: any,
-    required?: boolean,
-    aiValidationStatusOverride?: string,
-    aiValidationResultOverride?: any,
+    requestParameters: DocumentsUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1233,9 +1116,18 @@ export class DocumentsService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling documentsUpdate.');
     }
+    const docTypeId = requestParameters?.docTypeId;
+    const docNumber = requestParameters?.docNumber;
+    const expirationDate = requestParameters?.expirationDate;
+    const details = requestParameters?.details;
+    const metadata = requestParameters?.metadata;
+    const required = requestParameters?.required;
+    const aiValidationStatusOverride = requestParameters?.aiValidationStatusOverride;
+    const aiValidationResultOverride = requestParameters?.aiValidationResultOverride;
 
     let localVarHeaders = this.defaultHeaders;
 

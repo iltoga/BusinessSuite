@@ -120,8 +120,11 @@ describe('ProductFormComponent', () => {
 
     component.saveUpdate(dto).subscribe();
 
-    expect(component.productsApi.productsPartialUpdate).toHaveBeenCalledWith(3, dto);
-    expect(component.productsApi.productsRetrieve).toHaveBeenCalledWith(3);
+    expect(component.productsApi.productsPartialUpdate).toHaveBeenCalledWith({
+      id: 3,
+      productCreateUpdateRequest: dto,
+    });
+    expect(component.productsApi.productsRetrieve).toHaveBeenCalledWith({ id: 3 });
     expect(component.productsApi.productsUpdate).not.toHaveBeenCalled();
   });
 
@@ -193,7 +196,12 @@ describe('ProductFormComponent', () => {
 
     component.onSubmit();
 
-    expect(component.productsApi.productsCreate).toHaveBeenCalled();
+    expect(component.productsApi.productsCreate).toHaveBeenCalledWith({
+      productCreateUpdateRequest: expect.objectContaining({
+        name: 'KITAS',
+        code: 'KITAS-1',
+      }),
+    });
     expect(component.itemId).toBe(19);
     expect(component.router.navigate).toHaveBeenCalledWith(['/products'], {
       state: {

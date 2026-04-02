@@ -181,7 +181,11 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
     const pageSize = params.pageSize || this.pageSize();
 
     return this.documentTypesApi
-      .documentTypesList(undefined, !this.includeDeprecated(), params.ordering, query || undefined)
+      .documentTypesList({
+        hideDeprecated: !this.includeDeprecated(),
+        ordering: params.ordering,
+        search: query || undefined,
+      })
       .pipe(
         map((data) => {
           const items = data || [];
@@ -263,7 +267,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
 
     this.pendingEditId.set(null);
     this.documentTypesApi
-      .documentTypesRetrieve(pendingId)
+      .documentTypesRetrieve({ id: pendingId })
       .pipe(
         catchError(() => {
           this.toast.error('Could not load the selected document type for editing');
@@ -387,7 +391,9 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
       return;
     }
 
-    const request = this.documentTypesApi.documentTypesCreate(documentTypeData);
+    const request = this.documentTypesApi.documentTypesCreate({
+      documentTypeRequest: documentTypeData,
+    });
 
     request
       .pipe(
@@ -487,7 +493,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
    */
   deleteDocumentType(documentType: DocumentType): void {
     this.documentTypesApi
-      .documentTypesCanDeleteRetrieve(documentType.id!)
+      .documentTypesCanDeleteRetrieve({ id: documentType.id! })
       .pipe(
         catchError(() => {
           this.toast.error('Failed to check if document type can be deleted');
@@ -523,7 +529,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
     if (!documentType) return;
 
     this.documentTypesApi
-      .documentTypesDestroy(documentType.id!)
+      .documentTypesDestroy({ id: documentType.id! })
       .pipe(
         catchError(() => {
           this.toast.error('Failed to delete document type');

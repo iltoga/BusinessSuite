@@ -15,17 +15,14 @@ export interface PaymentRequest {
   /**
    * * `cash` - Cash * `credit_card` - Credit card * `wire_transfer` - Wire transfer * `crypto` - Crypto * `paypal` - PayPal
    */
-  paymentType?: PaymentRequest.PaymentTypeEnum;
+  paymentType?: PaymentRequestPaymentTypeEnum;
   amount: string;
   notes?: string;
 }
-export namespace PaymentRequest {
-  export const PaymentTypeEnum = {
-    Cash: 'cash',
-    CreditCard: 'credit_card',
-    WireTransfer: 'wire_transfer',
-    Crypto: 'crypto',
-    Paypal: 'paypal',
-  } as const;
-  export type PaymentTypeEnum = (typeof PaymentTypeEnum)[keyof typeof PaymentTypeEnum];
+export enum PaymentRequestPaymentTypeEnum {
+  Cash = 'cash',
+  CreditCard = 'credit_card',
+  WireTransfer = 'wire_transfer',
+  Crypto = 'crypto',
+  Paypal = 'paypal',
 }

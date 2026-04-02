@@ -140,7 +140,7 @@ export class QuickApplicationModalComponent {
     // 2. Force close only when still needed
     // 3. Emit saved event
     this.applicationsApi
-      .customerApplicationsCreate(payload)
+      .customerApplicationsCreate({ docApplicationCreateUpdateRequest: payload })
       .pipe(
         switchMap((newApp: any) => {
           const status = String(newApp?.status ?? '').toLowerCase();
@@ -150,7 +150,7 @@ export class QuickApplicationModalComponent {
           }
 
           return this.applicationsApi
-            .customerApplicationsForceCloseCreate(newApp.id)
+            .customerApplicationsForceCloseCreate({ id: newApp.id })
             .pipe(
               map((forceClosedDetail: any) => ({
                 application: forceClosedDetail ?? newApp,

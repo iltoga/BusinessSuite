@@ -74,10 +74,12 @@ export class ApplicationSettingsComponent implements OnInit {
 
     this.serverManagementApi
       .serverManagementAppSettingsCreate({
-        name,
-        value: draft.value,
-        scope: draft.scope,
-        description: draft.description,
+        requestBody: {
+          name,
+          value: draft.value,
+          scope: draft.scope,
+          description: draft.description,
+        },
       })
       .pipe(
         catchError((error) => {
@@ -94,10 +96,13 @@ export class ApplicationSettingsComponent implements OnInit {
 
   updateAppSetting(item: AdminAppSettingItem, value: string): void {
     this.serverManagementApi
-      .serverManagementAppSettingsPartialUpdate(item.name, {
-        value,
-        scope: item.scope,
-        description: item.description,
+      .serverManagementAppSettingsPartialUpdate({
+        name: item.name,
+        requestBody: {
+          value,
+          scope: item.scope,
+          description: item.description,
+        },
       })
       .pipe(
         catchError((error) => {
@@ -113,7 +118,7 @@ export class ApplicationSettingsComponent implements OnInit {
 
   deleteAppSetting(name: string): void {
     this.serverManagementApi
-      .serverManagementAppSettingsDestroy(name)
+      .serverManagementAppSettingsDestroy({ name })
       .pipe(
         catchError((error) => {
           this.toast.error(extractServerErrorMessage(error) || `Failed to delete ${name}`);

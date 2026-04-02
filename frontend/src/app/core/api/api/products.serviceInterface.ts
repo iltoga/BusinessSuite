@@ -20,11 +20,13 @@ import { ProductDetail } from '../model/models';
 import { ProductImportStartResponse } from '../model/models';
 import { ProductPriceListPrintStartResponse } from '../model/models';
 import { ProductRequest } from '../model/models';
+import { ProductsBulkDeleteRequestRequest } from '../model/models';
+import { ProductsBulkDeleteResponse } from '../model/models';
 
 import { Configuration } from '../configuration';
 
 export interface ProductsBulkDeleteCreateRequestParams {
-  productRequest: ProductRequest;
+  productsBulkDeleteRequestRequest?: ProductsBulkDeleteRequestRequest;
 }
 
 export interface ProductsCanDeleteRetrieveRequestParams {
@@ -117,7 +119,7 @@ export interface ProductsServiceInterface {
   productsBulkDeleteCreate(
     requestParameters: ProductsBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<Product>;
+  ): Observable<ProductsBulkDeleteResponse>;
 
   /**
    *

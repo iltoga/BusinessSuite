@@ -160,7 +160,7 @@ export class DocumentTypeDetailComponent implements OnInit {
 
   private loadDocumentType(id: number): void {
     this.isLoading.set(true);
-    this.documentTypesApi.documentTypesRetrieve(id).subscribe({
+    this.documentTypesApi.documentTypesRetrieve({ id }).subscribe({
       next: (documentType) => {
         this.documentType.set(documentType);
         this.isLoading.set(false);

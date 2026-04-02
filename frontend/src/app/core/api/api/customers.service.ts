@@ -40,11 +40,25 @@ import { PaginatedCustomerUninvoicedApplicationList } from '../model/paginated-c
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  CustomersServiceInterface,
+  CustomersApplicationsHistoryListRequestParams,
+  CustomersBulkDeleteCreateRequestParams,
+  CustomersCheckPassportCreateRequestParams,
+  CustomersCreateRequestParams,
+  CustomersDestroyRequestParams,
+  CustomersListRequestParams,
+  CustomersPartialUpdateRequestParams,
+  CustomersRetrieveRequestParams,
+  CustomersToggleActiveCreateRequestParams,
+  CustomersUninvoicedApplicationsListRequestParams,
+  CustomersUpdateRequestParams,
+} from './customers.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class CustomersService extends BaseService {
+export class CustomersService extends BaseService implements CustomersServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -55,21 +69,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint get /api/customers/{id}/applications-history/
-   * @param id A unique integer value identifying this customer.
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersApplicationsHistoryList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CustomersApplicationsHistoryListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -79,11 +85,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<PaginatedCustomerApplicationHistoryList>;
   public customersApplicationsHistoryList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CustomersApplicationsHistoryListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -93,11 +95,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCustomerApplicationHistoryList>>;
   public customersApplicationsHistoryList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CustomersApplicationsHistoryListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -107,11 +105,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCustomerApplicationHistoryList>>;
   public customersApplicationsHistoryList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CustomersApplicationsHistoryListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -120,11 +114,16 @@ export class CustomersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling customersApplicationsHistoryList.',
       );
     }
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -213,13 +212,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint post /api/customers/bulk-delete/
-   * @param customersBulkDeleteRequestRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersBulkDeleteCreate(
-    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
+    requestParameters?: CustomersBulkDeleteCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -229,7 +228,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<CustomersBulkDeleteResponse>;
   public customersBulkDeleteCreate(
-    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
+    requestParameters?: CustomersBulkDeleteCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -239,7 +238,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpResponse<CustomersBulkDeleteResponse>>;
   public customersBulkDeleteCreate(
-    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
+    requestParameters?: CustomersBulkDeleteCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -249,7 +248,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpEvent<CustomersBulkDeleteResponse>>;
   public customersBulkDeleteCreate(
-    customersBulkDeleteRequestRequest?: CustomersBulkDeleteRequestRequest,
+    requestParameters?: CustomersBulkDeleteCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -258,6 +257,8 @@ export class CustomersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customersBulkDeleteRequestRequest = requestParameters?.customersBulkDeleteRequestRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -324,45 +325,42 @@ export class CustomersService extends BaseService {
   /**
    * Check passport uploadability asynchronously. Returns an AsyncJob ID to track progress via SSE.
    * @endpoint post /api/customers/check-passport/
-   * @param file Passport image file
-   * @param method Verification method  * &#x60;ai&#x60; - ai * &#x60;hybrid&#x60; - hybrid
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersCheckPassportCreate(
-    file: Blob,
-    method?: string,
+    requestParameters: CustomersCheckPassportCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public customersCheckPassportCreate(
-    file: Blob,
-    method?: string,
+    requestParameters: CustomersCheckPassportCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public customersCheckPassportCreate(
-    file: Blob,
-    method?: string,
+    requestParameters: CustomersCheckPassportCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public customersCheckPassportCreate(
-    file: Blob,
-    method?: string,
+    requestParameters: CustomersCheckPassportCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const file = requestParameters?.file;
     if (file === null || file === undefined) {
       throw new Error(
         'Required parameter file was null or undefined when calling customersCheckPassportCreate.',
       );
     }
+    const method = requestParameters?.method;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -439,13 +437,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint post /api/customers/
-   * @param customerRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersCreate(
-    customerRequest?: CustomerRequest,
+    requestParameters?: CustomersCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -455,7 +453,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<Customer>;
   public customersCreate(
-    customerRequest?: CustomerRequest,
+    requestParameters?: CustomersCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -465,7 +463,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public customersCreate(
-    customerRequest?: CustomerRequest,
+    requestParameters?: CustomersCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -475,7 +473,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public customersCreate(
-    customerRequest?: CustomerRequest,
+    requestParameters?: CustomersCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -484,6 +482,8 @@ export class CustomersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const customerRequest = requestParameters?.customerRequest;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -545,35 +545,36 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint delete /api/customers/{id}/
-   * @param id
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersDestroy(
-    id: number,
+    requestParameters: CustomersDestroyRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public customersDestroy(
-    id: number,
+    requestParameters: CustomersDestroyRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public customersDestroy(
-    id: number,
+    requestParameters: CustomersDestroyRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public customersDestroy(
-    id: number,
+    requestParameters: CustomersDestroyRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling customersDestroy.');
     }
@@ -626,19 +627,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint get /api/customers/
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CustomersListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -648,10 +643,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<PaginatedCustomerList>;
   public customersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CustomersListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -661,10 +653,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCustomerList>>;
   public customersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CustomersListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -674,10 +663,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCustomerList>>;
   public customersList(
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters?: CustomersListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -686,6 +672,11 @@ export class CustomersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
+
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
     localVarQueryParameters = this.addToHttpParams(
@@ -769,15 +760,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint patch /api/customers/{id}/
-   * @param id
-   * @param customerRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersPartialUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersPartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -787,8 +776,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<Customer>;
   public customersPartialUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersPartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -798,8 +786,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public customersPartialUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersPartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -809,8 +796,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public customersPartialUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersPartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -819,11 +805,13 @@ export class CustomersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling customersPartialUpdate.',
       );
     }
+    const customerRequest = requestParameters?.customerRequest;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -886,13 +874,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint get /api/customers/{id}/
-   * @param id
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersRetrieve(
-    id: number,
+    requestParameters: CustomersRetrieveRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -902,7 +890,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<Customer>;
   public customersRetrieve(
-    id: number,
+    requestParameters: CustomersRetrieveRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -912,7 +900,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public customersRetrieve(
-    id: number,
+    requestParameters: CustomersRetrieveRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -922,7 +910,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public customersRetrieve(
-    id: number,
+    requestParameters: CustomersRetrieveRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -931,6 +919,7 @@ export class CustomersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling customersRetrieve.',
@@ -1073,15 +1062,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint post /api/customers/{id}/toggle-active/
-   * @param id A unique integer value identifying this customer.
-   * @param customerRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersToggleActiveCreate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersToggleActiveCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1091,8 +1078,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<Customer>;
   public customersToggleActiveCreate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersToggleActiveCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1102,8 +1088,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public customersToggleActiveCreate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersToggleActiveCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1113,8 +1098,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public customersToggleActiveCreate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersToggleActiveCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1123,11 +1107,13 @@ export class CustomersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling customersToggleActiveCreate.',
       );
     }
+    const customerRequest = requestParameters?.customerRequest;
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -1190,21 +1176,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint get /api/customers/{id}/uninvoiced-applications/
-   * @param id A unique integer value identifying this customer.
-   * @param ordering Which field to use when ordering the results.
-   * @param page A page number within the paginated result set.
-   * @param pageSize Number of results to return per page.
-   * @param search A search term.
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersUninvoicedApplicationsList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CustomersUninvoicedApplicationsListRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1214,11 +1192,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<PaginatedCustomerUninvoicedApplicationList>;
   public customersUninvoicedApplicationsList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CustomersUninvoicedApplicationsListRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1228,11 +1202,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpResponse<PaginatedCustomerUninvoicedApplicationList>>;
   public customersUninvoicedApplicationsList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CustomersUninvoicedApplicationsListRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1242,11 +1212,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpEvent<PaginatedCustomerUninvoicedApplicationList>>;
   public customersUninvoicedApplicationsList(
-    id: number,
-    ordering?: string,
-    page?: number,
-    pageSize?: number,
-    search?: string,
+    requestParameters: CustomersUninvoicedApplicationsListRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1255,11 +1221,16 @@ export class CustomersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error(
         'Required parameter id was null or undefined when calling customersUninvoicedApplicationsList.',
       );
     }
+    const ordering = requestParameters?.ordering;
+    const page = requestParameters?.page;
+    const pageSize = requestParameters?.pageSize;
+    const search = requestParameters?.search;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -1348,15 +1319,13 @@ export class CustomersService extends BaseService {
 
   /**
    * @endpoint put /api/customers/{id}/
-   * @param id
-   * @param customerRequest
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public customersUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1366,8 +1335,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<Customer>;
   public customersUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1377,8 +1345,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpResponse<Customer>>;
   public customersUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1388,8 +1355,7 @@ export class CustomersService extends BaseService {
     },
   ): Observable<HttpEvent<Customer>>;
   public customersUpdate(
-    id: number,
-    customerRequest?: CustomerRequest,
+    requestParameters: CustomersUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1398,9 +1364,11 @@ export class CustomersService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const id = requestParameters?.id;
     if (id === null || id === undefined) {
       throw new Error('Required parameter id was null or undefined when calling customersUpdate.');
     }
+    const customerRequest = requestParameters?.customerRequest;
 
     let localVarHeaders = this.defaultHeaders;
 

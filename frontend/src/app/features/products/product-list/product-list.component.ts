@@ -15,6 +15,7 @@ import { firstValueFrom, forkJoin, map, type Observable } from 'rxjs';
 
 import {
   ProductsService,
+  AsyncJobStatusEnum,
   type AsyncJob,
   type Product,
   type ProductCreateUpdateRequest,
@@ -284,21 +285,19 @@ export class ProductListComponent extends BaseListComponent<Product> {
     const search = params.query?.trim();
 
     return forkJoin({
-      products: this.productsApi.productsList(
-        deprecatedFilter.deprecated,
-        deprecatedFilter.hideDeprecated,
-        params.ordering,
-        params.page,
-        params.pageSize,
-        categoryParam,
-        search || undefined,
-        undefined,
-      ),
-      categoryOptions: this.productsApi.productsCategoryOptionsList(
-        deprecatedFilter.deprecated,
-        deprecatedFilter.hideDeprecated,
-        undefined,
-      ),
+      products: this.productsApi.productsList({
+        deprecated: deprecatedFilter.deprecated,
+        hideDeprecated: deprecatedFilter.hideDeprecated,
+        ordering: params.ordering,
+        page: params.page,
+        pageSize: params.pageSize,
+        productCategory: categoryParam,
+        search: search || undefined,
+      }),
+      categoryOptions: this.productsApi.productsCategoryOptionsList({
+        deprecated: deprecatedFilter.deprecated,
+        hideDeprecated: deprecatedFilter.hideDeprecated,
+      }),
     }).pipe(
       map((response) => {
         this.categoryFilterOptions.set(response.categoryOptions ?? []);
@@ -315,7 +314,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       return;
     }
     this.pendingDelete.set(product);
-    this.productsApi.productsDeletePreviewRetrieve(product.id).subscribe({
+    this.productsApi.productsDeletePreviewRetrieve({ id: product.id }).subscribe({
       next: (result) => {
         this.productDeleteData.set(this.mapProductDeletePreview(result, product));
         this.productDeleteOpen.set(true);
@@ -337,7 +336,10 @@ export class ProductListComponent extends BaseListComponent<Product> {
     const updatePayload: Partial<ProductCreateUpdateRequest> = { deprecated };
 
     this.productsApi
-      .productsPartialUpdate(product.id, updatePayload as ProductCreateUpdateRequest)
+      .productsPartialUpdate({
+        id: product.id,
+        productCreateUpdateRequest: updatePayload as ProductCreateUpdateRequest,
+      })
       .subscribe({
         next: () => {
           this.toast.success(deprecated ? 'Product deprecated' : 'Product activated');
@@ -364,10 +366,13 @@ export class ProductListComponent extends BaseListComponent<Product> {
       return;
     }
     const deleteRequest = result.forceDelete
-      ? this.productsApi.productsForceDeleteCreate(product.id, {
-          forceDeleteConfirmed: true,
+      ? this.productsApi.productsForceDeleteCreate({
+          id: product.id,
+          requestBody: {
+            forceDeleteConfirmed: true,
+          },
         })
-      : this.productsApi.productsDestroy(product.id);
+      : this.productsApi.productsDestroy({ id: product.id });
 
     deleteRequest.subscribe({
       next: () => {
@@ -420,8 +425,10 @@ export class ProductListComponent extends BaseListComponent<Product> {
     const query = this.productBulkDeleteQuery();
 
     const bulkDeletePayload = {
-      searchQuery: query || '',
-    } as unknown as Parameters<ProductsService['productsBulkDeleteCreate']>[0];
+      productsBulkDeleteRequestRequest: {
+        searchQuery: query || '',
+      },
+    } as Parameters<ProductsService['productsBulkDeleteCreate']>[0];
 
     this.productsApi.productsBulkDeleteCreate(bulkDeletePayload).subscribe({
       next: (response) => {
@@ -698,11 +705,11 @@ export class ProductListComponent extends BaseListComponent<Product> {
         next: (job) => {
           this.exportProgress.set(Number(job.progress ?? 0));
 
-          if (job.status === 'completed') {
+          if (job.status === AsyncJobStatusEnum.Completed) {
             this.downloadExport(jobId);
             this.exportInProgress.set(false);
             this.exportProgress.set(null);
-          } else if (job.status === 'failed') {
+          } else if (job.status === AsyncJobStatusEnum.Failed) {
             this.toast.error(job.errorMessage || 'Product export failed');
             this.exportInProgress.set(false);
             this.exportProgress.set(null);
@@ -726,12 +733,12 @@ export class ProductListComponent extends BaseListComponent<Product> {
       .subscribe({
         next: (job) => {
           this.importProgress.set(Number(job.progress ?? 0));
-          if (job.status === 'completed') {
+          if (job.status === AsyncJobStatusEnum.Completed) {
             this.toast.success('Import completed successfully');
             this.importInProgress.set(false);
             this.importProgress.set(null);
             this.reload();
-          } else if (job.status === 'failed') {
+          } else if (job.status === AsyncJobStatusEnum.Failed) {
             this.toast.error(job.errorMessage || 'Product import failed');
             this.importInProgress.set(false);
             this.importProgress.set(null);
@@ -769,11 +776,11 @@ export class ProductListComponent extends BaseListComponent<Product> {
   }
 
   private isCompletedJob(job: AsyncJob): boolean {
-    return job.status === 'completed';
+    return job.status === AsyncJobStatusEnum.Completed;
   }
 
   private isFailedJob(job: AsyncJob): boolean {
-    return job.status === 'failed';
+    return job.status === AsyncJobStatusEnum.Failed;
   }
 
   /**

@@ -12,7 +12,7 @@ export interface WorkflowNotificationRequest {
   /**
    * * `pending` - Pending * `sent` - Sent * `delivered` - Delivered * `read` - Read * `failed` - Failed * `cancelled` - Cancelled
    */
-  status?: WorkflowNotificationRequest.StatusEnum;
+  status?: WorkflowNotificationRequestStatusEnum;
   channel?: string;
   subject: string;
   body: string;
@@ -24,14 +24,11 @@ export interface WorkflowNotificationRequest {
   docWorkflow?: number | null;
   createdBy?: number | null;
 }
-export namespace WorkflowNotificationRequest {
-  export const StatusEnum = {
-    Pending: 'pending',
-    Sent: 'sent',
-    Delivered: 'delivered',
-    Read: 'read',
-    Failed: 'failed',
-    Cancelled: 'cancelled',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum WorkflowNotificationRequestStatusEnum {
+  Pending = 'pending',
+  Sent = 'sent',
+  Delivered = 'delivered',
+  Read = 'read',
+  Failed = 'failed',
+  Cancelled = 'cancelled',
 }

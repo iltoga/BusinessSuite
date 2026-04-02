@@ -24,7 +24,7 @@ export interface ProductCreateUpdateRequest {
   /**
    * * `visa` - Visa * `other` - Other
    */
-  productType?: ProductCreateUpdateRequest.ProductTypeEnum | null;
+  productType?: ProductCreateUpdateRequestProductTypeEnum | null;
   validity?: number | null;
   documentsMinValidity?: number | null;
   applicationWindowDays?: number | null;
@@ -34,10 +34,7 @@ export interface ProductCreateUpdateRequest {
   requiredDocumentIds?: Array<number>;
   optionalDocumentIds?: Array<number>;
 }
-export namespace ProductCreateUpdateRequest {
-  export const ProductTypeEnum = {
-    Visa: 'visa',
-    Other: 'other',
-  } as const;
-  export type ProductTypeEnum = (typeof ProductTypeEnum)[keyof typeof ProductTypeEnum];
+export enum ProductCreateUpdateRequestProductTypeEnum {
+  Visa = 'visa',
+  Other = 'other',
 }

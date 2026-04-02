@@ -18,7 +18,7 @@ export interface DocWorkflow {
   /**
    * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
    */
-  readonly status: DocWorkflow.StatusEnum;
+  readonly status: DocWorkflowStatusEnum;
   readonly notes: string;
   /**
    * Resolve current step from already-loaded siblings to avoid N+1 queries.
@@ -32,12 +32,9 @@ export interface DocWorkflow {
   readonly createdBy: number;
   readonly updatedBy: number | null;
 }
-export namespace DocWorkflow {
-  export const StatusEnum = {
-    Pending: 'pending',
-    Processing: 'processing',
-    Completed: 'completed',
-    Rejected: 'rejected',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
+export enum DocWorkflowStatusEnum {
+  Pending = 'pending',
+  Processing = 'processing',
+  Completed = 'completed',
+  Rejected = 'rejected',
 }

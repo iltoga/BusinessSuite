@@ -44,6 +44,7 @@ export class PdfViewerHostComponent implements OnChanges, OnInit, OnDestroy {
 
   isLoading = true;
   loadError: string | null = null;
+  readonly viewerLanguage = PdfViewerHostComponent.detectViewerLanguage();
   private blobUrl: string | null = null;
 
   private el = inject(ElementRef);
@@ -86,6 +87,20 @@ export class PdfViewerHostComponent implements OnChanges, OnInit, OnDestroy {
     } catch (e) {
       console.debug('Unable to set pdfDefaultOptions, will rely on pdfjs auto-detection', e);
     }
+  }
+
+  private static detectViewerLanguage(): string {
+    const fallbackLanguage = 'en-US';
+    if (typeof navigator === 'undefined' || !navigator.language) {
+      return fallbackLanguage;
+    }
+
+    const [baseLanguage, region] = navigator.language.split('-');
+    if (!baseLanguage) {
+      return fallbackLanguage;
+    }
+
+    return region ? `${baseLanguage.toLowerCase()}-${region.toUpperCase()}` : baseLanguage.toLowerCase();
   }
 
   close(): void {

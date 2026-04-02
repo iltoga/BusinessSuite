@@ -1,7 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 
-import { type AsyncJob } from '@/core/api';
+import { AsyncJobStatusEnum, type AsyncJob } from '@/core/api';
 import {
   ApplicationsService,
   type ApplicationDocument,
@@ -246,7 +246,7 @@ export class ApplicationOcrService {
 
     this.pollSub = this.jobService.watchJob(jobId).subscribe({
       next: (jobStatus: AsyncJob) => {
-        if (jobStatus.status === 'completed') {
+        if (jobStatus.status === AsyncJobStatusEnum.Completed) {
           const jobResult = (jobStatus.result as Record<string, any>) || {};
           const result: OcrStatusResponse = {
             ...jobResult,
@@ -258,7 +258,7 @@ export class ApplicationOcrService {
           return;
         }
 
-        if (jobStatus.status === 'failed') {
+        if (jobStatus.status === AsyncJobStatusEnum.Failed) {
           const jobResult = (jobStatus.result as Record<string, any>) || {};
           this.toast.error((jobResult['errorMessage'] as string) || 'OCR failed');
           this.polling.set(false);

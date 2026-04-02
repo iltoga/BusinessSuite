@@ -44,12 +44,12 @@ describe('CustomerSelectComponent', () => {
 
     const component = TestBed.runInInjectionContext(() => new CustomerSelectComponent());
 
-    expect(customersSpy.customersList).toHaveBeenCalledWith(
-      'sort_last_name,sort_first_name,sort_company_name',
-      1,
-      20,
-      undefined,
-    );
+    expect(customersSpy.customersList).toHaveBeenCalledWith({
+      ordering: 'sort_last_name,sort_first_name,sort_company_name',
+      page: 1,
+      pageSize: 20,
+      search: undefined,
+    });
     expect(component.options().map((option) => option.label)).toEqual([
       'Anna abramov',
       'Aliaksei Chaichyts',
@@ -98,7 +98,7 @@ describe('CustomerSelectComponent', () => {
 
     component.writeValue(3);
 
-    expect(customersSpy.customersRetrieve).toHaveBeenCalledWith(3);
+    expect(customersSpy.customersRetrieve).toHaveBeenCalledWith({ id: 3 });
     expect(component.options().map((option) => option.label)).toEqual([
       'Anna abramov',
       'Aliaksei Chaichyts',

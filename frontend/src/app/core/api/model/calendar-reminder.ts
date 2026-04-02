@@ -25,29 +25,25 @@ export interface CalendarReminder {
   /**
    * * `pending` - Pending * `sent` - Sent * `failed` - Failed
    */
-  readonly status: CalendarReminder.StatusEnum;
+  readonly status: CalendarReminderStatusEnum;
   readonly sentAt: string | null;
   readonly readAt: string | null;
   /**
    * * `in_app` - In-App * `system` - System Notification
    */
-  readonly deliveryChannel: CalendarReminder.DeliveryChannelEnum;
+  readonly deliveryChannel: CalendarReminderDeliveryChannelEnum;
   readonly deliveryDeviceLabel: string;
   readonly readDeviceLabel: string;
   readonly errorMessage: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
-export namespace CalendarReminder {
-  export const StatusEnum = {
-    Pending: 'pending',
-    Sent: 'sent',
-    Failed: 'failed',
-  } as const;
-  export type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum];
-  export const DeliveryChannelEnum = {
-    InApp: 'in_app',
-    System: 'system',
-  } as const;
-  export type DeliveryChannelEnum = (typeof DeliveryChannelEnum)[keyof typeof DeliveryChannelEnum];
+export enum CalendarReminderStatusEnum {
+  Pending = 'pending',
+  Sent = 'sent',
+  Failed = 'failed',
+}
+export enum CalendarReminderDeliveryChannelEnum {
+  InApp = 'in_app',
+  System = 'system',
 }

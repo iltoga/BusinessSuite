@@ -30,11 +30,12 @@ import { GetMockAuthConfig200Response } from '../model/get-mock-auth-config200-r
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import { MockServiceInterface } from './mock.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class MockService extends BaseService {
+export class MockService extends BaseService implements MockServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],

@@ -1,4 +1,5 @@
 import { InvoicesService } from '@/core/api/api/invoices.service';
+import { AsyncJobStatusEnum } from '@/core/api/model/async-job';
 import { AuthService } from '@/core/services/auth.service';
 import { SseService } from '@/core/services/sse.service';
 import { ZardButtonComponent } from '@/shared/components/button/button.component';
@@ -80,7 +81,9 @@ export class InvoiceDownloadDropdownComponent {
 
     this.loading.set(true);
     this.progress.set(null);
-    this.invoicesService.invoicesDownloadRetrieve(this.invoiceId(), format).subscribe({
+    this.invoicesService
+      .invoicesDownloadRetrieve({ id: this.invoiceId(), fileFormat: format })
+      .subscribe({
       next: (blob: Blob) => {
         const filename = `${this.invoiceNumber()}_${this.customerName()}.docx`.replace(/\s+/g, '_');
         downloadBlob(blob, filename);
@@ -164,7 +167,10 @@ export class InvoiceDownloadDropdownComponent {
 
     try {
       const payload = await firstValueFrom(
-        this.invoicesService.invoicesDownloadAsyncCreate(this.invoiceId(), { format: 'pdf' }),
+        this.invoicesService.invoicesDownloadAsyncCreate({
+          id: this.invoiceId(),
+          requestBody: { format: 'pdf' },
+        }),
       );
       const tracking = this.extractTrackingInfo(payload);
 
@@ -247,7 +253,7 @@ export class InvoiceDownloadDropdownComponent {
               onProgress(update.progress);
             }
 
-            if (message.event === 'complete' || update.status === 'completed') {
+            if (message.event === 'complete' || update.status === AsyncJobStatusEnum.Completed) {
               const finalUrl = update.downloadUrl || tracking.downloadUrl;
               if (!finalUrl) {
                 sub?.unsubscribe();
@@ -256,7 +262,7 @@ export class InvoiceDownloadDropdownComponent {
               }
               sub?.unsubscribe();
               settleResolve(finalUrl);
-            } else if (message.event === 'error' || update.status === 'failed') {
+            } else if (message.event === 'error' || update.status === AsyncJobStatusEnum.Failed) {
               sub?.unsubscribe();
               settleReject(
                 new Error(update.errorMessage || update.message || 'PDF generation failed'),
@@ -282,7 +288,7 @@ export class InvoiceDownloadDropdownComponent {
   ): Promise<string> {
     for (let attempt = 0; attempt < 60; attempt += 1) {
       const payload = await firstValueFrom(
-        this.invoicesService.invoicesDownloadAsyncStatusRetrieve(tracking.jobId),
+        this.invoicesService.invoicesDownloadAsyncStatusRetrieve({ jobId: tracking.jobId }),
       );
       const update = this.normalizeDownloadProgress(payload);
 
@@ -290,7 +296,7 @@ export class InvoiceDownloadDropdownComponent {
         onProgress(update.progress);
       }
 
-      if (update.status === 'completed') {
+      if (update.status === AsyncJobStatusEnum.Completed) {
         const finalUrl = update.downloadUrl || tracking.downloadUrl;
         if (!finalUrl) {
           throw new Error('PDF generation completed without a download URL');
@@ -298,7 +304,7 @@ export class InvoiceDownloadDropdownComponent {
         return finalUrl;
       }
 
-      if (update.status === 'failed') {
+      if (update.status === AsyncJobStatusEnum.Failed) {
         throw new Error(update.errorMessage || update.message || 'PDF generation failed');
       }
 
@@ -313,7 +319,7 @@ export class InvoiceDownloadDropdownComponent {
   ): Promise<{ blob: Blob; filename: string }> {
     onProgress(5);
     const blob = await firstValueFrom(
-      this.invoicesService.invoicesDownloadRetrieve(this.invoiceId(), 'pdf'),
+      this.invoicesService.invoicesDownloadRetrieve({ id: this.invoiceId(), fileFormat: 'pdf' }),
     );
     onProgress(100);
     return { blob, filename: this.defaultPdfFilename() };

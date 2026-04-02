@@ -28,11 +28,18 @@ import { UserProfile } from '../model/user-profile';
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import {
+  UserProfileServiceInterface,
+  UserProfileChangePasswordCreateRequestParams,
+  UserProfileLogoutCreateRequestParams,
+  UserProfileUpdateProfilePartialUpdateRequestParams,
+  UserProfileUploadAvatarCreateRequestParams,
+} from './user-profile.serviceInterface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class UserProfileService extends BaseService {
+export class UserProfileService extends BaseService implements UserProfileServiceInterface {
   constructor(
     protected httpClient: HttpClient,
     @Optional() @Inject(BASE_PATH) basePath: string | string[],
@@ -43,45 +50,42 @@ export class UserProfileService extends BaseService {
 
   /**
    * @endpoint post /api/user-profile/change_password/
-   * @param oldPassword
-   * @param newPassword
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public userProfileChangePasswordCreate(
-    oldPassword: string,
-    newPassword: string,
+    requestParameters: UserProfileChangePasswordCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any>;
   public userProfileChangePasswordCreate(
-    oldPassword: string,
-    newPassword: string,
+    requestParameters: UserProfileChangePasswordCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpResponse<any>>;
   public userProfileChangePasswordCreate(
-    oldPassword: string,
-    newPassword: string,
+    requestParameters: UserProfileChangePasswordCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<HttpEvent<any>>;
   public userProfileChangePasswordCreate(
-    oldPassword: string,
-    newPassword: string,
+    requestParameters: UserProfileChangePasswordCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: { httpHeaderAccept?: undefined; context?: HttpContext; transferCache?: boolean },
   ): Observable<any> {
+    const oldPassword = requestParameters?.oldPassword;
     if (oldPassword === null || oldPassword === undefined) {
       throw new Error(
         'Required parameter oldPassword was null or undefined when calling userProfileChangePasswordCreate.',
       );
     }
+    const newPassword = requestParameters?.newPassword;
     if (newPassword === null || newPassword === undefined) {
       throw new Error(
         'Required parameter newPassword was null or undefined when calling userProfileChangePasswordCreate.',
@@ -165,17 +169,13 @@ export class UserProfileService extends BaseService {
   /**
    * Logout current user and record it in Django.
    * @endpoint post /api/user-profile/logout/
-   * @param email
-   * @param firstName
-   * @param lastName
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public userProfileLogoutCreate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: UserProfileLogoutCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -185,9 +185,7 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<UserProfile>;
   public userProfileLogoutCreate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: UserProfileLogoutCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -197,9 +195,7 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<HttpResponse<UserProfile>>;
   public userProfileLogoutCreate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: UserProfileLogoutCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -209,9 +205,7 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<HttpEvent<UserProfile>>;
   public userProfileLogoutCreate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: UserProfileLogoutCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -220,6 +214,10 @@ export class UserProfileService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const email = requestParameters?.email;
+    const firstName = requestParameters?.firstName;
+    const lastName = requestParameters?.lastName;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -389,17 +387,13 @@ export class UserProfileService extends BaseService {
 
   /**
    * @endpoint patch /api/user-profile/update_profile/
-   * @param email
-   * @param firstName
-   * @param lastName
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public userProfileUpdateProfilePartialUpdate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: UserProfileUpdateProfilePartialUpdateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -409,9 +403,7 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<UserProfile>;
   public userProfileUpdateProfilePartialUpdate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: UserProfileUpdateProfilePartialUpdateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -421,9 +413,7 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<HttpResponse<UserProfile>>;
   public userProfileUpdateProfilePartialUpdate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: UserProfileUpdateProfilePartialUpdateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -433,9 +423,7 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<HttpEvent<UserProfile>>;
   public userProfileUpdateProfilePartialUpdate(
-    email?: string,
-    firstName?: string,
-    lastName?: string,
+    requestParameters?: UserProfileUpdateProfilePartialUpdateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -444,6 +432,10 @@ export class UserProfileService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const email = requestParameters?.email;
+    const firstName = requestParameters?.firstName;
+    const lastName = requestParameters?.lastName;
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (cookieAuth) required
@@ -525,13 +517,13 @@ export class UserProfileService extends BaseService {
   /**
    * Upload user profile picture.
    * @endpoint post /api/user-profile/upload_avatar/
-   * @param avatar
+   * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public userProfileUploadAvatarCreate(
-    avatar: Blob,
+    requestParameters: UserProfileUploadAvatarCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -541,7 +533,7 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<UserProfile>;
   public userProfileUploadAvatarCreate(
-    avatar: Blob,
+    requestParameters: UserProfileUploadAvatarCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -551,7 +543,7 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<HttpResponse<UserProfile>>;
   public userProfileUploadAvatarCreate(
-    avatar: Blob,
+    requestParameters: UserProfileUploadAvatarCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -561,7 +553,7 @@ export class UserProfileService extends BaseService {
     },
   ): Observable<HttpEvent<UserProfile>>;
   public userProfileUploadAvatarCreate(
-    avatar: Blob,
+    requestParameters: UserProfileUploadAvatarCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -570,6 +562,7 @@ export class UserProfileService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    const avatar = requestParameters?.avatar;
     if (avatar === null || avatar === undefined) {
       throw new Error(
         'Required parameter avatar was null or undefined when calling userProfileUploadAvatarCreate.',
