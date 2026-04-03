@@ -1,15 +1,23 @@
 <div [formGroup]="form">
   <z-card class="p-6">
     <div class="flex items-center justify-between">
-      <h2 class="text-lg font-semibold">Invoice Products</h2>
-      <z-button zType="secondary" zSize="sm" (click)="addLineItem.emit()" [zDisabled]="!customerSelected">
+      <h2 class="text-lg font-semibold">Invoice Lines</h2>
+      <z-button
+        zType="secondary"
+        zSize="sm"
+        (click)="addLineItem.emit()"
+        [zDisabled]="!customerSelected"
+      >
         Add Product
       </z-button>
     </div>
 
     <div class="mt-4 space-y-4" formArrayName="invoiceApplications">
       @for (group of invoiceApplications.controls; track group; let i = $index) {
-        <div [formGroupName]="i" class="grid gap-3 rounded-lg border p-4 md:grid-cols-6 xl:grid-cols-12">
+        <div
+          [formGroupName]="i"
+          class="grid gap-3 rounded-lg border p-4 md:grid-cols-6 xl:grid-cols-12"
+        >
           <div class="md:col-span-2 xl:col-span-4">
             <label class="text-sm font-medium">Product</label>
             <z-combobox
@@ -39,7 +47,9 @@
               (zValueChange)="lineCustomerApplicationChange.emit({ group, value: $event })"
             />
             <div class="mt-1 text-xs text-muted-foreground">
-              @if (selectedProductPendingCount(group) > 0) {
+              @if (group.get('customerApplication')?.value) {
+                Linked application selected
+              } @else if (selectedProductPendingCount(group) > 0) {
                 Pending applications for product: {{ selectedProductPendingCount(group) }}
               } @else {
                 Product-only line (no linked application)

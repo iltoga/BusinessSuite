@@ -102,7 +102,7 @@ export class InvoiceFormComponent implements OnInit {
     dueDate: 'Due Date (Payment)',
     notes: 'Notes',
     sent: 'Sent',
-    invoiceApplications: 'Invoice Products',
+    invoiceApplications: 'Invoice Lines',
     invoiceApplicationsProduct: 'Product',
     invoiceApplicationsCustomerApplication: 'Linked Application',
     invoiceApplicationsQuantity: 'Qty',
@@ -284,7 +284,9 @@ export class InvoiceFormComponent implements OnInit {
     if (initial.product && initial.customerApplication && initial.amount === undefined) {
       const app = this.findPendingApplicationById(initial.customerApplication);
       if (app) {
-        group.get('amount')?.setValue(this.resolveApplicationPrice(app) * quantity, { emitEvent: false });
+        group
+          .get('amount')
+          ?.setValue(this.resolveApplicationPrice(app) * quantity, { emitEvent: false });
       }
     } else if (initial.product && initial.amount === undefined) {
       group
@@ -392,20 +394,20 @@ export class InvoiceFormComponent implements OnInit {
       this.invoicesApi
         .invoicesUpdate({ id: this.invoice()!.id, invoiceCreateUpdateRequest: payload })
         .subscribe({
-        next: (invoice: InvoiceCreateUpdate) => {
-          this.toast.success('Invoice updated');
-          this.router.navigate(['/invoices', invoice.id], { state: detailState });
-        },
-        error: (error) => {
-          applyServerErrorsToForm(this.form, error);
-          this.form.markAllAsTouched();
-          const message = extractServerErrorMessage(error);
-          this.toast.error(
-            message ? `Failed to update invoice: ${message}` : 'Failed to update invoice',
-          );
-          this.isSaving.set(false);
-        },
-      });
+          next: (invoice: InvoiceCreateUpdate) => {
+            this.toast.success('Invoice updated');
+            this.router.navigate(['/invoices', invoice.id], { state: detailState });
+          },
+          error: (error) => {
+            applyServerErrorsToForm(this.form, error);
+            this.form.markAllAsTouched();
+            const message = extractServerErrorMessage(error);
+            this.toast.error(
+              message ? `Failed to update invoice: ${message}` : 'Failed to update invoice',
+            );
+            this.isSaving.set(false);
+          },
+        });
       return;
     }
 
@@ -451,10 +453,18 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   availablePendingApplicationOptionsForLine(group: FormGroup): ZardComboboxOption[] {
-    return this.availablePendingApplicationsForLine(group).map((app) => ({
-      value: String(app.id),
-      label: `#${app.id} \u00b7 ${app.customer?.fullName ?? 'Unknown customer'}`,
-    }));
+    const options = this.availablePendingApplicationsForLine(group).map((app) =>
+      this.toInvoiceApplicationOption(app),
+    );
+    const currentApplication = this.findCurrentInvoiceApplicationForLine(group);
+    if (!currentApplication) {
+      return options;
+    }
+
+    const currentOption = this.toInvoiceApplicationOption(currentApplication);
+    return options.some((option) => option.value === currentOption.value)
+      ? options
+      : [currentOption, ...options];
   }
 
   onLineProductComboboxChange(group: FormGroup, value: string | null): void {
@@ -560,6 +570,32 @@ export class InvoiceFormComponent implements OnInit {
     return this.billableProducts().find((row) => row.product.id === productId);
   }
 
+  private findCurrentInvoiceApplicationForLine(group: FormGroup): DocApplicationInvoice | null {
+    const applicationId = Number(group.get('customerApplication')?.value ?? 0);
+    if (!applicationId) {
+      return null;
+    }
+
+    const productId = Number(group.get('product')?.value ?? 0);
+    const invoiceApplications = this.invoice()?.invoiceApplications ?? [];
+    const invoiceApplication = invoiceApplications.find((item) => {
+      if (item.customerApplication?.id !== applicationId) {
+        return false;
+      }
+
+      return !productId || Number(item.product?.id ?? 0) === productId;
+    });
+
+    return invoiceApplication?.customerApplication ?? null;
+  }
+
+  private toInvoiceApplicationOption(application: DocApplicationInvoice): ZardComboboxOption {
+    return {
+      value: String(application.id),
+      label: `#${application.id} \u00b7 ${application.customer?.fullName ?? 'Unknown customer'}`,
+    };
+  }
+
   private findPendingApplicationById(applicationId: number): DocApplicationInvoice | undefined {
     for (const row of this.billableProducts()) {
       const app = row.pendingApplications.find((candidate) => candidate.id === applicationId);
@@ -611,14 +647,18 @@ export class InvoiceFormComponent implements OnInit {
     if (applicationId) {
       const application = this.findPendingApplicationById(applicationId);
       if (application) {
-        group.get('amount')?.setValue(this.resolveApplicationPrice(application) * quantity, { emitEvent: false });
+        group
+          .get('amount')
+          ?.setValue(this.resolveApplicationPrice(application) * quantity, { emitEvent: false });
         this.updateTotalAmount();
         return;
       }
     }
 
     const productId = Number(group.get('product')?.value ?? 0);
-    group.get('amount')?.setValue(this.resolveProductPrice(productId) * quantity, { emitEvent: false });
+    group
+      .get('amount')
+      ?.setValue(this.resolveProductPrice(productId) * quantity, { emitEvent: false });
     this.updateTotalAmount();
   }
 
@@ -638,9 +678,7 @@ export class InvoiceFormComponent implements OnInit {
   private loadFromApplication(applicationId: number): void {
     this.isLoading.set(true);
 
-    this.invoicesApi
-      .invoicesFromApplicationPrefillRetrieve({ applicationId })
-      .subscribe({
+    this.invoicesApi.invoicesFromApplicationPrefillRetrieve({ applicationId }).subscribe({
       next: (response) => {
         const payload = unwrapApiRecord(response) as Record<string, any> | null;
         const customerId = payload?.['customer']?.id ?? null;

@@ -27,12 +27,14 @@ describe('InvoiceFormComponent source application merge', () => {
     expect(result[0].hasPendingApplications).toBe(true);
   });
 
-  function buildComponent(overrides: {
-    isEditMode?: boolean;
-    invoiceId?: number | null;
-    createResponseId?: number;
-    updateResponseId?: number;
-  } = {}) {
+  function buildComponent(
+    overrides: {
+      isEditMode?: boolean;
+      invoiceId?: number | null;
+      createResponseId?: number;
+      updateResponseId?: number;
+    } = {},
+  ) {
     const component = Object.create(InvoiceFormComponent.prototype) as any;
     const invoiceApplications: unknown[] = [
       {
@@ -84,8 +86,7 @@ describe('InvoiceFormComponent source application merge', () => {
     };
     component.isSaving = { set: vi.fn() };
     component.isEditMode = () => overrides.isEditMode ?? false;
-    component.invoice = () =>
-      overrides.isEditMode ? { id: overrides.invoiceId ?? 54 } : null;
+    component.invoice = () => (overrides.isEditMode ? { id: overrides.invoiceId ?? 54 } : null);
 
     return component;
   }
@@ -188,6 +189,43 @@ describe('InvoiceFormComponent source application merge', () => {
         page: 2,
       },
     });
+  });
+
+  it('keeps the current linked application selectable in edit mode when it is no longer pending', () => {
+    const component = Object.create(InvoiceFormComponent.prototype) as any;
+    const fb = new FormBuilder();
+    const group = fb.group({
+      product: [11],
+      customerApplication: [21],
+    });
+
+    component.availablePendingApplicationsForLine = vi.fn().mockReturnValue([]);
+    component.toInvoiceApplicationOption = vi.fn(
+      (application: { id: number; customer?: { fullName?: string } }) => ({
+        value: String(application.id),
+        label: `#${application.id} · ${application.customer?.fullName ?? 'Unknown customer'}`,
+      }),
+    );
+    component.invoice = () => ({
+      invoiceApplications: [
+        {
+          product: { id: 11 },
+          customerApplication: {
+            id: 21,
+            customer: {
+              fullName: 'Sally Rider',
+            },
+          },
+        },
+      ],
+    });
+
+    expect(component.availablePendingApplicationOptionsForLine(group)).toEqual([
+      {
+        value: '21',
+        label: '#21 · Sally Rider',
+      },
+    ]);
   });
 
   it('recomputes amount from qty while the line has not been manually overridden', () => {

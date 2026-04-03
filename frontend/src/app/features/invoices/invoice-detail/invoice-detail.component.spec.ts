@@ -25,4 +25,33 @@ describe('InvoiceDetailComponent invoice line helpers', () => {
       component.getApplicationNotes({ notes: '   ' } as InvoiceApplicationDetail & { notes: string }),
     ).toBeNull();
   });
+
+  it('formats linked application titles from the linked customer application', () => {
+    const component = Object.create(InvoiceDetailComponent.prototype) as InvoiceDetailComponent;
+
+    expect(
+      component.getLinkedApplicationTitle({
+        id: 280,
+        product: {
+          code: 'XVOA',
+          name: 'VOA Extension (30 Days)',
+        },
+      } as NonNullable<InvoiceApplicationDetail['customerApplication']>),
+    ).toBe('Application #280 - XVOA - VOA Extension (30 Days)');
+  });
+
+  it('detects visa products without linked applications so the placeholder can be shown', () => {
+    const component = Object.create(InvoiceDetailComponent.prototype) as InvoiceDetailComponent;
+
+    expect(
+      component.isVisaProduct({
+        product: {
+          productType: 'visa',
+        },
+      } as InvoiceApplicationDetail),
+    ).toBe(true);
+    expect(component.hasLinkedApplication({ customerApplication: null } as InvoiceApplicationDetail)).toBe(
+      false,
+    );
+  });
 });
