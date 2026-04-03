@@ -57,15 +57,17 @@
     <app-invoice-line-items-section
       [form]="form"
       [invoiceApplications]="invoiceApplications"
-      [billableProductOptions]="billableProductOptions()"
       [customerSelected]="!!form.get('customer')?.value"
       [totalLabel]="formatCurrency(totalAmount())"
       [isLineLocked]="isLineLocked.bind(this)"
       [toComboboxValue]="toComboboxValue.bind(this)"
+      [availableProductOptionsForLine]="availableProductOptionsForLine.bind(this)"
       [availablePendingApplicationOptionsForLine]="availablePendingApplicationOptionsForLine.bind(this)"
       [selectedProductPendingCount]="selectedProductPendingCount.bind(this)"
       (addLineItem)="addLineItem()"
       (removeLineItem)="removeLineItem($event)"
+      (moveLineItemUp)="moveLineItem($event, -1)"
+      (moveLineItemDown)="moveLineItem($event, 1)"
       (lineProductChange)="onLineProductComboboxChange($event.group, $event.value)"
       (lineCustomerApplicationChange)="onLineCustomerApplicationComboboxChange($event.group, $event.value)"
     />

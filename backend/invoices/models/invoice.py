@@ -74,6 +74,7 @@ class InvoiceQuerySet(models.QuerySet):
                     output_field=paid_amount_field,
                 )
             )
+            .order_by("sort_order", "id")
             .prefetch_related("payments")
         )
         return (
@@ -521,6 +522,7 @@ class InvoiceApplication(models.Model):
         null=True,
         blank=True,
     )
+    sort_order = models.PositiveIntegerField(default=0, db_index=True)
     quantity = models.PositiveIntegerField(default=1)
     notes = models.TextField(blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -528,9 +530,10 @@ class InvoiceApplication(models.Model):
     objects = InvoiceApplicationManager()
 
     class Meta:
-        ordering = ("-id",)
+        ordering = ("sort_order", "id")
         indexes = [
             models.Index(fields=["invoice", "product"], name="invoiceapp_inv_prod_idx"),
+            models.Index(fields=["invoice", "sort_order"], name="invoiceapp_inv_sort_idx"),
         ]
         constraints = [
             models.UniqueConstraint(fields=["customer_application", "invoice"], name="unique_invoice_application"),

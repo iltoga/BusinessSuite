@@ -5,6 +5,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from customer_applications.models import DocApplication
+from customer_applications.models import Document
 from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -14,6 +15,7 @@ from invoices.models import Invoice, InvoiceApplication
 from invoices.services.invoice_deletion import build_invoice_delete_preview, bulk_delete_invoices, force_delete_invoice
 from payments.models import Payment
 from products.models import Product, ProductCategory
+from products.models.document_type import DocumentType
 
 User = get_user_model()
 
@@ -28,8 +30,15 @@ class InvoiceDeletionServiceTests(TestCase):
             name="Deletion Service",
             code="DEL-SVC",
             product_category=self.category,
+            required_documents="Passport",
             base_price=Decimal("100.00"),
             retail_price=Decimal("100.00"),
+        )
+        self.required_doc = DocumentType.objects.create(
+            name="Passport",
+            is_in_required_documents=True,
+            ai_validation=False,
+            has_details=True,
         )
 
     def _create_invoice_bundle(self, *, paid: bool, amount: Decimal = Decimal("100.00")):
@@ -47,6 +56,16 @@ class InvoiceDeletionServiceTests(TestCase):
             doc_date=timezone.localdate() - timedelta(days=1),
             created_by=self.user,
             updated_by=self.user,
+        )
+        Document.objects.create(
+            doc_application=doc_application,
+            doc_type=self.required_doc,
+            details="",
+            completed=False,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
         )
         invoice_application = InvoiceApplication.objects.create(
             invoice=invoice,
@@ -98,6 +117,18 @@ class InvoiceDeletionServiceTests(TestCase):
         self.assertFalse(DocApplication.objects.filter(pk=doc_application.pk).exists())
         self.assertFalse(Payment.objects.filter(invoice_application__invoice_id=invoice.pk).exists())
 
+    def test_force_delete_invoice_recalculates_linked_application_status_when_not_deleting_apps(self):
+        invoice, _, doc_application = self._create_invoice_bundle(paid=False)
+        doc_application.status = DocApplication.STATUS_PROCESSING
+        doc_application.save(skip_status_calculation=True)
+
+        result = force_delete_invoice(invoice, delete_customer_apps=False)
+
+        doc_application.refresh_from_db()
+
+        self.assertEqual(result["deleted_customer_applications"], 0)
+        self.assertEqual(doc_application.status, DocApplication.STATUS_PENDING)
+
     def test_bulk_delete_invoices_respects_hide_paid_and_deletes_linked_doc_applications(self):
         paid_invoice, _, paid_doc_application = self._create_invoice_bundle(paid=True)
         unpaid_invoice, _, unpaid_doc_application = self._create_invoice_bundle(paid=False)
@@ -110,3 +141,16 @@ class InvoiceDeletionServiceTests(TestCase):
         self.assertFalse(Invoice.objects.filter(pk=unpaid_invoice.pk).exists())
         self.assertTrue(DocApplication.objects.filter(pk=paid_doc_application.pk).exists())
         self.assertFalse(DocApplication.objects.filter(pk=unpaid_doc_application.pk).exists())
+
+    def test_bulk_delete_invoices_recalculates_linked_application_status_when_not_deleting_apps(self):
+        invoice, _, doc_application = self._create_invoice_bundle(paid=False)
+        doc_application.status = DocApplication.STATUS_PROCESSING
+        doc_application.save(skip_status_calculation=True)
+
+        result = bulk_delete_invoices(delete_customer_apps=False)
+
+        doc_application.refresh_from_db()
+
+        self.assertEqual(result["deleted_invoices"], 1)
+        self.assertEqual(result["deleted_customer_applications"], 0)
+        self.assertEqual(doc_application.status, DocApplication.STATUS_PENDING)

@@ -5,15 +5,18 @@ from decimal import Decimal
 from io import BytesIO
 from unittest.mock import MagicMock, mock_open, patch
 
-from core.services.invoice_service import create_invoice
+from core.services.invoice_service import create_invoice, update_invoice
 from core.utils import formatutils
-from customer_applications.models import DocApplication
+from customer_applications.models import DocApplication, Document
 from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from invoices.services.InvoiceService import InvoiceService
 from payments.models import Payment
 from products.models import Product, ProductCategory
+from products.models.document_type import DocumentType
+from rest_framework.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -53,6 +56,12 @@ class InvoiceServiceTests(TestCase):
             base_price=Decimal("80.00"),
             retail_price=Decimal("80.00"),
         )
+        self.required_doc = DocumentType.objects.create(
+            name="Passport",
+            is_in_required_documents=True,
+            ai_validation=False,
+            has_details=True,
+        )
         self.doc_application = DocApplication.objects.create(
             customer=self.customer,
             product=self.workflow_product,
@@ -61,6 +70,18 @@ class InvoiceServiceTests(TestCase):
             created_by=self.user,
             updated_by=self.user,
         )
+        Document.objects.create(
+            doc_application=self.doc_application,
+            doc_type=self.required_doc,
+            details="Completed passport scan",
+            completed=True,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
+        )
+        self.doc_application.status = DocApplication.STATUS_PENDING
+        self.doc_application.save(skip_status_calculation=True)
         self.invoice = create_invoice(
             data={
                 "customer": self.customer,
@@ -103,6 +124,406 @@ class InvoiceServiceTests(TestCase):
             updated_by=self.user,
         )
         self.invoice.refresh_from_db()
+
+    def test_update_invoice_rejects_changed_product_for_existing_product_only_line(self):
+        other_product = Product.objects.create(
+            name="Replacement Product",
+            code="REP-001",
+            product_category=self.addon_category,
+            base_price=Decimal("60.00"),
+            retail_price=Decimal("60.00"),
+        )
+
+        with self.assertRaises(ValidationError) as exc_info:
+            update_invoice(
+                invoice=self.invoice,
+                data={
+                    "customer": self.customer,
+                    "invoice_date": self.invoice.invoice_date,
+                    "due_date": self.invoice.due_date,
+                    "sent": True,
+                    "notes": "Invoice-level notes",
+                    "invoice_applications": [
+                        {
+                            "id": self.addon_application.id,
+                            "product": other_product,
+                            "quantity": 1,
+                            "amount": "50.00",
+                        },
+                        {
+                            "id": self.linked_application.id,
+                            "product": self.workflow_product,
+                            "customer_application": self.doc_application,
+                            "quantity": 3,
+                            "notes": "Priority processing\nVAT included",
+                            "amount": "300.00",
+                        },
+                        {
+                            "id": self.bulk_application.id,
+                            "product": self.bulk_product,
+                            "quantity": 2,
+                            "amount": "160.00",
+                        },
+                    ],
+                },
+                user=self.user,
+            )
+
+        self.assertIn("cannot change product", str(exc_info.exception).lower())
+
+    def test_create_invoice_allows_pending_customer_application_without_completed_documents(self):
+        incomplete_application = DocApplication.objects.create(
+            customer=self.customer,
+            product=self.workflow_product,
+            doc_date=date(2026, 3, 5),
+            notes="Invoice before docs are complete",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        invoice = create_invoice(
+            data={
+                "customer": self.customer,
+                "invoice_date": date(2026, 3, 5),
+                "due_date": date(2026, 3, 20),
+                "sent": False,
+                "notes": "Invoice for incomplete docs",
+                "invoice_applications": [
+                    {
+                        "product": self.workflow_product,
+                        "customer_application": incomplete_application,
+                        "quantity": 1,
+                        "amount": "100.00",
+                    }
+                ],
+            },
+            user=self.user,
+        )
+
+        self.assertTrue(
+            invoice.invoice_applications.filter(customer_application=incomplete_application).exists()
+        )
+
+    def test_update_invoice_allows_adding_second_pending_customer_application_for_same_product(self):
+        second_application = DocApplication.objects.create(
+            customer=self.customer,
+            product=self.workflow_product,
+            doc_date=date(2026, 3, 6),
+            notes="Second workflow application",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        updated_invoice = update_invoice(
+            invoice=self.invoice,
+            data={
+                "customer": self.customer,
+                "invoice_date": self.invoice.invoice_date,
+                "due_date": self.invoice.due_date,
+                "sent": True,
+                "notes": "Invoice-level notes",
+                "invoice_applications": [
+                    {
+                        "id": self.linked_application.id,
+                        "product": self.workflow_product,
+                        "customer_application": self.doc_application,
+                        "quantity": 3,
+                        "notes": "Priority processing\nVAT included",
+                        "amount": "300.00",
+                    },
+                    {
+                        "id": self.addon_application.id,
+                        "product": self.addon_product,
+                        "quantity": 1,
+                        "amount": "50.00",
+                    },
+                    {
+                        "id": self.bulk_application.id,
+                        "product": self.bulk_product,
+                        "quantity": 2,
+                        "amount": "160.00",
+                    },
+                    {
+                        "product": self.workflow_product,
+                        "customer_application": second_application,
+                        "quantity": 1,
+                        "amount": "100.00",
+                    },
+                ],
+            },
+            user=self.user,
+        )
+
+        self.assertTrue(
+            updated_invoice.invoice_applications.filter(customer_application=second_application).exists()
+        )
+
+    def test_update_invoice_rejects_changed_customer_application_for_existing_line(self):
+        second_application = DocApplication.objects.create(
+            customer=self.customer,
+            product=self.workflow_product,
+            doc_date=date(2026, 3, 2),
+            notes="Second application",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        with self.assertRaises(ValidationError) as exc_info:
+            update_invoice(
+                invoice=self.invoice,
+                data={
+                    "customer": self.customer,
+                    "invoice_date": self.invoice.invoice_date,
+                    "due_date": self.invoice.due_date,
+                    "sent": True,
+                    "notes": "Invoice-level notes",
+                    "invoice_applications": [
+                        {
+                            "id": self.linked_application.id,
+                            "product": self.workflow_product,
+                            "customer_application": second_application,
+                            "quantity": 3,
+                            "notes": "Priority processing\nVAT included",
+                            "amount": "300.00",
+                        },
+                        {
+                            "id": self.addon_application.id,
+                            "product": self.addon_product,
+                            "quantity": 1,
+                            "amount": "50.00",
+                        },
+                        {
+                            "id": self.bulk_application.id,
+                            "product": self.bulk_product,
+                            "quantity": 2,
+                            "amount": "160.00",
+                        },
+                    ],
+                },
+                user=self.user,
+            )
+
+        self.assertIn("cannot change product or customer application", str(exc_info.exception).lower())
+
+    def test_update_invoice_can_readd_customer_application_after_removing_it(self):
+        removable_application = DocApplication.objects.create(
+            customer=self.customer,
+            product=self.workflow_product,
+            doc_date=date(2026, 3, 7),
+            notes="Pending application that should be re-addable",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        Document.objects.create(
+            doc_application=removable_application,
+            doc_type=self.required_doc,
+            details="",
+            completed=False,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
+        )
+
+        update_invoice(
+            invoice=self.invoice,
+            data={
+                "customer": self.customer,
+                "invoice_date": self.invoice.invoice_date,
+                "due_date": self.invoice.due_date,
+                "sent": True,
+                "notes": "Invoice-level notes",
+                "invoice_applications": [
+                    {
+                        "id": self.linked_application.id,
+                        "product": self.workflow_product,
+                        "customer_application": self.doc_application,
+                        "quantity": 3,
+                        "notes": "Priority processing\nVAT included",
+                        "amount": "300.00",
+                    },
+                    {
+                        "id": self.addon_application.id,
+                        "product": self.addon_product,
+                        "quantity": 1,
+                        "amount": "50.00",
+                    },
+                    {
+                        "id": self.bulk_application.id,
+                        "product": self.bulk_product,
+                        "quantity": 2,
+                        "amount": "160.00",
+                    },
+                    {
+                        "product": self.workflow_product,
+                        "customer_application": removable_application,
+                        "quantity": 1,
+                        "amount": "100.00",
+                    },
+                ],
+            },
+            user=self.user,
+        )
+        update_invoice(
+            invoice=self.invoice,
+            data={
+                "customer": self.customer,
+                "invoice_date": self.invoice.invoice_date,
+                "due_date": self.invoice.due_date,
+                "sent": True,
+                "notes": "Invoice-level notes",
+                "invoice_applications": [
+                    {
+                        "id": self.addon_application.id,
+                        "product": self.addon_product,
+                        "quantity": 1,
+                        "amount": "50.00",
+                    },
+                    {
+                        "id": self.bulk_application.id,
+                        "product": self.bulk_product,
+                        "quantity": 2,
+                        "amount": "160.00",
+                    },
+                    {
+                        "id": self.linked_application.id,
+                        "product": self.workflow_product,
+                        "customer_application": self.doc_application,
+                        "quantity": 3,
+                        "notes": "Priority processing\nVAT included",
+                        "amount": "300.00",
+                    },
+                ],
+            },
+            user=self.user,
+        )
+
+        self.assertFalse(
+            self.invoice.invoice_applications.filter(customer_application=removable_application).exists()
+        )
+
+        updated_invoice = update_invoice(
+            invoice=self.invoice,
+            data={
+                "customer": self.customer,
+                "invoice_date": self.invoice.invoice_date,
+                "due_date": self.invoice.due_date,
+                "sent": True,
+                "notes": "Invoice-level notes",
+                "invoice_applications": [
+                    {
+                        "id": self.addon_application.id,
+                        "product": self.addon_product,
+                        "quantity": 1,
+                        "amount": "50.00",
+                    },
+                    {
+                        "id": self.bulk_application.id,
+                        "product": self.bulk_product,
+                        "quantity": 2,
+                        "amount": "160.00",
+                    },
+                    {
+                        "id": self.linked_application.id,
+                        "product": self.workflow_product,
+                        "customer_application": self.doc_application,
+                        "quantity": 3,
+                        "notes": "Priority processing\nVAT included",
+                        "amount": "300.00",
+                    },
+                    {
+                        "product": self.workflow_product,
+                        "customer_application": removable_application,
+                        "quantity": 1,
+                        "amount": "100.00",
+                    },
+                ],
+            },
+            user=self.user,
+        )
+
+        self.assertTrue(
+            updated_invoice.invoice_applications.filter(customer_application=removable_application).exists()
+        )
+
+    def test_update_invoice_persists_invoice_line_order(self):
+        reordered_invoice = update_invoice(
+            invoice=self.invoice,
+            data={
+                "customer": self.customer,
+                "invoice_date": self.invoice.invoice_date,
+                "due_date": self.invoice.due_date,
+                "sent": True,
+                "notes": "Invoice-level notes",
+                "invoice_applications": [
+                    {
+                        "id": self.bulk_application.id,
+                        "product": self.bulk_product,
+                        "quantity": 2,
+                        "amount": "160.00",
+                    },
+                    {
+                        "id": self.linked_application.id,
+                        "product": self.workflow_product,
+                        "customer_application": self.doc_application,
+                        "quantity": 3,
+                        "notes": "Priority processing\nVAT included",
+                        "amount": "300.00",
+                    },
+                    {
+                        "id": self.addon_application.id,
+                        "product": self.addon_product,
+                        "quantity": 1,
+                        "amount": "50.00",
+                    },
+                ],
+            },
+            user=self.user,
+        )
+
+        ordered_ids = list(reordered_invoice.invoice_applications.values_list("id", flat=True))
+        self.assertEqual(
+            ordered_ids,
+            [self.bulk_application.id, self.linked_application.id, self.addon_application.id],
+        )
+
+    def test_update_invoice_rejects_unknown_invoice_line_id(self):
+        with self.assertRaises(ValidationError) as exc_info:
+            update_invoice(
+                invoice=self.invoice,
+                data={
+                    "customer": self.customer,
+                    "invoice_date": self.invoice.invoice_date,
+                    "due_date": self.invoice.due_date,
+                    "sent": True,
+                    "notes": "Invoice-level notes",
+                    "invoice_applications": [
+                        {
+                            "id": 999999,
+                            "product": self.addon_product,
+                            "quantity": 1,
+                            "amount": "50.00",
+                        },
+                        {
+                            "id": self.linked_application.id,
+                            "product": self.workflow_product,
+                            "customer_application": self.doc_application,
+                            "quantity": 3,
+                            "notes": "Priority processing\nVAT included",
+                            "amount": "300.00",
+                        },
+                        {
+                            "id": self.bulk_application.id,
+                            "product": self.bulk_product,
+                            "quantity": 2,
+                            "amount": "160.00",
+                        },
+                    ],
+                },
+                user=self.user,
+            )
+
+        self.assertIn("does not belong to this invoice", str(exc_info.exception).lower())
 
     def test_normalize_multiline_text_and_generate_invoice_data(self):
         service = InvoiceService(self.invoice)

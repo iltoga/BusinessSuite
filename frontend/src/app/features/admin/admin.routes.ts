@@ -1,4 +1,3 @@
-import { adminGroupGuard } from '@/core/guards/admin-group.guard';
 import { staffGuard } from '@/core/guards/staff.guard';
 import { superuserGuard } from '@/core/guards/superuser.guard';
 import { Routes } from '@angular/router';
@@ -74,7 +73,7 @@ export const adminRoutes: Routes = [
   {
     path: 'server',
     title: 'Server Management',
-    canActivate: [adminGroupGuard],
+    canActivate: [superuserGuard],
     loadComponent: () =>
       import('./server-management/server-management.component').then(
         (c) => c.ServerManagementComponent,
@@ -83,7 +82,7 @@ export const adminRoutes: Routes = [
   {
     path: 'application-settings',
     title: 'Application Settings',
-    canActivate: [adminGroupGuard],
+    canActivate: [superuserGuard],
     loadComponent: () =>
       import('./application-settings/application-settings.component').then(
         (c) => c.ApplicationSettingsComponent,
@@ -92,7 +91,7 @@ export const adminRoutes: Routes = [
   {
     path: 'systemcosts',
     title: 'System Costs',
-    canActivate: [adminGroupGuard],
+    canActivate: [superuserGuard],
     loadComponent: () =>
       import('./system-costs/system-costs.component').then((c) => c.SystemCostsComponent),
   },

@@ -204,6 +204,7 @@ export class ZardComboboxComponent implements ControlValueAccessor {
   readonly groups = input<ZardComboboxGroup[]>([]);
   readonly ariaLabel = input<string>('');
   readonly ariaDescribedBy = input<string>('');
+  readonly toggleOnReselect = input<boolean>(true);
 
   readonly zValueChange = output<string | null>();
   readonly zComboSelected = output<ZardComboboxOption>();
@@ -292,9 +293,16 @@ export class ZardComboboxComponent implements ControlValueAccessor {
 
   handleSelect(commandOption: ZardCommandOption) {
     const selectedValue = commandOption.value as string;
+    const currentValue = this.getCurrentValue();
+
+    if (selectedValue === currentValue && !this.toggleOnReselect()) {
+      this.popoverDirective().hide();
+      this.buttonRef().nativeElement.focus();
+      return;
+    }
 
     // Toggle behavior - if same value is selected, clear it
-    const newValue = selectedValue === this.getCurrentValue() ? null : selectedValue;
+    const newValue = selectedValue === currentValue ? null : selectedValue;
 
     this.internalValue.set(newValue);
     this.onChange(newValue);

@@ -13924,6 +13924,10 @@ components:
         id:
           type: integer
           readOnly: true
+        sort_order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
         product:
           allOf:
           - $ref: '#/components/schemas/Product'
@@ -13994,6 +13998,10 @@ components:
         id:
           type: integer
           readOnly: true
+        sort_order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
         product:
           allOf:
           - $ref: '#/components/schemas/Product'
@@ -14057,6 +14065,9 @@ components:
       properties:
         id:
           type: integer
+        sort_order:
+          type: integer
+          minimum: 0
         product:
           type: integer
           nullable: true
@@ -14081,6 +14092,9 @@ components:
       properties:
         id:
           type: integer
+        sort_order:
+          type: integer
+          minimum: 0
         product:
           type: integer
           nullable: true

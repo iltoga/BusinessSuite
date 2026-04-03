@@ -17,6 +17,7 @@ export interface InvoiceLineInitial {
   notes?: string;
   amount?: number;
   amountOverridden?: boolean;
+  identityLocked?: boolean;
   locked?: boolean;
 }
 

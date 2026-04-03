@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
+from core.services.invoice_service import recalculate_unlinked_customer_applications
 from customer_applications.models import DocApplication
 from django.db import transaction
 from invoices.models.invoice import Invoice, InvoiceApplication
@@ -37,20 +38,18 @@ def build_invoice_delete_preview(invoice: Invoice) -> InvoiceDeletePreview:
 
 def force_delete_invoice(invoice: Invoice, delete_customer_apps: bool) -> dict[str, int]:
     invoice_apps_count = invoice.invoice_applications.count()
-    customer_apps_count = (
-        invoice.invoice_applications.filter(customer_application__isnull=False)
-        .values("customer_application")
-        .distinct()
-        .count()
-    )
+    linked_doc_app_ids = _collect_doc_application_ids(invoice)
+    customer_apps_count = len(linked_doc_app_ids)
     payments_count = Payment.objects.filter(invoice_application__invoice=invoice).count()
 
-    doc_app_ids = _collect_doc_application_ids(invoice) if delete_customer_apps else set()
+    doc_app_ids = linked_doc_app_ids if delete_customer_apps else set()
 
     with transaction.atomic():
         invoice.delete(force=True)
         if delete_customer_apps and doc_app_ids:
             DocApplication.objects.filter(id__in=doc_app_ids).delete()
+        elif linked_doc_app_ids:
+            recalculate_unlinked_customer_applications(application_ids=linked_doc_app_ids)
 
     return {
         "invoice_applications_count": invoice_apps_count,
@@ -71,17 +70,21 @@ def bulk_delete_invoices(
     if hide_paid:
         queryset = queryset.exclude(status=Invoice.PAID)
 
-    doc_app_ids: set[int] = set()
-    if delete_customer_apps:
-        doc_app_ids = _collect_doc_application_ids_for_invoices(queryset)
+    linked_doc_app_ids = _collect_doc_application_ids_for_invoices(queryset)
+    doc_app_ids_to_delete = linked_doc_app_ids if delete_customer_apps else set()
 
     with transaction.atomic():
         count = queryset.count()
         queryset.delete()
-        if delete_customer_apps and doc_app_ids:
-            DocApplication.objects.filter(id__in=doc_app_ids).delete()
+        if delete_customer_apps and doc_app_ids_to_delete:
+            DocApplication.objects.filter(id__in=doc_app_ids_to_delete).delete()
+        elif linked_doc_app_ids:
+            recalculate_unlinked_customer_applications(application_ids=linked_doc_app_ids)
 
-    return {"deleted_invoices": count, "deleted_customer_applications": len(doc_app_ids)}
+    return {
+        "deleted_invoices": count,
+        "deleted_customer_applications": len(doc_app_ids_to_delete),
+    }
 
 
 def _collect_doc_application_ids(invoice: Invoice) -> set[int]:

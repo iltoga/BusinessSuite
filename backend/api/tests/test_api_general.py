@@ -824,7 +824,12 @@ class ProductApiTestCase(TestCase):
         )
         # Ensure tests that require superuser auth are authenticated
         self.client.force_login(self.user)
-        self.required_doc = DocumentType.objects.create(name="Passport", is_in_required_documents=True)
+        self.required_doc = DocumentType.objects.create(
+            name="Passport",
+            is_in_required_documents=True,
+            ai_validation=False,
+            has_details=True,
+        )
         self.optional_doc = DocumentType.objects.create(name="Bank Statement", is_in_required_documents=False)
 
     def test_propose_invoice_number_endpoint(self):
@@ -854,6 +859,18 @@ class ProductApiTestCase(TestCase):
         application = DocApplication.objects.create(
             customer=customer, product=product, doc_date=timezone.now().date(), created_by=self.user
         )
+        Document.objects.create(
+            doc_application=application,
+            doc_type=self.required_doc,
+            details="Completed passport scan",
+            completed=True,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
+        )
+        application.status = DocApplication.STATUS_PENDING
+        application.save(skip_status_calculation=True)
 
         payload = {
             "customer": customer.id,
@@ -915,6 +932,18 @@ class ProductApiTestCase(TestCase):
             doc_date=timezone.now().date(),
             created_by=self.user,
         )
+        Document.objects.create(
+            doc_application=application,
+            doc_type=self.required_doc,
+            details="Completed passport scan",
+            completed=True,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
+        )
+        application.status = DocApplication.STATUS_PENDING
+        application.save(skip_status_calculation=True)
 
         payload = {
             "customer": customer.id,
@@ -1002,6 +1031,223 @@ class ProductApiTestCase(TestCase):
         self.assertEqual(line.notes, "Renewal")
         self.assertEqual(str(line.amount), "760000.00")
 
+    def test_update_invoice_via_api_allows_adding_second_customer_application_for_same_product(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Stefano", last_name="Galassi", active=True)
+        product = Product.objects.create(
+            name="VOA Extension (30 Days)",
+            code="XVOA",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        first_application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        second_application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        first_application.status = DocApplication.STATUS_PENDING
+        first_application.save(skip_status_calculation=True)
+        second_application.status = DocApplication.STATUS_PENDING
+        second_application.save(skip_status_calculation=True)
+
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        existing_line = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=product,
+            customer_application=first_application,
+            amount="950000.00",
+        )
+
+        payload = {
+            "customer": customer.id,
+            "invoice_date": invoice.invoice_date.isoformat(),
+            "due_date": invoice.due_date.isoformat(),
+            "notes": "",
+            "sent": False,
+            "invoice_applications": [
+                {
+                    "id": existing_line.id,
+                    "product": product.id,
+                    "customer_application": first_application.id,
+                    "quantity": 1,
+                    "amount": "950000.00",
+                },
+                {
+                    "product": product.id,
+                    "customer_application": second_application.id,
+                    "quantity": 1,
+                    "amount": "950000.00",
+                },
+            ],
+        }
+
+        response = self.client.put(
+            reverse("invoices-detail", args=[invoice.id]),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        invoice.refresh_from_db()
+        self.assertTrue(invoice.invoice_applications.filter(customer_application=second_application).exists())
+
+    def test_update_invoice_via_api_accepts_camelcase_line_fields(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Camel", last_name="Case", active=True)
+        product = Product.objects.create(
+            name="VOA Extension (30 Days)",
+            code="XVOA-CAMEL",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        first_application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        second_application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        first_application.status = DocApplication.STATUS_PENDING
+        first_application.save(skip_status_calculation=True)
+        second_application.status = DocApplication.STATUS_PENDING
+        second_application.save(skip_status_calculation=True)
+
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        existing_line = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=product,
+            customer_application=first_application,
+            amount="950000.00",
+        )
+
+        payload = {
+            "customer": customer.id,
+            "invoiceDate": invoice.invoice_date.isoformat(),
+            "dueDate": invoice.due_date.isoformat(),
+            "notes": "",
+            "sent": False,
+            "invoiceApplications": [
+                {
+                    "id": existing_line.id,
+                    "product": product.id,
+                    "customerApplication": first_application.id,
+                    "quantity": 1,
+                    "amount": "950000.00",
+                },
+                {
+                    "product": product.id,
+                    "customerApplication": second_application.id,
+                    "quantity": 1,
+                    "amount": "950000.00",
+                },
+            ],
+        }
+
+        response = self.client.put(
+            reverse("invoices-detail", args=[invoice.id]),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        invoice.refresh_from_db()
+        self.assertTrue(invoice.invoice_applications.filter(customer_application=second_application).exists())
+
+    def test_update_invoice_via_api_persists_invoice_line_order(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Order", last_name="Keeper", active=True)
+        visa_product = Product.objects.create(name="VOA Extension (30 Days)", code="XVOA-ORD", product_type="visa")
+        addon_product = Product.objects.create(name="Handling Fee", code="HAND-ORD", product_type="other")
+
+        first_application = DocApplication.objects.create(
+            customer=customer,
+            product=visa_product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        first_application.status = DocApplication.STATUS_PENDING
+        first_application.save(skip_status_calculation=True)
+
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        first_line = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=visa_product,
+            customer_application=first_application,
+            amount="950000.00",
+        )
+        second_line = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=addon_product,
+            amount="50000.00",
+        )
+
+        payload = {
+            "customer": customer.id,
+            "invoiceDate": invoice.invoice_date.isoformat(),
+            "dueDate": invoice.due_date.isoformat(),
+            "notes": "",
+            "sent": False,
+            "invoiceApplications": [
+                {
+                    "id": second_line.id,
+                    "product": addon_product.id,
+                    "quantity": 1,
+                    "amount": "50000.00",
+                },
+                {
+                    "id": first_line.id,
+                    "product": visa_product.id,
+                    "customerApplication": first_application.id,
+                    "quantity": 1,
+                    "amount": "950000.00",
+                },
+            ],
+        }
+
+        response = self.client.put(
+            reverse("invoices-detail", args=[invoice.id]),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        invoice.refresh_from_db()
+        ordered_ids = list(invoice.invoice_applications.values_list("id", flat=True))
+        self.assertEqual(ordered_ids, [second_line.id, first_line.id])
+
+        detail_response = self.client.get(reverse("invoices-detail", args=[invoice.id]))
+        self.assertEqual(detail_response.status_code, 200)
+        detail_payload = detail_response.json()
+        line_ids = [line["id"] for line in detail_payload["invoiceApplications"]]
+        self.assertEqual(line_ids, [second_line.id, first_line.id])
+
     def test_create_invoice_via_api_rejects_zero_quantity(self):
         self.client.force_login(self.user)
         customer = Customer.objects.create(customer_type="person", first_name="Bad", last_name="Quantity", active=True)
@@ -1032,6 +1278,18 @@ class ProductApiTestCase(TestCase):
             doc_date=timezone.now().date(),
             created_by=self.user,
         )
+        Document.objects.create(
+            doc_application=application,
+            doc_type=self.required_doc,
+            details="Completed passport scan",
+            completed=True,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
+        )
+        application.status = DocApplication.STATUS_PENDING
+        application.save(skip_status_calculation=True)
 
         url = f"/api/invoices/from_application_prefill/{application.id}/"
         pending_response = self.client.get(url)
@@ -1064,6 +1322,275 @@ class ProductApiTestCase(TestCase):
 
         invoiced_response = self.client.get(url)
         self.assertEqual(invoiced_response.status_code, 400)
+
+    def test_from_application_prefill_rejects_completed_applications(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Completed", last_name="App", active=True)
+        product = Product.objects.create(
+            name="Completed Prefill Product",
+            code="PREFILL-COMP",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        Document.objects.create(
+            doc_application=application,
+            doc_type=self.required_doc,
+            details="Completed passport scan",
+            completed=True,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
+        )
+        application.status = DocApplication.STATUS_COMPLETED
+        application.save(skip_status_calculation=True)
+
+        response = self.client.get(f"/api/invoices/from_application_prefill/{application.id}/")
+        self.assertEqual(response.status_code, 400)
+
+    def test_get_customer_applications_keeps_current_invoice_links_visible_in_edit_mode(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Billable", last_name="Apps", active=True)
+        product = Product.objects.create(
+            name="Workflow Product",
+            code="WF-APP-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        other_product = Product.objects.create(
+            name="Other Workflow Product",
+            code="WF-APP-2",
+            product_type="visa",
+            required_documents="Passport",
+        )
+
+        current_application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        Document.objects.create(
+            doc_application=current_application,
+            doc_type=self.required_doc,
+            details="Completed passport scan",
+            completed=True,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
+        )
+        current_application.status = DocApplication.STATUS_COMPLETED
+        current_application.save(skip_status_calculation=True)
+
+        eligible_application = DocApplication.objects.create(
+            customer=customer,
+            product=other_product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        Document.objects.create(
+            doc_application=eligible_application,
+            doc_type=self.required_doc,
+            details="Completed passport scan",
+            completed=True,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
+        )
+        eligible_application.status = DocApplication.STATUS_PENDING
+        eligible_application.save(skip_status_calculation=True)
+
+        rejected_application = DocApplication.objects.create(
+            customer=customer,
+            product=other_product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        Document.objects.create(
+            doc_application=rejected_application,
+            doc_type=self.required_doc,
+            details="Completed passport scan",
+            completed=True,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
+        )
+        rejected_application.status = DocApplication.STATUS_REJECTED
+        rejected_application.save(skip_status_calculation=True)
+
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=product,
+            customer_application=current_application,
+            amount="1000.00",
+        )
+
+        create_response = self.client.get(f"/api/invoices/get_customer_applications/{customer.id}/")
+        self.assertEqual(create_response.status_code, 200)
+        create_payload = create_response.json()
+        create_items = create_payload.get("results", create_payload) if isinstance(create_payload, dict) else create_payload
+        create_ids = {item["id"] for item in create_items}
+        self.assertIn(eligible_application.id, create_ids)
+        self.assertNotIn(current_application.id, create_ids)
+        self.assertNotIn(rejected_application.id, create_ids)
+
+        edit_response = self.client.get(f"/api/invoices/get_customer_applications/{customer.id}/?current_invoice_id={invoice.id}")
+        self.assertEqual(edit_response.status_code, 200)
+        edit_payload = edit_response.json()
+        edit_items = edit_payload.get("results", edit_payload) if isinstance(edit_payload, dict) else edit_payload
+        edit_ids = {item["id"] for item in edit_items}
+        self.assertIn(eligible_application.id, edit_ids)
+        self.assertIn(current_application.id, edit_ids)
+        self.assertNotIn(rejected_application.id, edit_ids)
+
+    def test_get_billable_products_keeps_current_invoice_products_visible_in_edit_mode(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Billable", last_name="Products", active=True)
+        active_product = Product.objects.create(
+            name="Active Workflow Product",
+            code="WF-PROD-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        deprecated_product = Product.objects.create(
+            name="Deprecated Product",
+            code="WF-PROD-2",
+            product_type="visa",
+            required_documents="Passport",
+        )
+
+        current_application = DocApplication.objects.create(
+            customer=customer,
+            product=active_product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        Document.objects.create(
+            doc_application=current_application,
+            doc_type=self.required_doc,
+            details="Completed passport scan",
+            completed=True,
+            required=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+            created_by=self.user,
+        )
+        current_application.status = DocApplication.STATUS_COMPLETED
+        current_application.save(skip_status_calculation=True)
+
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=active_product,
+            customer_application=current_application,
+            amount="1000.00",
+        )
+        InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=deprecated_product,
+            amount="250000.00",
+        )
+        deprecated_product.deprecated = True
+        deprecated_product.save(update_fields=["deprecated"])
+
+        create_response = self.client.get(f"/api/invoices/get_billable_products/{customer.id}/")
+        self.assertEqual(create_response.status_code, 200)
+        create_rows = create_response.json()
+        active_row = next(row for row in create_rows if row["product"]["id"] == active_product.id)
+        self.assertEqual(active_row["pendingApplicationsCount"], 0)
+        self.assertEqual(active_row["pendingApplications"], [])
+        self.assertNotIn(
+            deprecated_product.id,
+            {row["product"]["id"] for row in create_rows},
+        )
+
+        edit_response = self.client.get(
+            f"/api/invoices/get_billable_products/{customer.id}/?current_invoice_id={invoice.id}"
+        )
+        self.assertEqual(edit_response.status_code, 200)
+        edit_rows = edit_response.json()
+        active_edit_row = next(row for row in edit_rows if row["product"]["id"] == active_product.id)
+        deprecated_edit_row = next(row for row in edit_rows if row["product"]["id"] == deprecated_product.id)
+        self.assertIn(current_application.id, {app["id"] for app in active_edit_row["pendingApplications"]})
+        self.assertEqual(deprecated_edit_row["pendingApplicationsCount"], 0)
+
+    def test_get_billable_products_keeps_uninvoiced_pending_apps_for_same_product_visible_in_edit_mode(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Stefano", last_name="Galassi", active=True)
+        product = Product.objects.create(
+            name="VOA Extension (30 Days)",
+            code="XVOA",
+            product_type="visa",
+            required_documents="Passport",
+        )
+
+        current_application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        current_application.status = DocApplication.STATUS_PENDING
+        current_application.save(skip_status_calculation=True)
+
+        eligible_application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        eligible_application.status = DocApplication.STATUS_PENDING
+        eligible_application.save(skip_status_calculation=True)
+
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=product,
+            customer_application=current_application,
+            amount="950000.00",
+        )
+
+        create_response = self.client.get(f"/api/invoices/get_billable_products/{customer.id}/")
+        self.assertEqual(create_response.status_code, 200)
+        create_rows = create_response.json()
+        row = next(entry for entry in create_rows if entry["product"]["id"] == product.id)
+        self.assertEqual({app["id"] for app in row["pendingApplications"]}, {eligible_application.id})
+
+        edit_response = self.client.get(
+            f"/api/invoices/get_billable_products/{customer.id}/?current_invoice_id={invoice.id}"
+        )
+        self.assertEqual(edit_response.status_code, 200)
+        edit_rows = edit_response.json()
+        edit_row = next(entry for entry in edit_rows if entry["product"]["id"] == product.id)
+        self.assertEqual(
+            {app["id"] for app in edit_row["pendingApplications"]},
+            {current_application.id, eligible_application.id},
+        )
 
     def test_get_invoice_application_due_amount_returns_camelcase_payload(self):
         self.client.force_login(self.user)

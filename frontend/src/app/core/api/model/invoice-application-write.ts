@@ -10,6 +10,7 @@
 
 export interface InvoiceApplicationWrite {
   id?: number;
+  sortOrder?: number;
   product?: number | null;
   customerApplication?: number | null;
   quantity?: number;

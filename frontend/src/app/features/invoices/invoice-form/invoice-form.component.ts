@@ -37,7 +37,6 @@ import { ZardInputDirective } from '@/shared/components/input';
 import { toApiDate } from '@/shared/utils/date-parsing';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import {
-  ensureSourceApplicationIncluded,
   normalizeBillableRows,
   parseComboboxNumericValue,
   resolveProductPriceFromProduct,
@@ -81,7 +80,6 @@ export class InvoiceFormComponent implements OnInit {
   readonly isEditMode = signal(false);
   readonly invoice = signal<InvoiceDetail | null>(null);
   readonly billableProducts = signal<BillableProductRow[]>([]);
-  readonly sourceApplicationId = signal<number | null>(null);
   readonly lockCustomerFromSource = signal(false);
   readonly totalAmount = signal(0);
 
@@ -116,6 +114,21 @@ export class InvoiceFormComponent implements OnInit {
       label: this.getBillableProductLabel(row),
     })),
   );
+
+  readonly availableApplications = computed<DocApplicationInvoice[]>(() => {
+    const applications: DocApplicationInvoice[] = [];
+    const seen = new Set<number>();
+    for (const row of this.billableProducts()) {
+      for (const application of row.pendingApplications) {
+        if (seen.has(application.id)) {
+          continue;
+        }
+        seen.add(application.id);
+        applications.push(application);
+      }
+    }
+    return applications;
+  });
 
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
@@ -172,7 +185,7 @@ export class InvoiceFormComponent implements OnInit {
     if (applicationId) {
       this.loadFromApplication(Number(applicationId));
     } else {
-      this.addLineItem({}, { manual: false, skipAutoExpand: true });
+      this.addLineItem({}, { manual: false });
     }
 
     this.proposeInvoiceNo(this.form.get('invoiceDate')?.value);
@@ -197,12 +210,12 @@ export class InvoiceFormComponent implements OnInit {
         if (!value) {
           this.billableProducts.set([]);
           this.invoiceApplications.clear();
-          this.addLineItem({}, { manual: false, skipAutoExpand: true });
+          this.addLineItem({}, { manual: false });
           return;
         }
 
         this.invoiceApplications.clear();
-        this.addLineItem({}, { manual: false, skipAutoExpand: true });
+        this.addLineItem({}, { manual: false });
         this.loadBillableProducts(value);
       });
 
@@ -223,7 +236,7 @@ export class InvoiceFormComponent implements OnInit {
 
   addLineItem(
     initial: InvoiceLineInitial = {},
-    options: { manual?: boolean; skipAutoExpand?: boolean } = {},
+    options: { manual?: boolean } = {},
   ): void {
     const manual = options.manual ?? true;
     if (manual && !this.form.get('customer')?.value) {
@@ -232,10 +245,11 @@ export class InvoiceFormComponent implements OnInit {
     }
 
     const lineKey = this.nextLineKey++;
+    const identityLocked = !!initial.identityLocked || !!initial.locked;
     const group = this.fb.group({
       id: [initial.id ?? null],
       lineKey: [lineKey],
-      locked: [!!initial.locked],
+      identityLocked: [identityLocked],
       product: [initial.product ?? null, Validators.required],
       customerApplication: [initial.customerApplication ?? null],
       quantity: [initial.quantity ?? 1, [Validators.required, Validators.min(1)]],
@@ -248,7 +262,7 @@ export class InvoiceFormComponent implements OnInit {
       .get('product')
       ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((value) => {
-        this.onLineProductChanged(group, value, !(options.skipAutoExpand ?? false));
+        this.onLineProductChanged(group, value);
       });
 
     group
@@ -275,7 +289,7 @@ export class InvoiceFormComponent implements OnInit {
 
     this.invoiceApplications.push(group);
 
-    if (initial.locked) {
+    if (identityLocked) {
       group.get('product')?.disable({ emitEvent: false });
       group.get('customerApplication')?.disable({ emitEvent: false });
     }
@@ -299,19 +313,41 @@ export class InvoiceFormComponent implements OnInit {
 
   removeLineItem(index: number): void {
     const group = this.invoiceApplications.at(index);
-    if (!group || this.isLineLocked(group) || this.invoiceApplications.length <= 1) {
+    if (!group || this.invoiceApplications.length <= 1) {
       return;
     }
     this.invoiceApplications.removeAt(index);
     this.updateTotalAmount();
   }
 
+  moveLineItem(index: number, direction: -1 | 1): void {
+    const targetIndex = index + direction;
+    if (
+      index < 0 ||
+      targetIndex < 0 ||
+      index >= this.invoiceApplications.length ||
+      targetIndex >= this.invoiceApplications.length
+    ) {
+      return;
+    }
+
+    const group = this.invoiceApplications.at(index);
+    if (!group) {
+      return;
+    }
+
+    this.invoiceApplications.removeAt(index);
+    this.invoiceApplications.insert(targetIndex, group);
+    this.invoiceApplications.markAsDirty();
+    this.updateTotalAmount();
+  }
+
   isLineLocked(group: FormGroup): boolean {
-    return !!group.get('locked')?.value;
+    return !!group.get('identityLocked')?.value;
   }
 
   selectedProductPendingCount(group: FormGroup): number {
-    const productId = Number(group.get('product')?.value ?? 0);
+    const productId = this.resolveLineProductId(group);
     if (!productId) {
       return 0;
     }
@@ -320,29 +356,32 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   availablePendingApplicationsForLine(group: FormGroup): DocApplicationInvoice[] {
-    const productId = Number(group.get('product')?.value ?? 0);
-    if (!productId) {
-      return [];
-    }
-
     const lineKey = Number(group.get('lineKey')?.value ?? 0);
     const selectedIds = this.selectedCustomerApplicationIds(lineKey);
     const selectedCurrentId = Number(group.get('customerApplication')?.value ?? 0) || null;
+    const productId = this.resolveLineProductId(group);
+    const applications = productId
+      ? this.availableApplications().filter((application) => Number(application.product?.id ?? 0) === productId)
+      : [...this.availableApplications()];
 
-    const row = this.findBillableProduct(productId);
-    if (!row) {
-      return [];
-    }
-
-    return row.pendingApplications.filter(
-      (app) =>
-        !selectedIds.has(app.id) || (selectedCurrentId !== null && app.id === selectedCurrentId),
+    return applications.filter(
+      (application) =>
+        !selectedIds.has(application.id) ||
+        (selectedCurrentId !== null && application.id === selectedCurrentId),
     );
   }
 
   save(): void {
     if (this.invoiceApplications.length === 0) {
       this.toast.error('An invoice must have at least one line item.');
+      return;
+    }
+
+    const duplicateApplicationId = this.findDuplicateCustomerApplicationId();
+    if (duplicateApplicationId) {
+      this.toast.error(
+        `Linked application #${duplicateApplicationId} is selected more than once in this invoice.`,
+      );
       return;
     }
 
@@ -368,8 +407,9 @@ export class InvoiceFormComponent implements OnInit {
       dueDate,
       notes: raw.notes ?? '',
       sent: raw.sent ?? false,
-      invoiceApplications: (raw.invoiceApplications ?? []).map((item: any) => ({
+      invoiceApplications: (raw.invoiceApplications ?? []).map((item: any, index: number) => ({
         id: item.id ?? undefined,
+        sortOrder: index,
         product: Number(item.product),
         customerApplication: item.customerApplication ? Number(item.customerApplication) : null,
         quantity: this.normalizeLineQuantity(item.quantity),
@@ -456,7 +496,7 @@ export class InvoiceFormComponent implements OnInit {
     const options = this.availablePendingApplicationsForLine(group).map((app) =>
       this.toInvoiceApplicationOption(app),
     );
-    const currentApplication = this.findCurrentInvoiceApplicationForLine(group);
+    const currentApplication = this.resolveLineApplication(group);
     if (!currentApplication) {
       return options;
     }
@@ -490,11 +530,36 @@ export class InvoiceFormComponent implements OnInit {
     return selected;
   }
 
-  private onLineProductChanged(
-    group: FormGroup,
-    rawProductId: unknown,
-    allowAutoExpand: boolean,
-  ): void {
+  private findDuplicateCustomerApplicationId(): number | null {
+    const seen = new Set<number>();
+    const lines =
+      typeof (this.invoiceApplications as any)?.getRawValue === 'function'
+        ? ((this.invoiceApplications as any).getRawValue() as any[])
+        : (((this.invoiceApplications as any)?.value ?? []) as any[]);
+    for (const line of lines) {
+      const appId = Number(line.customerApplication ?? 0);
+      if (!appId) {
+        continue;
+      }
+      if (seen.has(appId)) {
+        return appId;
+      }
+      seen.add(appId);
+    }
+    return null;
+  }
+
+  availableProductOptionsForLine(group: FormGroup): ZardComboboxOption[] {
+    const productId = this.resolveLineProductId(group);
+    if (this.isLineLocked(group) || Number(group.get('customerApplication')?.value ?? 0)) {
+      const option = this.resolveProductOption(productId, group);
+      return option ? [option] : this.billableProductOptions();
+    }
+
+    return this.billableProductOptions();
+  }
+
+  private onLineProductChanged(group: FormGroup, rawProductId: unknown): void {
     const productId = Number(rawProductId ?? 0);
     if (!productId) {
       group.get('customerApplication')?.setValue(null, { emitEvent: false });
@@ -504,29 +569,6 @@ export class InvoiceFormComponent implements OnInit {
     }
 
     const currentAppId = Number(group.get('customerApplication')?.value ?? 0) || null;
-
-    if (allowAutoExpand && !currentAppId) {
-      const availablePending = this.availablePendingApplicationsForLine(group);
-      if (availablePending.length > 0) {
-        const [first, ...rest] = availablePending;
-        group.get('customerApplication')?.setValue(first.id, { emitEvent: false });
-        this.updateLineAmountFromDefault(group);
-
-        for (const pendingApp of rest) {
-          this.addLineItem(
-            {
-              product: productId,
-              customerApplication: pendingApp.id,
-              amount: this.resolveApplicationPrice(pendingApp),
-            },
-            { manual: false, skipAutoExpand: true },
-          );
-        }
-        this.cdr.markForCheck();
-        this.updateTotalAmount();
-        return;
-      }
-    }
 
     if (currentAppId) {
       const selectedApp = this.findPendingApplicationById(currentAppId);
@@ -570,13 +612,78 @@ export class InvoiceFormComponent implements OnInit {
     return this.billableProducts().find((row) => row.product.id === productId);
   }
 
-  private findCurrentInvoiceApplicationForLine(group: FormGroup): DocApplicationInvoice | null {
+  private findAvailableApplicationById(applicationId: number): DocApplicationInvoice | undefined {
+    if (!applicationId) {
+      return undefined;
+    }
+
+    const available = this.availableApplications().find((application) => application.id === applicationId);
+    if (available) {
+      return available;
+    }
+
+    return this.findCurrentInvoiceApplicationForLine(applicationId) ?? undefined;
+  }
+
+  private resolveLineApplication(group: FormGroup): DocApplicationInvoice | null {
     const applicationId = Number(group.get('customerApplication')?.value ?? 0);
     if (!applicationId) {
       return null;
     }
 
+    return this.findAvailableApplicationById(applicationId) ?? null;
+  }
+
+  private resolveLineProductId(group: FormGroup): number | null {
+    const application = this.resolveLineApplication(group);
+    const applicationProductId = Number(application?.product?.id ?? 0);
+    if (applicationProductId) {
+      return applicationProductId;
+    }
+
     const productId = Number(group.get('product')?.value ?? 0);
+    return productId || null;
+  }
+
+  private resolveProductOption(productId: number | null, group: FormGroup): ZardComboboxOption | null {
+    if (!productId) {
+      return null;
+    }
+
+    const row = this.findBillableProduct(productId);
+    if (row) {
+      return {
+        value: String(row.product.id),
+        label: this.getBillableProductLabel(row),
+      };
+    }
+
+    const application = this.resolveLineApplication(group);
+    const product = application?.product;
+    if (product && product.id === productId) {
+      return {
+        value: String(product.id),
+        label: `${product.code} - ${product.name}`,
+      };
+    }
+
+    const invoiceProduct = this.findCurrentInvoiceProductOption(productId);
+    if (invoiceProduct) {
+      return invoiceProduct;
+    }
+
+    return this.billableProductOptions().find((option) => Number(option.value) === productId) ?? null;
+  }
+
+  private findCurrentInvoiceApplicationForLine(applicationId: number): DocApplicationInvoice | null;
+  private findCurrentInvoiceApplicationForLine(group: FormGroup): DocApplicationInvoice | null;
+  private findCurrentInvoiceApplicationForLine(arg: number | FormGroup): DocApplicationInvoice | null {
+    const applicationId = typeof arg === 'number' ? arg : Number(arg.get('customerApplication')?.value ?? 0);
+    if (!applicationId) {
+      return null;
+    }
+
+    const productId = typeof arg === 'number' ? null : Number(arg.get('product')?.value ?? 0);
     const invoiceApplications = this.invoice()?.invoiceApplications ?? [];
     const invoiceApplication = invoiceApplications.find((item) => {
       if (item.customerApplication?.id !== applicationId) {
@@ -589,6 +696,24 @@ export class InvoiceFormComponent implements OnInit {
     return invoiceApplication?.customerApplication ?? null;
   }
 
+  private findCurrentInvoiceProductOption(productId: number): ZardComboboxOption | null {
+    if (!productId) {
+      return null;
+    }
+
+    const invoiceApplications = this.invoice()?.invoiceApplications ?? [];
+    const invoiceApplication = invoiceApplications.find((item) => Number(item.product?.id ?? 0) === productId);
+    const product = invoiceApplication?.product;
+    if (!product || product.id !== productId) {
+      return null;
+    }
+
+    return {
+      value: String(product.id),
+      label: `${product.code} - ${product.name}`,
+    };
+  }
+
   private toInvoiceApplicationOption(application: DocApplicationInvoice): ZardComboboxOption {
     return {
       value: String(application.id),
@@ -597,13 +722,7 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   private findPendingApplicationById(applicationId: number): DocApplicationInvoice | undefined {
-    for (const row of this.billableProducts()) {
-      const app = row.pendingApplications.find((candidate) => candidate.id === applicationId);
-      if (app) {
-        return app;
-      }
-    }
-    return undefined;
+    return this.findAvailableApplicationById(applicationId);
   }
 
   private resolveProductPrice(productId: number | null | undefined): number {
@@ -643,19 +762,16 @@ export class InvoiceFormComponent implements OnInit {
     }
 
     const quantity = this.getLineQuantity(group);
-    const applicationId = Number(group.get('customerApplication')?.value ?? 0);
-    if (applicationId) {
-      const application = this.findPendingApplicationById(applicationId);
-      if (application) {
-        group
-          .get('amount')
-          ?.setValue(this.resolveApplicationPrice(application) * quantity, { emitEvent: false });
-        this.updateTotalAmount();
-        return;
-      }
+    const application = this.resolveLineApplication(group);
+    if (application) {
+      group
+        .get('amount')
+        ?.setValue(this.resolveApplicationPrice(application) * quantity, { emitEvent: false });
+      this.updateTotalAmount();
+      return;
     }
 
-    const productId = Number(group.get('product')?.value ?? 0);
+    const productId = this.resolveLineProductId(group);
     group
       .get('amount')
       ?.setValue(this.resolveProductPrice(productId) * quantity, { emitEvent: false });
@@ -683,25 +799,23 @@ export class InvoiceFormComponent implements OnInit {
         const payload = unwrapApiRecord(response) as Record<string, any> | null;
         const customerId = payload?.['customer']?.id ?? null;
         const sourceLine = payload?.['invoiceApplication'] ?? null;
-        const sourceApplication = payload?.['sourceApplication'] ?? null;
         const sourceApplicationId = sourceLine?.['customerApplication'] ?? null;
         const sourceProductId = sourceLine?.['product'] ?? null;
 
         if (!customerId || !sourceProductId || !sourceApplicationId) {
           this.toast.error('Invalid source application prefill payload.');
-          this.addLineItem({}, { manual: false, skipAutoExpand: true });
+          this.addLineItem({}, { manual: false });
           this.isLoading.set(false);
           return;
         }
 
-        this.sourceApplicationId.set(Number(sourceApplicationId));
         this.lockCustomerFromSource.set(true);
         this.form.get('customer')?.setValue(customerId, { emitEvent: false });
         this.form.get('customer')?.disable({ emitEvent: false });
 
         this.fetchBillableProducts(customerId).subscribe({
           next: (rows: BillableProductRow[]) => {
-            this.billableProducts.set(ensureSourceApplicationIncluded(rows, sourceApplication));
+            this.billableProducts.set(rows);
             this.invoiceApplications.clear();
             this.addLineItem(
               {
@@ -711,9 +825,9 @@ export class InvoiceFormComponent implements OnInit {
                 notes: sourceLine['notes'] ?? '',
                 amount: Number(sourceLine['amount'] ?? 0),
                 amountOverridden: false,
-                locked: true,
+                identityLocked: true,
               },
-              { manual: false, skipAutoExpand: true },
+              { manual: false },
             );
             this.isLoading.set(false);
             this.cdr.markForCheck();
@@ -726,7 +840,7 @@ export class InvoiceFormComponent implements OnInit {
                 : 'Failed to load billable products',
             );
             this.invoiceApplications.clear();
-            this.addLineItem({}, { manual: false, skipAutoExpand: true });
+            this.addLineItem({}, { manual: false });
             this.isLoading.set(false);
           },
         });
@@ -739,7 +853,7 @@ export class InvoiceFormComponent implements OnInit {
             : 'Failed to load source application',
         );
         this.invoiceApplications.clear();
-        this.addLineItem({}, { manual: false, skipAutoExpand: true });
+        this.addLineItem({}, { manual: false });
         this.isLoading.set(false);
       },
     });
@@ -765,7 +879,7 @@ export class InvoiceFormComponent implements OnInit {
         const customerId = invoice.customer?.id;
         if (!customerId) {
           this.invoiceApplications.clear();
-          this.addLineItem({}, { manual: false, skipAutoExpand: true });
+          this.addLineItem({}, { manual: false });
           this.isLoading.set(false);
           return;
         }
@@ -786,13 +900,14 @@ export class InvoiceFormComponent implements OnInit {
                   notes: item.notes ?? '',
                   amount: Number(item.amount ?? 0),
                   amountOverridden: true,
+                  identityLocked: true,
                 },
-                { manual: false, skipAutoExpand: true },
+                { manual: false },
               );
             }
 
             if ((invoice.invoiceApplications ?? []).length === 0) {
-              this.addLineItem({}, { manual: false, skipAutoExpand: true });
+              this.addLineItem({}, { manual: false });
             }
 
             this.isLoading.set(false);
@@ -806,7 +921,7 @@ export class InvoiceFormComponent implements OnInit {
                 : 'Failed to load billable products',
             );
             this.invoiceApplications.clear();
-            this.addLineItem({}, { manual: false, skipAutoExpand: true });
+            this.addLineItem({}, { manual: false });
             this.isLoading.set(false);
           },
         });
