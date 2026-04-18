@@ -52,6 +52,8 @@ describe('form-errors utilities', () => {
 
     const err = form.get('passport_number')?.errors?.['server'];
     expect(err).toBe('This passport number is already used by another customer.');
-    expect(extractServerErrorMessage(payload)).toBe('Validation error');
+    expect(extractServerErrorMessage(payload)).toBe(
+      'This passport number is already used by another customer.',
+    );
   });
 });

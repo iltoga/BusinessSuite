@@ -27,12 +27,14 @@ describe('InvoiceFormComponent source application merge', () => {
     expect(result[0].hasPendingApplications).toBe(true);
   });
 
-  function buildComponent(overrides: {
-    isEditMode?: boolean;
-    invoiceId?: number | null;
-    createResponseId?: number;
-    updateResponseId?: number;
-  } = {}) {
+  function buildComponent(
+    overrides: {
+      isEditMode?: boolean;
+      invoiceId?: number | null;
+      createResponseId?: number;
+      updateResponseId?: number;
+    } = {},
+  ) {
     const component = Object.create(InvoiceFormComponent.prototype) as any;
     const invoiceApplications: unknown[] = [
       {
@@ -84,8 +86,7 @@ describe('InvoiceFormComponent source application merge', () => {
     };
     component.isSaving = { set: vi.fn() };
     component.isEditMode = () => overrides.isEditMode ?? false;
-    component.invoice = () =>
-      overrides.isEditMode ? { id: overrides.invoiceId ?? 54 } : null;
+    component.invoice = () => (overrides.isEditMode ? { id: overrides.invoiceId ?? 54 } : null);
 
     return component;
   }
@@ -110,6 +111,7 @@ describe('InvoiceFormComponent source application merge', () => {
         invoiceApplications: [
           {
             id: 71,
+            sortOrder: 0,
             product: 11,
             customerApplication: 21,
             quantity: 2,
@@ -118,6 +120,7 @@ describe('InvoiceFormComponent source application merge', () => {
           },
           {
             id: 72,
+            sortOrder: 1,
             product: 12,
             customerApplication: null,
             quantity: 1,
@@ -162,6 +165,7 @@ describe('InvoiceFormComponent source application merge', () => {
         invoiceApplications: [
           {
             id: 71,
+            sortOrder: 0,
             product: 11,
             customerApplication: 21,
             quantity: 2,
@@ -170,6 +174,7 @@ describe('InvoiceFormComponent source application merge', () => {
           },
           {
             id: 72,
+            sortOrder: 1,
             product: 12,
             customerApplication: null,
             quantity: 1,
@@ -188,6 +193,240 @@ describe('InvoiceFormComponent source application merge', () => {
         page: 2,
       },
     });
+  });
+
+  it('blocks save when the same linked application is selected more than once', () => {
+    const component = buildComponent({ isEditMode: true, invoiceId: 54, updateResponseId: 54 });
+    const duplicateLines = [
+      { customerApplication: 21 },
+      { customerApplication: 21 },
+    ];
+    component.form.getRawValue = () => ({
+      customer: 9,
+      invoiceNo: 'INV-9',
+      invoiceDate: new Date('2026-03-27'),
+      dueDate: new Date('2026-04-27'),
+      notes: '',
+      sent: false,
+      invoiceApplications: [
+        {
+          id: 71,
+          product: 11,
+          customerApplication: 21,
+          quantity: 1,
+          notes: null,
+          amount: 100000,
+        },
+        {
+          id: undefined,
+          product: 11,
+          customerApplication: 21,
+          quantity: 1,
+          notes: null,
+          amount: 100000,
+        },
+      ],
+    });
+    component.form.get = (name: string) =>
+      name === 'invoiceApplications'
+        ? {
+            length: duplicateLines.length,
+            getRawValue: () => duplicateLines,
+          }
+        : null;
+
+    component.save();
+
+    expect(component.toast.error).toHaveBeenCalledWith(
+      'Linked application #21 is selected more than once in this invoice.',
+    );
+    expect(component.invoicesApi.invoicesUpdate).not.toHaveBeenCalled();
+  });
+
+  it('keeps the current linked application selectable in edit mode when it is no longer pending', () => {
+    const component = Object.create(InvoiceFormComponent.prototype) as any;
+    const fb = new FormBuilder();
+    const group = fb.group({
+      product: [11],
+      customerApplication: [21],
+    });
+
+    component.availableApplications = vi.fn().mockReturnValue([]);
+    component.availablePendingApplicationsForLine = vi.fn().mockReturnValue([]);
+    component.toInvoiceApplicationOption = vi.fn(
+      (application: { id: number; customer?: { fullName?: string } }) => ({
+        value: String(application.id),
+        label: `#${application.id} · ${application.customer?.fullName ?? 'Unknown customer'}`,
+      }),
+    );
+    component.invoice = () => ({
+      invoiceApplications: [
+        {
+          product: { id: 11 },
+          customerApplication: {
+            id: 21,
+            customer: {
+              fullName: 'Sally Rider',
+            },
+          },
+        },
+      ],
+    });
+
+    expect(component.availablePendingApplicationOptionsForLine(group)).toEqual([
+      {
+        value: '21',
+        label: '#21 · Sally Rider',
+      },
+    ]);
+  });
+
+  it('shows only the linked application product when an application is selected first', () => {
+    const component = Object.create(InvoiceFormComponent.prototype) as any;
+    const fb = new FormBuilder();
+    const group = fb.group({
+      product: [null],
+      customerApplication: [21],
+      identityLocked: [false],
+    });
+
+    component.availableApplications = vi.fn().mockReturnValue([
+      {
+        id: 21,
+        product: { id: 11, code: 'P-11', name: 'Product 11', retailPrice: 100 },
+        customer: { fullName: 'Ada Lovelace' },
+      },
+      {
+        id: 22,
+        product: { id: 11, code: 'P-11', name: 'Product 11', retailPrice: 100 },
+        customer: { fullName: 'Grace Hopper' },
+      },
+      {
+        id: 23,
+        product: { id: 12, code: 'P-12', name: 'Product 12', retailPrice: 200 },
+        customer: { fullName: 'Linus Torvalds' },
+      },
+    ]);
+    component.billableProducts = vi.fn().mockReturnValue([
+      { product: { id: 11, code: 'P-11', name: 'Product 11' }, pendingApplications: [], pendingApplicationsCount: 0, hasPendingApplications: false },
+      { product: { id: 12, code: 'P-12', name: 'Product 12' }, pendingApplications: [], pendingApplicationsCount: 0, hasPendingApplications: false },
+    ]);
+    component.billableProductOptions = vi.fn().mockReturnValue([
+      { value: '11', label: 'P-11 - Product 11' },
+      { value: '12', label: 'P-12 - Product 12' },
+    ]);
+    component.form = fb.group({
+      invoiceApplications: fb.array([group]),
+    });
+
+    expect(component.availableProductOptionsForLine(group)).toEqual([
+      { value: '11', label: 'P-11 - Product 11' },
+    ]);
+
+    expect(component.availablePendingApplicationOptionsForLine(group)).toEqual([
+      { value: '21', label: '#21 · Ada Lovelace' },
+      { value: '22', label: '#22 · Grace Hopper' },
+    ]);
+  });
+
+  it('keeps other same-product applications selectable when one is already linked on another line', () => {
+    const component = Object.create(InvoiceFormComponent.prototype) as any;
+    const fb = new FormBuilder();
+    const existingLine = fb.group({
+      lineKey: [1],
+      product: [11],
+      customerApplication: [329],
+      identityLocked: [true],
+    });
+    const newLine = fb.group({
+      lineKey: [2],
+      product: [11],
+      customerApplication: [null],
+      identityLocked: [false],
+    });
+
+    component.availableApplications = vi.fn().mockReturnValue([
+      {
+        id: 329,
+        product: { id: 11, code: 'XVOA', name: 'VOA Extension (30 Days)', retailPrice: 950000 },
+        customer: { fullName: 'Stefano Galassi' },
+      },
+      {
+        id: 330,
+        product: { id: 11, code: 'XVOA', name: 'VOA Extension (30 Days)', retailPrice: 950000 },
+        customer: { fullName: 'Stefano Galassi' },
+      },
+    ]);
+    component.form = fb.group({
+      invoiceApplications: fb.array([existingLine, newLine]),
+    });
+
+    expect(component.availablePendingApplicationOptionsForLine(newLine)).toEqual([
+      { value: '330', label: '#330 · Stefano Galassi' },
+    ]);
+  });
+
+  it('binds the product when a linked application is selected first', () => {
+    const component = Object.create(InvoiceFormComponent.prototype) as any;
+    const fb = new FormBuilder();
+    const group = fb.group({
+      product: [null],
+      customerApplication: [null],
+      quantity: [1],
+      amount: [0],
+      amountOverridden: [false],
+    });
+
+    component.availableApplications = vi.fn().mockReturnValue([
+      {
+        id: 31,
+        product: { id: 15, code: 'P-15', name: 'Product 15', retailPrice: 275000 },
+        customer: { fullName: 'Sally Ride' },
+      },
+    ]);
+    group.get('customerApplication')?.setValue(31, { emitEvent: false });
+
+    component['onLineApplicationChanged'](group, 31);
+
+    expect(group.get('product')?.value).toBe(15);
+    expect(group.get('amount')?.value).toBe(275000);
+  });
+
+  it('allows removing a locked saved line when there is more than one line', () => {
+    const component = Object.create(InvoiceFormComponent.prototype) as any;
+    const fb = new FormBuilder();
+    const firstLine = fb.group({ identityLocked: [true] });
+    const secondLine = fb.group({ identityLocked: [false] });
+    const invoiceApplications = fb.array([firstLine, secondLine]);
+    const removeAtSpy = vi.spyOn(invoiceApplications, 'removeAt');
+
+    component.form = fb.group({
+      invoiceApplications,
+    });
+    component.updateTotalAmount = vi.fn();
+
+    component.removeLineItem(0);
+
+    expect(removeAtSpy).toHaveBeenCalledWith(0);
+  });
+
+  it('reorders invoice lines when moving a line up', () => {
+    const component = Object.create(InvoiceFormComponent.prototype) as any;
+    const fb = new FormBuilder();
+    const firstLine = fb.group({ id: [71] });
+    const secondLine = fb.group({ id: [72] });
+    const invoiceApplications = fb.array([firstLine, secondLine]);
+
+    component.form = fb.group({
+      invoiceApplications,
+    });
+    component.updateTotalAmount = vi.fn();
+
+    component.moveLineItem(1, -1);
+
+    expect(invoiceApplications.at(0).get('id')?.value).toBe(72);
+    expect(invoiceApplications.at(1).get('id')?.value).toBe(71);
+    expect(component.updateTotalAmount).toHaveBeenCalled();
   });
 
   it('recomputes amount from qty while the line has not been manually overridden', () => {

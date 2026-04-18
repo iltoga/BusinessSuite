@@ -111,6 +111,41 @@ describe('ApplicationDetailComponent customer navigation', () => {
   });
 });
 
+describe('ApplicationDetailComponent invoice navigation', () => {
+  it('builds invoice detail navigation state with a return target to the application', () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    component.isBrowser = false;
+    component.application = () => ({
+      id: 314,
+      customer: { id: 99 },
+    });
+    component.originSearchQuery = () => 'stefano';
+    component.originPage = () => 2;
+
+    expect(component.invoiceNavigationState()).toEqual({
+      from: 'application-detail',
+      applicationId: 314,
+      invoiceId: undefined,
+      customerId: 99,
+      returnUrl: '/applications/314',
+      returnState: {},
+      searchQuery: 'stefano',
+      page: 2,
+    });
+  });
+
+  it('formats the linked invoice label from invoice details', () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+
+    expect(
+      component.getLinkedInvoiceLabel({
+        invoiceNoDisplay: '20260075',
+        invoiceNo: 20260075,
+      }),
+    ).toBe('Invoice 20260075');
+  });
+});
+
 describe('ApplicationDetailComponent header title', () => {
   it('does not duplicate identical product code and name', () => {
     const component = Object.create(ApplicationDetailComponent.prototype) as any;

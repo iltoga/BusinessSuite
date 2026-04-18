@@ -17,6 +17,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { InvoicesService, type InvoiceDetail } from '@/core/api';
 import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import {
   ApplicationsService,
@@ -126,6 +127,7 @@ export class ApplicationDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private applicationsService = inject(ApplicationsService);
+  private invoicesApi = inject(InvoicesService);
   private documentTypesService = inject(DocumentTypesService);
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
@@ -199,6 +201,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly isAdminOrManager = this.authService.isAdminOrManager;
   readonly isSavingMeta = signal(false);
   readonly editableNotes = signal('');
+  readonly linkedInvoice = signal<InvoiceDetail | null>(null);
 
   /**
    * Convert an incoming icon descriptor (often FontAwesome CSS classes) into a
@@ -750,12 +753,34 @@ export class ApplicationDetailComponent implements OnInit {
     return {
       from: 'application-detail',
       applicationId: app?.id,
+      invoiceId: app?.invoiceId,
       customerId: app?.customer?.id,
       returnUrl: app ? `/applications/${app.id}` : '/applications',
       returnState: { ...currentState },
       searchQuery: this.originSearchQuery(),
       page: this.originPage() ?? undefined,
     };
+  }
+
+  invoiceNavigationState(): Record<string, unknown> {
+    const app = this.application();
+    const currentState = this.isBrowser
+      ? ((history.state as Record<string, unknown> | null) ?? {})
+      : {};
+    return {
+      from: 'application-detail',
+      applicationId: app?.id,
+      customerId: app?.customer?.id,
+      returnUrl: app ? `/applications/${app.id}` : '/applications',
+      returnState: { ...currentState },
+      searchQuery: this.originSearchQuery(),
+      page: this.originPage() ?? undefined,
+    };
+  }
+
+  getLinkedInvoiceLabel(invoice: InvoiceDetail): string {
+    const invoiceNumber = (invoice.invoiceNoDisplay || invoice.invoiceNo || '—').toString();
+    return `Invoice ${invoiceNumber}`;
   }
 
   getApplicationHeaderTitle(): string {
@@ -1070,6 +1095,7 @@ export class ApplicationDetailComponent implements OnInit {
     const normalized = this.normalizeApplicationPayload(raw);
     this.application.set(normalized);
     this.editableNotes.set(normalized?.notes ?? '');
+    this.loadLinkedInvoice(normalized);
     return true;
   }
 
@@ -1094,12 +1120,14 @@ export class ApplicationDetailComponent implements OnInit {
   private loadApplication(id: number, options?: { silent?: boolean }): void {
     if (!options?.silent) {
       this.isLoading.set(true);
+      this.linkedInvoice?.set(null);
     }
     this.applicationsService.getApplication(id).subscribe({
       next: (data) => {
         const normalized = this.normalizeApplicationPayload(data);
         this.application.set(normalized);
         this.editableNotes.set(normalized?.notes ?? '');
+        this.loadLinkedInvoice(normalized);
         this.pendingRefresh.passport.handleRefresh(
           id,
           this.isPassportConfigured(normalized) && !this.hasPassportDocument(normalized),
@@ -1121,6 +1149,35 @@ export class ApplicationDetailComponent implements OnInit {
         this.toast.error(extractServerErrorMessage(error) || 'Failed to load application');
         this.isLoading.set(false);
         this.isSavingMeta.set(false);
+      },
+    });
+  }
+
+  private loadLinkedInvoice(application: ApplicationDetail): void {
+    const linkedInvoice = this.linkedInvoice as
+      | { (): InvoiceDetail | null; set(value: InvoiceDetail | null): void }
+      | undefined;
+    if (!linkedInvoice || typeof linkedInvoice.set !== 'function') {
+      return;
+    }
+
+    const invoiceId = Number(application.invoiceId ?? 0);
+    if (!application.hasInvoice || !Number.isFinite(invoiceId) || invoiceId <= 0) {
+      linkedInvoice.set(null);
+      return;
+    }
+
+    if (linkedInvoice()?.id === invoiceId) {
+      return;
+    }
+
+    linkedInvoice.set(null);
+    this.invoicesApi.invoicesRetrieve({ id: invoiceId }).subscribe({
+      next: (invoice) => {
+        linkedInvoice.set(invoice);
+      },
+      error: () => {
+        linkedInvoice.set(null);
       },
     });
   }

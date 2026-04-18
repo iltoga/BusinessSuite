@@ -1,4 +1,4 @@
-/* Keep the action buttons visually separated from the invoice products card. */
+/* Keep the action buttons visually separated from the invoice lines card. */
 .invoice-form-actions {
   margin-top: 1.5rem;
 }
