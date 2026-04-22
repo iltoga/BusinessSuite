@@ -7,7 +7,7 @@ authors = [
     { name = "Stefano Galassi", email = "galaxy73.it@gmail.com" }
 ]
 dependencies = [
-    "django>=6.0.3",
+    "django>=6.0.4",
     "python-dotenv>=1.2.1",
     "whitenoise>=6.11.0",
     "gunicorn>=23.0.0",
@@ -30,7 +30,7 @@ dependencies = [
     "psycopg2-binary>=2.9.11",
     "redis[hiredis]>=6.4.0",
     "docx-mailmerge>=0.5.0",
-    "pillow>=12.1.1",
+    "pillow>=12.2.0",
     "openai>=1.102.0",
     "openpyxl>=3.1.5",
     "python-docx>=1.2.0",
