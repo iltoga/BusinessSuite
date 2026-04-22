@@ -89,22 +89,16 @@
                 <div class="font-medium">
                   {{ getApplicationProductCode(app) }} - {{ getApplicationProductName(app) }}
                 </div>
-                @if (getApplicationCustomerName(app) || app.customerApplication?.id) {
-                  <div class="text-xs text-muted-foreground">
-                    {{ getApplicationCustomerName(app) }}
-                    @if (app.customerApplication?.id) {
-                      ·
-                      <button
-                        type="button"
-                        class="invoice-linked-app-link"
-                        (click)="openLinkedApplication(app.customerApplication!.id)"
-                      >
-                        Application #{{ app.customerApplication?.id }}
-                      </button>
-                    }
-                  </div>
-                } @else {
-                  <div class="text-xs text-muted-foreground"></div>
+                @if (hasLinkedApplication(app)) {
+                  <a
+                    class="text-xs font-medium text-muted-foreground underline decoration-muted-foreground/50 underline-offset-4 transition-colors hover:text-foreground"
+                    [routerLink]="['/applications', app.customerApplication!.id]"
+                    [state]="applicationNavigationState(app.customerApplication!.id)"
+                  >
+                    {{ getLinkedApplicationTitle(app.customerApplication!) }}
+                  </a>
+                } @else if (isVisaProduct(app)) {
+                  <div class="text-xs text-muted-foreground">No Linked Application</div>
                 }
               </div>
               <div class="invoice-application-metrics">

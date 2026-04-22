@@ -152,7 +152,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             annotated_paid_amount=Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
             annotated_due_amount=F("amount")
             - Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
-        )
+        ).order_by("sort_order", "id")
 
         if include_payment_details:
             invoice_applications_qs = invoice_applications_qs.prefetch_related("payments")
@@ -750,40 +750,55 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def get_customer_applications(self, request, customer_id=None):
         if not customer_id:
             return self.error_response("Invalid request", status.HTTP_400_BAD_REQUEST)
-        applications = (
-            DocApplication.objects.filter(customer_id=customer_id)
-            .filter(product__deprecated=False, product__uses_customer_app_workflow=True)
+        try:
+            customer_id_value = int(customer_id)
+        except (TypeError, ValueError):
+            return self.error_response("Invalid customer id", status.HTTP_400_BAD_REQUEST)
+
+        current_invoice_id = request.query_params.get("current_invoice_id")
+        current_invoice_application_ids: set[int] = set()
+
+        if current_invoice_id not in (None, "", "null"):
+            try:
+                current_invoice_pk = int(current_invoice_id)
+            except (TypeError, ValueError):
+                return self.error_response("Invalid current invoice id", status.HTTP_400_BAD_REQUEST)
+
+            current_invoice_exists = Invoice.objects.filter(id=current_invoice_pk, customer_id=customer_id_value).exists()
+            if not current_invoice_exists:
+                return self.error_response("Current invoice not found.", status.HTTP_404_NOT_FOUND)
+
+            current_invoice_application_ids = set(
+                InvoiceApplication.objects.filter(invoice_id=current_invoice_pk, customer_application__isnull=False).values_list(
+                    "customer_application_id", flat=True
+                )
+            )
+
+        eligible_applications = (
+            DocApplication.objects.filter(
+                customer_id=customer_id_value,
+                product__deprecated=False,
+                product__uses_customer_app_workflow=True,
+            )
+            .exclude(status__in=[DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED])
+            .exclude(invoice_applications__isnull=False)
             .select_related("customer", "product")
             .prefetch_related("invoice_applications")
+            .distinct()
+            .order_by("-id")
         )
-        applications = applications.annotate(num_invoices=Count("invoice_applications"))
 
-        exclude_incomplete_document_collection = (
-            request.query_params.get("exclude_incomplete_document_collection", "true").lower() == "true"
-        )
-        exclude_statuses_string = request.query_params.get("exclude_statuses", None)
-        if exclude_statuses_string:
-            exclude_statuses = [status for status in exclude_statuses_string.split(",")]
-            STATUS_DICT = dict(DocApplication.STATUS_CHOICES)
-            if not all(status in STATUS_DICT.keys() for status in exclude_statuses):
-                return self.error_response("Invalid status provided", status.HTTP_400_BAD_REQUEST)
+        if current_invoice_application_ids:
+            combined_ids = set(eligible_applications.values_list("id", flat=True)).union(current_invoice_application_ids)
+            applications = (
+                DocApplication.objects.filter(id__in=combined_ids)
+                .select_related("customer", "product")
+                .prefetch_related("invoice_applications")
+                .distinct()
+                .order_by("-id")
+            )
         else:
-            exclude_statuses = [DocApplication.STATUS_REJECTED]
-
-        exclude_with_invoices = request.query_params.get("exclude_with_invoices", "true").lower() == "true"
-        current_invoice_id = request.query_params.get("current_invoice_id")
-
-        if exclude_incomplete_document_collection:
-            applications = applications.filter_by_document_collection_completed()
-
-        if exclude_statuses:
-            applications = applications.exclude(status__in=exclude_statuses)
-
-        if exclude_with_invoices:
-            if current_invoice_id:
-                applications = applications.exclude_already_invoiced(current_invoice_to_include=current_invoice_id)
-            else:
-                applications = applications.exclude(num_invoices__gt=0)
+            applications = eligible_applications
 
         page = self.paginate_queryset(applications)
         if page is not None:
@@ -825,30 +840,64 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         current_invoice_id = request.query_params.get("current_invoice_id")
 
-        pending_applications = (
+        current_invoice_product_ids: set[int] = set()
+        current_invoice_application_ids: set[int] = set()
+        if current_invoice_id not in (None, "", "null"):
+            try:
+                current_invoice_pk = int(current_invoice_id)
+            except (TypeError, ValueError):
+                return self.error_response("Invalid current invoice id", status.HTTP_400_BAD_REQUEST)
+
+            current_invoice_exists = Invoice.objects.filter(id=current_invoice_pk, customer_id=customer_id_value).exists()
+            if not current_invoice_exists:
+                return self.error_response("Current invoice not found.", status.HTTP_404_NOT_FOUND)
+
+            current_invoice_product_ids = set(
+                InvoiceApplication.objects.filter(invoice_id=current_invoice_pk, product__isnull=False).values_list(
+                    "product_id", flat=True
+                )
+            )
+            current_invoice_application_ids = set(
+                InvoiceApplication.objects.filter(invoice_id=current_invoice_pk, customer_application__isnull=False).values_list(
+                    "customer_application_id", flat=True
+                )
+            )
+
+        eligible_applications = (
             DocApplication.objects.filter(
                 customer_id=customer_id_value,
                 product__deprecated=False,
                 product__uses_customer_app_workflow=True,
             )
-            .exclude(status=DocApplication.STATUS_REJECTED)
+            .exclude(status__in=[DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED])
+            .exclude(invoice_applications__isnull=False)
             .select_related("customer", "product")
             .prefetch_related("invoice_applications")
-            .filter_by_document_collection_completed()
+            .distinct()
+            .order_by("-id")
         )
-        if current_invoice_id:
-            pending_applications = pending_applications.exclude_already_invoiced(
-                current_invoice_to_include=current_invoice_id
+
+        if current_invoice_application_ids:
+            combined_ids = set(eligible_applications.values_list("id", flat=True)).union(current_invoice_application_ids)
+            pending_applications = (
+                DocApplication.objects.filter(id__in=combined_ids)
+                .select_related("customer", "product")
+                .prefetch_related("invoice_applications")
+                .distinct()
+                .order_by("-id")
             )
         else:
-            pending_applications = pending_applications.exclude(invoice_applications__isnull=False)
-        pending_applications = pending_applications.order_by("-id").distinct()
+            pending_applications = eligible_applications
 
         pending_by_product: dict[int, list[DocApplication]] = {}
         for application in pending_applications:
             pending_by_product.setdefault(application.product_id, []).append(application)
 
-        products = Product.objects.filter(deprecated=False).order_by("name")
+        if current_invoice_product_ids:
+            product_queryset = Product.objects.filter(Q(deprecated=False) | Q(id__in=current_invoice_product_ids)).distinct()
+        else:
+            product_queryset = Product.objects.filter(deprecated=False)
+        products = product_queryset.order_by("name")
         response_rows = []
         for product in products:
             linked_apps = pending_by_product.get(product.id, [])
@@ -927,6 +976,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if not product.uses_customer_app_workflow:
             return self.error_response(
                 "Source application product is invoice-only and cannot be invoiced from customer applications.",
+                status.HTTP_400_BAD_REQUEST,
+            )
+        if source_application.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
+            return self.error_response(
+                "This customer application is no longer billable.",
                 status.HTTP_400_BAD_REQUEST,
             )
         if source_application.invoice_applications.exists():

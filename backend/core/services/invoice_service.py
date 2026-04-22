@@ -70,6 +70,8 @@ class InvoiceApplicationPayload:
     """Optional invoice-line notes stored on the invoice row itself."""
     amount: Decimal
     """Line amount in the invoice currency (IDR)."""
+    sort_order: int = 0
+    """Stable display/print order within the parent invoice."""
     invoice_application_id: int | None = None
     """Existing ``InvoiceApplication.id`` when updating; ``None`` for new lines."""
 
@@ -146,6 +148,35 @@ def sync_paid_invoice_applications(*, invoice: Invoice, user=None) -> int:
     return updated
 
 
+def recalculate_unlinked_customer_applications(*, application_ids: Iterable[int], user=None) -> int:
+    """Recompute status for customer applications no longer linked to any invoice.
+
+    This reverses invoice-driven completion side effects when a linked invoice
+    line is removed or an invoice is deleted without deleting the application.
+    Naturally completed applications remain completed after recomputation.
+    """
+    normalized_ids = {int(application_id) for application_id in application_ids if application_id}
+    if not normalized_ids:
+        return 0
+
+    applications = (
+        DocApplication.objects.filter(id__in=normalized_ids)
+        .exclude(status=DocApplication.STATUS_REJECTED)
+        .filter(invoice_applications__isnull=True)
+        .distinct()
+    )
+
+    updated = 0
+    for application in applications:
+        original_status = application.status
+        if user and getattr(user, "is_authenticated", False):
+            application.updated_by = user
+        application.save()
+        if application.status != original_status:
+            updated += 1
+    return updated
+
+
 def _build_payloads(raw_items: Iterable[dict]) -> list[InvoiceApplicationPayload]:
     items = list(raw_items)
     app_ids = [
@@ -159,9 +190,14 @@ def _build_payloads(raw_items: Iterable[dict]) -> list[InvoiceApplicationPayload
     }
 
     payloads: list[InvoiceApplicationPayload] = []
-    for item in items:
+    for index, item in enumerate(items):
         customer_application_id = _normalize_id(item.get("customer_application"))
         product_id = _normalize_id(item.get("product")) or app_product_map.get(customer_application_id)
+        raw_sort_order = item.get("sort_order", index)
+        try:
+            sort_order = max(0, int(index if raw_sort_order in (None, "") else raw_sort_order))
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({"invoice_applications": ["Sort order must be a non-negative integer."]}) from exc
         payloads.append(
             InvoiceApplicationPayload(
                 invoice_application_id=item.get("id"),
@@ -170,6 +206,7 @@ def _build_payloads(raw_items: Iterable[dict]) -> list[InvoiceApplicationPayload
                 quantity=_coerce_quantity(item.get("quantity")),
                 notes=sanitize_invoice_application_notes(item.get("notes")),
                 amount=Decimal(str(item.get("amount"))),
+                sort_order=sort_order,
             )
         )
     return payloads
@@ -186,16 +223,52 @@ def _validate_application_ids(payloads: list[InvoiceApplicationPayload]) -> None
         raise ValidationError("Each customer application can only appear once in an invoice.")
 
 
+def _validate_existing_invoice_line_payloads(*, payloads: list[InvoiceApplicationPayload], invoice: Invoice) -> None:
+    existing = {item.id: item for item in invoice.invoice_applications.all()}
+    seen_ids: set[int] = set()
+
+    for payload in payloads:
+        invoice_application_id = payload.invoice_application_id
+        if not invoice_application_id:
+            continue
+
+        if invoice_application_id in seen_ids:
+            raise ValidationError({"invoice_applications": ["Each invoice line id can only appear once."]})
+        seen_ids.add(invoice_application_id)
+
+        invoice_application = existing.get(invoice_application_id)
+        if not invoice_application:
+            raise ValidationError(
+                {"invoice_applications": [f"Invoice line id {invoice_application_id} does not belong to this invoice."]}
+            )
+
+        if (
+            invoice_application.product_id != payload.product_id
+            or invoice_application.customer_application_id != payload.customer_application_id
+        ):
+            raise ValidationError(
+                {
+                    "invoice_applications": [
+                        f"Invoice line id {invoice_application_id} cannot change product or customer application."
+                    ]
+                }
+            )
+
+
 def _validate_application_availability(
     *,
     payloads: list[InvoiceApplicationPayload],
     customer_id: int,
     current_invoice: Invoice | None = None,
 ) -> None:
-    if any(payload.product_id is None for payload in payloads):
+    new_payloads = [payload for payload in payloads if payload.invoice_application_id is None]
+    if not new_payloads:
+        return
+
+    if any(payload.product_id is None for payload in new_payloads):
         raise ValidationError({"invoice_applications": ["Each invoice line must include a product."]})
 
-    product_ids = [payload.product_id for payload in payloads if payload.product_id]
+    product_ids = [payload.product_id for payload in new_payloads if payload.product_id]
     existing_products = Product.objects.filter(id__in=product_ids)
     existing_product_map = {product.id: product for product in existing_products}
     missing_products = sorted({product_id for product_id in product_ids if product_id not in existing_product_map})
@@ -208,7 +281,7 @@ def _validate_application_availability(
     if deprecated_products:
         raise ValidationError({"invoice_applications": ["Cannot create/update invoice with deprecated products."]})
 
-    application_ids = [payload.customer_application_id for payload in payloads if payload.customer_application_id]
+    application_ids = [payload.customer_application_id for payload in new_payloads if payload.customer_application_id]
     if not application_ids:
         return
 
@@ -226,7 +299,7 @@ def _validate_application_availability(
             {"invoice_applications": [f"Unknown customer application id(s): {', '.join(map(str, missing_apps))}."]}
         )
 
-    for payload in payloads:
+    for payload in new_payloads:
         if not payload.customer_application_id:
             continue
         application = app_map[payload.customer_application_id]
@@ -238,25 +311,27 @@ def _validate_application_availability(
             raise ValidationError(
                 {"invoice_applications": ["Customer application product must match the invoice line product."]}
             )
-
-    deprecated_product_apps = applications.filter(
-        product__deprecated=True,
-    )
-    if deprecated_product_apps.exists():
-        raise ValidationError(
-            {"invoice_applications": ["Cannot create/update invoice with applications linked to deprecated products."]}
-        )
-
-    non_workflow_product_apps = applications.filter(product__uses_customer_app_workflow=False)
-    if non_workflow_product_apps.exists():
-        raise ValidationError(
-            {
-                "invoice_applications": [
-                    "Customer applications linked to invoice-only products are not billable here. "
-                    "Use a product-only invoice line instead."
-                ]
-            }
-        )
+        if application.status in {DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED}:
+            raise ValidationError(
+                {
+                    "invoice_applications": [
+                        "Customer applications must be active and incomplete before they can be added to an invoice."
+                    ]
+                }
+            )
+        if application.product.deprecated:
+            raise ValidationError(
+                {"invoice_applications": ["Cannot create/update invoice with deprecated products."]}
+            )
+        if not application.product.uses_customer_app_workflow:
+            raise ValidationError(
+                {
+                    "invoice_applications": [
+                        "Customer applications linked to invoice-only products are not billable here. "
+                        "Use a product-only invoice line instead."
+                    ]
+                }
+            )
 
 
 def create_invoice(*, data: dict, user) -> Invoice:
@@ -325,6 +400,7 @@ def update_invoice(*, invoice: Invoice, data: dict, user) -> Invoice:
         raise ValidationError({"invoice_applications": ["An invoice must have at least one line item."]})
     payloads = _build_payloads(data.pop("invoice_applications", []))
     _validate_application_ids(payloads)
+    _validate_existing_invoice_line_payloads(payloads=payloads, invoice=invoice)
     _validate_application_availability(payloads=payloads, customer_id=invoice.customer_id, current_invoice=invoice)
 
     if data.get("customer") and data["customer"].id != invoice.customer_id:
@@ -339,6 +415,7 @@ def update_invoice(*, invoice: Invoice, data: dict, user) -> Invoice:
         _sync_invoice_applications(invoice=invoice, payloads=payloads, user=user)
         invoice.save()
         sync_paid_invoice_applications(invoice=invoice, user=user)
+        invoice.refresh_from_db()
         return invoice
 
 
@@ -350,8 +427,7 @@ def _sync_invoice_applications(*, invoice: Invoice, payloads: list[InvoiceApplic
         history_id = _resolve_price_history_id(product_id=payload.product_id, invoice_date=invoice.invoice_date)
         if payload.invoice_application_id and payload.invoice_application_id in existing:
             invoice_app = existing[payload.invoice_application_id]
-            invoice_app.customer_application_id = payload.customer_application_id
-            invoice_app.product_id = payload.product_id
+            invoice_app.sort_order = payload.sort_order
             invoice_app.quantity = payload.quantity
             invoice_app.notes = payload.notes
             invoice_app.amount = payload.amount
@@ -363,6 +439,7 @@ def _sync_invoice_applications(*, invoice: Invoice, payloads: list[InvoiceApplic
                 invoice=invoice,
                 product_id=payload.product_id,
                 customer_application_id=payload.customer_application_id,
+                sort_order=payload.sort_order,
                 quantity=payload.quantity,
                 notes=payload.notes,
                 amount=payload.amount,
@@ -372,7 +449,13 @@ def _sync_invoice_applications(*, invoice: Invoice, payloads: list[InvoiceApplic
 
     to_delete = [item_id for item_id in existing.keys() if item_id not in seen_ids]
     if to_delete:
+        deleted_application_ids = [
+            item.customer_application_id
+            for item_id, item in existing.items()
+            if item_id in to_delete and item.customer_application_id
+        ]
         InvoiceApplication.objects.filter(id__in=to_delete, invoice=invoice).delete()
+        recalculate_unlinked_customer_applications(application_ids=deleted_application_ids, user=user)
 
 
 def mark_invoice_as_paid(*, invoice: Invoice, payment_type: str, payment_date: date | None, user) -> list[Payment]:

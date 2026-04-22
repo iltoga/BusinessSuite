@@ -247,13 +247,10 @@ export const extractServerErrorMessage = (errorResponse: unknown): string | null
   const payload = unwrapErrorPayload(errorResponse);
   if (!payload || typeof payload !== 'object') return null;
 
-  const canonicalError = getCanonicalErrorObject(payload);
+  const canonicalError =
+    getCanonicalErrorObject(payload) ??
+    (typeof payload['message'] === 'string' || typeof payload['detail'] === 'string' ? payload : null);
   if (canonicalError) {
-    const canonicalMessage = extractMessage(canonicalError['message'] ?? canonicalError['detail']);
-    if (canonicalMessage) {
-      return canonicalMessage;
-    }
-
     const canonicalDetails = canonicalError['details'] ?? canonicalError['errors'];
     const canonicalDetailsMessage = extractMessage(canonicalDetails);
     if (canonicalDetailsMessage) {
@@ -263,6 +260,11 @@ export const extractServerErrorMessage = (errorResponse: unknown): string | null
     const canonicalDetailsObjectMessage = extractFirstStringFromObject(canonicalDetails);
     if (canonicalDetailsObjectMessage) {
       return canonicalDetailsObjectMessage;
+    }
+
+    const canonicalMessage = extractMessage(canonicalError['message'] ?? canonicalError['detail']);
+    if (canonicalMessage) {
+      return canonicalMessage;
     }
   }
 

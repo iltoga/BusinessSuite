@@ -56,6 +56,7 @@ class InvoiceApplicationSummarySerializer(serializers.ModelSerializer):
         model = InvoiceApplication
         fields = [
             "id",
+            "sort_order",
             "product",
             "customer_application",
             "quantity",
@@ -78,6 +79,7 @@ class InvoiceApplicationDetailSerializer(serializers.ModelSerializer):
         model = InvoiceApplication
         fields = [
             "id",
+            "sort_order",
             "product",
             "customer_application",
             "quantity",
@@ -170,6 +172,7 @@ class InvoiceDetailSerializer(serializers.ModelSerializer):
 
 class InvoiceApplicationWriteSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
+    sort_order = serializers.IntegerField(required=False, min_value=0)
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), required=False, allow_null=True)
     customer_application = serializers.PrimaryKeyRelatedField(
         queryset=DocApplication.objects.all(),

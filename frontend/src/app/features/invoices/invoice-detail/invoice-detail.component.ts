@@ -8,6 +8,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 
 import {
@@ -48,6 +49,7 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
   selector: 'app-invoice-detail',
   standalone: true,
   imports: [
+    RouterLink,
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
@@ -243,16 +245,6 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
     return lineProduct?.name ?? customerApplication?.product?.name ?? '—';
   }
 
-  /**
-   * Get application customer name
-   */
-  getApplicationCustomerName(app: InvoiceApplicationDetail): string | null {
-    const customerApplication = app.customerApplication as {
-      customer?: { fullName?: string | null } | null;
-    } | null;
-    return customerApplication?.customer?.fullName ?? null;
-  }
-
   getApplicationQuantity(app: InvoiceApplicationDetail): number {
     const quantity = Number(app.quantity ?? 1);
     return Number.isFinite(quantity) && quantity > 0 ? Math.trunc(quantity) : 1;
@@ -261,6 +253,50 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
   getApplicationNotes(app: InvoiceApplicationDetail): string | null {
     const notes = app.notes;
     return typeof notes === 'string' && notes.trim() ? notes : null;
+  }
+
+  hasLinkedApplication(app: InvoiceApplicationDetail): boolean {
+    return Boolean(app.customerApplication?.id);
+  }
+
+  isVisaProduct(app: InvoiceApplicationDetail): boolean {
+    return (app.product?.productType ?? '').trim().toLowerCase() === 'visa';
+  }
+
+  getLinkedApplicationTitle(
+    application: NonNullable<InvoiceApplicationDetail['customerApplication']>,
+  ): string {
+    const code = application.product?.code?.trim() || '—';
+    const name = application.product?.name?.trim() || '—';
+    if (code === name) {
+      return `Application #${application.id} - ${code}`;
+    }
+
+    return `Application #${application.id} - ${code} - ${name}`;
+  }
+
+  applicationNavigationState(applicationId: number): Record<string, unknown> {
+    const invoice = this.item();
+    const invoiceId = invoice?.id;
+    if (!invoiceId || !applicationId) {
+      return {};
+    }
+
+    const currentState = this.isBrowser
+      ? ((history.state as Record<string, unknown> | null) ?? {})
+      : {};
+    const returnUrl = this.router.url.startsWith('/') ? this.router.url : `/invoices/${invoiceId}`;
+
+    return {
+      from: 'invoices',
+      invoiceId,
+      customerId: invoice?.customer?.id,
+      returnUrl,
+      returnState: { ...currentState },
+      searchQuery: this.originSearchQuery(),
+      page: this.originPage() ?? undefined,
+      focusId: applicationId,
+    };
   }
 
   /**
@@ -272,15 +308,8 @@ export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
       return;
     }
 
-    const returnUrl = this.router.url.startsWith('/') ? this.router.url : `/invoices/${invoiceId}`;
     this.router.navigate(['/applications', applicationId], {
-      state: {
-        from: 'invoices',
-        returnUrl,
-        searchQuery: this.originSearchQuery(),
-        page: this.originPage() ?? undefined,
-        focusId: applicationId,
-      },
+      state: this.applicationNavigationState(applicationId),
     });
   }
 

@@ -5,6 +5,7 @@ import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 
 @Component({
@@ -15,6 +16,7 @@ import { ZardInputDirective } from '@/shared/components/input';
     ZardCardComponent,
     ZardButtonComponent,
     ZardComboboxComponent,
+    ZardIconComponent,
     ZardInputDirective,
   ],
   templateUrl: './invoice-line-items-section.component.html',
@@ -23,12 +25,14 @@ import { ZardInputDirective } from '@/shared/components/input';
 export class InvoiceLineItemsSectionComponent {
   @Input({ required: true }) form!: FormGroup;
   @Input({ required: true }) invoiceApplications!: FormArray<FormGroup>;
-  @Input({ required: true }) billableProductOptions: ZardComboboxOption[] = [];
   @Input({ required: true }) customerSelected = false;
   @Input({ required: true }) totalLabel = '';
 
   @Input({ required: true }) isLineLocked!: (group: FormGroup) => boolean;
   @Input({ required: true }) toComboboxValue!: (value: unknown) => string | null;
+  @Input({ required: true }) availableProductOptionsForLine!: (
+    group: FormGroup,
+  ) => ZardComboboxOption[];
   @Input({ required: true }) availablePendingApplicationOptionsForLine!: (
     group: FormGroup,
   ) => ZardComboboxOption[];
@@ -36,6 +40,8 @@ export class InvoiceLineItemsSectionComponent {
 
   @Output() readonly addLineItem = new EventEmitter<void>();
   @Output() readonly removeLineItem = new EventEmitter<number>();
+  @Output() readonly moveLineItemUp = new EventEmitter<number>();
+  @Output() readonly moveLineItemDown = new EventEmitter<number>();
   @Output() readonly lineProductChange = new EventEmitter<{ group: FormGroup; value: string | null }>();
   @Output() readonly lineCustomerApplicationChange = new EventEmitter<{
     group: FormGroup;

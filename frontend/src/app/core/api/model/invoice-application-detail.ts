@@ -13,6 +13,7 @@ import { Product } from './product';
 
 export interface InvoiceApplicationDetail {
   readonly id: number;
+  sortOrder?: number;
   readonly product: Product;
   readonly customerApplication: DocApplicationInvoice | null;
   quantity?: number;
