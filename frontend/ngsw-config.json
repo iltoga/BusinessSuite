@@ -18,7 +18,9 @@
           "/index.html",
           "/manifest.webmanifest",
           "/*.css",
-          "/*.js"
+          "/*.js",
+          "/*.mjs",
+          "/assets/*.mjs"
         ]
       }
     },
