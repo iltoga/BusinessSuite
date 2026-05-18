@@ -131,7 +131,7 @@ model/google-task.ts
 model/holiday-request.ts
 model/holiday.ts
 model/invoice-application-detail.ts
-model/invoice-application-summary.ts
+model/invoice-application-list-item.ts
 model/invoice-application-write-request.ts
 model/invoice-application-write.ts
 model/invoice-create-update-request.ts
@@ -143,6 +143,9 @@ model/invoice-force-delete-response.ts
 model/invoice-from-application-prefill-line.ts
 model/invoice-from-application-prefill-locks.ts
 model/invoice-from-application-prefill-response.ts
+model/invoice-list-customer-application.ts
+model/invoice-list-customer-minimal.ts
+model/invoice-list-product.ts
 model/invoice-list.ts
 model/invoice-mark-as-paid-request-request.ts
 model/invoice-mark-as-paid-response.ts

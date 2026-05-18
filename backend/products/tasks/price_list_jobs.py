@@ -7,7 +7,7 @@ from core.models import AsyncJob
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from core.tasks.progress import persist_progress
-from core.tasks.runtime import QUEUE_REALTIME, db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task, retry_on_transient_external_failure
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -17,7 +17,7 @@ from products.services.price_list_service import ProductPriceListService
 logger = Logger.get_logger(__name__)
 
 
-@db_task(queue=QUEUE_REALTIME)
+@db_task(queue=QUEUE_REALTIME, queue_defaults=True, retry_when=retry_on_transient_external_failure)
 def run_product_price_list_print_job(job_id: str, user_id: int | None = None) -> None:
     lock_key = build_task_lock_key(namespace="products_price_list_print_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)

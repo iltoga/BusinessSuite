@@ -4,6 +4,7 @@ import { Subscription, catchError, finalize, interval, of } from 'rxjs';
 
 import { CalendarRemindersService } from '@/core/api/api/calendar-reminders.service';
 import { AuthService } from '@/core/services/auth.service';
+import { BackendReadinessService } from '@/core/services/backend-readiness.service';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { PushNotificationsService } from '@/core/services/push-notifications.service';
 import {
@@ -30,6 +31,7 @@ export class ReminderInboxService {
   private readonly reconnectMaxDelayMs = 30_000;
 
   private readonly authService = inject(AuthService);
+  private readonly backendReadiness = inject(BackendReadinessService);
   private readonly calendarRemindersApi = inject(CalendarRemindersService);
   private readonly desktopBridge = inject(DesktopBridgeService);
   private readonly pushNotifications = inject(PushNotificationsService);
@@ -52,6 +54,7 @@ export class ReminderInboxService {
   private streamSubscription: Subscription | null = null;
   private activeRefreshSubscription: Subscription | null = null;
   private streamReconnectTimeoutId: number | null = null;
+  private streamConnectAttempt = 0;
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
 
@@ -233,11 +236,28 @@ export class ReminderInboxService {
 
   private subscribeToReminderStream(): void {
     this.clearReconnectTimeout();
-    this.streamSubscription?.unsubscribe();
-    this.streamSubscription = this.remindersStreamService.connect().subscribe({
-      next: (event) => this.handleReminderStreamEvent(event),
-      error: () => this.handleReminderStreamDisconnect(),
-      complete: () => this.handleReminderStreamDisconnect(),
+    const attempt = ++this.streamConnectAttempt;
+
+    void this.backendReadiness.isBackendReady().then((isReady) => {
+      if (
+        !this.started ||
+        !isPlatformBrowser(this.platformId) ||
+        attempt !== this.streamConnectAttempt
+      ) {
+        return;
+      }
+
+      if (!isReady) {
+        this.scheduleReconnect();
+        return;
+      }
+
+      this.streamSubscription?.unsubscribe();
+      this.streamSubscription = this.remindersStreamService.connect().subscribe({
+        next: (event) => this.handleReminderStreamEvent(event),
+        error: () => this.handleReminderStreamDisconnect(),
+        complete: () => this.handleReminderStreamDisconnect(),
+      });
     });
   }
 

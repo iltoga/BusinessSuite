@@ -321,7 +321,7 @@ def _try_auto_import_passport(*, application_id: int, user_id: int | None = None
     return {"status": "skipped", "reason": "no_import_source"}
 
 
-@db_task(queue=QUEUE_REALTIME)
+@db_task(queue=QUEUE_REALTIME, queue_defaults=True)
 def auto_import_passport_task(*, application_id: int, user_id: int | None = None) -> dict[str, object]:
     return _try_auto_import_passport(application_id=application_id, user_id=user_id)
 
@@ -424,7 +424,7 @@ def _notify_calendar_sync_failure(user, *, application, action, error_message):
         logger.exception("Failed to push calendar sync error notification to user #%s", getattr(user, "id", None))
 
 
-@db_task(queue=QUEUE_DEFAULT)
+@db_task(queue=QUEUE_DEFAULT, queue_defaults=True)
 def sync_application_calendar_task(
     *,
     application_id: int,
@@ -792,7 +792,7 @@ def poll_whatsapp_delivery_statuses(*, notification_ids=None, limit=None):
     return {"checked": checked, "updated": updated, "skipped": skipped, "failed": failed}
 
 
-@db_task(queue=QUEUE_SCHEDULED)
+@db_task(queue=QUEUE_SCHEDULED, queue_defaults=True)
 def poll_whatsapp_delivery_statuses_task(*, notification_ids=None, limit=None):
     return poll_whatsapp_delivery_statuses(notification_ids=notification_ids, limit=limit)
 
@@ -801,6 +801,7 @@ def poll_whatsapp_delivery_statuses_task(*, notification_ids=None, limit=None):
     crontab(minute="*/5"),
     name="customer_applications.poll_whatsapp_delivery_statuses",
     queue=QUEUE_SCHEDULED,
+    queue_defaults=True,
 )
 def poll_whatsapp_delivery_statuses_periodic_task():
     poll_whatsapp_delivery_statuses()
@@ -813,6 +814,7 @@ def poll_whatsapp_delivery_statuses_periodic_task():
     ),
     name="customer_applications.send_due_tomorrow_customer_notifications",
     queue=QUEUE_SCHEDULED,
+    queue_defaults=True,
 )
 def send_due_tomorrow_customer_notifications_task():
     send_due_tomorrow_customer_notifications()

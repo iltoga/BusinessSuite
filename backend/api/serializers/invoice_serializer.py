@@ -68,6 +68,48 @@ class InvoiceApplicationSummarySerializer(serializers.ModelSerializer):
         ]
 
 
+class InvoiceListProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ["id", "code", "name"]
+
+
+class InvoiceListCustomerMinimalSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    full_name = serializers.CharField(read_only=True)
+
+
+class InvoiceListCustomerApplicationSerializer(serializers.ModelSerializer):
+    product = InvoiceListProductSerializer(read_only=True)
+    customer = InvoiceListCustomerMinimalSerializer(read_only=True)
+
+    class Meta:
+        model = DocApplication
+        fields = ["id", "product", "customer", "notes"]
+
+
+class InvoiceApplicationListItemSerializer(serializers.ModelSerializer):
+    product = InvoiceListProductSerializer(read_only=True)
+    customer_application = InvoiceListCustomerApplicationSerializer(read_only=True, allow_null=True)
+    paid_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    due_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = InvoiceApplication
+        fields = [
+            "id",
+            "sort_order",
+            "product",
+            "customer_application",
+            "quantity",
+            "notes",
+            "amount",
+            "status",
+            "paid_amount",
+            "due_amount",
+        ]
+
+
 class InvoiceApplicationDetailSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
     customer_application = DocApplicationInvoiceSerializer(read_only=True, allow_null=True)
@@ -98,7 +140,7 @@ class InvoiceListSerializer(serializers.ModelSerializer):
     total_paid_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     total_due_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     is_expired = serializers.BooleanField(read_only=True)
-    invoice_applications = InvoiceApplicationSummarySerializer(many=True, read_only=True)
+    invoice_applications = InvoiceApplicationListItemSerializer(many=True, read_only=True)
     created_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
     updated_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
 

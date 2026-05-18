@@ -17,7 +17,7 @@ import {
   Renderer2,
   inject,
 } from '@angular/core';
-import { NgxExtendedPdfViewerModule, pdfDefaultOptions } from 'ngx-extended-pdf-viewer';
+import { NgxExtendedPdfViewerModule, pdfDefaultOptions, pdfjsVersion } from 'ngx-extended-pdf-viewer';
 
 @Component({
   selector: 'app-pdf-viewer-host',
@@ -83,7 +83,7 @@ export class PdfViewerHostComponent implements OnChanges, OnInit, OnDestroy {
     // Ensure the ngx-extended-pdf-viewer assets and worker are loaded from local assets
     try {
       pdfDefaultOptions.assetsFolder = 'assets';
-      pdfDefaultOptions.workerSrc = () => '/assets/pdf.worker-5.4.1105.min.mjs';
+      pdfDefaultOptions.workerSrc = () => `/assets/pdf.worker-${pdfjsVersion}.min.mjs`;
     } catch (e) {
       console.debug('Unable to set pdfDefaultOptions, will rely on pdfjs auto-detection', e);
     }

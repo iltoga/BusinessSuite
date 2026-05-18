@@ -129,6 +129,7 @@ from django.db.models import (
     Case,
     Count,
     DecimalField,
+    Exists,
     F,
     IntegerField,
     OuterRef,

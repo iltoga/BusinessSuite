@@ -10,9 +10,8 @@ import {
 } from '@angular/core';
 
 import { ImageViewerHostComponent } from '@/shared/components/image-viewer-host/image-viewer-host.component';
-import { PdfViewerHostComponent } from '@/shared/components/pdf-viewer-host/pdf-viewer-host.component';
 
-type ViewerComponent = ImageViewerHostComponent | PdfViewerHostComponent;
+type ViewerComponent = ImageViewerHostComponent | { close?: () => void };
 
 type MaskClosableDialogRef = {
   setMaskClosable(maskClosable: boolean): void;
@@ -50,7 +49,11 @@ export class DocumentViewerOverlayService {
       showDownloadButton?: boolean;
     },
   ): void {
-    this.openViewer(PdfViewerHostComponent, src, options);
+    void import('@/shared/components/pdf-viewer-host/pdf-viewer-host.component').then(
+      ({ PdfViewerHostComponent }) => {
+        this.openViewer(PdfViewerHostComponent, src, options);
+      },
+    );
   }
 
   closeCurrent(): void {

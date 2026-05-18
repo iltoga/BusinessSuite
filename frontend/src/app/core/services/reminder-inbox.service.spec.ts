@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CalendarRemindersService } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
+import { BackendReadinessService } from '@/core/services/backend-readiness.service';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { PushNotificationsService } from '@/core/services/push-notifications.service';
 import { ReminderInboxService } from '@/core/services/reminder-inbox.service';
@@ -21,6 +22,7 @@ describe('ReminderInboxService', () => {
   let mockCalendarRemindersApi: {
     calendarRemindersInboxRetrieve: ReturnType<typeof vi.fn>;
   };
+  let mockBackendReadiness: { isBackendReady: ReturnType<typeof vi.fn> };
   let mockDesktopBridge: { publishUnreadCount: ReturnType<typeof vi.fn> };
   let mockRemindersStreamService: {
     connect: ReturnType<typeof vi.fn>;
@@ -47,6 +49,9 @@ describe('ReminderInboxService', () => {
     };
     mockDesktopBridge = {
       publishUnreadCount: vi.fn(),
+    };
+    mockBackendReadiness = {
+      isBackendReady: vi.fn(async () => true),
     };
     mockRemindersStreamService = {
       connect: vi.fn(() => stream$.asObservable()),
@@ -78,6 +83,7 @@ describe('ReminderInboxService', () => {
             getToken: vi.fn(() => 'jwt-token'),
           },
         },
+        { provide: BackendReadinessService, useValue: mockBackendReadiness },
         { provide: DesktopBridgeService, useValue: mockDesktopBridge },
         { provide: PushNotificationsService, useValue: { incoming$: push$.asObservable() } },
         { provide: RemindersStreamService, useValue: mockRemindersStreamService },
@@ -96,8 +102,9 @@ describe('ReminderInboxService', () => {
     }
   });
 
-  it('refreshes immediately on SSE changes and updates unread count', () => {
+  it('refreshes immediately on SSE changes and updates unread count', async () => {
     service.start();
+    await Promise.resolve();
 
     const initialRequest = takePendingInboxRequest();
     initialRequest.next({
@@ -126,8 +133,9 @@ describe('ReminderInboxService', () => {
     expect(mockDesktopBridge.publishUnreadCount).toHaveBeenLastCalledWith(1);
   });
 
-  it('refreshes immediately on reminder push notifications', () => {
+  it('refreshes immediately on reminder push notifications', async () => {
     service.start();
+    await Promise.resolve();
 
     const initialRequest = takePendingInboxRequest();
     initialRequest.next({ unreadCount: 0, today: [] });
@@ -153,8 +161,9 @@ describe('ReminderInboxService', () => {
     expect(mockDesktopBridge.publishUnreadCount).toHaveBeenLastCalledWith(3);
   });
 
-  it('uses a five-minute fallback poll instead of refreshing every minute', () => {
+  it('uses a five-minute fallback poll instead of refreshing every minute', async () => {
     service.start();
+    await Promise.resolve();
 
     const initialRequest = takePendingInboxRequest();
     initialRequest.next({ unreadCount: 1, today: [] });
@@ -171,6 +180,7 @@ describe('ReminderInboxService', () => {
 
   it('coalesces simultaneous push and SSE invalidations into one follow-up refresh', async () => {
     service.start();
+    await Promise.resolve();
 
     const initialRequest = takePendingInboxRequest();
 
@@ -195,13 +205,14 @@ describe('ReminderInboxService', () => {
     expect(service.unreadCount()).toBe(4);
   });
 
-  it('keeps fallback polling active for recovery after the live stream disconnects', () => {
+  it('keeps fallback polling active for recovery after the live stream disconnects', async () => {
     const recoveryStream$ = new Subject<RemindersStreamEvent>();
     mockRemindersStreamService.connect
       .mockImplementationOnce(() => stream$.asObservable())
       .mockImplementationOnce(() => recoveryStream$.asObservable());
 
     service.start();
+    await Promise.resolve();
     const initialRequest = takePendingInboxRequest();
     initialRequest.next({ unreadCount: 1, today: [] });
     initialRequest.complete();
@@ -209,6 +220,7 @@ describe('ReminderInboxService', () => {
     stream$.error(new Error('stream dropped'));
 
     vi.advanceTimersByTime(2_000);
+    await Promise.resolve();
     expect(mockRemindersStreamService.connect).toHaveBeenCalledTimes(2);
 
     vi.advanceTimersByTime(60_000);
@@ -220,5 +232,37 @@ describe('ReminderInboxService', () => {
     recoveryPollRequest.complete();
 
     expect(service.unreadCount()).toBe(2);
+  });
+
+  it('waits for backend readiness before reconnecting the reminder stream', async () => {
+    mockBackendReadiness.isBackendReady
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    const recoveryStream$ = new Subject<RemindersStreamEvent>();
+    mockRemindersStreamService.connect
+      .mockImplementationOnce(() => stream$.asObservable())
+      .mockImplementationOnce(() => recoveryStream$.asObservable());
+
+    service.start();
+    await Promise.resolve();
+
+    const initialRequest = takePendingInboxRequest();
+    initialRequest.next({ unreadCount: 1, today: [] });
+    initialRequest.complete();
+
+    stream$.error(new Error('stream dropped'));
+    await Promise.resolve();
+
+    expect(mockRemindersStreamService.connect).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(2_000);
+    await Promise.resolve();
+    expect(mockRemindersStreamService.connect).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(4_000);
+    await Promise.resolve();
+    expect(mockRemindersStreamService.connect).toHaveBeenCalledTimes(2);
   });
 });

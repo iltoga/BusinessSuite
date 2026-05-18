@@ -7,8 +7,8 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { InvoiceApplicationSummary } from './invoice-application-summary';
 import { Customer } from './customer';
+import { InvoiceApplicationListItem } from './invoice-application-list-item';
 
 export interface InvoiceList {
   readonly id: number;
@@ -37,7 +37,7 @@ export interface InvoiceList {
    * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
    */
   readonly updatedBy: string;
-  readonly invoiceApplications: Array<InvoiceApplicationSummary>;
+  readonly invoiceApplications: Array<InvoiceApplicationListItem>;
 }
 export enum InvoiceListStatusEnum {
   Created = 'created',

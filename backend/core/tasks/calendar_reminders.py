@@ -38,7 +38,7 @@ def _dispatch_due_calendar_reminders(*, limit: int | None = None) -> dict[str, i
     return payload
 
 
-@db_task(queue=QUEUE_DEFAULT)
+@db_task(queue=QUEUE_DEFAULT, queue_defaults=True)
 def dispatch_due_calendar_reminders_task(*, limit: int | None = None) -> dict[str, int]:
     return _dispatch_due_calendar_reminders(limit=limit)
 
@@ -47,6 +47,7 @@ def dispatch_due_calendar_reminders_task(*, limit: int | None = None) -> dict[st
     crontab(minute="*/1"),
     name="core.dispatch_due_calendar_reminders",
     queue=QUEUE_SCHEDULED,
+    queue_defaults=True,
 )
 def dispatch_due_calendar_reminders_periodic_task() -> None:
     _dispatch_due_calendar_reminders()

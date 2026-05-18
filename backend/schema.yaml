@@ -11571,13 +11571,15 @@ components:
           type: boolean
         context_length:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
           nullable: true
         max_completion_tokens:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
           nullable: true
         modality:
           type: string
@@ -11783,13 +11785,15 @@ components:
           type: boolean
         context_length:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
           nullable: true
         max_completion_tokens:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
           nullable: true
         modality:
           type: string
@@ -13646,8 +13650,9 @@ components:
           type: boolean
         expiring_threshold_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         is_stay_permit:
           type: boolean
@@ -13693,8 +13698,9 @@ components:
           type: boolean
         expiring_threshold_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         is_stay_permit:
           type: boolean
@@ -13926,8 +13932,9 @@ components:
           readOnly: true
         sort_order:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         product:
           allOf:
           - $ref: '#/components/schemas/Product'
@@ -13939,8 +13946,9 @@ components:
           nullable: true
         quantity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         notes:
           type: string
           nullable: true
@@ -13992,7 +14000,7 @@ components:
       - paid_amount
       - payments
       - product
-    InvoiceApplicationSummary:
+    InvoiceApplicationListItem:
       type: object
       properties:
         id:
@@ -14000,21 +14008,23 @@ components:
           readOnly: true
         sort_order:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         product:
           allOf:
-          - $ref: '#/components/schemas/Product'
+          - $ref: '#/components/schemas/InvoiceListProduct'
           readOnly: true
         customer_application:
           allOf:
-          - $ref: '#/components/schemas/DocApplicationInvoice'
+          - $ref: '#/components/schemas/InvoiceListCustomerApplication'
           readOnly: true
           nullable: true
         quantity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         notes:
           type: string
           nullable: true
@@ -14209,8 +14219,9 @@ components:
           readOnly: true
         invoice_no:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         invoice_no_display:
           type: string
           readOnly: true
@@ -14402,8 +14413,9 @@ components:
           readOnly: true
         invoice_no:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         invoice_no_display:
           type: string
           readOnly: true
@@ -14484,7 +14496,7 @@ components:
         invoice_applications:
           type: array
           items:
-            $ref: '#/components/schemas/InvoiceApplicationSummary'
+            $ref: '#/components/schemas/InvoiceApplicationListItem'
           readOnly: true
       required:
       - created_at
@@ -14501,6 +14513,55 @@ components:
       - total_paid_amount
       - updated_at
       - updated_by
+    InvoiceListCustomerApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/InvoiceListProduct'
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/InvoiceListCustomerMinimal'
+          readOnly: true
+        notes:
+          type: string
+          nullable: true
+      required:
+      - customer
+      - id
+      - product
+    InvoiceListCustomerMinimal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+      required:
+      - full_name
+      - id
+    InvoiceListProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 20
+        name:
+          type: string
+          maxLength: 100
+      required:
+      - code
+      - id
+      - name
     InvoiceMarkAsPaidRequestRequest:
       type: object
       properties:
@@ -14952,8 +15013,9 @@ components:
           readOnly: true
         validity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         required_documents:
           type: string
@@ -14963,13 +15025,15 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15055,18 +15119,21 @@ components:
           nullable: true
         validity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         documents_min_validity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15131,18 +15198,21 @@ components:
           nullable: true
         validity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         documents_min_validity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15210,8 +15280,9 @@ components:
           readOnly: true
         validity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         required_documents:
           type: string
@@ -15221,13 +15292,15 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15380,8 +15453,9 @@ components:
           maxLength: 3
         validity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         required_documents:
           type: string
@@ -15391,13 +15465,15 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15560,18 +15636,21 @@ components:
           maxLength: 100
         step:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         duration:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         notify_customer:
           type: boolean
         last_step:
@@ -15588,8 +15667,9 @@ components:
           nullable: true
         step:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         name:
           type: string
           maxLength: 100
@@ -15602,14 +15682,16 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         duration:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         notify_customer:
           type: boolean
         add_task_to_calendar:
@@ -15627,8 +15709,9 @@ components:
           nullable: true
         step:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         name:
           type: string
           minLength: 1
@@ -15642,14 +15725,16 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         duration:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         notify_customer:
           type: boolean
         add_task_to_calendar:

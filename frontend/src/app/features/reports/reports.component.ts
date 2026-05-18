@@ -10,7 +10,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { ChartData } from 'chart.js';
-import { BaseChartDirective } from 'ng2-charts';
+import { BaseChartDirective, provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { Subject, catchError, map, of, switchMap } from 'rxjs';
 
 import {
@@ -115,6 +115,7 @@ const CHART_TYPES_BY_SLUG = {
   templateUrl: './reports.component.html',
   styleUrls: ['./reports.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [provideCharts(withDefaultRegisterables())],
 })
 export class ReportsComponent {
   private route = inject(ActivatedRoute);

@@ -6,8 +6,7 @@
 set -e
 
 PYTHON_BIN="${PYTHON_BIN:-/opt/venv/bin/python}"
-REDIS_HOST="${REDIS_HOST:-bs-redis}"
-REDIS_PORT="${REDIS_PORT:-6379}"
+MAX_HEARTBEAT_AGE_SECONDS="${DRAMATIQ_SCHEDULER_HEALTHCHECK_MAX_AGE_SECONDS:-60}"
 
 # Check 1: Scheduler process alive
 # The scheduler runs as: python manage.py run_dramatiq_scheduler
@@ -16,15 +15,28 @@ if ! pgrep -f "run_dramatiq_scheduler" > /dev/null 2>&1; then
   exit 1
 fi
 
-# Check 2: Redis broker reachable
+# Check 2: Redis broker reachable and scheduler heartbeat fresh
 "$PYTHON_BIN" -c "
 import sys
+import time
 try:
-    import redis
-    r = redis.Redis(host='$REDIS_HOST', port=$REDIS_PORT, socket_connect_timeout=3, socket_timeout=3)
+    from django.conf import settings
+    from core.services.redis_client import get_redis_client
+    r = get_redis_client(socket_connect_timeout=3, socket_timeout=3)
     r.ping()
+    key = getattr(settings, 'DRAMATIQ_SCHEDULER_HEARTBEAT_KEY', 'dramatiq:scheduler:heartbeat')
+    raw = r.get(key)
+    if raw is None:
+        print(f'[HEALTH] Scheduler heartbeat missing: {key}')
+        sys.exit(1)
+    if isinstance(raw, bytes):
+        raw = raw.decode('utf-8')
+    age = time.time() - float(raw)
+    if age > float('$MAX_HEARTBEAT_AGE_SECONDS'):
+        print(f'[HEALTH] Scheduler heartbeat stale ({age:.0f}s)')
+        sys.exit(1)
 except Exception as e:
-    print(f'[HEALTH] Redis unreachable: {e}')
+    print(f'[HEALTH] Scheduler Redis/heartbeat check failed: {e}')
     sys.exit(1)
 "
 

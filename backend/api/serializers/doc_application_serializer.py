@@ -109,9 +109,15 @@ class DocApplicationListSerializer(serializers.ModelSerializer):
         ]
 
     def get_has_invoice(self, instance) -> bool:
+        annotated = getattr(instance, "annotated_has_invoice", None)
+        if annotated is not None:
+            return bool(annotated)
         return instance.has_invoice()
 
     def get_invoice_id(self, instance) -> int | None:
+        annotated = getattr(instance, "annotated_invoice_id", None)
+        if annotated is not None:
+            return annotated
         invoice = instance.get_invoice()
         return invoice.id if invoice else None
 
