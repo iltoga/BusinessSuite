@@ -614,6 +614,43 @@ console.log(`[SSR Server] Proxying API to: ${backendUrl}`);
 const shouldProxyPath = (urlPath: string): boolean =>
   proxiedPathPrefixes.some((prefix) => urlPath === prefix || urlPath.startsWith(`${prefix}/`));
 
+const STATIC_ASSET_PATH_PATTERN =
+  /\.(?:js|mjs|css|map|json|png|jpe?g|gif|svg|ico|webp|avif|cur|otf|ttf|woff2?|txt|xml|webmanifest)$/i;
+const PDF_VIEWER_ASSET_PATTERN = /^\/assets\/(viewer|pdf\.worker)-[\d.]+(\.min|-es5)?\.mjs$/;
+
+function isStaticAssetRequest(urlPath: string): boolean {
+  return (
+    urlPath.startsWith('/assets/') ||
+    urlPath === '/favicon.ico' ||
+    urlPath === '/manifest.webmanifest' ||
+    urlPath === '/ngsw-worker.js' ||
+    urlPath === '/ngsw.json' ||
+    STATIC_ASSET_PATH_PATTERN.test(urlPath)
+  );
+}
+
+async function findCurrentPdfViewerAsset(urlPath: string): Promise<string | null> {
+  const match = PDF_VIEWER_ASSET_PATTERN.exec(urlPath);
+  if (!match) return null;
+
+  const [, assetKind, variant = ''] = match;
+  const assetNamePattern = new RegExp(
+    `^${assetKind.replace('.', '\\.')}-\\d+(?:\\.\\d+)*${variant.replace('.', '\\.')}.mjs$`,
+  );
+
+  const assetsFolder = join(browserDistFolder, 'assets');
+  try {
+    const assetNames = await fs.readdir(assetsFolder);
+    const currentAssetName = assetNames
+      .filter((assetName) => assetNamePattern.test(assetName))
+      .sort()
+      .at(-1);
+    return currentAssetName ? join(assetsFolder, currentAssetName) : null;
+  } catch {
+    return null;
+  }
+}
+
 app.use((req, res, next) => {
   const requestPath = req.originalUrl || req.url || '/';
   if (!shouldProxyPath(requestPath)) {
@@ -714,6 +751,23 @@ app.use(
     redirect: false,
   }),
 );
+
+app.use(async (req, res, next) => {
+  const requestPath = new URL(req.originalUrl || req.url || '/', 'http://localhost').pathname;
+  if (!isStaticAssetRequest(requestPath)) {
+    next();
+    return;
+  }
+
+  const currentPdfViewerAsset = await findCurrentPdfViewerAsset(requestPath);
+  if (currentPdfViewerAsset) {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(currentPdfViewerAsset);
+    return;
+  }
+
+  res.status(404).type('text/plain').send('Static asset not found.');
+});
 
 /**
  * Handle all other requests by rendering the Angular application.
