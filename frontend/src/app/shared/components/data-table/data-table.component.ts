@@ -169,6 +169,7 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
 
   // Speed dial / selection
   selectedRow = signal<T | null>(null);
+  private selectedRowIndex = signal<number>(-1);
 
   /**
    * Internal flag to refocus the first row after data finishes loading.
@@ -239,6 +240,7 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
 
       if (d && d.length === 1) {
         this.selectedRow.set(d[0]);
+        this.selectedRowIndex.set(0);
       }
     });
   }
@@ -392,16 +394,18 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
 
     // Update state immediately to trigger aria-selected and tabindex updates in template
     this.selectedRow.set(rowData);
+    this.selectedRowIndex.set(normalizedIndex);
 
     // Ensure the row is visible in the virtual viewport
     const viewport = this.viewport();
     if (viewport) {
-      viewport.scrollToIndex(normalizedIndex, 'smooth');
+      viewport.scrollToIndex(normalizedIndex, 'auto');
     }
 
     // Try to focus immediately if elements are ready
     const elements = this.rowElements?.toArray() ?? [];
-    const el = elements[normalizedIndex]?.nativeElement as HTMLElement | undefined;
+    const renderedStart = this.getRenderedStart();
+    const el = elements[normalizedIndex - renderedStart]?.nativeElement as HTMLElement | undefined;
 
     if (el) {
       this._applyFocusToElement(el);
@@ -425,18 +429,11 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
 
     setTimeout(() => {
       const elements = this.rowElements?.toArray() ?? [];
-      // Note: With virtual scrolling, index in the DOM might not match absolute index.
-      // We rely on the DOM rendering the focused item correctly due to selectedRow.set()
-      // To strictly focus the specific row, we find the element matching the item.
-      const rowItem = this.data()?.[index];
-      let targetEl: HTMLElement | undefined;
-
-      if (rowItem) {
-        // Find by selected row class
-        targetEl = elements.find((e) =>
-          e.nativeElement.classList.contains('selected'),
-        )?.nativeElement;
-      }
+      const renderedStart = this.getRenderedStart();
+      let targetEl = elements[index - renderedStart]?.nativeElement as HTMLElement | undefined;
+      targetEl ??= elements.find((e) =>
+        e.nativeElement.classList.contains('selected'),
+      )?.nativeElement;
 
       if (targetEl) {
         this._applyFocusToElement(targetEl);
@@ -452,22 +449,51 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
   private focusNextRow(): void {
     const data = this.data() ?? [];
     if (!data.length) return;
-    const elements = this.rowElements?.toArray() ?? [];
-    const activeEl = (document.activeElement as HTMLElement | null) ?? undefined;
-    const elementIndex = activeEl ? elements.findIndex((e) => e.nativeElement === activeEl) : -1;
-    const next = elementIndex === -1 ? 0 : (elementIndex + 1) % data.length;
+    const current = this.resolveSelectedRowIndex();
+    const next = current === -1 ? 0 : (current + 1) % data.length;
     this.focusRowByIndex(next);
   }
 
   private focusPreviousRow(): void {
     const data = this.data() ?? [];
     if (!data.length) return;
-    const elements = this.rowElements?.toArray() ?? [];
-    const activeEl = (document.activeElement as HTMLElement | null) ?? undefined;
-    const elementIndex = activeEl ? elements.findIndex((e) => e.nativeElement === activeEl) : -1;
-    const prev =
-      elementIndex === -1 ? data.length - 1 : (elementIndex - 1 + data.length) % data.length;
+    const current = this.resolveSelectedRowIndex();
+    const prev = current === -1 ? data.length - 1 : (current - 1 + data.length) % data.length;
     this.focusRowByIndex(prev);
+  }
+
+  private getRenderedStart(): number {
+    const viewport = this.viewport();
+    return typeof viewport?.getRenderedRange === 'function' ? viewport.getRenderedRange().start : 0;
+  }
+
+  private resolveSelectedRowIndex(): number {
+    const data = this.data() ?? [];
+    if (!data.length) return -1;
+
+    const index = this.selectedRowIndex();
+    if (index >= 0 && index < data.length && data[index] === this.selectedRow()) {
+      return index;
+    }
+
+    const selected = this.selectedRow();
+    const selectedId = this.getRowId(selected);
+    if (selectedId !== undefined) {
+      const matchedIndex = data.findIndex((row) => {
+        const rowId = this.getRowId(row);
+        return rowId === selectedId || rowId === Number(selectedId);
+      });
+      if (matchedIndex !== -1) {
+        this.selectedRowIndex.set(matchedIndex);
+        return matchedIndex;
+      }
+    }
+
+    const referenceIndex = selected ? data.indexOf(selected) : -1;
+    if (referenceIndex !== -1) {
+      this.selectedRowIndex.set(referenceIndex);
+    }
+    return referenceIndex;
   }
 
   // Handle keydown events coming from a focused row
@@ -550,6 +576,8 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
 
   selectRow(row: T, event?: Event): void {
     this.selectedRow.set(row);
+    const index = this.data()?.indexOf(row) ?? -1;
+    this.selectedRowIndex.set(index);
 
     // Try to focus the row element if available from the event
     const target = (event?.currentTarget ?? event?.target) as HTMLElement | undefined;

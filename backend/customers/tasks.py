@@ -6,7 +6,7 @@ import logging
 
 from core.models.async_job import AsyncJob
 from core.services.passport_uploadability_service import PassportUploadabilityService
-from core.tasks.runtime import QUEUE_REALTIME, db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task, retry_on_transient_external_failure
 from customers.services import PassportCustomerMatchService
 from django.core.files.storage import default_storage
 
@@ -28,7 +28,7 @@ def _build_customer_match_payload(passport_data: dict | None) -> dict:
         }
 
 
-@db_task(queue=QUEUE_REALTIME)
+@db_task(queue=QUEUE_REALTIME, queue_defaults=True, retry_when=retry_on_transient_external_failure)
 def check_passport_uploadability_task(job_id: str, file_path: str, method: str):
     """
     Task to check passport uploadability asynchronously.

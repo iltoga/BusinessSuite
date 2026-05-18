@@ -26,11 +26,10 @@ import {
   withEventReplay,
   withHttpTransferCacheOptions,
 } from '@angular/platform-browser';
-import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { firstValueFrom, timeout } from 'rxjs';
 import { routes } from './app.routes';
 
-import { provideApi } from '@/core/api';
+import { provideApi } from '@/core/api/provide-api';
 import { RbacService } from '@/core/api/api/rbac.service';
 import { RbacPermissions } from '@/core/api/model/rbac-permissions';
 import { RBAC_RULES } from '@/core/tokens/rbac.token';
@@ -167,7 +166,6 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([requestMetadataInterceptor, cacheInterceptor, authInterceptor])),
     provideApi(''),
     provideZard(),
-    provideCharts(withDefaultRegisterables()),
     provideClientHydration(
       withEventReplay(),
       withHttpTransferCacheOptions({

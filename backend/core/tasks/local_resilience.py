@@ -175,7 +175,7 @@ def pull_remote_changes_task(*, limit: int | None = None) -> dict[str, int]:
         return {"accepted": 0, "conflicts": 0, "skipped": 0}
 
 
-@db_periodic_task(crontab(minute="*/1"), name="core.sync_push_periodic", queue=QUEUE_SCHEDULED)
+@db_periodic_task(crontab(minute="*/1"), name="core.sync_push_periodic", queue=QUEUE_SCHEDULED, queue_defaults=True)
 def sync_push_periodic_task() -> None:
     try:
         _push_once(limit=int(getattr(settings, "LOCAL_SYNC_PUSH_LIMIT", 200)))
@@ -186,7 +186,7 @@ def sync_push_periodic_task() -> None:
         logger.warning("Local sync periodic push failed: %s", exc)
 
 
-@db_periodic_task(crontab(minute="*/1"), name="core.sync_pull_periodic", queue=QUEUE_SCHEDULED)
+@db_periodic_task(crontab(minute="*/1"), name="core.sync_pull_periodic", queue=QUEUE_SCHEDULED, queue_defaults=True)
 def sync_pull_periodic_task() -> None:
     try:
         _pull_once(limit=int(getattr(settings, "LOCAL_SYNC_PULL_LIMIT", 200)))

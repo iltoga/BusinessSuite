@@ -11,7 +11,7 @@ from core.models import AsyncJob
 from core.services.logger_service import Logger
 from core.services.push_notifications import PushNotificationService
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
-from core.tasks.runtime import QUEUE_REALTIME, db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task, retry_on_transient_external_failure
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -127,7 +127,7 @@ def _send_import_done_push(user, result: dict) -> None:
         logger.exception("Failed to send product import push notification to user #%s", getattr(user, "id", None))
 
 
-@db_task(queue=QUEUE_REALTIME)
+@db_task(queue=QUEUE_REALTIME, queue_defaults=True, retry_when=retry_on_transient_external_failure)
 def run_product_export_job(job_id: str, user_id: int | None = None, search_query: str = "") -> None:
     lock_key = build_task_lock_key(namespace="products_export_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
@@ -199,7 +199,7 @@ def run_product_export_job(job_id: str, user_id: int | None = None, search_query
         release_task_lock(lock_key, lock_token)
 
 
-@db_task(queue=QUEUE_REALTIME)
+@db_task(queue=QUEUE_REALTIME, queue_defaults=True, retry_when=retry_on_transient_external_failure)
 def run_product_import_job(job_id: str, user_id: int | None = None, file_path: str = "") -> None:
     lock_key = build_task_lock_key(namespace="products_import_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)

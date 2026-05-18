@@ -31,6 +31,21 @@ from redis.exceptions import RedisError
 logger = Logger.get_logger(__name__)
 
 
+_REFRESH_LOCK_SCRIPT = """
+if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("expire", KEYS[1], tonumber(ARGV[2]))
+end
+return 0
+"""
+
+_RELEASE_LOCK_SCRIPT = """
+if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+end
+return 0
+"""
+
+
 @dataclass
 class SchedulerLock:
     key: str
@@ -53,6 +68,16 @@ class Command(BaseCommand):
             type=int,
             default=int(getattr(settings, "DRAMATIQ_SCHEDULER_LOCK_TTL_SECONDS", 30)),
         )
+        parser.add_argument(
+            "--heartbeat-key",
+            type=str,
+            default=str(getattr(settings, "DRAMATIQ_SCHEDULER_HEARTBEAT_KEY", "dramatiq:scheduler:heartbeat")),
+        )
+        parser.add_argument(
+            "--heartbeat-ttl-seconds",
+            type=int,
+            default=int(getattr(settings, "DRAMATIQ_SCHEDULER_HEARTBEAT_TTL_SECONDS", 120)),
+        )
 
     def handle(self, *args, **options):
         from business_suite import dramatiq as _dramatiq  # noqa: F401
@@ -63,6 +88,8 @@ class Command(BaseCommand):
             token=uuid.uuid4().hex,
             ttl_seconds=max(5, int(options["lock_ttl_seconds"])),
         )
+        heartbeat_key = str(options["heartbeat_key"])
+        heartbeat_ttl_seconds = max(5, int(options["heartbeat_ttl_seconds"]))
 
         self._running = True
         signal.signal(signal.SIGINT, self._stop)
@@ -84,6 +111,11 @@ class Command(BaseCommand):
                     self._run_due_tasks(redis_client, now=current_time)
                     last_minute = current_time
 
+                self._write_heartbeat(
+                    redis_client,
+                    heartbeat_key=heartbeat_key,
+                    ttl_seconds=heartbeat_ttl_seconds,
+                )
                 time.sleep(tick_seconds)
             except RedisError as exc:
                 logger.warning("Scheduler Redis error, retrying: %s", exc)
@@ -119,28 +151,27 @@ class Command(BaseCommand):
             if not redis_client.set(dedupe_key, "1", nx=True, ex=120):
                 continue
 
-            entry.task.delay()
+            try:
+                entry.task.delay()
+            except Exception:
+                redis_client.delete(dedupe_key)
+                logger.exception("Failed to enqueue periodic task %s", entry.name)
+                continue
+
             logger.info("Scheduled periodic task %s", entry.name)
 
     def _acquire_or_refresh_lock(self, redis_client, lock: SchedulerLock) -> bool:
         if redis_client.set(lock.key, lock.token, nx=True, ex=lock.ttl_seconds):
             return True
 
-        current = redis_client.get(lock.key)
-        if isinstance(current, bytes):
-            current = current.decode("utf-8")
-        if current != lock.token:
-            return False
-
-        redis_client.expire(lock.key, lock.ttl_seconds)
-        return True
+        refreshed = redis_client.eval(_REFRESH_LOCK_SCRIPT, 1, lock.key, lock.token, lock.ttl_seconds)
+        return bool(refreshed)
 
     def _release_lock(self, redis_client, lock: SchedulerLock) -> None:
-        current = redis_client.get(lock.key)
-        if isinstance(current, bytes):
-            current = current.decode("utf-8")
-        if current == lock.token:
-            redis_client.delete(lock.key)
+        redis_client.eval(_RELEASE_LOCK_SCRIPT, 1, lock.key, lock.token)
+
+    def _write_heartbeat(self, redis_client, *, heartbeat_key: str, ttl_seconds: int) -> None:
+        redis_client.set(heartbeat_key, str(time.time()), ex=ttl_seconds)
 
     def _stop(self, signum, frame):
         self._running = False

@@ -32,7 +32,7 @@ def _load_document_ready_invoices(invoice_ids: list[int]) -> dict[int, Invoice]:
     return {invoice.id: invoice for invoice in Invoice.objects.for_document_generation().filter(id__in=invoice_ids)}
 
 
-@db_task(queue=INVOICE_DOC_QUEUE)
+@db_task(queue=INVOICE_DOC_QUEUE, queue_defaults=True)
 def run_invoice_document_job(job_id: str) -> None:
     lock_key = build_task_lock_key(namespace="invoice_document_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)

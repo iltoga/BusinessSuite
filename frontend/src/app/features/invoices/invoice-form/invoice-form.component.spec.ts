@@ -370,8 +370,8 @@ describe('InvoiceFormComponent source application merge', () => {
     const component = Object.create(InvoiceFormComponent.prototype) as any;
     const fb = new FormBuilder();
     const group = fb.group({
-      product: [null],
-      customerApplication: [null],
+      product: [null as number | null],
+      customerApplication: [null as number | null],
       quantity: [1],
       amount: [0],
       amountOverridden: [false],

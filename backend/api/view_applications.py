@@ -173,32 +173,51 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     ordering = ["-id"]
 
     def get_queryset(self):
-        queryset = (
-            DocApplication.objects.select_related("customer", "product")
-            .select_related(
-                "customer__nationality",
-                "product__created_by",
-                "product__updated_by",
-            )
-            .prefetch_related(
-                "product__tasks",
-                Prefetch(
-                    "documents",
-                    queryset=Document.objects.select_related("doc_type", "created_by", "updated_by"),
-                ),
-                Prefetch(
-                    "workflows",
-                    queryset=DocWorkflow.objects.select_related("task", "created_by", "updated_by"),
-                ),
-                Prefetch(
-                    "invoice_applications",
-                    queryset=InvoiceApplication.objects.select_related("invoice"),
-                ),
-            )
-        )
-
         if self.action == "list":
-            queryset = queryset.filter(product__uses_customer_app_workflow=True)
+            invoice_application_qs = InvoiceApplication.objects.filter(customer_application_id=OuterRef("pk"))
+            queryset = (
+                DocApplication.objects.filter(product__uses_customer_app_workflow=True)
+                .select_related(
+                    "customer",
+                    "product",
+                    "customer__nationality",
+                    "product__product_category",
+                )
+                .annotate(
+                    total_required_documents=Count("documents", filter=Q(documents__required=True), distinct=True),
+                    completed_required_documents=Count(
+                        "documents",
+                        filter=Q(documents__required=True, documents__completed=True),
+                        distinct=True,
+                    ),
+                    annotated_has_invoice=Exists(invoice_application_qs),
+                    annotated_invoice_id=Subquery(invoice_application_qs.values("invoice_id")[:1]),
+                )
+            )
+        else:
+            queryset = (
+                DocApplication.objects.select_related("customer", "product")
+                .select_related(
+                    "customer__nationality",
+                    "product__created_by",
+                    "product__updated_by",
+                )
+                .prefetch_related(
+                    "product__tasks",
+                    Prefetch(
+                        "documents",
+                        queryset=Document.objects.select_related("doc_type", "created_by", "updated_by"),
+                    ),
+                    Prefetch(
+                        "workflows",
+                        queryset=DocWorkflow.objects.select_related("task", "created_by", "updated_by"),
+                    ),
+                    Prefetch(
+                        "invoice_applications",
+                        queryset=InvoiceApplication.objects.select_related("invoice"),
+                    ),
+                )
+            )
 
         query = self.request.query_params.get("search") or self.request.query_params.get("q")
         if query:
@@ -206,7 +225,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         # Detail responses can derive completion state from prefetched documents,
         # so skip aggregate annotations to keep the base query lighter.
-        if self.action != "retrieve":
+        if self.action not in {"retrieve", "list"}:
             queryset = queryset.annotate(
                 total_required_documents=Count("documents", filter=Q(documents__required=True)),
                 completed_required_documents=Count(

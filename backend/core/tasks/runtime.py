@@ -60,6 +60,13 @@ QUEUE_TASK_POLICY_DEFAULTS: dict[str, TaskPolicy] = {
         retry_jitter_ms=5_000,
         time_limit_ms=300_000,
     ),
+    QUEUE_SCHEDULED: TaskPolicy(
+        retries=1,
+        retry_delay_ms=30_000,
+        max_backoff_ms=120_000,
+        retry_jitter_ms=10_000,
+        time_limit_ms=300_000,
+    ),
     QUEUE_LOW: TaskPolicy(
         retries=1,
         retry_delay_ms=30_000,

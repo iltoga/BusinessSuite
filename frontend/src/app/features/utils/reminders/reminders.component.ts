@@ -16,6 +16,7 @@ import { ActivatedRoute, ParamMap } from '@angular/router';
 import { Subscription, catchError, finalize, of } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
+import { BackendReadinessService } from '@/core/services/backend-readiness.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -79,6 +80,7 @@ export class RemindersComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly remindersService = inject(RemindersService);
   private readonly remindersStreamService = inject(RemindersStreamService);
+  private readonly backendReadiness = inject(BackendReadinessService);
   private readonly authService = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(GlobalToastService);
@@ -120,6 +122,7 @@ export class RemindersComponent implements OnInit, OnDestroy {
   private routeSubscription: Subscription | null = null;
   private reconnectTimeoutId: number | null = null;
   private reconnectAttempt = 0;
+  private liveConnectAttempt = 0;
 
   private readonly reconnectBaseDelayMs = 2000;
   private readonly reconnectMaxDelayMs = 30000;
@@ -677,11 +680,26 @@ export class RemindersComponent implements OnInit, OnDestroy {
     this.clearReconnectTimeout();
     this.liveConnecting.set(true);
     this.liveConnected.set(false);
-    this.streamSubscription?.unsubscribe();
-    this.streamSubscription = this.remindersStreamService.connect().subscribe({
-      next: (event) => this.handleLiveEvent(event),
-      error: () => this.handleLiveDisconnect(),
-      complete: () => this.handleLiveDisconnect(),
+    const attempt = ++this.liveConnectAttempt;
+
+    void this.backendReadiness.isBackendReady().then((isReady) => {
+      if (!this.isBrowser || attempt !== this.liveConnectAttempt) {
+        return;
+      }
+
+      if (!isReady) {
+        this.liveConnecting.set(false);
+        this.liveConnected.set(false);
+        this.scheduleReconnect();
+        return;
+      }
+
+      this.streamSubscription?.unsubscribe();
+      this.streamSubscription = this.remindersStreamService.connect().subscribe({
+        next: (event) => this.handleLiveEvent(event),
+        error: () => this.handleLiveDisconnect(),
+        complete: () => this.handleLiveDisconnect(),
+      });
     });
   }
 

@@ -258,6 +258,7 @@ def _resolve_google_event_id(
     retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS,
     context=True,
     queue=QUEUE_DEFAULT,
+    queue_defaults=True,
 )
 def create_google_event_task(event_id: str, task=None):
     event = CalendarEvent.objects.filter(pk=event_id).first()
@@ -351,6 +352,7 @@ def create_google_event_task(event_id: str, task=None):
     retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS,
     context=True,
     queue=QUEUE_DEFAULT,
+    queue_defaults=True,
 )
 def update_google_event_task(event_id: str, task=None):
     event = CalendarEvent.objects.filter(pk=event_id).first()
@@ -452,6 +454,7 @@ def update_google_event_task(event_id: str, task=None):
     retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS,
     context=True,
     queue=QUEUE_DEFAULT,
+    queue_defaults=True,
 )
 def delete_google_event_task(
     google_event_id: str | None = None,

@@ -210,7 +210,12 @@ def _register_full_backup() -> None:
         logger.error(str(exc))
         return
 
-    @db_periodic_task(crontab(hour=hour, minute=minute), name="core.full_backup_daily", queue=QUEUE_SCHEDULED)
+    @db_periodic_task(
+        crontab(hour=hour, minute=minute),
+        name="core.full_backup_daily",
+        queue=QUEUE_SCHEDULED,
+        queue_defaults=True,
+    )
     def _full_backup_daily() -> None:
         _perform_full_backup_locked()
 
@@ -228,7 +233,7 @@ def _register_clear_cache() -> None:
 
         task_name = f"core.clear_cache_{hour:02d}{minute:02d}"
 
-        @db_periodic_task(crontab(hour=hour, minute=minute), name=task_name, queue=QUEUE_SCHEDULED)
+        @db_periodic_task(crontab(hour=hour, minute=minute), name=task_name, queue=QUEUE_SCHEDULED, queue_defaults=True)
         def _clear_cache_scheduled() -> None:
             _perform_clear_cache_locked()
 
@@ -266,7 +271,12 @@ def _register_auditlog_prune() -> None:
         logger.error(str(exc))
         return
 
-    @db_periodic_task(crontab(hour=hour, minute=minute), name="core.auditlog_prune_daily", queue=QUEUE_SCHEDULED)
+    @db_periodic_task(
+        crontab(hour=hour, minute=minute),
+        name="core.auditlog_prune_daily",
+        queue=QUEUE_SCHEDULED,
+        queue_defaults=True,
+    )
     def _auditlog_prune_daily() -> None:
         _perform_prune_auditlog()
 
@@ -372,7 +382,7 @@ def _register_openrouter_health_check() -> None:
         logger.error("Invalid OPENROUTER_HEALTHCHECK_CRON_MINUTE '%s': %s", minute_expr, str(exc))
         return
 
-    @db_periodic_task(schedule, name="core.openrouter_health_check", queue=QUEUE_SCHEDULED)
+    @db_periodic_task(schedule, name="core.openrouter_health_check", queue=QUEUE_SCHEDULED, queue_defaults=True)
     def _openrouter_health_check_periodic() -> None:
         _perform_openrouter_health_check()
 

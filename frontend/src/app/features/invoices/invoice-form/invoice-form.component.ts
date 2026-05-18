@@ -80,8 +80,23 @@ export class InvoiceFormComponent implements OnInit {
   readonly isEditMode = signal(false);
   readonly invoice = signal<InvoiceDetail | null>(null);
   readonly billableProducts = signal<BillableProductRow[]>([]);
+  private readonly billableProductsVersion = signal(0);
   readonly lockCustomerFromSource = signal(false);
   readonly totalAmount = signal(0);
+  private readonly currencyFormatter = new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  });
+  private productOptionsCache = new WeakMap<
+    FormGroup,
+    { signature: string; options: ZardComboboxOption[] }
+  >();
+  private applicationOptionsCache = new WeakMap<
+    FormGroup,
+    { signature: string; options: ZardComboboxOption[] }
+  >();
+  private pendingCountCache = new WeakMap<FormGroup, { signature: string; count: number }>();
 
   readonly form = this.fb.group({
     customer: [null as number | null, Validators.required],
@@ -129,6 +144,17 @@ export class InvoiceFormComponent implements OnInit {
     }
     return applications;
   });
+  readonly totalLabel = computed(() => this.formatCurrency(this.totalAmount()));
+
+  readonly isLineLockedInput = (group: FormGroup): boolean => this.isLineLocked(group);
+  readonly toComboboxValueInput = (value: unknown): string | null => this.toComboboxValue(value);
+  readonly availableProductOptionsForLineInput = (group: FormGroup): ZardComboboxOption[] =>
+    this.availableProductOptionsForLine(group);
+  readonly availablePendingApplicationOptionsForLineInput = (
+    group: FormGroup,
+  ): ZardComboboxOption[] => this.availablePendingApplicationOptionsForLine(group);
+  readonly selectedProductPendingCountInput = (group: FormGroup): number =>
+    this.selectedProductPendingCount(group);
 
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
@@ -208,7 +234,7 @@ export class InvoiceFormComponent implements OnInit {
           return;
         }
         if (!value) {
-          this.billableProducts.set([]);
+          this.setBillableProducts([]);
           this.invoiceApplications.clear();
           this.addLineItem({}, { manual: false });
           return;
@@ -347,12 +373,22 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   selectedProductPendingCount(group: FormGroup): number {
+    const signature = `${this.getBillableProductsVersion()}|${this.resolveLineProductId(group) ?? ''}`;
+    const cache = this.ensurePendingCountCache();
+    const cached = cache.get(group);
+    if (cached?.signature === signature) {
+      return cached.count;
+    }
+
     const productId = this.resolveLineProductId(group);
     if (!productId) {
+      cache.set(group, { signature, count: 0 });
       return 0;
     }
     const row = this.findBillableProduct(productId);
-    return row?.pendingApplicationsCount ?? 0;
+    const count = row?.pendingApplicationsCount ?? 0;
+    cache.set(group, { signature, count });
+    return count;
   }
 
   availablePendingApplicationsForLine(group: FormGroup): DocApplicationInvoice[] {
@@ -474,11 +510,7 @@ export class InvoiceFormComponent implements OnInit {
 
   formatCurrency(value: number | null | undefined): string {
     if (value === null || value === undefined) return '—';
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(value);
+    return this.currencyFormatter.format(value);
   }
 
   getBillableProductLabel(row: BillableProductRow): string {
@@ -493,18 +525,35 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   availablePendingApplicationOptionsForLine(group: FormGroup): ZardComboboxOption[] {
+    const signature = [
+      this.getBillableProductsVersion(),
+      this.getInvoiceId(),
+      Number(group.get('lineKey')?.value ?? 0),
+      Number(group.get('product')?.value ?? 0),
+      Number(group.get('customerApplication')?.value ?? 0),
+      this.selectedApplicationsSignature(),
+    ].join('|');
+    const cache = this.ensureApplicationOptionsCache();
+    const cached = cache.get(group);
+    if (cached?.signature === signature) {
+      return cached.options;
+    }
+
     const options = this.availablePendingApplicationsForLine(group).map((app) =>
       this.toInvoiceApplicationOption(app),
     );
     const currentApplication = this.resolveLineApplication(group);
     if (!currentApplication) {
+      cache.set(group, { signature, options });
       return options;
     }
 
     const currentOption = this.toInvoiceApplicationOption(currentApplication);
-    return options.some((option) => option.value === currentOption.value)
+    const resolvedOptions = options.some((option) => option.value === currentOption.value)
       ? options
       : [currentOption, ...options];
+    cache.set(group, { signature, options: resolvedOptions });
+    return resolvedOptions;
   }
 
   onLineProductComboboxChange(group: FormGroup, value: string | null): void {
@@ -530,6 +579,16 @@ export class InvoiceFormComponent implements OnInit {
     return selected;
   }
 
+  private selectedApplicationsSignature(): string {
+    if (!this.form?.get) {
+      return '';
+    }
+
+    return (this.invoiceApplications.getRawValue() as any[])
+      .map((line) => `${line.lineKey ?? ''}:${line.customerApplication ?? ''}:${line.product ?? ''}`)
+      .join(',');
+  }
+
   private findDuplicateCustomerApplicationId(): number | null {
     const seen = new Set<number>();
     const lines =
@@ -550,13 +609,30 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   availableProductOptionsForLine(group: FormGroup): ZardComboboxOption[] {
+    const signature = [
+      this.getBillableProductsVersion(),
+      this.getInvoiceId(),
+      Number(group.get('product')?.value ?? 0),
+      Number(group.get('customerApplication')?.value ?? 0),
+      this.isLineLocked(group) ? '1' : '0',
+    ].join('|');
+    const cache = this.ensureProductOptionsCache();
+    const cached = cache.get(group);
+    if (cached?.signature === signature) {
+      return cached.options;
+    }
+
     const productId = this.resolveLineProductId(group);
     if (this.isLineLocked(group) || Number(group.get('customerApplication')?.value ?? 0)) {
       const option = this.resolveProductOption(productId, group);
-      return option ? [option] : this.billableProductOptions();
+      const options = option ? [option] : this.billableProductOptions();
+      cache.set(group, { signature, options });
+      return options;
     }
 
-    return this.billableProductOptions();
+    const options = this.billableProductOptions();
+    cache.set(group, { signature, options });
+    return options;
   }
 
   private onLineProductChanged(group: FormGroup, rawProductId: unknown): void {
@@ -815,7 +891,7 @@ export class InvoiceFormComponent implements OnInit {
 
         this.fetchBillableProducts(customerId).subscribe({
           next: (rows: BillableProductRow[]) => {
-            this.billableProducts.set(rows);
+            this.setBillableProducts(rows);
             this.invoiceApplications.clear();
             this.addLineItem(
               {
@@ -886,7 +962,7 @@ export class InvoiceFormComponent implements OnInit {
 
         this.fetchBillableProducts(customerId, invoice.id).subscribe({
           next: (rows: BillableProductRow[]) => {
-            this.billableProducts.set(rows);
+            this.setBillableProducts(rows);
             this.invoiceApplications.clear();
 
             for (const item of invoice.invoiceApplications ?? []) {
@@ -937,7 +1013,7 @@ export class InvoiceFormComponent implements OnInit {
   private loadBillableProducts(customerId: number, currentInvoiceId?: number): void {
     this.fetchBillableProducts(customerId, currentInvoiceId).subscribe({
       next: (rows: BillableProductRow[]) => {
-        this.billableProducts.set(rows);
+        this.setBillableProducts(rows);
         this.cdr.markForCheck();
       },
       error: (error: unknown) => {
@@ -955,6 +1031,44 @@ export class InvoiceFormComponent implements OnInit {
     return this.invoicesApi
       .invoicesGetBillableProductsList({ customerId, currentInvoiceId })
       .pipe(map((rows) => normalizeBillableRows(rows)));
+  }
+
+  private setBillableProducts(rows: BillableProductRow[]): void {
+    this.billableProducts.set(rows);
+    this.billableProductsVersion.update((version) => version + 1);
+    this.productOptionsCache = new WeakMap();
+    this.applicationOptionsCache = new WeakMap();
+    this.pendingCountCache = new WeakMap();
+  }
+
+  private getBillableProductsVersion(): number {
+    const versionSignal = (this as any).billableProductsVersion;
+    return typeof versionSignal === 'function' ? Number(versionSignal()) || 0 : 0;
+  }
+
+  private getInvoiceId(): number | string {
+    const invoiceSignal = (this as any).invoice;
+    const invoice = typeof invoiceSignal === 'function' ? invoiceSignal() : null;
+    const id = invoice?.id;
+    return typeof id === 'number' || typeof id === 'string' ? id : '';
+  }
+
+  private ensureProductOptionsCache(): WeakMap<
+    FormGroup,
+    { signature: string; options: ZardComboboxOption[] }
+  > {
+    return (this.productOptionsCache ??= new WeakMap());
+  }
+
+  private ensureApplicationOptionsCache(): WeakMap<
+    FormGroup,
+    { signature: string; options: ZardComboboxOption[] }
+  > {
+    return (this.applicationOptionsCache ??= new WeakMap());
+  }
+
+  private ensurePendingCountCache(): WeakMap<FormGroup, { signature: string; count: number }> {
+    return (this.pendingCountCache ??= new WeakMap());
   }
 
   private proposeInvoiceNo(invoiceDate?: Date | string | null): void {

@@ -902,6 +902,10 @@ DRAMATIQ_PROCESSES = int(os.getenv("DRAMATIQ_PROCESSES", "1"))
 DRAMATIQ_INVOICE_DOC_QUEUE = os.getenv("DRAMATIQ_INVOICE_DOC_QUEUE", "doc_conversion").strip() or "doc_conversion"
 DRAMATIQ_SCHEDULER_LOCK_KEY = os.getenv("DRAMATIQ_SCHEDULER_LOCK_KEY", "dramatiq:scheduler:lock")
 DRAMATIQ_SCHEDULER_LOCK_TTL_SECONDS = int(os.getenv("DRAMATIQ_SCHEDULER_LOCK_TTL_SECONDS", "30"))
+DRAMATIQ_SCHEDULER_HEARTBEAT_KEY = os.getenv(
+    "DRAMATIQ_SCHEDULER_HEARTBEAT_KEY", "dramatiq:scheduler:heartbeat"
+)
+DRAMATIQ_SCHEDULER_HEARTBEAT_TTL_SECONDS = int(os.getenv("DRAMATIQ_SCHEDULER_HEARTBEAT_TTL_SECONDS", "120"))
 
 # Redis Streams controls for replayable SSE/event persistence.
 STREAM_MAXLEN = int(os.getenv("STREAM_MAXLEN", "10000"))
