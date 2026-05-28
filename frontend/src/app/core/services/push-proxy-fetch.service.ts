@@ -118,8 +118,8 @@ export class PushProxyFetchService {
     const match = url.match(/firebaseinstallations\.googleapis\.com\/v1\/projects\/[^/]+\/(.*)/);
     const pathSuffix = match ? match[1] : '';
     const firebaseAuth =
-      origHeaders.get('x-goog-firebase-installations-auth') ||
       origHeaders.get('Authorization') ||
+      origHeaders.get('x-goog-firebase-installations-auth') ||
       '';
     const apiKey = origHeaders.get('x-goog-api-key') || '';
     const headers: Record<string, string> = {

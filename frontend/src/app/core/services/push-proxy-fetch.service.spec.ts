@@ -52,7 +52,7 @@ describe('PushProxyFetchService', () => {
           method: 'POST',
           headers: {
             'X-Goog-Api-Key': 'firebase-web-api-key',
-            'X-Goog-Firebase-Installations-Auth': 'fis-token-xyz',
+            Authorization: 'FIS_v2 refresh-token-xyz',
           },
           body: JSON.stringify({ installation: { appId: 'app-123' } }),
         },
@@ -69,7 +69,7 @@ describe('PushProxyFetchService', () => {
     expect(headers.get('Authorization')).toBe('Bearer live-jwt-token');
     expect(headers.get('X-Firebase-Path')).toBe('installations/abc123/authTokens:generate');
     expect(headers.get('X-Goog-Api-Key')).toBe('firebase-web-api-key');
-    expect(headers.get('X-Firebase-Auth')).toBe('fis-token-xyz');
+    expect(headers.get('X-Firebase-Auth')).toBe('FIS_v2 refresh-token-xyz');
     expect((init as RequestInit).body).toBe(JSON.stringify({ installation: { appId: 'app-123' } }));
     expect(authServiceMock.getToken).toHaveBeenCalled();
     expect(localStorageMock.getItem).not.toHaveBeenCalled();

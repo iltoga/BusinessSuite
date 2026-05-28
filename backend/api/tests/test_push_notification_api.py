@@ -131,6 +131,7 @@ class PushNotificationApiTests(TestCase):
             self.assertEqual(current["active_push_subscriptions"], 1)
             self.assertEqual(current["total_push_subscriptions"], 1)
 
+    @override_settings(FCM_PROJECT_ID="demo-project")
     @patch("api.view_notifications.requests.post")
     def test_firebase_install_proxy_forwards_browser_context_headers(self, post_mock):
         response_mock = Mock()
@@ -154,6 +155,29 @@ class PushNotificationApiTests(TestCase):
         self.assertEqual(headers["referer"], "http://localhost:4200/applications/328")
         self.assertEqual(headers["origin"], "http://localhost:4200")
         self.assertEqual(headers["user-agent"], "Mozilla/5.0")
+        self.assertEqual(headers["x-goog-api-key"], "web-api-key")
+        self.assertNotIn("x-goog-firebase-installations-auth", headers)
+
+    @override_settings(FCM_PROJECT_ID="demo-project")
+    @patch("api.view_notifications.requests.post")
+    def test_firebase_install_proxy_forwards_auth_token_refresh_authorization(self, post_mock):
+        response_mock = Mock()
+        response_mock.status_code = 200
+        response_mock.json.return_value = {"token": "fis-auth-token", "expiresIn": "604800s"}
+        post_mock.return_value = response_mock
+
+        response = self.client.post(
+            "/api/push-notifications/firebase-install-proxy/",
+            {"installation": {"sdkVersion": "w:0.6.9", "appId": "app-id"}},
+            format="json",
+            HTTP_X_GOOG_API_KEY="web-api-key",
+            HTTP_X_FIREBASE_PATH="installations/ctdGwAOhloH-bs6NjGRKda/authTokens:generate",
+            HTTP_X_FIREBASE_AUTH="FIS_v2 refresh-token",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        headers = post_mock.call_args.kwargs["headers"]
+        self.assertEqual(headers["Authorization"], "FIS_v2 refresh-token")
         self.assertEqual(headers["x-goog-api-key"], "web-api-key")
         self.assertNotIn("x-goog-firebase-installations-auth", headers)
 

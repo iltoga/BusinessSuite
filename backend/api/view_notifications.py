@@ -1019,7 +1019,10 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
         headers: dict = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
         self._copy_browser_context_headers(request, headers)
         if firebase_auth:
-            headers["x-goog-firebase-installations-auth"] = firebase_auth
+            if path_suffix.endswith("/authTokens:generate"):
+                headers["Authorization"] = firebase_auth
+            else:
+                headers["x-goog-firebase-installations-auth"] = firebase_auth
 
         try:
             # Use request.body (raw bytes) instead of request.data to avoid
