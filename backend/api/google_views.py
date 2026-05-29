@@ -419,22 +419,8 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
                 completed_workflow = (
                     current_workflow if current_workflow and not current_workflow.is_terminal_status else None
                 )
-                today = timezone.localdate()
-                is_overdue_application = bool(application.due_date and application.due_date < today)
 
-                if is_overdue_application:
-                    application.status = DocApplication.STATUS_COMPLETED
-                    application.updated_by = request.user
-                    application.save(skip_status_calculation=True)
-                    self._queue_application_calendar_sync(
-                        application_id=application.id,
-                        user_id=request.user.id,
-                    )
-                    CalendarEvent.objects.filter(application=application).update(
-                        color_id=GoogleCalendarEventColors.done_color_id(),
-                        sync_status=CalendarEvent.SYNC_STATUS_PENDING,
-                    )
-                elif current_workflow and not current_workflow.is_terminal_status:
+                if current_workflow and not current_workflow.is_terminal_status:
                     try:
                         transition_result = WorkflowStatusTransitionService().transition(
                             workflow=current_workflow,

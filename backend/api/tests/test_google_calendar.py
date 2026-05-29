@@ -323,6 +323,73 @@ class TestGoogleCalendarAPI:
         assert pending.due_date.isoformat() == todo_event["start"]["date"]
 
     @pytest.mark.django_db
+    def test_calendar_list_keeps_paid_invoice_application_task_visible(self):
+        from customer_applications.models import DocApplication
+        from customers.models import Customer
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+        from invoices.models import Invoice, InvoiceApplication
+        from payments.models import Payment
+        from products.models import Product
+
+        User = get_user_model()
+        user = User.objects.create_superuser(username="testadmin-paid-calendar", email="paidcal@test", password="test")
+        self.client.force_authenticate(user=user)
+
+        customer = Customer.objects.create(first_name="Paid", last_name="Calendar")
+        product = Product.objects.create(
+            name="Paid Calendar Product",
+            code="PCAL-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        product.tasks.create(
+            step=1,
+            name="Submit to immigration",
+            duration=1,
+            duration_is_business_days=False,
+            add_task_to_calendar=True,
+        )
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.localdate(),
+            add_deadlines_to_calendar=True,
+            created_by=user,
+        )
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.localdate(),
+            due_date=timezone.localdate(),
+            sent=True,
+            created_by=user,
+        )
+        invoice_application = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=product,
+            customer_application=application,
+            amount="100.00",
+        )
+
+        Payment.objects.create(
+            invoice_application=invoice_application,
+            from_customer=customer,
+            payment_date=timezone.localdate(),
+            amount="100.00",
+            created_by=user,
+        )
+
+        application.refresh_from_db()
+        assert application.status == DocApplication.STATUS_PROCESSING
+
+        resp = self.client.get("/api/calendar/")
+        assert resp.status_code == status.HTTP_200_OK
+        assert any(event["id"] == f"local-app-{application.id}-submission" for event in resp.data)
+        task_event = next((event for event in resp.data if "Submit to immigration" in event["summary"]), None)
+        assert task_event is not None
+        assert task_event["colorId"] == GoogleCalendarEventColors.todo_color_id()
+
+    @pytest.mark.django_db
     def test_partial_update_done_field_maps_to_color_id(self):
         from django.contrib.auth import get_user_model
 
@@ -472,7 +539,7 @@ class TestGoogleCalendarAPI:
 
         next_workflow = application.workflows.filter(task__step=2).first()
         assert next_workflow is not None
-        assert next_workflow.status == DocApplication.STATUS_PENDING
+        assert next_workflow.status == DocApplication.STATUS_PROCESSING
 
         sync_mock.assert_called_once()
         send_task_mock.assert_called_once_with(
@@ -484,7 +551,7 @@ class TestGoogleCalendarAPI:
         assert event.color_id == GoogleCalendarEventColors.done_color_id()
 
     @pytest.mark.django_db
-    def test_partial_update_done_on_overdue_application_force_completes_application(self):
+    def test_partial_update_done_on_overdue_final_step_completes_application(self):
         from customer_applications.models import DocApplication
         from customers.models import Customer
         from django.contrib.auth import get_user_model

@@ -36,6 +36,7 @@ logger = Logger.get_logger(__name__)
     context=True,
     queue=QUEUE_REALTIME,
     queue_defaults=True,
+    time_limit_ms=420_000,
     retry_when=retry_on_transient_external_failure,
 )
 def run_ocr_job(job_id: str, task=None) -> None:

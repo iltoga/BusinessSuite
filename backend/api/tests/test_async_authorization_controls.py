@@ -213,6 +213,27 @@ class AsyncOwnershipAuthorizationTests(TestCase):
         self.assertEqual(allowed.status_code, 200)
         self.assertTrue(allowed.get("Content-Type", "").startswith("text/event-stream"))
 
+    def test_async_job_status_sse_accepts_ocr_job_ids_with_owner_scope(self):
+        ocr_job = OCRJob.objects.create(
+            status=OCRJob.STATUS_QUEUED,
+            progress=0,
+            file_path="tmpfiles/ocr-compat-test.pdf",
+            file_url="/uploads/tmpfiles/ocr-compat-test.pdf",
+            created_by=self.owner,
+        )
+        sse_url = reverse("api-async-job-status-sse", kwargs={"job_id": str(ocr_job.id)})
+
+        forbidden_client = APIClient()
+        forbidden_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.other_token.key}")
+        forbidden_response = forbidden_client.get(sse_url)
+        self.assertEqual(forbidden_response.status_code, 404)
+
+        allowed_client = APIClient()
+        allowed_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.owner_token.key}")
+        allowed_response = allowed_client.get(sse_url)
+        self.assertEqual(allowed_response.status_code, 200)
+        self.assertTrue(allowed_response.get("Content-Type", "").startswith("text/event-stream"))
+
     def test_document_ocr_status_endpoint_is_owner_scoped(self):
         document_job = DocumentOCRJob.objects.create(
             status=DocumentOCRJob.STATUS_QUEUED,

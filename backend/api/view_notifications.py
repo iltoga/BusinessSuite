@@ -21,7 +21,14 @@ AI_GUIDELINES:
 import logging
 
 from api.utils.contracts import build_error_payload, get_request_id
-from api.utils.stream_payloads import normalize_async_job_payload, serialize_async_job_payload
+from api.utils.stream_payloads import (
+    normalize_async_job_payload,
+    normalize_document_ocr_job_payload,
+    normalize_ocr_job_payload,
+    serialize_async_job_payload,
+    serialize_document_ocr_job_payload,
+    serialize_ocr_job_payload,
+)
 
 from .views_imports import *
 
@@ -1325,19 +1332,51 @@ def workflow_notifications_stream_sse(request):
 
 @sse_token_auth_required
 def async_job_status_sse(request, job_id):
-    """Generic SSE endpoint for tracking AsyncJob status."""
+    """Generic SSE endpoint for tracking AsyncJob status.
+
+    Backward compatibility: older frontend bundles used this endpoint for OCRJob
+    and DocumentOCRJob identifiers. Keep serving those model types here so a
+    stale client does not lose terminal OCR updates with a 404.
+    """
     from api.views_imports import restrict_to_owner_unless_privileged
 
-    def _get_job_queryset():
-        return restrict_to_owner_unless_privileged(AsyncJob.objects.filter(id=job_id), request.user)
+    job_bindings = (
+        {
+            "label": "async_job",
+            "queryset": restrict_to_owner_unless_privileged(AsyncJob.objects.filter(id=job_id), request.user),
+            "serialize": serialize_async_job_payload,
+            "normalize": normalize_async_job_payload,
+            "terminal_statuses": {AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED},
+            "does_not_exist": AsyncJob.DoesNotExist,
+        },
+        {
+            "label": "ocr_job",
+            "queryset": restrict_to_owner_unless_privileged(OCRJob.objects.filter(id=job_id), request.user),
+            "serialize": serialize_ocr_job_payload,
+            "normalize": normalize_ocr_job_payload,
+            "terminal_statuses": {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED},
+            "does_not_exist": OCRJob.DoesNotExist,
+        },
+        {
+            "label": "document_ocr_job",
+            "queryset": restrict_to_owner_unless_privileged(DocumentOCRJob.objects.filter(id=job_id), request.user),
+            "serialize": serialize_document_ocr_job_payload,
+            "normalize": normalize_document_ocr_job_payload,
+            "terminal_statuses": {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED},
+            "does_not_exist": DocumentOCRJob.DoesNotExist,
+        },
+    )
 
-    def _job_exists(job_queryset):
-        return job_queryset.exists()
-
-    job_queryset = _get_job_queryset()
-    exists = _job_exists(job_queryset)
-    if not exists:
+    binding = next((candidate for candidate in job_bindings if candidate["queryset"].exists()), None)
+    if binding is None:
         return JsonResponse(build_error_payload(code="not_found", message="Job not found", request=request), status=404)
+
+    job_queryset = binding["queryset"]
+    serialize_job = binding["serialize"]
+    normalize_payload = binding["normalize"]
+    terminal_statuses = binding["terminal_statuses"]
+    does_not_exist = binding["does_not_exist"]
+    job_label = binding["label"]
 
     from api.utils.redis_sse import iter_replay_and_live_events
 
@@ -1345,8 +1384,9 @@ def async_job_status_sse(request, job_id):
         deadline = time.monotonic() + _SSE_MAX_DURATION_SECONDS
         replay_cursor = resolve_last_event_id(request)
         logger.info(
-            "async_job_status_sse connect job_id=%s request_id=%s replay_cursor=%s",
+            "async_job_status_sse connect job_id=%s job_type=%s request_id=%s replay_cursor=%s",
             job_id,
+            job_label,
             get_request_id(request),
             replay_cursor,
         )
@@ -1357,30 +1397,24 @@ def async_job_status_sse(request, job_id):
         def _get_job():
             return job_queryset.get()
 
-        def _serialize_job(job):
-            from api.utils.stream_payloads import serialize_async_job_payload
-
-            return serialize_async_job_payload(job)
-
         try:
             job = _get_job()
-        except AsyncJob.DoesNotExist:
+        except does_not_exist:
             logger.warning(
-                "async_job_status_sse job_not_found job_id=%s request_id=%s",
+                "async_job_status_sse job_not_found job_id=%s job_type=%s request_id=%s",
                 job_id,
+                job_label,
                 get_request_id(request),
             )
             yield format_sse_event(data=build_error_payload(code="not_found", message="Job not found", request=request))
             return
 
-        initial_payload = _serialize_job(job)
+        initial_payload = serialize_job(job)
         yield format_sse_event(data=initial_payload)
         last_progress = job.progress
         last_status = job.status
-        if job.status in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
+        if job.status in terminal_statuses:
             return
-
-        from api.utils.stream_payloads import normalize_async_job_payload
 
         for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
             try:
@@ -1391,10 +1425,10 @@ def async_job_status_sse(request, job_id):
                     yield ": keepalive\n\n"
                     continue
 
-                data = normalize_async_job_payload(stream_event.payload)
-                if data is None or data["status"] in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
+                data = normalize_payload(stream_event.payload)
+                if data is None or data["status"] in terminal_statuses:
                     job = _get_job()
-                    data = _serialize_job(job)
+                    data = serialize_job(job)
 
                 if data["progress"] == last_progress and data["status"] == last_status:
                     continue
@@ -1403,12 +1437,13 @@ def async_job_status_sse(request, job_id):
                 last_progress = data["progress"]
                 last_status = data["status"]
 
-                if data["status"] in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
+                if data["status"] in terminal_statuses:
                     return
-            except AsyncJob.DoesNotExist:
+            except does_not_exist:
                 logger.warning(
-                    "async_job_status_sse job_disappeared job_id=%s request_id=%s replay_cursor=%s",
+                    "async_job_status_sse job_disappeared job_id=%s job_type=%s request_id=%s replay_cursor=%s",
                     job_id,
+                    job_label,
                     get_request_id(request),
                     replay_cursor,
                 )

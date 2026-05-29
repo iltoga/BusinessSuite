@@ -1,17 +1,17 @@
-"""Tests for payment signal atomicity and sync_paid_invoice_applications guard."""
+"""Tests for payment signal atomicity and paid-invoice application startup."""
 
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
-from customer_applications.models import DocApplication
+from customer_applications.models import DocApplication, DocWorkflow
 from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 from invoices.models import Invoice, InvoiceApplication
 from payments.models import Payment
-from products.models import Product
+from products.models import Product, Task
 
 User = get_user_model()
 
@@ -23,6 +23,14 @@ class PaymentSignalAtomicityMixin:
         self.user = User.objects.create_user(username="atomic-user", password="testpass")
         self.customer = Customer.objects.create(first_name="Atomic", last_name="Test")
         self.product = Product.objects.create(name="Atomic Product", code="ATOM-PROD")
+        self.task = Task.objects.create(
+            product=self.product,
+            step=1,
+            name="Start processing",
+            duration=1,
+            duration_is_business_days=False,
+            add_task_to_calendar=True,
+        )
         self.application = DocApplication.objects.create(
             customer=self.customer,
             product=self.product,
@@ -114,13 +122,12 @@ class PaymentSignalSelectForUpdateTest(PaymentSignalAtomicityMixin, TestCase):
         self.assertEqual(self.invoice.status, Invoice.PENDING_PAYMENT)
 
 
-class SyncPaidInvoiceApplicationsGuardTest(PaymentSignalAtomicityMixin, TestCase):
-    """Verify sync_paid_invoice_applications respects document completion."""
+class StartPaidInvoiceApplicationsTest(PaymentSignalAtomicityMixin, TestCase):
+    """Verify paid invoices start linked application workflows."""
 
-    def test_fully_paid_marks_completed_when_docs_complete(self):
-        """Application is marked completed when invoice is PAID and docs are complete."""
-        # Mark the application's documents as completed by using skip_status_calculation
-        self.application.status = DocApplication.STATUS_PROCESSING
+    def test_fully_paid_starts_step_one_and_does_not_complete_application(self):
+        """Application starts processing when invoice is PAID and is not completed."""
+        self.application.status = DocApplication.STATUS_PENDING
         self.application.save(skip_status_calculation=True)
 
         with patch.object(
@@ -135,11 +142,14 @@ class SyncPaidInvoiceApplicationsGuardTest(PaymentSignalAtomicityMixin, TestCase
             )
 
         self.application.refresh_from_db()
-        self.assertEqual(self.application.status, DocApplication.STATUS_COMPLETED)
+        workflow = DocWorkflow.objects.get(doc_application=self.application, task=self.task)
+        self.assertEqual(workflow.status, DocApplication.STATUS_PROCESSING)
+        self.assertEqual(self.application.status, DocApplication.STATUS_PROCESSING)
+        self.assertNotEqual(self.application.status, DocApplication.STATUS_COMPLETED)
 
-    def test_fully_paid_does_not_mark_completed_when_docs_incomplete(self):
-        """Application is NOT marked completed when docs are incomplete, even if PAID."""
-        self.application.status = DocApplication.STATUS_PROCESSING
+    def test_fully_paid_starts_processing_even_when_docs_are_incomplete(self):
+        """Payment starts processing; document completeness does not complete the app."""
+        self.application.status = DocApplication.STATUS_PENDING
         self.application.save(skip_status_calculation=True)
 
         with patch.object(
@@ -154,5 +164,22 @@ class SyncPaidInvoiceApplicationsGuardTest(PaymentSignalAtomicityMixin, TestCase
             )
 
         self.application.refresh_from_db()
-        # Should remain PROCESSING because docs are incomplete
+        workflow = DocWorkflow.objects.get(doc_application=self.application, task=self.task)
+        self.assertEqual(workflow.status, DocApplication.STATUS_PROCESSING)
         self.assertEqual(self.application.status, DocApplication.STATUS_PROCESSING)
+
+    def test_fully_paid_keeps_rejected_application_rejected(self):
+        self.application.status = DocApplication.STATUS_REJECTED
+        self.application.save(skip_status_calculation=True)
+
+        Payment.objects.create(
+            invoice_application=self.invoice_application,
+            from_customer=self.customer,
+            amount=Decimal("100.00"),
+            payment_type=Payment.CASH,
+            created_by=self.user,
+        )
+
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.status, DocApplication.STATUS_REJECTED)
+        self.assertFalse(DocWorkflow.objects.filter(doc_application=self.application, task=self.task).exists())

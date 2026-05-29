@@ -227,7 +227,7 @@ Application create/update/workflow transitions queue `sync_application_calendar_
 - `PATCH /api/payments/{id}/`
 - `DELETE /api/payments/{id}/`
 
-> On payment create/update/delete, invoice-application and invoice statuses are recalculated.
+> On payment create/update/delete, invoice-application and invoice statuses are recalculated. When an invoice becomes fully paid, linked internal-process customer applications are started at workflow step 1 (`processing`); payment does not complete the application.
 
 ---
 

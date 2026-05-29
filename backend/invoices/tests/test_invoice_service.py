@@ -5,16 +5,16 @@ from decimal import Decimal
 from io import BytesIO
 from unittest.mock import MagicMock, mock_open, patch
 
-from core.services.invoice_service import create_invoice, update_invoice
+from core.services.invoice_service import create_invoice, mark_invoice_as_paid, update_invoice
 from core.utils import formatutils
-from customer_applications.models import DocApplication, Document
+from customer_applications.models import DocApplication, Document, DocWorkflow
 from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from invoices.services.InvoiceService import InvoiceService
 from payments.models import Payment
-from products.models import Product, ProductCategory
+from products.models import Product, ProductCategory, Task
 from products.models.document_type import DocumentType
 from rest_framework.exceptions import ValidationError
 
@@ -124,6 +124,47 @@ class InvoiceServiceTests(TestCase):
             updated_by=self.user,
         )
         self.invoice.refresh_from_db()
+
+    def test_full_payment_starts_linked_application_workflow_without_completing_it(self):
+        task = Task.objects.create(
+            product=self.workflow_product,
+            step=1,
+            name="Submit to immigration",
+            duration=2,
+            duration_is_business_days=False,
+            add_task_to_calendar=True,
+        )
+        mark_invoice_as_paid(
+            invoice=self.invoice,
+            payment_type=Payment.WIRE_TRANSFER,
+            payment_date=date(2026, 3, 5),
+            user=self.user,
+        )
+
+        self.invoice.refresh_from_db()
+        self.doc_application.refresh_from_db()
+        workflow = DocWorkflow.objects.get(doc_application=self.doc_application, task=task)
+
+        self.assertEqual(self.invoice.status, self.invoice.PAID)
+        self.assertEqual(workflow.status, DocApplication.STATUS_PROCESSING)
+        self.assertEqual(self.doc_application.status, DocApplication.STATUS_PROCESSING)
+        self.assertNotEqual(self.doc_application.status, DocApplication.STATUS_COMPLETED)
+
+    def test_full_payment_does_not_complete_or_start_application_without_tasks(self):
+        mark_invoice_as_paid(
+            invoice=self.invoice,
+            payment_type=Payment.WIRE_TRANSFER,
+            payment_date=date(2026, 3, 5),
+            user=self.user,
+        )
+
+        self.invoice.refresh_from_db()
+        self.doc_application.refresh_from_db()
+
+        self.assertEqual(self.invoice.status, self.invoice.PAID)
+        self.assertFalse(DocWorkflow.objects.filter(doc_application=self.doc_application).exists())
+        self.assertEqual(self.doc_application.status, DocApplication.STATUS_PENDING)
+        self.assertNotEqual(self.doc_application.status, DocApplication.STATUS_COMPLETED)
 
     def test_update_invoice_rejects_changed_product_for_existing_product_only_line(self):
         other_product = Product.objects.create(

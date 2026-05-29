@@ -52,7 +52,7 @@ class ApplicationLifecycleService:
                 task=next_task,
                 doc_application=application,
                 created_by=user,
-                status=DocApplication.STATUS_PENDING,
+                status=DocApplication.STATUS_PROCESSING,
             )
             step.due_date = step.calculate_workflow_due_date()
             step.save()

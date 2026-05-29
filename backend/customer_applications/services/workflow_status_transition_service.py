@@ -86,7 +86,7 @@ class WorkflowStatusTransitionService:
             workflow.updated_by = user
             workflow.save()
 
-            # Completing a non-final task automatically creates the next one as pending.
+            # Completing a non-final task automatically starts the next step.
             if status_value == DocApplication.STATUS_COMPLETED:
                 next_task = workflow.next_task_in_sequence
                 if next_task and not application.workflows.filter(task_id=next_task.id).exists():
@@ -95,7 +95,7 @@ class WorkflowStatusTransitionService:
                         task=next_task,
                         doc_application=application,
                         created_by=user,
-                        status=DocApplication.STATUS_PENDING,
+                        status=DocApplication.STATUS_PROCESSING,
                     )
                     next_workflow.due_date = next_workflow.calculate_workflow_due_date()
                     next_workflow.save()

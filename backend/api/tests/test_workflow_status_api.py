@@ -1,5 +1,7 @@
 """Regression tests for workflow status API responses and filtering."""
 
+from datetime import timedelta
+
 from customer_applications.models import DocApplication, Document
 from customer_applications.models.doc_workflow import DocWorkflow
 from customers.models import Customer
@@ -66,7 +68,7 @@ class WorkflowStatusApiTests(TestCase):
         workflow.save()
         return app, workflow
 
-    def test_update_workflow_status_creates_next_pending_workflow_for_non_last_step(self):
+    def test_update_workflow_status_creates_next_processing_workflow_for_non_last_step(self):
         app, workflow = self._create_application_and_workflow(document_completed=False, task_count=3)
 
         response = self.client.post(
@@ -82,8 +84,8 @@ class WorkflowStatusApiTests(TestCase):
 
         next_workflow = app.workflows.filter(task__step=2).first()
         self.assertIsNotNone(next_workflow)
-        self.assertEqual(next_workflow.status, DocApplication.STATUS_PENDING)
-        self.assertEqual(app.status, DocApplication.STATUS_PENDING)
+        self.assertEqual(next_workflow.status, DocApplication.STATUS_PROCESSING)
+        self.assertEqual(app.status, DocApplication.STATUS_PROCESSING)
 
     def test_update_workflow_status_sets_application_rejected(self):
         app, workflow = self._create_application_and_workflow(document_completed=True, task_count=3)
@@ -157,16 +159,19 @@ class WorkflowStatusApiTests(TestCase):
 
     def test_update_workflow_status_blocks_pending_to_processing_until_previous_due_date(self):
         app, step1 = self._create_application_and_workflow(document_completed=True, task_count=2)
+        step1.status = DocApplication.STATUS_COMPLETED
+        step1.due_date = timezone.localdate() + timedelta(days=3)
+        step1.save(update_fields=["status", "due_date", "updated_at"])
 
-        response = self.client.post(
-            f"/api/customer-applications/{app.id}/workflows/{step1.id}/status/",
-            {"status": DocApplication.STATUS_COMPLETED},
-            format="json",
+        step2_task = app.product.tasks.get(step=2)
+        step2 = DocWorkflow.objects.create(
+            doc_application=app,
+            task=step2_task,
+            start_date=timezone.localdate(),
+            due_date=timezone.localdate() + timedelta(days=5),
+            status=DocApplication.STATUS_PENDING,
+            created_by=self.user,
         )
-        self.assertEqual(response.status_code, 200)
-
-        step2 = app.workflows.filter(task__step=2).first()
-        self.assertIsNotNone(step2)
 
         blocked = self.client.post(
             f"/api/customer-applications/{app.id}/workflows/{step2.id}/status/",

@@ -77,7 +77,7 @@ class ApplicationLifecycleServiceTests(TestCase):
         next_workflow = application.workflows.get(task__step=2)
 
         self.assertEqual(current_workflow.status, DocApplication.STATUS_COMPLETED)
-        self.assertEqual(next_workflow.status, DocApplication.STATUS_PENDING)
+        self.assertEqual(next_workflow.status, DocApplication.STATUS_PROCESSING)
         self.assertEqual(result.previous_due_date, date(2026, 1, 15))
         self.assertEqual(result.start_date, date(2026, 1, 15))
         self.assertEqual(application.updated_by, self.user)
@@ -277,7 +277,7 @@ class WorkflowStatusTransitionServiceTests(TestCase):
         with self.assertRaises(WorkflowStatusTransitionError):
             self.service.transition(workflow=workflow, status_value="not-a-status", user=self.user)
 
-    def test_transition_completes_step_and_creates_next_pending_workflow(self):
+    def test_transition_completes_step_and_creates_next_processing_workflow(self):
         application, workflow = self._create_application_with_step_one()
 
         result = self.service.transition(
@@ -292,7 +292,7 @@ class WorkflowStatusTransitionServiceTests(TestCase):
 
         self.assertTrue(result.changed)
         self.assertEqual(workflow.status, DocApplication.STATUS_COMPLETED)
-        self.assertEqual(next_workflow.status, DocApplication.STATUS_PENDING)
+        self.assertEqual(next_workflow.status, DocApplication.STATUS_PROCESSING)
         self.assertEqual(result.next_start_date, timezone.localdate())
         self.assertEqual(application.due_date, next_workflow.due_date)
 

@@ -30,8 +30,8 @@ public functions
   ``transaction.atomic()`` block; retries on ``invoice_no`` collisions.
 - ``update_invoice_applications()`` — reconcile the application lines on an
   existing draft invoice; validates product/application constraints.
-- ``sync_paid_invoice_applications()`` — mark linked ``DocApplication`` rows
-  as ``STATUS_COMPLETED`` when an invoice transitions to ``PAID``.
+- ``start_paid_invoice_applications()`` — start linked internal-process
+  ``DocApplication`` workflow rows when an invoice transitions to ``PAID``.
 """
 
 from __future__ import annotations
@@ -42,6 +42,7 @@ from decimal import Decimal
 from typing import Iterable
 
 from customer_applications.models import DocApplication
+from customer_applications.models.doc_workflow import DocWorkflow
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from invoices.models.invoice import Invoice, InvoiceApplication, sanitize_invoice_application_notes
@@ -117,34 +118,75 @@ def _is_invoice_no_unique_conflict(exc: Exception) -> bool:
     return "invoice_no" in message and ("unique" in message or "duplicate" in message)
 
 
-def sync_paid_invoice_applications(*, invoice: Invoice, user=None) -> int:
-    """Mark linked customer applications as completed when invoice is fully paid.
+def start_paid_invoice_applications(*, invoice: Invoice, user=None) -> int:
+    """Start linked internal-process customer applications when invoice is fully paid.
 
-    Only marks applications whose document collection is actually complete.
-    Applications with incomplete documents are left in their current status
-    to avoid masking missing data.
-
-    Kept as an explicit service-layer side effect so it can be invoked from
-    transactional write flows (invoice/payment operations) without embedding
-    cross-model mutations in ``Invoice.save()``.
+    A paid invoice means the agency can begin the internal/visa workflow; it
+    does not mean the customer application is complete. For each linked
+    workflow product, ensure the first configured task exists and is marked
+    processing, then keep the application itself processing.
     """
     if not invoice or invoice.status != Invoice.PAID:
         return 0
 
     updated = 0
     linked_applications = (
-        DocApplication.objects.filter(invoice_applications__invoice=invoice)
-        .exclude(status=DocApplication.STATUS_COMPLETED)
+        DocApplication.objects.filter(
+            invoice_applications__invoice=invoice,
+            product__uses_customer_app_workflow=True,
+        )
+        .exclude(status=DocApplication.STATUS_REJECTED)
+        .select_related("product")
+        .prefetch_related("product__tasks", "workflows__task")
         .distinct()
     )
     for application in linked_applications:
-        if not application.is_document_collection_completed:
+        first_task = application.product.tasks.order_by("step").first()
+        if not first_task:
             continue
-        application.status = DocApplication.STATUS_COMPLETED
+
+        current_workflow = application.current_workflow
+        if current_workflow and current_workflow.task_id != first_task.id:
+            if current_workflow.is_workflow_completed:
+                continue
+            if application.status != DocApplication.STATUS_PROCESSING:
+                application.status = DocApplication.STATUS_PROCESSING
+                if application.due_date != current_workflow.due_date:
+                    application.due_date = current_workflow.due_date
+                if user and getattr(user, "is_authenticated", False):
+                    application.updated_by = user
+                application.save(skip_status_calculation=True)
+                updated += 1
+            continue
+
+        first_workflow = (
+            application.workflows.filter(task_id=first_task.id).order_by("created_at", "id").first()
+        )
+        if first_workflow is None:
+            start_date = application.get_first_task_start_date() or timezone.localdate()
+            first_workflow = DocWorkflow(
+                doc_application=application,
+                task=first_task,
+                start_date=start_date,
+                due_date=application.calculate_next_calendar_due_date(start_date=start_date) or start_date,
+                status=DocApplication.STATUS_PROCESSING,
+                created_by=user if user and getattr(user, "is_authenticated", False) else application.created_by,
+            )
+            first_workflow.save()
+            updated += 1
+        elif first_workflow.status != DocApplication.STATUS_PROCESSING:
+            first_workflow.status = DocApplication.STATUS_PROCESSING
+            if user and getattr(user, "is_authenticated", False):
+                first_workflow.updated_by = user
+            first_workflow.save()
+            updated += 1
+
+        if application.due_date != first_workflow.due_date:
+            application.due_date = first_workflow.due_date
+        application.status = DocApplication.STATUS_PROCESSING
         if user and getattr(user, "is_authenticated", False):
             application.updated_by = user
         application.save(skip_status_calculation=True)
-        updated += 1
     return updated
 
 
@@ -367,7 +409,7 @@ def create_invoice(*, data: dict, user) -> Invoice:
                 invoice = Invoice.objects.create(created_by=user, **data)
                 _sync_invoice_applications(invoice=invoice, payloads=payloads, user=user)
                 invoice.save()
-                sync_paid_invoice_applications(invoice=invoice, user=user)
+                start_paid_invoice_applications(invoice=invoice, user=user)
                 return invoice
         except Exception as exc:
             # Handle duplicate invoice_no integrity errors specifically.
@@ -414,7 +456,7 @@ def update_invoice(*, invoice: Invoice, data: dict, user) -> Invoice:
 
         _sync_invoice_applications(invoice=invoice, payloads=payloads, user=user)
         invoice.save()
-        sync_paid_invoice_applications(invoice=invoice, user=user)
+        start_paid_invoice_applications(invoice=invoice, user=user)
         invoice.refresh_from_db()
         return invoice
 
@@ -480,7 +522,7 @@ def mark_invoice_as_paid(*, invoice: Invoice, payment_type: str, payment_date: d
             )
             created.append(payment)
         invoice.refresh_from_db(fields=["status"])
-        sync_paid_invoice_applications(invoice=invoice, user=user)
+        start_paid_invoice_applications(invoice=invoice, user=user)
     return created
 
 

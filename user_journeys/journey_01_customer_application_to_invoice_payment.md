@@ -1,106 +1,103 @@
-# Journey 01 — New Customer → Application Lifecycle → Invoice → Full Payment
+# Journey 01 - Customer Application, Invoice Payment, and Internal Processing
 
-This journey documents the standard operational flow and aligns with current backend + Dramatiq + frontend logic.
+This journey documents the standard agency flow for visa/internal-process applications. A paid invoice starts the operational workflow; it does not complete the customer application.
 
 ## Preconditions
 
-- User has permission to create customers, applications, invoices, and payments.
-- Product is configured with workflow tasks and required documents.
-- If calendar sync is desired:
+- User has permission to create customers, applications, invoices, documents, workflows, and payments.
+- The product is configured as an internal-process product (`uses_customer_app_workflow=true`) through required documents and/or workflow tasks.
+- For dashboard calendar deadlines:
   - `DocApplication.add_deadlines_to_calendar = true`
-  - Relevant task(s) have `add_task_to_calendar = true`
-
----
+  - the relevant product task has `add_task_to_calendar = true`
 
 ## Step-by-step flow
 
-### 1) Create a new customer
+### 1) Create or select the customer
 
-- UI: `Customers` → `New Customer` (`/customers/new`)
-- API: `POST /api/customers/`
-- Result: customer record is created and can be used in applications/invoices.
+- UI: `Customers` -> `New Customer`, or open an existing customer.
+- API: `POST /api/customers/`.
+- Result: customer record is available for applications and invoices.
 
-### 2) Create a new customer application
+### 2) Create the customer application
 
-- UI: `Applications` → `New` (`/applications/new`) or from customer detail.
-- API: `POST /api/customer-applications/`
+- UI: `Applications` -> `New`, or create from the customer detail view.
+- API: `POST /api/customer-applications/`.
+- Example product: `XVOA` visa extension.
 - Result:
-  - Application is created with initial workflow step.
-  - Due dates are computed from task durations (`calculate_due_date` logic).
+  - application is created for the customer and product
+  - required/optional document placeholders are created
+  - the first workflow step is created from product task configuration when tasks exist
+  - due dates are calculated from the application submission date and task durations
 
-**Calendar note:**
-When the app is created/updated, backend queues `sync_application_calendar_task` (Dramatiq). This updates local `CalendarEvent` and then queues Google Calendar sync.
+### 3) Upload, validate, and apply documents
 
-### 3) Upload required documents
-
-- UI: Application detail/document actions.
-- API: document CRUD under `/api/documents/`.
+- UI: application detail document area.
+- User uploads required documents, runs AI validation, reviews the result, and applies accepted documents to the application.
 - Result:
-  - Required docs are tracked as completed/incomplete.
-  - `ready_for_invoice` becomes true when required docs are complete, or if status is already completed/rejected.
+  - required document slots become completed
+  - the application becomes invoice-ready once required documents are complete
+  - invoice readiness does not require workflow completion
 
-### 4) First deadline — biometrics appointment
+### 4) Generate the invoice
 
-- Business expectation: first task is typically “go to immigration for biometrics”.
-- System behavior:
-  - This is represented by **task step configuration**, not hardcoded text.
-  - If that task has `add_task_to_calendar = true`, the event is created/updated.
-
-**Calendar note:**
-At this action, a calendar event is maintained in both:
-
-- local calendar mirror (`CalendarEvent` table), and
-- Google Calendar (asynchronously via Dramatiq sync tasks).
-
-### 5) Advance workflow to next step
-
-- UI/API: update workflow status or use advance workflow actions.
-  - `POST /api/customer-applications/{id}/advance-workflow/`
-  - or `POST /api/customer-applications/{id}/workflows/{workflow_id}/status/`
+- UI: `Invoices` -> `New`, select the customer and eligible customer application.
+- API: `POST /api/invoices/`.
 - Result:
-  - Current step transitions, next step becomes active.
-  - Due date recalculates for the next task.
+  - invoice line references the customer application
+  - invoice is ready to download/send to the customer
+  - the customer application is still not complete
 
-### 6) Second/final deadline — immigration verification (2–4 days wait)
+### 5) Send invoice and wait for offline payment
 
-- Business expectation: second task is often “wait 2–4 days for immigration verification/visa issuance”.
-- System behavior:
-  - Duration comes from product task config (`duration`, `duration_is_business_days`).
-  - If configured as 2–4 days, system deadline follows that exact setting.
+The visa agent sends the invoice to the customer outside the application and waits for payment.
 
-**Calendar note:**
-As with step 4, the next-task deadline is mirrored locally and synced to Google Calendar via background tasks.
+### 6) Record payment
 
-### 7) Application completes
-
-- Completion can happen by workflow progression and document/workflow status logic.
-- UI shows app status `completed`; app becomes invoice-ready.
-
-### 8) Generate invoice
-
-- UI: `Invoices` → `New` (`/invoices/new`) and select customer applications.
-- API: `POST /api/invoices/`
-- Optional document generation:
-  - sync: `GET /api/invoices/{id}/download/?file_format=docx|pdf`
-  - async: `POST /api/invoices/{id}/download-async/`
-
-### 9) Wait for payment
-
-- Invoice status typically moves through `pending_payment` / `partial_payment` depending on payment records.
-
-### 10) Update invoice with full payment
-
-- UI: Invoice detail → record payment(s) (`Payment Modal`).
-- API: `POST /api/payments/` (single or multiple invoice-application payments).
+- UI: invoice detail payment modal.
+- API: `POST /api/payments/`, or `POST /api/invoices/{id}/mark-as-paid/`.
 - Result:
-  - Invoice application statuses recalculate.
-  - Invoice status becomes `paid` when fully settled.
-  - Linked applications are kept/marked completed.
+  - invoice application payment status is recalculated
+  - invoice status becomes `paid` when fully settled
+  - linked internal-process applications are started automatically
 
----
+When an invoice becomes fully paid, the backend must:
 
-## Consistency checks with current implementation
+- find linked customer applications whose product has `uses_customer_app_workflow=true`
+- ignore product-only invoice lines and invoice-only products
+- keep rejected applications rejected
+- ensure the first configured workflow task exists
+- set the first workflow step to `processing`
+- set the customer application to `processing`
+- never mark the customer application `completed` because of invoice payment
 
-- ✅ Force-close exists but is not required for this standard journey (`POST /api/customer-applications/{id}/force-close/`).
-- ✅ Calendar is async and resilient (local mirror first, Google sync queued).
-- ✅ Payment updates auto-propagate invoice status changes.
+### 7) Merge documents and submit externally
+
+The agent opens the paid invoice's linked visa applications, merges the prepared documents, and manually uploads them to the immigration website during the external submission process.
+
+### 8) Pay immigration billing and monitor deadlines
+
+After external submission, the agent pays the immigration billing and waits for immigration confirmation. Dashboard calendar and deadline widgets show the currently processing workflow step so the agent can react to biometrics, verification, pickup, or issuance deadlines.
+
+### 9) Complete workflow steps
+
+- UI/API: application detail workflow status controls, dashboard calendar done action, or `POST /api/customer-applications/{id}/workflows/{workflow_id}/status/`.
+- When the current step is completed:
+  - the completed step is marked `completed`
+  - if another task exists, the backend creates/starts the next workflow step as `processing`
+  - the customer application remains `processing`
+  - if the completed step is the final configured step, the customer application becomes `completed`
+
+## AI and business rules
+
+- Paid invoice does not mean completed application.
+- Paid invoice means internal processing may begin.
+- The dashboard calendar is driven by active workflow deadlines plus application submission dates.
+- `completed` is reserved for fully finished applications after the final workflow step is completed.
+- Force-close is a manual exception for already-processed/direct-invoice cases; normal invoice payment must not force-close applications.
+
+## Calendar behavior
+
+- Application submission date is always represented as a calendar event when deadlines are enabled.
+- The currently processing calendar-enabled workflow task is represented as the active deadline event.
+- Completed workflow tasks may remain visible as done events.
+- Active task deadlines disappear only when the application is rejected, calendar deadlines are disabled, no calendar-enabled task exists, or the final workflow step has completed.

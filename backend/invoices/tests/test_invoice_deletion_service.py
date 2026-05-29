@@ -75,7 +75,7 @@ class InvoiceDeletionServiceTests(TestCase):
         )
 
         if paid:
-            with patch("core.services.invoice_service.sync_paid_invoice_applications"):
+            with patch("core.services.invoice_service.start_paid_invoice_applications"):
                 Payment.objects.create(
                     invoice_application=invoice_application,
                     from_customer=self.customer,

@@ -1243,6 +1243,9 @@ OPENAI_TIMEOUT = float(os.getenv("OPENAI_TIMEOUT", "120.0"))
 GROQ_TIMEOUT = float(os.getenv("GROQ_TIMEOUT", "120.0"))
 # Per-request timeout (seconds) for document categorization AI calls.
 DOCUMENT_CATEGORIZATION_TIMEOUT = float(os.getenv("DOCUMENT_CATEGORIZATION_TIMEOUT", "30"))
+# Per-request timeout (seconds) for passport OCR AI extraction.
+# Keep this short because passport import can complete from MRZ when AI is slow.
+PASSPORT_OCR_TIMEOUT = float(os.getenv("PASSPORT_OCR_TIMEOUT", "30"))
 # Per-request timeout (seconds) for document validation AI calls.
 DOCUMENT_VALIDATION_TIMEOUT = float(os.getenv("DOCUMENT_VALIDATION_TIMEOUT", "30"))
 

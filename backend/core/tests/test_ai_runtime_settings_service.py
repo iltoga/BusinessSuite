@@ -174,11 +174,16 @@ class AIRuntimeSettingsServiceTests(TestCase):
     def test_get_timeout_for_feature_reads_runtime_timeout_settings(self):
         AIRuntimeSettingsService.update_runtime_settings(
             {
+                "PASSPORT_OCR_TIMEOUT": 12,
                 "DOCUMENT_VALIDATION_TIMEOUT": 15,
                 "PASSPORT_CHECK_TIMEOUT": 22,
             }
         )
 
+        self.assertEqual(
+            AIRuntimeSettingsService.get_timeout_for_feature(AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR),
+            12.0,
+        )
         self.assertEqual(
             AIRuntimeSettingsService.get_timeout_for_feature(AIUsageFeature.DOCUMENT_AI_VALIDATOR),
             15.0,

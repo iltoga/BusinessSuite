@@ -13,6 +13,7 @@ from core.tasks.runtime import (
     db_task,
     retry_on_transient_external_failure,
 )
+from core.tasks.ocr import run_ocr_job
 from customers.tasks import check_passport_uploadability_task
 from django.test import SimpleTestCase
 from invoices.tasks.download_jobs import run_invoice_download_job
@@ -56,6 +57,7 @@ class TaskRuntimePolicyTests(SimpleTestCase):
     def test_user_visible_actors_opt_into_queue_defaults(self):
         expected = (
             (check_passport_uploadability_task, QUEUE_REALTIME, 2, 150_000),
+            (run_ocr_job, QUEUE_REALTIME, 2, 420_000),
             (run_invoice_import_item, QUEUE_REALTIME, 2, 150_000),
             (run_invoice_download_job, QUEUE_DOC_CONVERSION, 3, 420_000),
             (create_google_event_task, QUEUE_DEFAULT, 3, 300_000),
