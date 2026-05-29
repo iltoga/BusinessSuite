@@ -154,13 +154,16 @@ export class ZardDropdownService {
           offsetY: -4,
         },
       ])
-      .withPush(true);
+      .withFlexibleDimensions(true)
+      .withPush(true)
+      .withViewportMargin(8);
 
     this.overlayRef = this.overlay.create({
       positionStrategy,
       hasBackdrop: false,
       scrollStrategy: this.overlay.scrollStrategies.reposition(),
       minWidth: 200,
+      maxWidth: 'calc(100vw - 16px)',
       maxHeight: 400,
     });
   }

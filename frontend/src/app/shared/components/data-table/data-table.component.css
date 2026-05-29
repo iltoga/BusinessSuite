@@ -16,7 +16,7 @@
 
 .data-table-scroll table[z-table] {
   width: 100%;
-  min-width: 52rem;
+  min-width: 64rem;
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
@@ -72,18 +72,11 @@ tr.row-danger-soft:not(.selected) {
   padding-left: 1rem;
 }
 
-/* Visually separate the actions/download column from Added\/Updated */
-.data-table-scroll th.col-actions,
-.data-table-scroll td.col-actions {
-  padding-left: 1rem;
-  border-left: 1px solid var(--border);
-}
-
 .data-table-scroll [class^='col-created'] span {
   display: block;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 900px) and (orientation: portrait) {
   .data-table-scroll th[z-table-head] span.text-xs {
     display: none;
   }
@@ -91,7 +84,7 @@ tr.row-danger-soft:not(.selected) {
 
 @media (max-width: 1024px) {
   .data-table-scroll table[z-table] {
-    min-width: 44rem;
+    min-width: 62rem;
   }
 
   .data-table-scroll th[z-table-head],
@@ -102,7 +95,7 @@ tr.row-danger-soft:not(.selected) {
 
 @media (max-width: 767px) and (orientation: landscape) {
   .data-table-scroll table[z-table] {
-    min-width: 48rem;
+    min-width: 60rem;
   }
 
   .data-table-scroll th[z-table-head],
@@ -112,7 +105,7 @@ tr.row-danger-soft:not(.selected) {
   }
 }
 
-@media (max-width: 767px) and (orientation: portrait) {
+@media (max-width: 900px) and (orientation: portrait) {
   .data-table-scroll table[z-table] {
     display: block;
     min-width: 0;

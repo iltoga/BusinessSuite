@@ -191,13 +191,16 @@ export class ZardDropdownMenuComponent implements OnInit, OnDestroy {
               offsetY: -4,
             },
           ])
-          .withPush(false);
+          .withFlexibleDimensions(true)
+          .withPush(true)
+          .withViewportMargin(8);
 
         this.overlayRef = this.overlay.create({
           positionStrategy,
           hasBackdrop: false,
           scrollStrategy: this.overlay.scrollStrategies.reposition(),
           minWidth: 200,
+          maxWidth: 'calc(100vw - 16px)',
           maxHeight: 400,
         });
       } catch (error) {
