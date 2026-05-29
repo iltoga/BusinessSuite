@@ -4,6 +4,7 @@ crm-revisbali-*.json
 crmrevisbali-*.json
 client_secret.json
 .env
+.env.prod
 .venv/
 env/
 venv/

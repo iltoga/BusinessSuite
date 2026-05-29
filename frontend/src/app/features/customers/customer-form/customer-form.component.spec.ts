@@ -2,7 +2,6 @@ import { signal } from '@angular/core';
 import { of, Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { type AsyncJob } from '@/core/api';
 import { type OcrStatusResponse } from '@/core/services/ocr.service';
 
 import { CustomerFormComponent } from './customer-form.component';
@@ -23,12 +22,11 @@ describe('PassportOcrWorkflowService OCR flow', () => {
     service.passportPasteStatus = signal<string | null>(null);
     service.passportMetadata = signal<Record<string, unknown> | null>(null);
     service.pollSub = null;
+    service.reconnectTimeout = null;
 
     service.ocrService = {
       startPassportOcr: vi.fn(),
-    };
-    service.jobService = {
-      watchJob: vi.fn(),
+      watchPassportOcrJob: vi.fn(),
     };
 
     service.extractOcrError = vi.fn().mockReturnValue('Upload failed');
@@ -39,7 +37,7 @@ describe('PassportOcrWorkflowService OCR flow', () => {
     return service;
   };
 
-  it('subscribes to job updates via jobService when an OCR job starts', () => {
+  it('subscribes to OCR stream updates when an OCR job starts', () => {
     const service = createHarness();
     const subscribeToOcrStream = vi
       .spyOn(service as any, 'subscribeToOcrStream')
@@ -50,21 +48,22 @@ describe('PassportOcrWorkflowService OCR flow', () => {
       of({
         jobId: 'job-1',
         status: 'queued',
+        streamUrl: '/api/ocr/stream/job-1/',
       }),
     );
 
     service.startImport(file);
 
-    expect(subscribeToOcrStream).toHaveBeenCalledWith('job-1');
+    expect(subscribeToOcrStream).toHaveBeenCalledWith('job-1', '/api/ocr/stream/job-1/');
     expect(service.handleOcrResult).not.toHaveBeenCalled();
   });
 
   it('handles job failure appropriately', () => {
     const service = createHarness();
-    const stream$ = new Subject<AsyncJob>();
+    const stream$ = new Subject<OcrStatusResponse>();
 
     service.ocrProcessing.set(true);
-    service.jobService.watchJob.mockReturnValue(stream$);
+    service.ocrService.watchPassportOcrJob.mockReturnValue(stream$);
 
     service['subscribeToOcrStream']('job-1');
     stream$.next({
@@ -72,34 +71,60 @@ describe('PassportOcrWorkflowService OCR flow', () => {
       progress: 100,
       jobId: 'job-1',
       errorMessage: 'Realtime OCR failed',
-    } as unknown as AsyncJob);
+    } as OcrStatusResponse);
 
     expect(service.ocrProcessing()).toBe(false);
   });
 
   it('uses realtime stream updates as the primary path to completion', () => {
     const service = createHarness();
-    const stream$ = new Subject<AsyncJob>();
+    const stream$ = new Subject<OcrStatusResponse>();
 
     service.ocrProcessing.set(true);
-    service.jobService.watchJob.mockReturnValue(stream$);
+    service.ocrService.watchPassportOcrJob.mockReturnValue(stream$);
 
     service['subscribeToOcrStream']('job-1');
-    stream$.next({ status: 'processing', progress: 55, jobId: 'job-1' } as unknown as AsyncJob);
+    stream$.next({ status: 'processing', progress: 55, jobId: 'job-1' } as OcrStatusResponse);
     stream$.next({
       status: 'completed',
       progress: 100,
       jobId: 'job-1',
-      result: { number: 'X123' },
-    } as unknown as AsyncJob);
+      mrzData: { number: 'X123' },
+    } as OcrStatusResponse);
 
     expect(service.handleOcrResult).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'completed',
         jobId: 'job-1',
-        number: 'X123',
+        mrzData: { number: 'X123' },
       }),
     );
+  });
+
+  it('reconnects when a long-running OCR stream rotates before completion', () => {
+    vi.useFakeTimers();
+    try {
+      const service = createHarness();
+      const firstStream$ = new Subject<OcrStatusResponse>();
+      const secondStream$ = new Subject<OcrStatusResponse>();
+
+      service.ocrProcessing.set(true);
+      service.ocrService.watchPassportOcrJob
+        .mockReturnValueOnce(firstStream$)
+        .mockReturnValueOnce(secondStream$);
+
+      service['subscribeToOcrStream']('job-1', '/api/ocr/stream/job-1/');
+      firstStream$.complete();
+      vi.advanceTimersByTime(1000);
+
+      expect(service.ocrService.watchPassportOcrJob).toHaveBeenCalledTimes(2);
+      expect(service.ocrService.watchPassportOcrJob).toHaveBeenLastCalledWith(
+        'job-1',
+        '/api/ocr/stream/job-1/',
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

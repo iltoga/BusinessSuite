@@ -2,19 +2,12 @@ import { inject, Injectable, signal } from '@angular/core';
 import { type FormGroup } from '@angular/forms';
 import { Subscription } from 'rxjs';
 
-import { AsyncJobStatusEnum, type AsyncJob } from '@/core/api';
-import { JobService } from '@/core/services/job.service';
 import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service';
 import { extractJobId } from '@/core/utils/async-job-contract';
-
-interface AsyncJobResultPayload extends Record<string, unknown> {
-  errorMessage?: string;
-}
 
 @Injectable()
 export class PassportOcrWorkflowService {
   private readonly ocrService = inject(OcrService);
-  private readonly jobService = inject(JobService);
 
   // OCR state
   readonly ocrUseAi = signal(true);
@@ -28,6 +21,7 @@ export class PassportOcrWorkflowService {
   readonly passportPasteStatus = signal<string | null>(null);
 
   private pollSub: Subscription | null = null;
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private form!: FormGroup;
 
   init(form: FormGroup): void {
@@ -64,7 +58,7 @@ export class PassportOcrWorkflowService {
         next: (response) => {
           const jobId = extractJobId(response);
           if (jobId && typeof jobId === 'string') {
-            this.subscribeToOcrStream(jobId);
+            this.subscribeToOcrStream(jobId, response.streamUrl ?? null);
             return;
           }
           this.handleOcrResult(response as OcrStatusResponse);
@@ -77,29 +71,23 @@ export class PassportOcrWorkflowService {
       });
   }
 
-  private subscribeToOcrStream(jobId: string): void {
+  private subscribeToOcrStream(jobId: string, streamUrl?: string | null): void {
     this.clearAsyncTracking();
 
-    this.pollSub = this.jobService.watchJob(jobId).subscribe({
-      next: (jobStatus: AsyncJob) => {
-        if (jobStatus.status === AsyncJobStatusEnum.Completed) {
-          const jobResult = (jobStatus.result as AsyncJobResultPayload) || {};
-          const result: OcrStatusResponse = {
-            ...jobResult,
-            status: 'completed',
-            jobId: jobStatus.jobId,
-          };
-          this.handleOcrResult(result);
+    this.pollSub = this.ocrService.watchPassportOcrJob(jobId, streamUrl).subscribe({
+      next: (jobStatus: OcrStatusResponse) => {
+        const status = String(jobStatus.status ?? '').toLowerCase();
+        if (status === 'completed') {
+          this.handleOcrResult(jobStatus);
           this.clearAsyncTracking();
           return;
         }
 
-        if (jobStatus.status === AsyncJobStatusEnum.Failed) {
+        if (status === 'failed') {
           this.clearAsyncTracking();
           this.ocrProcessing.set(false);
-          const jobResult = (jobStatus.result as AsyncJobResultPayload) || {};
           this.ocrMessage.set(
-            typeof jobResult.errorMessage === 'string' ? jobResult.errorMessage : 'OCR failed',
+            typeof jobStatus.errorMessage === 'string' ? jobStatus.errorMessage : 'OCR failed',
           );
           this.ocrMessageTone.set('error');
           return;
@@ -120,11 +108,24 @@ export class PassportOcrWorkflowService {
       },
       complete: () => {
         this.pollSub = null;
+        if (!this.ocrProcessing()) {
+          return;
+        }
+        this.reconnectTimeout = setTimeout(() => {
+          this.reconnectTimeout = null;
+          if (this.ocrProcessing()) {
+            this.subscribeToOcrStream(jobId, streamUrl);
+          }
+        }, 1000);
       },
     });
   }
 
   clearAsyncTracking(): void {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
     if (this.pollSub) {
       this.pollSub.unsubscribe();
       this.pollSub = null;

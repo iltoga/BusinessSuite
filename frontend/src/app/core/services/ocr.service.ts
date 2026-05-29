@@ -1,6 +1,6 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { map, Observable } from 'rxjs';
+import { map, Observable, takeWhile } from 'rxjs';
 
 import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
 import {
@@ -8,6 +8,7 @@ import {
   requestMetadataContext,
   type RequestMetadata,
 } from '@/core/utils/request-metadata';
+import { SseService } from './sse.service';
 
 export interface OcrQueuedResponse {
   jobId: string;
@@ -23,6 +24,8 @@ export interface OcrStatusResponse {
   jobId: string;
   status: string;
   progress?: number;
+  statusUrl?: string;
+  streamUrl?: string;
   resultText?: string;
   structuredData?: Record<string, string | null>;
   errorMessage?: string;
@@ -70,6 +73,7 @@ export interface PassportOcrOptions {
 })
 export class OcrService {
   private http = inject(HttpClient);
+  private sseService = inject(SseService);
 
   startPassportOcr(
     file: File,
@@ -99,6 +103,15 @@ export class OcrService {
   getOcrStatus(statusUrl: string): Observable<OcrStatusResponse> {
     return this.getOcrStatusResponse(statusUrl).pipe(
       map((response) => normalizeJobEnvelope(response.body as OcrStatusResponse)),
+    );
+  }
+
+  watchPassportOcrJob(jobId: string, streamUrl?: string | null): Observable<OcrStatusResponse> {
+    const url = streamUrl?.trim() || `/api/ocr/stream/${jobId}/`;
+    const normalizedUrl = url.replace(/^https?:\/\/[^/]+/, '');
+    return this.sseService.connect<unknown>(normalizedUrl).pipe(
+      map((payload) => normalizeJobEnvelope(payload as OcrStatusResponse)),
+      takeWhile((job) => !this.isTerminalOcrStatus(job.status), true),
     );
   }
 
@@ -147,5 +160,10 @@ export class OcrService {
     return this.http.get<DocumentOcrStatusResponse>(normalizedUrl, {
       observe: 'response',
     });
+  }
+
+  private isTerminalOcrStatus(status: string | null | undefined): boolean {
+    const normalized = String(status ?? '').trim().toLowerCase();
+    return normalized === 'completed' || normalized === 'failed';
   }
 }

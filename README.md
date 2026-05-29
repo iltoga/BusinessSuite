@@ -242,6 +242,35 @@ cd frontend && bun run generate:api
 
 ---
 
+## Project Layout Notes 📁
+
+The backend intentionally keeps editable static assets separate from collected deployment assets:
+
+```text
+backend/
+└── business_suite/
+  ├── static/
+  │   └── reporting/
+  │       ├── invoice_template_with_footer_revisbali.docx
+  │       ├── partial_invoice_template_with_footer_revisbali.docx
+  │       └── surat_permohonan_perpanjangan.docx
+  └── staticfiles/
+```
+
+- `backend/business_suite/static/` is the **source** directory. Keep editable assets and DOCX templates here.
+- `backend/business_suite/staticfiles/` is the **generated output** directory used by `collectstatic`. Treat it like a build artifact, not a source folder.
+- In this project, services such as `LetterService` and `InvoiceService` read DOCX templates directly from `static/reporting/`, not from `staticfiles/`.
+- Rule of thumb: **edit `static/`, rebuild `staticfiles/`**.
+
+This split is deliberate:
+
+- `static/` = files you maintain in the repo or locally
+- `staticfiles/` = files Django collects for serving in deployment/dev server wiring
+
+Avoid consolidating them into one folder; Django expects `STATIC_ROOT` to be a collection target, not your permanent source directory.
+
+---
+
 ## Contributing Guide
 
 - Read: `docs/coding-standards.md` and `docs/extension-guide.md`.
