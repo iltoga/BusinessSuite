@@ -214,10 +214,12 @@ class AIPassportParser:
 
     # System prompt for passport analysis
     SYSTEM_PROMPT = (
-        "You are an expert at extracting structured data from passport documents. "
-        "Analyze the passport image carefully and extract all visible information. "
+        "You extract structured data from passport documents. "
+        "Return only the requested JSON object with no prose, markdown, or reasoning text. "
         "Be precise with dates, names, and codes."
     )
+
+    PASSPORT_EXTRACTION_MAX_TOKENS = 1000
 
     # Maximum retry attempts for passport number validation
     MAX_PASSPORT_VALIDATION_RETRIES = 2
@@ -387,6 +389,7 @@ class AIPassportParser:
         file_content: Union[bytes, UploadedFile],
         filename: str = "",
         analysis_context: Optional[dict[str, Any]] = None,
+        stage_callback: Optional[Callable[[str], None]] = None,
     ) -> AIPassportResult:
         """
         Parse passport image using multimodal vision to extract structured data.
@@ -399,11 +402,21 @@ class AIPassportParser:
             AIPassportResult with extracted passport data
         """
         try:
+            if stage_callback:
+                try:
+                    stage_callback("ai_prepare")
+                except Exception:
+                    logger.debug("Passport parse stage callback failed for ai_prepare", exc_info=True)
             file_bytes, filename = self._prepare_vision_input(file_content=file_content, filename=filename)
             file_type = AIClient.get_file_extension(filename)
             logger.info(f"AI parsing passport image: {filename} (type: {file_type}, model: {self.ai_client.model})")
 
-            return self._parse_with_vision(file_bytes, filename, analysis_context=analysis_context)
+            return self._parse_with_vision(
+                file_bytes,
+                filename,
+                analysis_context=analysis_context,
+                stage_callback=stage_callback,
+            )
 
         except Exception as e:
             # Includes AIConnectionError propagated from _parse_with_vision after all retries
@@ -418,12 +431,13 @@ class AIPassportParser:
         image_bytes: bytes,
         filename: str,
         analysis_context: Optional[dict[str, Any]] = None,
+        stage_callback: Optional[Callable[[str], None]] = None,
     ) -> AIPassportResult:
         """Parse passport image using vision capabilities with validation and retry."""
         try:
             # Initial attempt
             prompt = self._build_vision_prompt(analysis_context=analysis_context)
-            result = self._call_vision_api(image_bytes, filename, prompt)
+            result = self._call_vision_api(image_bytes, filename, prompt, stage_callback=stage_callback)
 
             if not result.success:
                 return result
@@ -442,10 +456,20 @@ class AIPassportParser:
             last_validation_msg = validation_msg
             for attempt in range(1, self.MAX_PASSPORT_VALIDATION_RETRIES + 1):
                 logger.info(f"Retry attempt {attempt}/{self.MAX_PASSPORT_VALIDATION_RETRIES}")
+                if stage_callback:
+                    try:
+                        stage_callback("ai_retry")
+                    except Exception:
+                        logger.debug("Passport parse stage callback failed for ai_retry", exc_info=True)
 
                 # Build focused retry prompt
                 retry_prompt = self._build_retry_prompt(passport_number, validation_msg, analysis_context)
-                retry_result = self._call_vision_api(image_bytes, filename, retry_prompt)
+                retry_result = self._call_vision_api(
+                    image_bytes,
+                    filename,
+                    retry_prompt,
+                    stage_callback=stage_callback,
+                )
 
                 if not retry_result.success:
                     continue
@@ -480,7 +504,13 @@ class AIPassportParser:
                 error_message=str(e),
             )
 
-    def _call_vision_api(self, image_bytes: bytes, filename: str, prompt: str) -> AIPassportResult:
+    def _call_vision_api(
+        self,
+        image_bytes: bytes,
+        filename: str,
+        prompt: str,
+        stage_callback: Optional[Callable[[str], None]] = None,
+    ) -> AIPassportResult:
         """Make a single vision API call and return the result.
 
         NOTE: AIConnectionError is intentionally NOT caught here so that
@@ -496,6 +526,11 @@ class AIPassportParser:
         )
 
         logger.info(f"Sending passport image to {self.ai_client.provider_name} vision API")
+        if stage_callback:
+            try:
+                stage_callback("ai_request")
+            except Exception:
+                logger.debug("Passport parse stage callback failed for ai_request", exc_info=True)
 
         # AIConnectionError propagates here — caught by chat_completion's retry/failover,
         # or ultimately by parse_passport_image / _parse_with_vision
@@ -503,9 +538,17 @@ class AIPassportParser:
             messages=messages,
             json_schema=self.PASSPORT_SCHEMA,
             schema_name="passport_data",
+            temperature=0.0,
+            max_tokens=self.PASSPORT_EXTRACTION_MAX_TOKENS,
+            extra_body=self._passport_extraction_extra_body(),
         )
 
         logger.info("Successfully parsed passport data from vision API")
+        if stage_callback:
+            try:
+                stage_callback("ai_response")
+            except Exception:
+                logger.debug("Passport parse stage callback failed for ai_response", exc_info=True)
 
         try:
             return self._convert_to_result(parsed_data)
@@ -515,6 +558,16 @@ class AIPassportParser:
                 success=False,
                 error_message=f"Failed to convert parsed passport data: {e}",
             )
+
+    def _passport_extraction_extra_body(self) -> dict[str, Any]:
+        if self.ai_client.provider_key != "openrouter":
+            return {}
+        return {
+            "reasoning": {
+                "effort": "none",
+                "exclude": True,
+            }
+        }
 
     def _build_retry_prompt(
         self,

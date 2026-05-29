@@ -93,11 +93,7 @@ export class PassportOcrWorkflowService {
           return;
         }
 
-        if (typeof jobStatus.progress === 'number') {
-          this.ocrMessage.set(`Processing... ${jobStatus.progress}%`);
-        } else {
-          this.ocrMessage.set('Processing...');
-        }
+        this.ocrMessage.set(this.formatProgressMessage(jobStatus));
         this.ocrMessageTone.set('info');
       },
       error: (error: unknown) => {
@@ -192,6 +188,42 @@ export class PassportOcrWorkflowService {
     this.passportMetadata.set(mrz as unknown as Record<string, unknown>);
     this.patchFormFromMrz(mrz);
     this.passportPasteStatus.set(null);
+  }
+
+  private formatProgressMessage(jobStatus: OcrStatusResponse): string {
+    const progress = typeof jobStatus.progress === 'number' ? jobStatus.progress : null;
+    const mode = jobStatus.extractionMode ?? (this.ocrUseAi() ? 'ai' : 'ocr');
+    const stage = this.getProgressStage(mode, progress);
+    return progress === null ? `${stage}...` : `${stage}... ${progress}%`;
+  }
+
+  private getProgressStage(mode: 'ai' | 'ocr', progress: number | null): string {
+    const value = progress ?? 0;
+    if (value <= 5) {
+      return 'Starting passport import';
+    }
+    if (value < 25) {
+      return 'Preparing passport file';
+    }
+    if (mode === 'ai') {
+      if (value < 40) {
+        return 'Preparing AI extraction';
+      }
+      if (value < 75) {
+        return 'Reading passport with AI';
+      }
+      if (value < 92) {
+        return 'Preparing preview';
+      }
+      return 'Finalizing passport data';
+    }
+    if (value < 65) {
+      return 'Scanning passport MRZ';
+    }
+    if (value < 92) {
+      return 'Preparing preview';
+    }
+    return 'Finalizing passport data';
   }
 
   private patchFormFromMrz(mrz: NonNullable<OcrStatusResponse['mrzData']>): void {

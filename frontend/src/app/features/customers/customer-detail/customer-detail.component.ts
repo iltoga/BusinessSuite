@@ -255,6 +255,9 @@ export class CustomerDetailComponent extends BaseDetailComponent<Customer> {
     this.router.navigate(['/customers', customer.id, 'edit'], {
       state: {
         from: 'customers',
+        returnToDetail: true,
+        returnUrl: this.returnUrl() ?? undefined,
+        returnState: this.returnState() ?? undefined,
         focusId: customer.id,
         searchQuery: this.originSearchQuery(),
         page: this.originPage() ?? undefined,

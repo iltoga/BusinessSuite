@@ -117,7 +117,13 @@ describe('PassportOcrWorkflowService OCR flow', () => {
     service.ocrService.watchPassportOcrJob.mockReturnValue(stream$);
 
     service['subscribeToOcrStream']('job-1');
-    stream$.next({ status: 'processing', progress: 55, jobId: 'job-1' } as OcrStatusResponse);
+    stream$.next({
+      status: 'processing',
+      progress: 55,
+      jobId: 'job-1',
+      extractionMode: 'ai',
+    } as OcrStatusResponse);
+    expect(service.ocrMessage()).toBe('Reading passport with AI... 55%');
     stream$.next({
       status: 'completed',
       progress: 100,
@@ -219,6 +225,25 @@ describe('CustomerFormComponent navigation after save', () => {
     component['goBack']();
 
     expect(component.router.navigate).toHaveBeenCalledWith(['/customers', 55], {
+      state: {
+        searchQuery: null,
+        page: null,
+        returnUrl: '/applications/7',
+      },
+    });
+  });
+
+  it('redirects updated customers to detail when returnToDetail is set explicitly', () => {
+    const component = createNavigationHarness();
+    component['getSourceState'] = vi.fn().mockReturnValue({
+      from: 'customers',
+      returnToDetail: true,
+      returnUrl: '/applications/7',
+    });
+
+    component['navigateToEdit'](42);
+
+    expect(component.router.navigate).toHaveBeenCalledWith(['/customers', 42], {
       state: {
         searchQuery: null,
         page: null,

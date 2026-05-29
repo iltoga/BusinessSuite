@@ -70,11 +70,32 @@ def run_ocr_job(job_id: str, task=None) -> None:
         logger.info(f"Processing file: {job.file_path}")
 
         try:
+            def update_stage(stage: str) -> None:
+                stage_progress = {
+                    "file_loaded": 15,
+                    "mrz_start": 25,
+                    "mrz_fallback_start": 35,
+                    "mrz_done": 65,
+                    "ai_start": 30,
+                    "ai_prepare": 40,
+                    "ai_request": 55,
+                    "ai_retry": 60,
+                    "ai_response": 75,
+                    "preview_start": 85,
+                    "preview_done": 92,
+                }.get(stage)
+                if stage_progress is None:
+                    return
+                if stage_progress <= int(job.progress or 0):
+                    return
+                persist_progress(job, progress=stage_progress, force=True)
+
             file_name = os.path.basename(job.file_path)
             file_type = mimetypes.guess_type(file_name)[0]
 
             with default_storage.open(job.file_path, "rb") as handle:
                 file_bytes = handle.read()
+            update_stage("file_loaded")
 
             uploaded_file = SimpleUploadedFile(
                 name=file_name,
@@ -84,8 +105,6 @@ def run_ocr_job(job_id: str, task=None) -> None:
 
             if not file_type:
                 file_type = uploaded_file.content_type
-
-            persist_progress(job, progress=35, force=True)
 
             use_ai_value = job.request_params.get("use_ai")
             use_ai = (
@@ -97,13 +116,20 @@ def run_ocr_job(job_id: str, task=None) -> None:
             logger.info(f"Extracting data (use_ai={use_ai})")
 
             if use_ai:
-                mrz_data = extract_passport_with_ai(uploaded_file, use_ai=True)
+                mrz_data = extract_passport_with_ai(
+                    uploaded_file,
+                    use_ai=True,
+                    ai_first=True,
+                    stage_callback=update_stage,
+                )
             else:
+                update_stage("mrz_start")
                 mrz_data = extract_mrz_data(uploaded_file)
                 if isinstance(mrz_data, dict):
                     mrz_data.setdefault("extraction_method", "mrz_only")
+                update_stage("mrz_done")
 
-            persist_progress(job, progress=75, force=True)
+            persist_progress(job, progress=max(80, int(job.progress or 0)), force=True)
 
             img_preview = bool(job.request_params.get("img_preview"))
             resize = bool(job.request_params.get("resize"))
@@ -114,6 +140,7 @@ def run_ocr_job(job_id: str, task=None) -> None:
             preview_storage_path = None
             if img_preview or resize:
                 logger.info("Generating image preview/resized version")
+                update_stage("preview_start")
                 with default_storage.open(job.file_path, "rb") as handle:
                     img, _ = convert_and_resize_image(
                         handle,
@@ -131,6 +158,7 @@ def run_ocr_job(job_id: str, task=None) -> None:
                             extension="png",
                             overwrite=True,
                         )
+                update_stage("preview_done")
 
             response_data = {"mrz_data": mrz_data, "extraction_mode": extraction_mode}
             if preview_storage_path:

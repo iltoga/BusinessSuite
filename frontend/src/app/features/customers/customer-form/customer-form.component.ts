@@ -587,11 +587,15 @@ export class CustomerFormComponent
       return true;
     }
 
+    if (state['returnToDetail'] === true) {
+      return false;
+    }
+
     if (this.previousUrl !== null) {
       return this.isCustomersListUrl(this.previousUrl);
     }
 
-    return state['from'] === 'customers' && !state['returnUrl'] && !state['customerId'];
+    return false;
   }
 
   private isCustomersListUrl(url: string): boolean {

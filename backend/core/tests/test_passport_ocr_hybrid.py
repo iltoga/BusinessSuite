@@ -178,6 +178,77 @@ class ExtractPassportWithAITestCase(TestCase):
         self.assertEqual(result["passport_issue_date"], "2020-01-10")
         self.assertEqual(result["extraction_method"], "hybrid_mrz_ai")
 
+    @override_settings(
+        OPENROUTER_API_KEY="test-key",
+        LLM_PROVIDER="openrouter",
+    )
+    @patch("core.utils.passport_ocr.extract_mrz_data")
+    @patch("core.utils.passport_ocr._extract_with_ai")
+    def test_ai_first_skips_mrz_when_ai_succeeds(self, mock_ai_extract, mock_mrz_extract):
+        mock_ai_extract.return_value = {
+            "ai_first_name": "Mario",
+            "ai_last_name": "Rossi",
+            "ai_passport_number": "YA1234567",
+            "ai_passport_issue_date": "2020-01-10",
+            "ai_passport_expiration_date": "2030-01-09",
+            "ai_confidence_score": 0.9,
+        }
+
+        mock_file = MagicMock()
+        mock_file.name = "test.jpeg"
+
+        result = extract_passport_with_ai(mock_file, use_ai=True, ai_first=True)
+
+        self.assertEqual(result["names"], "Mario")
+        self.assertEqual(result["surname"], "Rossi")
+        self.assertEqual(result["number"], "YA1234567")
+        self.assertEqual(result["extraction_method"], "ai_only")
+        mock_mrz_extract.assert_not_called()
+
+    @override_settings(
+        OPENROUTER_API_KEY="test-key",
+        LLM_PROVIDER="openrouter",
+    )
+    @patch("core.utils.passport_ocr.extract_mrz_data")
+    @patch("core.utils.passport_ocr._extract_with_ai")
+    def test_ai_first_falls_back_to_mrz_for_provider_failure(self, mock_ai_extract, mock_mrz_extract):
+        mock_ai_extract.return_value = (None, "AI provider error")
+        mock_mrz_extract.return_value = {
+            "names": "Mario",
+            "surname": "Rossi",
+            "number": "YA1234567",
+        }
+
+        mock_file = MagicMock()
+        mock_file.name = "test.jpeg"
+
+        result = extract_passport_with_ai(mock_file, use_ai=True, ai_first=True)
+
+        self.assertEqual(result["names"], "Mario")
+        self.assertEqual(result["ai_error"], "AI provider error")
+        mock_mrz_extract.assert_called_once()
+
+    @override_settings(
+        OPENROUTER_API_KEY="test-key",
+        LLM_PROVIDER="openrouter",
+    )
+    @patch("core.utils.passport_ocr.extract_mrz_data")
+    @patch("core.utils.passport_ocr._extract_with_ai")
+    def test_ai_first_does_not_run_mrz_after_semantic_ai_failure(self, mock_ai_extract, mock_mrz_extract):
+        mock_ai_extract.return_value = (
+            None,
+            "Passport number validation failed after 2 retries. Last extracted value 'None' is invalid.",
+        )
+
+        mock_file = MagicMock()
+        mock_file.name = "test.jpeg"
+
+        with self.assertRaises(Exception) as raised:
+            extract_passport_with_ai(mock_file, use_ai=True, ai_first=True)
+
+        self.assertIn("Passport number validation failed", str(raised.exception))
+        mock_mrz_extract.assert_not_called()
+
     @patch("core.utils.passport_ocr.extract_mrz_data")
     def test_extract_with_ai_disabled(self, mock_mrz_extract):
         """Test extraction with AI disabled returns only MRZ data."""

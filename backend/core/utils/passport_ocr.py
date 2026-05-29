@@ -681,30 +681,67 @@ def _assess_image_quality(image_path: str):
         return None
 
 
-def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
+def extract_passport_with_ai(file, use_ai: bool = True, *, ai_first: bool = False, stage_callback=None) -> dict:
     """
     Extract passport data using hybrid MRZ + AI vision approach.
 
-    This function:
-    1. Runs MRZ extraction using PassportEye/Tesseract (current logic)
-    2. If use_ai is True, runs AI vision extraction to get additional fields
-    3. Merges the results, with AI providing additional data and comparison logic
+    In legacy hybrid mode this function runs MRZ first, then AI vision.
+    In ai_first mode it runs AI first and skips MRZ when AI returns the
+    critical passport fields. That is the preferred customer-form path because
+    the visual-zone AI result is what the form ultimately uses.
 
     Args:
         file: Uploaded file (InMemoryUploadedFile, TemporaryUploadedFile, or file-like object)
         use_ai: Whether to use AI extraction (default: True)
+        ai_first: Prefer AI extraction before deterministic MRZ fallback.
 
     Returns:
         dict: Combined passport data with fields from both MRZ and AI extraction.
               If AI extraction fails, includes 'ai_error' field with error message.
     """
+    if use_ai and ai_first:
+        ai_data = None
+        ai_error = None
+        try:
+            _reset_file_position(file)
+            _notify_passport_stage(stage_callback, "ai_start")
+            ai_result = _extract_with_ai(file, stage_callback=stage_callback)
+            if isinstance(ai_result, tuple):
+                ai_data, ai_error = ai_result
+            else:
+                ai_data, ai_error = ai_result, None
+        except Exception as e:
+            logger.warning(f"AI extraction failed before MRZ fallback: {e}")
+            ai_error = str(e)
+
+        if ai_data:
+            logger.info("AI extraction succeeded; skipping MRZ fallback for faster customer-form import")
+            merged_data = _merge_passport_data({}, ai_data, logger)
+            merged_data["extraction_method"] = "ai_only"
+            return merged_data
+
+        if ai_error and not _should_try_mrz_after_ai_failure(ai_error):
+            raise Exception(f"Failed to extract passport data. AI error: {ai_error}")
+
+        logger.info("AI extraction failed; falling back to MRZ extraction")
+        try:
+            _reset_file_position(file)
+            _notify_passport_stage(stage_callback, "mrz_fallback_start")
+            mrz_data = extract_mrz_data(file, check_expiration=False)
+            mrz_data["ai_error"] = ai_error
+            return mrz_data
+        except Exception as e:
+            raise Exception(f"Failed to extract passport data. MRZ error: {e}. AI error: {ai_error}")
+
     # Step 1: Run MRZ extraction first (this validates the document)
     # We call the original extract_mrz_data but with check_expiration=False
     # to get the MRZ data regardless of expiration status
     mrz_data = None
     mrz_extraction_error = None
     try:
+        _notify_passport_stage(stage_callback, "mrz_start")
         mrz_data = extract_mrz_data(file, check_expiration=False)
+        _notify_passport_stage(stage_callback, "mrz_done")
         try:
             logger.info("MRZ data extracted: %s", json.dumps(mrz_data, ensure_ascii=False, default=str))
         except Exception:
@@ -725,7 +762,9 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
     ai_data = None
     ai_error = None
     try:
-        ai_result = _extract_with_ai(file)
+        _reset_file_position(file)
+        _notify_passport_stage(stage_callback, "ai_start")
+        ai_result = _extract_with_ai(file, stage_callback=stage_callback)
         if isinstance(ai_result, tuple):
             ai_data, ai_error = ai_result
         else:
@@ -767,7 +806,41 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
     return merged_data
 
 
-def _extract_with_ai(file) -> tuple[Optional[dict], Optional[str]]:
+def _reset_file_position(file) -> None:
+    if hasattr(file, "seek"):
+        try:
+            file.seek(0)
+        except Exception:
+            logger.debug("Failed to reset uploaded passport file position", exc_info=True)
+
+
+def _notify_passport_stage(stage_callback, stage: str) -> None:
+    if not stage_callback:
+        return
+    try:
+        stage_callback(stage)
+    except Exception:
+        logger.debug("Passport OCR stage callback failed for %s", stage, exc_info=True)
+
+
+def _should_try_mrz_after_ai_failure(ai_error: str | None) -> bool:
+    text = str(ai_error or "").strip().lower()
+    if not text:
+        return True
+    provider_terms = (
+        "provider",
+        "timeout",
+        "slow response",
+        "connection",
+        "rate limit",
+        "api error",
+        "authentication",
+        "not configured",
+    )
+    return any(term in text for term in provider_terms)
+
+
+def _extract_with_ai(file, stage_callback=None) -> tuple[Optional[dict], Optional[str]]:
     """
     Extract passport data using AI vision.
 
@@ -790,7 +863,11 @@ def _extract_with_ai(file) -> tuple[Optional[dict], Optional[str]]:
         if hasattr(file, "seek"):
             file.seek(0)
 
-        result = parser.parse_passport_image(file, filename=getattr(file, "name", "passport"))
+        result = parser.parse_passport_image(
+            file,
+            filename=getattr(file, "name", "passport"),
+            stage_callback=stage_callback,
+        )
 
         if not result.success:
             logger.warning(f"AI passport parsing failed: {result.error_message}")

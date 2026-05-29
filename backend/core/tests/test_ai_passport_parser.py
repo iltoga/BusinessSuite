@@ -79,7 +79,7 @@ class AIPassportParserTestCase(TestCase):
     @patch(OPENAI_PATCH_TARGET)
     def test_parse_passport_image_unsupported_file_type(self, mock_openai):
         """Test that unsupported file types return an error."""
-        parser = AIPassportParser()
+        parser = AIPassportParser(use_openrouter=True)
 
         # Create a mock file with unsupported extension
         mock_file = MagicMock()
@@ -266,10 +266,15 @@ class AIPassportParserFailoverTestCase(TestCase):
         chat_completion_json succeeds."""
         parser = AIPassportParser()
 
-        with patch.object(parser.ai_client, "chat_completion_json", return_value=dict(_VALID_PASSPORT_DICT)):
+        with patch.object(parser.ai_client, "chat_completion_json", return_value=dict(_VALID_PASSPORT_DICT)) as mock_json:
             result = parser._call_vision_api(self._FAKE_IMAGE, "passport.jpeg", "Extract passport data.")
 
         self.assertTrue(result.success)
         self.assertEqual(result.passport_data.passport_number, "YA1234567")
         self.assertEqual(result.passport_data.first_name, "Mario")
-
+        self.assertEqual(mock_json.call_args.kwargs["temperature"], 0.0)
+        self.assertEqual(mock_json.call_args.kwargs["max_tokens"], AIPassportParser.PASSPORT_EXTRACTION_MAX_TOKENS)
+        self.assertEqual(
+            mock_json.call_args.kwargs["extra_body"],
+            {"reasoning": {"effort": "none", "exclude": True}},
+        )

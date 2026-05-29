@@ -103,4 +103,38 @@ describe('CustomerDetailComponent invoice availability', () => {
     expect(component.applicationsHistory()).toEqual([{ id: 10 }]);
     expect(toastError).not.toHaveBeenCalled();
   });
+
+  it('passes return-to-detail state when opening edit', () => {
+    const component = Object.create(
+      CustomerDetailComponent.prototype,
+    ) as CustomerDetailComponent & {
+      item: ReturnType<typeof signal<any>>;
+      originSearchQuery: ReturnType<typeof signal<string | null>>;
+      originPage: ReturnType<typeof signal<number | null>>;
+      returnUrl: ReturnType<typeof signal<string | null>>;
+      returnState: ReturnType<typeof signal<Record<string, unknown> | null>>;
+      router: { navigate: ReturnType<typeof vi.fn> };
+    };
+
+    component.item = signal({ id: 42 });
+    component.originSearchQuery = signal('frank');
+    component.originPage = signal(3);
+    component.returnUrl = signal('/applications/7');
+    component.returnState = signal({ focusId: 42 });
+    component.router = { navigate: vi.fn() };
+
+    component.onEdit();
+
+    expect(component.router.navigate).toHaveBeenCalledWith(['/customers', 42, 'edit'], {
+      state: {
+        from: 'customers',
+        returnToDetail: true,
+        returnUrl: '/applications/7',
+        returnState: { focusId: 42 },
+        focusId: 42,
+        searchQuery: 'frank',
+        page: 3,
+      },
+    });
+  });
 });
