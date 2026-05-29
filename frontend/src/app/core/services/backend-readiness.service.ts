@@ -17,7 +17,7 @@ export class BackendReadinessService {
 
   async isBackendReady(): Promise<boolean> {
     const response = await firstValueFrom(
-      this.http.get<FrontendHealthResponse>('/healthz').pipe(
+      this.http.get<FrontendHealthResponse>('/backend-healthz').pipe(
         timeout(BACKEND_READINESS_TIMEOUT_MS),
         catchError(() => of<FrontendHealthResponse | null>(null)),
       ),

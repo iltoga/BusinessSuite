@@ -97,7 +97,16 @@ const ssrAllowedHosts = buildSsrAllowedHosts(process.env);
 if (!process.env['NG_ALLOWED_HOSTS'] && ssrAllowedHosts.length > 0) {
   process.env['NG_ALLOWED_HOSTS'] = ssrAllowedHosts.join(',');
 }
-const angularApp = new AngularNodeAppEngine({ allowedHosts: ssrAllowedHosts });
+const trustedProxyHeaders = [
+  'x-forwarded-host',
+  'x-forwarded-proto',
+  'x-forwarded-for',
+  'x-forwarded-port',
+] as const;
+const angularApp = new AngularNodeAppEngine({
+  allowedHosts: ssrAllowedHosts,
+  trustProxyHeaders: trustedProxyHeaders,
+});
 const traceContextSymbol = Symbol('traceContext');
 const clientLogPath = '/_observability/client-logs';
 const clientLogWindowMs = Number(process.env['CLIENT_LOG_RATE_LIMIT_WINDOW_MS'] || '60000');
@@ -474,15 +483,13 @@ app.post(clientLogPath, express.json({ limit: '16kb' }), (req, res) => {
 });
 
 /**
- * Docker healthcheck endpoint.
- * Returns 200 if Express is running. Probes backend /api/health/ with a 3s
- * timeout — if unreachable, still returns 200 with status "degraded" (SSR can
- * still serve pages). A full failure (Express itself broken) is caught by
- * Docker not getting a response at all.
+ * Browser-facing backend readiness endpoint.
+ * Docker/load-balancer health checks should use /healthz below, which reports
+ * only whether the SSR process is alive.
  */
 const HEALTHZ_BACKEND_TIMEOUT_MS = 3000;
 
-app.get('/healthz', (_req, res) => {
+app.get('/backend-healthz', (_req, res) => {
   const backendProbeUrl = `${backendUrl}/api/health/`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), HEALTHZ_BACKEND_TIMEOUT_MS);
@@ -493,14 +500,14 @@ app.get('/healthz', (_req, res) => {
       if (response.ok) {
         res.json({ status: 'ok', backend: 'reachable' });
       } else {
-        console.warn(`[HEALTHZ] Backend returned ${response.status} at ${backendProbeUrl}`);
+        console.info(`[BACKEND_HEALTHZ] Backend returned ${response.status} at ${backendProbeUrl}`);
         res.json({ status: 'degraded', backend: 'unhealthy', backendStatus: response.status });
       }
     })
     .catch((error) => {
       clearTimeout(timeout);
       const errorLabel = error instanceof Error ? error.message : String(error);
-      console.warn(`[HEALTHZ] Backend probe failed: ${errorLabel}`);
+      console.info(`[BACKEND_HEALTHZ] Backend probe failed: ${errorLabel}`);
       res.json({ status: 'degraded', backend: 'unreachable' });
     });
 });
