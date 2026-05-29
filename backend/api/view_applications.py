@@ -89,6 +89,7 @@ def _build_ocr_status_payload(job: OCRJob, request) -> dict[str, Any]:
         "jobId": str(job.id),
         "status": job.status,
         "progress": job.progress,
+        "extractionMode": _ocr_extraction_mode(job),
     }
 
     if job.status == OCRJob.STATUS_COMPLETED:
@@ -136,10 +137,27 @@ def _build_ocr_stream_payload(stream_payload: dict[str, Any]) -> dict[str, Any]:
         "status": stream_payload["status"],
         "progress": stream_payload["progress"],
     }
+    extraction_mode = stream_payload.get("extractionMode") or stream_payload.get("extraction_mode")
+    if extraction_mode:
+        response_data["extractionMode"] = extraction_mode
     error_message = stream_payload.get("errorMessage")
     if error_message:
         response_data["errorMessage"] = error_message
     return response_data
+
+
+def _ocr_extraction_mode(job: OCRJob) -> str:
+    request_params = job.request_params if isinstance(job.request_params, dict) else {}
+    return "ai" if parse_bool(request_params.get("use_ai"), default=False) else "ocr"
+
+
+def _build_passport_ocr_links(request, job_id) -> dict[str, str]:
+    return build_async_job_links(
+        request,
+        job_id,
+        status_route="api-ocr-status",
+        stream_route="api-async-job-status-sse",
+    )
 
 
 def _build_document_ocr_stream_payload(stream_payload: dict[str, Any]) -> dict[str, Any]:
@@ -904,12 +922,12 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     """
     API endpoint for passport OCR extraction.
 
-    Supports hybrid extraction mode with AI vision for enhanced data extraction.
+    Supports deterministic OCR-only extraction and hybrid OCR + AI vision.
 
     POST Parameters:
         - file: The passport image or PDF file
         - doc_type: Document type (e.g., 'passport')
-        - use_ai: (optional) Set to 'true' to enable AI-enhanced extraction (default: false)
+        - use_ai: Set to 'true' for OCR + AI, or 'false' for OCR-only extraction
         - save_session: (optional) Save file and data to session
         - img_preview: (optional) Return base64 preview image
         - resize: (optional) Resize the image
@@ -917,6 +935,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
     Returns:
         - mrz_data: Extracted passport data (enhanced with AI data if use_ai=true)
+        - extraction_mode: Selected extraction mode ('ocr' or 'ai')
         - preview_url: Signed preview URL when available (if img_preview=true)
     """
 
@@ -956,10 +975,11 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         doc_type = doc_type_raw.lower()
 
         # Check if AI extraction is requested
-        use_ai = str(request.data.get("use_ai", "false")).lower() == "true"
-        save_session = str(request.data.get("save_session", "false")).lower() == "true"
-        img_preview = str(request.data.get("img_preview", "false")).lower() == "true"
-        resize = str(request.data.get("resize", "false")).lower() == "true"
+        use_ai = parse_bool(request.data.get("use_ai"), default=False)
+        extraction_mode = "ai" if use_ai else "ocr"
+        save_session = parse_bool(request.data.get("save_session"), default=False)
+        img_preview = parse_bool(request.data.get("img_preview"), default=False)
+        resize = parse_bool(request.data.get("resize"), default=False)
         width = request.data.get("width", None)
 
         idempotency_cache_key, cached_job = resolve_request_idempotent_job(
@@ -977,12 +997,8 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     progress=cached_job.progress,
                     queued=False,
                     deduplicated=True,
-                    links=build_async_job_links(
-                        request,
-                        cached_job.id,
-                        status_route="api-ocr-status",
-                        stream_route="api-ocr-stream",
-                    ),
+                    links=_build_passport_ocr_links(request, cached_job.id),
+                    extra={"extractionMode": _ocr_extraction_mode(cached_job)},
                 ),
                 status=status.HTTP_202_ACCEPTED,
             )
@@ -995,12 +1011,8 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     progress=existing_job.progress,
                     queued=False,
                     deduplicated=True,
-                    links=build_async_job_links(
-                        request,
-                        existing_job.id,
-                        status_route="api-ocr-status",
-                        stream_route="api-ocr-stream",
-                    ),
+                    links=_build_passport_ocr_links(request, existing_job.id),
+                    extra={"extractionMode": _ocr_extraction_mode(existing_job)},
                 ),
                 status=status.HTTP_202_ACCEPTED,
             )
@@ -1034,6 +1046,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 request_params={
                     "doc_type": doc_type,
                     "use_ai": use_ai,
+                    "extraction_mode": extraction_mode,
                     "img_preview": img_preview,
                     "resize": resize,
                     "width": width,
@@ -1053,12 +1066,8 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     progress=job.progress,
                     queued=True,
                     deduplicated=False,
-                    links=build_async_job_links(
-                        request,
-                        job.id,
-                        status_route="api-ocr-status",
-                        stream_route="api-ocr-stream",
-                    ),
+                    links=_build_passport_ocr_links(request, job.id),
+                    extra={"extractionMode": extraction_mode},
                 ),
                 status=status.HTTP_202_ACCEPTED,
             )

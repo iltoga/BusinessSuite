@@ -54,8 +54,41 @@ describe('PassportOcrWorkflowService OCR flow', () => {
 
     service.startImport(file);
 
+    expect(service.ocrService.startPassportOcr).toHaveBeenCalledWith(
+      file,
+      expect.objectContaining({ useAi: true }),
+    );
     expect(subscribeToOcrStream).toHaveBeenCalledWith('job-1', '/api/ocr/stream/job-1/');
     expect(service.handleOcrResult).not.toHaveBeenCalled();
+  });
+
+  it('starts passport OCR without AI when OCR-only mode is selected', () => {
+    const service = createHarness();
+    const subscribeToOcrStream = vi
+      .spyOn(service as any, 'subscribeToOcrStream')
+      .mockImplementation(() => undefined);
+    const file = new File(['passport'], 'passport.png', { type: 'image/png' });
+
+    service.ocrUseAi.set(false);
+    service.ocrService.startPassportOcr.mockReturnValue(
+      of({
+        jobId: 'job-ocr-only',
+        status: 'queued',
+        streamUrl: '/api/async-jobs/status/job-ocr-only/',
+      }),
+    );
+
+    service.startImport(file);
+
+    expect(service.ocrService.startPassportOcr).toHaveBeenCalledWith(
+      file,
+      expect.objectContaining({ useAi: false }),
+    );
+    expect(service.ocrMessage()).toBe('Processing with OCR only...');
+    expect(subscribeToOcrStream).toHaveBeenCalledWith(
+      'job-ocr-only',
+      '/api/async-jobs/status/job-ocr-only/',
+    );
   });
 
   it('handles job failure appropriately', () => {

@@ -87,13 +87,21 @@ def run_ocr_job(job_id: str, task=None) -> None:
 
             persist_progress(job, progress=35, force=True)
 
-            use_ai = bool(job.request_params.get("use_ai"))
+            use_ai_value = job.request_params.get("use_ai")
+            use_ai = (
+                use_ai_value
+                if isinstance(use_ai_value, bool)
+                else str(use_ai_value or "").strip().lower() in {"true", "1", "yes", "y", "on"}
+            )
+            extraction_mode = "ai" if use_ai else "ocr"
             logger.info(f"Extracting data (use_ai={use_ai})")
 
             if use_ai:
                 mrz_data = extract_passport_with_ai(uploaded_file, use_ai=True)
             else:
                 mrz_data = extract_mrz_data(uploaded_file)
+                if isinstance(mrz_data, dict):
+                    mrz_data.setdefault("extraction_method", "mrz_only")
 
             persist_progress(job, progress=75, force=True)
 
@@ -124,7 +132,7 @@ def run_ocr_job(job_id: str, task=None) -> None:
                             overwrite=True,
                         )
 
-            response_data = {"mrz_data": mrz_data}
+            response_data = {"mrz_data": mrz_data, "extraction_mode": extraction_mode}
             if preview_storage_path:
                 response_data["preview_storage_path"] = preview_storage_path
                 response_data["preview_mime_type"] = "image/png"

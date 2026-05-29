@@ -2,7 +2,7 @@ import { HttpClient, HttpResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable, takeWhile } from 'rxjs';
 
-import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
+import { isRecord, normalizeJobEnvelope } from '@/core/utils/async-job-contract';
 import {
   createAsyncRequestMetadata,
   requestMetadataContext,
@@ -16,9 +16,12 @@ export interface OcrQueuedResponse {
   progress?: number;
   statusUrl?: string;
   streamUrl?: string;
+  extractionMode?: PassportOcrExtractionMode;
   queued?: boolean;
   deduplicated?: boolean;
 }
+
+export type PassportOcrExtractionMode = 'ai' | 'ocr';
 
 export interface OcrStatusResponse {
   jobId: string;
@@ -29,6 +32,7 @@ export interface OcrStatusResponse {
   resultText?: string;
   structuredData?: Record<string, string | null>;
   errorMessage?: string;
+  extractionMode?: PassportOcrExtractionMode;
   mrzData?: {
     names?: string;
     surname?: string;
@@ -88,9 +92,7 @@ export class OcrService {
     if (options.saveSession) {
       formData.append('save_session', 'true');
     }
-    if (options.useAi) {
-      formData.append('use_ai', 'true');
-    }
+    formData.append('use_ai', options.useAi ? 'true' : 'false');
 
     const metadata = options.requestMetadata ?? createAsyncRequestMetadata();
     return this.http
@@ -106,11 +108,13 @@ export class OcrService {
     );
   }
 
-  watchPassportOcrJob(jobId: string, streamUrl?: string | null): Observable<OcrStatusResponse> {
-    const url = streamUrl?.trim() || `/api/ocr/stream/${jobId}/`;
-    const normalizedUrl = url.replace(/^https?:\/\/[^/]+/, '');
+  watchPassportOcrJob(jobId: string, _streamUrl?: string | null): Observable<OcrStatusResponse> {
+    // The dedicated DRF /api/ocr/stream endpoint rejects text/event-stream
+    // Accept negotiation in the local app. Use the generic SSE endpoint, which
+    // the backend maps to OCRJob records and returns the same Redis stream.
+    const normalizedUrl = `/api/async-jobs/status/${jobId}/`;
     return this.sseService.connect<unknown>(normalizedUrl).pipe(
-      map((payload) => normalizeJobEnvelope(payload as OcrStatusResponse)),
+      map((payload) => this.normalizePassportOcrStreamPayload(payload)),
       takeWhile((job) => !this.isTerminalOcrStatus(job.status), true),
     );
   }
@@ -165,5 +169,34 @@ export class OcrService {
   private isTerminalOcrStatus(status: string | null | undefined): boolean {
     const normalized = String(status ?? '').trim().toLowerCase();
     return normalized === 'completed' || normalized === 'failed';
+  }
+
+  private normalizePassportOcrStreamPayload(payload: unknown): OcrStatusResponse {
+    const job = normalizeJobEnvelope(payload as OcrStatusResponse & { result?: unknown });
+    const result = isRecord(job.result) ? job.result : {};
+
+    return {
+      ...result,
+      jobId: job.jobId,
+      status: job.status,
+      progress: job.progress,
+      extractionMode: this.normalizePassportOcrExtractionMode(
+        job.extractionMode ?? result['extractionMode'],
+      ),
+      errorMessage:
+        typeof job.errorMessage === 'string'
+          ? job.errorMessage
+          : typeof result['errorMessage'] === 'string'
+            ? result['errorMessage']
+            : undefined,
+    } as OcrStatusResponse;
+  }
+
+  private normalizePassportOcrExtractionMode(value: unknown): PassportOcrExtractionMode | undefined {
+    const mode = String(value ?? '').trim().toLowerCase();
+    if (mode === 'ai' || mode === 'ocr') {
+      return mode;
+    }
+    return undefined;
   }
 }

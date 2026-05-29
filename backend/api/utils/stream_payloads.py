@@ -27,6 +27,14 @@ def _coerce_int(value: Any) -> int | None:
         return None
 
 
+def _coerce_bool(value: Any, *, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"true", "1", "yes", "y", "on"}
+
+
 def _coerce_datetime(value: Any) -> str | None:
     if value is None or value == "":
         return None
@@ -164,10 +172,13 @@ def normalize_async_job_payload(payload: dict[str, Any] | None) -> dict[str, Any
 
 def serialize_ocr_job_payload(job) -> dict[str, Any]:
     result = normalize_ocr_result_payload(job.result)
+    request_params = job.request_params if isinstance(job.request_params, dict) else {}
+    extraction_mode = "ai" if _coerce_bool(first_present(request_params, "useAi", "use_ai")) else "ocr"
     return {
         "jobId": str(job.id),
         "status": job.status,
         "progress": int(job.progress or 0),
+        "extractionMode": extraction_mode,
         "result": result,
         "errorMessage": job.error_message,
     }
@@ -185,6 +196,7 @@ def normalize_ocr_job_payload(payload: dict[str, Any] | None) -> dict[str, Any] 
         "jobId": str(job_id),
         "status": str(status),
         "progress": progress,
+        "extractionMode": first_present(payload, "extractionMode", "extraction_mode"),
         "result": normalize_ocr_result_payload(first_present(payload, "result")),
         "errorMessage": first_present(payload, "errorMessage", "error_message", "error", default=""),
     }

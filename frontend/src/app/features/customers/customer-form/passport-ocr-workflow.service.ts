@@ -45,7 +45,7 @@ export class PassportOcrWorkflowService {
   startImport(file: File): void {
     this.clearAsyncTracking();
     this.ocrProcessing.set(true);
-    this.ocrMessage.set(this.ocrUseAi() ? 'Processing with AI...' : 'Processing...');
+    this.ocrMessage.set(this.ocrUseAi() ? 'Processing with OCR + AI...' : 'Processing with OCR only...');
     this.ocrMessageTone.set('info');
 
     this.ocrService
@@ -168,10 +168,13 @@ export class PassportOcrWorkflowService {
         `Data imported via AI (Passport OCR failed, confidence ${(confidence * 100).toFixed(0)}%)`,
       );
       this.ocrMessageTone.set('success');
-    } else if (extractionMethod === 'hybridMrzAi' && confidence !== null) {
+    } else if (extractionMethod === 'hybrid_mrz_ai' || extractionMethod === 'hybridMrzAi') {
       this.ocrMessage.set(
-        `Data imported via OCR + AI (confidence ${(confidence * 100).toFixed(0)}%)`,
+        `Data imported via OCR + AI${confidence !== null ? ` (confidence ${(confidence * 100).toFixed(0)}%)` : ''}`,
       );
+      this.ocrMessageTone.set('success');
+    } else if (extractionMethod === 'mrz_only') {
+      this.ocrMessage.set('Data imported via OCR only');
       this.ocrMessageTone.set('success');
     } else {
       this.ocrMessage.set('Data successfully imported via OCR');

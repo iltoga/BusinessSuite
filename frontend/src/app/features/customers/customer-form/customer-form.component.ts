@@ -499,11 +499,13 @@ export class CustomerFormComponent
   }
 
   /**
-   * Toggle AI usage for OCR
+   * Select passport extraction mode
    */
-  onToggleUseAi(event: Event): void {
-    const target = event.target as HTMLInputElement | null;
-    this.ocrWorkflow.toggleUseAi(Boolean(target?.checked));
+  onSelectOcrMode(useAi: boolean): void {
+    if (this.ocrProcessing()) {
+      return;
+    }
+    this.ocrWorkflow.toggleUseAi(useAi);
   }
 
   /**

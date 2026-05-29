@@ -443,7 +443,8 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         self.assertEqual(first.status_code, 202)
         first_job_id = first.data["jobId"]
         self.assertTrue(first.data["queued"])
-        self.assertTrue(first.data["streamUrl"].endswith(f"/api/ocr/stream/{first_job_id}/"))
+        self.assertEqual(first.data["extractionMode"], "ocr")
+        self.assertTrue(first.data["streamUrl"].endswith(f"/api/async-jobs/status/{first_job_id}/"))
         enqueue_mock.assert_called_once()
 
         passport_two = SimpleUploadedFile("passport.png", b"png-bytes-2", content_type="image/png")
@@ -452,9 +453,32 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         self.assertEqual(second.data["jobId"], first_job_id)
         self.assertFalse(second.data["queued"])
         self.assertTrue(second.data["deduplicated"])
-        self.assertTrue(second.data["streamUrl"].endswith(f"/api/ocr/stream/{first_job_id}/"))
+        self.assertEqual(second.data["extractionMode"], "ocr")
+        self.assertTrue(second.data["streamUrl"].endswith(f"/api/async-jobs/status/{first_job_id}/"))
         self.assertEqual(OCRJob.objects.filter(created_by=self.user).count(), 1)
         enqueue_mock.assert_called_once()
+        storage_save_mock.assert_called_once()
+        storage_url_mock.assert_called_once()
+
+    @patch("api.views.default_storage.url", return_value="/uploads/tmpfiles/passport.png")
+    @patch("api.views.default_storage.save", return_value="tmpfiles/passport.png")
+    @patch("api.views.run_ocr_job")
+    def test_passport_ocr_check_records_ai_mode(self, enqueue_mock, storage_save_mock, storage_url_mock):
+        passport = SimpleUploadedFile("passport.png", b"png-bytes", content_type="image/png")
+
+        response = self.client.post(
+            "/api/ocr/check/",
+            {"file": passport, "doc_type": "passport", "use_ai": "true"},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.data["extractionMode"], "ai")
+        self.assertTrue(response.data["streamUrl"].endswith(f"/api/async-jobs/status/{response.data['jobId']}/"))
+        job = OCRJob.objects.get(id=response.data["jobId"])
+        self.assertTrue(job.request_params["use_ai"])
+        self.assertEqual(job.request_params["extraction_mode"], "ai")
+        enqueue_mock.assert_called_once_with(str(job.id))
         storage_save_mock.assert_called_once()
         storage_url_mock.assert_called_once()
 

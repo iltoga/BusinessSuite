@@ -41,15 +41,38 @@
                   Upload a passport image or PDF to auto-fill the form fields.
                 </p>
               </div>
-              <label class="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  class="h-4 w-4"
-                  [checked]="ocrUseAi()"
-                  (change)="onToggleUseAi($event)"
-                  />
-                <span>Use AI-enhanced extraction</span>
-              </label>
+              <div
+                class="inline-flex rounded-md border bg-muted/40 p-1"
+                role="group"
+                aria-label="Passport extraction mode"
+                >
+                <button
+                  type="button"
+                  class="inline-flex h-8 items-center gap-1.5 rounded px-3 text-sm font-medium transition-colors"
+                  [class.bg-background]="!ocrUseAi()"
+                  [class.shadow-sm]="!ocrUseAi()"
+                  [class.text-muted-foreground]="ocrUseAi()"
+                  [disabled]="ocrProcessing()"
+                  [attr.aria-pressed]="!ocrUseAi()"
+                  (click)="onSelectOcrMode(false)"
+                  >
+                  <z-icon zType="camera" class="h-4 w-4" />
+                  OCR only
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex h-8 items-center gap-1.5 rounded px-3 text-sm font-medium transition-colors"
+                  [class.bg-background]="ocrUseAi()"
+                  [class.shadow-sm]="ocrUseAi()"
+                  [class.text-muted-foreground]="!ocrUseAi()"
+                  [disabled]="ocrProcessing()"
+                  [attr.aria-pressed]="ocrUseAi()"
+                  (click)="onSelectOcrMode(true)"
+                  >
+                  <z-icon zType="sparkles" class="h-4 w-4" />
+                  OCR + AI
+                </button>
+              </div>
             </div>
 
             <app-file-upload
@@ -86,10 +109,18 @@
                   [zDisabled]="ocrProcessing()"
                   (click)="onPassportImport()"
                   >
-                  {{ ocrProcessing() ? 'Processing...' : 'Import' }}
+                  {{
+                    ocrProcessing()
+                      ? 'Processing...'
+                      : ocrUseAi()
+                        ? 'Import with AI'
+                        : 'Import OCR only'
+                  }}
                 </button>
                 @if (ocrProcessing()) {
-                  <span class="text-sm text-muted-foreground">Please wait while OCR runs.</span>
+                  <span class="text-sm text-muted-foreground">
+                    {{ ocrUseAi() ? 'Please wait while OCR + AI runs.' : 'Please wait while OCR runs.' }}
+                  </span>
                 }
               </div>
 
