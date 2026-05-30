@@ -99,6 +99,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/invoices/bulk-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -211,6 +212,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/invoices/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -324,6 +326,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/{id}/delete-preview/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -428,6 +431,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint delete /api/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -510,6 +514,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/invoices/{id}/download-async/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -624,6 +629,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/download-async/file/{jobId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -724,6 +730,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/download-async/status/{jobId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -824,6 +831,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/download-async/stream/{jobId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -924,6 +932,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/{id}/download/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -1025,6 +1034,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/invoices/{id}/force-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -1143,6 +1153,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/from_application_prefill/{applicationId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -1247,6 +1258,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/get_billable_products/{customerId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -1399,6 +1411,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/get_customer_applications/{customerId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -1579,6 +1592,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -2261,6 +2275,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -2403,6 +2418,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/invoices/{id}/mark-as-paid/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -2526,6 +2542,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -2752,6 +2769,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -2850,6 +2868,7 @@ export class InvoicesService extends BaseService implements InvoicesServiceInter
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint put /api/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

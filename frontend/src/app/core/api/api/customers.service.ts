@@ -68,6 +68,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customers/{id}/applications-history/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -211,6 +212,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/customers/bulk-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -436,6 +438,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/customers/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -544,6 +547,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint delete /api/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -626,6 +630,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customers/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -759,6 +764,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -873,6 +879,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -973,6 +980,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customers/search/
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
@@ -1061,6 +1069,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/customers/{id}/toggle-active/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -1175,6 +1184,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customers/{id}/uninvoiced-applications/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -1318,6 +1328,7 @@ export class CustomersService extends BaseService implements CustomersServiceInt
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint put /api/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

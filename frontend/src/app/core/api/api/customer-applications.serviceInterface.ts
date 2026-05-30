@@ -107,7 +107,7 @@ export interface CustomerApplicationsServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/customer-applications/bulk-delete/
    * @param requestParameters
    */
@@ -151,7 +151,7 @@ export interface CustomerApplicationsServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customer-applications/
    * @param requestParameters
    */
@@ -162,7 +162,7 @@ export interface CustomerApplicationsServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/customer-applications/{id}/
    * @param requestParameters
    */
@@ -173,7 +173,7 @@ export interface CustomerApplicationsServiceInterface {
 
   /**
    *
-   * Re-open a completed application.
+   * Re-open a semantically completed application.
    * @endpoint post /api/customer-applications/{id}/reopen/
    * @param requestParameters
    */
@@ -184,7 +184,7 @@ export interface CustomerApplicationsServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customer-applications/{id}/
    * @param requestParameters
    */

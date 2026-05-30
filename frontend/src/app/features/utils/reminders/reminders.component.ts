@@ -1,15 +1,15 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
-  Component,
-  PLATFORM_ID,
-  TemplateRef,
-  computed,
-  inject,
-  signal,
-  viewChild,
-  type OnDestroy,
-  type OnInit,
+    ChangeDetectionStrategy,
+    Component,
+    PLATFORM_ID,
+    TemplateRef,
+    computed,
+    inject,
+    signal,
+    viewChild,
+    type OnDestroy,
+    type OnInit,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, ParamMap } from '@angular/router';
@@ -22,11 +22,11 @@ import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import {
-  ColumnConfig,
-  ColumnFilterChangeEvent,
-  DataTableAction,
-  DataTableComponent,
-  SortEvent,
+    ColumnConfig,
+    ColumnFilterChangeEvent,
+    DataTableAction,
+    DataTableComponent,
+    SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { ZardDialogService } from '@/shared/components/dialog';
@@ -35,8 +35,8 @@ import { PaginationControlsComponent } from '@/shared/components/pagination-cont
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import {
-  TypeaheadComboboxComponent,
-  TypeaheadOption,
+    TypeaheadComboboxComponent,
+    TypeaheadOption,
 } from '@/shared/components/typeahead-combobox';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { parseIsoDate } from '@/shared/utils/date-parsing';
@@ -44,13 +44,13 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 import { RemindersStreamEvent, RemindersStreamService } from './reminders-stream.service';
 import {
-  ReminderBulkWritePayload,
-  ReminderItem,
-  ReminderListResponse,
-  ReminderStatus,
-  ReminderUserOption,
-  ReminderWritePayload,
-  RemindersService,
+    ReminderBulkWritePayload,
+    ReminderItem,
+    ReminderListResponse,
+    ReminderStatus,
+    ReminderUserOption,
+    ReminderWritePayload,
+    RemindersService,
 } from './reminders.service';
 
 const DEFAULT_TIMEZONE = 'Asia/Makassar';

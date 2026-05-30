@@ -4914,6 +4914,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customer-applications/bulk-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -5351,6 +5352,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customer-applications/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -5488,6 +5490,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/v1/customer-applications/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -5614,7 +5617,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
-   * Re-open a completed application.
+   * Re-open a semantically completed application.
    * @endpoint post /api/v1/customer-applications/{id}/reopen/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -5738,6 +5741,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customer-applications/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -6324,6 +6328,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/{id}/applications-history/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -6467,6 +6472,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customers/bulk-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -6692,6 +6698,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customers/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -6800,6 +6807,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint delete /api/v1/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -6884,6 +6892,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7017,6 +7026,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/v1/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7131,6 +7141,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7231,6 +7242,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/search/
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
@@ -7319,6 +7331,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customers/{id}/toggle-active/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7433,6 +7446,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/{id}/uninvoiced-applications/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7576,6 +7590,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint put /api/v1/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -10729,6 +10744,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/bulk-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -10841,6 +10857,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -10954,6 +10971,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/{id}/delete-preview/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11058,6 +11076,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint delete /api/v1/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11142,6 +11161,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/{id}/download-async/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11256,6 +11276,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/download-async/file/{jobId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11356,6 +11377,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/download-async/status/{jobId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11456,6 +11478,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/download-async/stream/{jobId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11556,6 +11579,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/{id}/download/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11657,6 +11681,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/{id}/force-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11775,6 +11800,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/from_application_prefill/{applicationId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11879,6 +11905,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/get_billable_products/{customerId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -12031,6 +12058,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/get_customer_applications/{customerId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -12211,6 +12239,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -12893,6 +12922,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -13035,6 +13065,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/{id}/mark-as-paid/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -13158,6 +13189,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/v1/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -13384,6 +13416,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -13484,6 +13517,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint put /api/v1/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

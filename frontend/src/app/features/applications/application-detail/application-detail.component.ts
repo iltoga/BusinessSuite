@@ -268,6 +268,69 @@ export class ApplicationDetailComponent implements OnInit {
     const value = this.application()?.dueDate;
     return value ? new Date(value) : null;
   });
+
+  readonly processInfo = computed(() => {
+    const app = this.application();
+    if (!app || !app.workflows || app.workflows.length === 0) {
+      return null;
+    }
+
+    const sorted = this.workflowService.sortedWorkflows();
+    if (sorted.length === 0) {
+      return null;
+    }
+
+    const totalSteps = sorted.length;
+
+    // Find the current active step (isCurrentStep === true or first non-completed/non-rejected step)
+    const current = sorted.find((w) => w.isCurrentStep) ||
+                    sorted.find((w) => w.status === 'processing') ||
+                    sorted.find((w) => w.status === 'pending') ||
+                    sorted[sorted.length - 1];
+
+    if (!current) {
+      return null;
+    }
+
+    // Calculate progress percentage
+    const completedCount = sorted.filter((w) => w.status === 'completed' || w.status === 'rejected').length;
+    const progressPercent = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
+
+    return {
+      currentStep: current,
+      stepNumber: current.task?.step ?? 1,
+      stepName: current.task?.name ?? 'Unknown Task',
+      status: current.status,
+      isOverdue: current.isOverdue,
+      dueDate: current.dueDate,
+      totalSteps,
+      completedSteps: completedCount,
+      progressPercent,
+      isCompleted: app.status === 'completed' || app.status === 'rejected',
+      allStepsFinished: completedCount === totalSteps,
+    };
+  });
+
+  getWorkflowStatusVariant(
+    status: string,
+    isOverdue?: boolean,
+  ): 'default' | 'secondary' | 'warning' | 'success' | 'destructive' {
+    if (isOverdue && status !== 'completed' && status !== 'rejected') {
+      return 'destructive';
+    }
+    switch (status) {
+      case 'completed':
+        return 'success';
+      case 'processing':
+        return 'warning';
+      case 'rejected':
+        return 'destructive';
+      case 'pending':
+      default:
+        return 'secondary';
+    }
+  }
+
   readonly hasWorkflowTasks = this.workflowService.hasWorkflowTasks;
   readonly stepOneWorkflow = this.workflowService.stepOneWorkflow;
   readonly isApplicationDateLocked = this.workflowService.isApplicationDateLocked;

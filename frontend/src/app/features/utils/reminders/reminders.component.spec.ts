@@ -12,9 +12,9 @@ import { ZardDialogService } from '@/shared/components/dialog';
 import { RemindersStreamService } from './reminders-stream.service';
 import { RemindersComponent } from './reminders.component';
 import {
-  type ReminderItem,
-  type ReminderListResponse,
-  RemindersService,
+    type ReminderItem,
+    type ReminderListResponse,
+    RemindersService,
 } from './reminders.service';
 
 function buildReminder(id: number, content: string): ReminderItem {

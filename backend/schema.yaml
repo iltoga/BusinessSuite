@@ -1172,6 +1172,13 @@ paths:
   /api/customer-applications/:
     get:
       operationId: customerApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - name: ordering
         required: false
@@ -1242,6 +1249,13 @@ paths:
   /api/customer-applications/{id}/:
     get:
       operationId: customerApplicationsRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1300,6 +1314,13 @@ paths:
           description: ''
     patch:
       operationId: customerApplicationsPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1430,7 +1451,7 @@ paths:
   /api/customer-applications/{id}/reopen/:
     post:
       operationId: customerApplicationsReopenCreate
-      description: Re-open a completed application.
+      description: Re-open a semantically completed application.
       parameters:
       - in: path
         name: id
@@ -1608,6 +1629,13 @@ paths:
   /api/customer-applications/bulk-delete/:
     post:
       operationId: customerApplicationsBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - customer-applications
       requestBody:
@@ -1637,6 +1665,13 @@ paths:
   /api/customers/:
     get:
       operationId: customersList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - name: ordering
         required: false
@@ -1676,6 +1711,13 @@ paths:
           description: ''
     post:
       operationId: customersCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - customers
       requestBody:
@@ -1705,6 +1747,13 @@ paths:
   /api/customers/{id}/:
     get:
       operationId: customersRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1725,6 +1774,13 @@ paths:
           description: ''
     put:
       operationId: customersUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1759,6 +1815,13 @@ paths:
           description: ''
     patch:
       operationId: customersPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1793,6 +1856,13 @@ paths:
           description: ''
     delete:
       operationId: customersDestroy
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1810,6 +1880,13 @@ paths:
   /api/customers/{id}/applications-history/:
     get:
       operationId: customersApplicationsHistoryList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1856,6 +1933,13 @@ paths:
   /api/customers/{id}/toggle-active/:
     post:
       operationId: customersToggleActiveCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1892,6 +1976,13 @@ paths:
   /api/customers/{id}/uninvoiced-applications/:
     get:
       operationId: customersUninvoicedApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1938,6 +2029,13 @@ paths:
   /api/customers/bulk-delete/:
     post:
       operationId: customersBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - customers
       requestBody:
@@ -1990,6 +2088,13 @@ paths:
   /api/customers/search/:
     get:
       operationId: customersSearchRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - customers
       security:
@@ -2728,6 +2833,13 @@ paths:
   /api/invoices/:
     get:
       operationId: invoicesList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: hide_paid
@@ -2771,6 +2883,13 @@ paths:
           description: ''
     post:
       operationId: invoicesCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - invoices
       requestBody:
@@ -2801,6 +2920,13 @@ paths:
   /api/invoices/{id}/:
     get:
       operationId: invoicesRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -2822,6 +2948,13 @@ paths:
           description: ''
     put:
       operationId: invoicesUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -2858,6 +2991,13 @@ paths:
           description: ''
     patch:
       operationId: invoicesPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -2894,6 +3034,13 @@ paths:
           description: ''
     delete:
       operationId: invoicesDestroy
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -2912,6 +3059,13 @@ paths:
   /api/invoices/{id}/delete-preview/:
     get:
       operationId: invoicesDeletePreviewRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -2934,6 +3088,13 @@ paths:
   /api/invoices/{id}/download/:
     get:
       operationId: invoicesDownloadRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: file_format
@@ -2965,6 +3126,13 @@ paths:
   /api/invoices/{id}/download-async/:
     post:
       operationId: invoicesDownloadAsyncCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -3006,6 +3174,13 @@ paths:
   /api/invoices/{id}/force-delete/:
     post:
       operationId: invoicesForceDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -3042,6 +3217,13 @@ paths:
   /api/invoices/{id}/mark-as-paid/:
     post:
       operationId: invoicesMarkAsPaidCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -3079,6 +3261,13 @@ paths:
   /api/invoices/bulk-delete/:
     post:
       operationId: invoicesBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - invoices
       requestBody:
@@ -3108,6 +3297,13 @@ paths:
   /api/invoices/download-async/file/{jobId}/:
     get:
       operationId: invoicesDownloadAsyncFileRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -3131,6 +3327,13 @@ paths:
   /api/invoices/download-async/status/{jobId}/:
     get:
       operationId: invoicesDownloadAsyncStatusRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -3155,6 +3358,13 @@ paths:
   /api/invoices/download-async/stream/{jobId}/:
     get:
       operationId: invoicesDownloadAsyncStreamRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -3178,6 +3388,13 @@ paths:
   /api/invoices/from_application_prefill/{applicationId}/:
     get:
       operationId: invoicesFromApplicationPrefillRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: applicationId
@@ -3199,6 +3416,13 @@ paths:
   /api/invoices/get_billable_products/{customerId}/:
     get:
       operationId: invoicesGetBillableProductsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: current_invoice_id
@@ -3250,6 +3474,13 @@ paths:
   /api/invoices/get_customer_applications/{customerId}/:
     get:
       operationId: invoicesGetCustomerApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: current_invoice_id
@@ -3311,6 +3542,13 @@ paths:
   /api/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/:
     get:
       operationId: invoicesGetInvoiceApplicationDueAmountRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: invoiceApplicationId
@@ -6638,6 +6876,13 @@ paths:
   /api/v1/customer-applications/:
     get:
       operationId: v1CustomerApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - name: ordering
         required: false
@@ -6708,6 +6953,13 @@ paths:
   /api/v1/customer-applications/{id}/:
     get:
       operationId: v1CustomerApplicationsRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -6766,6 +7018,13 @@ paths:
           description: ''
     patch:
       operationId: v1CustomerApplicationsPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -6896,7 +7155,7 @@ paths:
   /api/v1/customer-applications/{id}/reopen/:
     post:
       operationId: v1CustomerApplicationsReopenCreate
-      description: Re-open a completed application.
+      description: Re-open a semantically completed application.
       parameters:
       - in: path
         name: id
@@ -7074,6 +7333,13 @@ paths:
   /api/v1/customer-applications/bulk-delete/:
     post:
       operationId: v1CustomerApplicationsBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       requestBody:
@@ -7103,6 +7369,13 @@ paths:
   /api/v1/customers/:
     get:
       operationId: v1CustomersList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - name: ordering
         required: false
@@ -7142,6 +7415,13 @@ paths:
           description: ''
     post:
       operationId: v1CustomersCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       requestBody:
@@ -7171,6 +7451,13 @@ paths:
   /api/v1/customers/{id}/:
     get:
       operationId: v1CustomersRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7191,6 +7478,13 @@ paths:
           description: ''
     put:
       operationId: v1CustomersUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7225,6 +7519,13 @@ paths:
           description: ''
     patch:
       operationId: v1CustomersPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7259,6 +7560,13 @@ paths:
           description: ''
     delete:
       operationId: v1CustomersDestroy
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7276,6 +7584,13 @@ paths:
   /api/v1/customers/{id}/applications-history/:
     get:
       operationId: v1CustomersApplicationsHistoryList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7322,6 +7637,13 @@ paths:
   /api/v1/customers/{id}/toggle-active/:
     post:
       operationId: v1CustomersToggleActiveCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7358,6 +7680,13 @@ paths:
   /api/v1/customers/{id}/uninvoiced-applications/:
     get:
       operationId: v1CustomersUninvoicedApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7404,6 +7733,13 @@ paths:
   /api/v1/customers/bulk-delete/:
     post:
       operationId: v1CustomersBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       requestBody:
@@ -7456,6 +7792,13 @@ paths:
   /api/v1/customers/search/:
     get:
       operationId: v1CustomersSearchRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       security:
@@ -8194,6 +8537,13 @@ paths:
   /api/v1/invoices/:
     get:
       operationId: v1InvoicesList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: hide_paid
@@ -8237,6 +8587,13 @@ paths:
           description: ''
     post:
       operationId: v1InvoicesCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       requestBody:
@@ -8267,6 +8624,13 @@ paths:
   /api/v1/invoices/{id}/:
     get:
       operationId: v1InvoicesRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8288,6 +8652,13 @@ paths:
           description: ''
     put:
       operationId: v1InvoicesUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8324,6 +8695,13 @@ paths:
           description: ''
     patch:
       operationId: v1InvoicesPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8360,6 +8738,13 @@ paths:
           description: ''
     delete:
       operationId: v1InvoicesDestroy
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8378,6 +8763,13 @@ paths:
   /api/v1/invoices/{id}/delete-preview/:
     get:
       operationId: v1InvoicesDeletePreviewRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8400,6 +8792,13 @@ paths:
   /api/v1/invoices/{id}/download/:
     get:
       operationId: v1InvoicesDownloadRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: file_format
@@ -8431,6 +8830,13 @@ paths:
   /api/v1/invoices/{id}/download-async/:
     post:
       operationId: v1InvoicesDownloadAsyncCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8472,6 +8878,13 @@ paths:
   /api/v1/invoices/{id}/force-delete/:
     post:
       operationId: v1InvoicesForceDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8508,6 +8921,13 @@ paths:
   /api/v1/invoices/{id}/mark-as-paid/:
     post:
       operationId: v1InvoicesMarkAsPaidCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8545,6 +8965,13 @@ paths:
   /api/v1/invoices/bulk-delete/:
     post:
       operationId: v1InvoicesBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       requestBody:
@@ -8574,6 +9001,13 @@ paths:
   /api/v1/invoices/download-async/file/{jobId}/:
     get:
       operationId: v1InvoicesDownloadAsyncFileRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -8597,6 +9031,13 @@ paths:
   /api/v1/invoices/download-async/status/{jobId}/:
     get:
       operationId: v1InvoicesDownloadAsyncStatusRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -8621,6 +9062,13 @@ paths:
   /api/v1/invoices/download-async/stream/{jobId}/:
     get:
       operationId: v1InvoicesDownloadAsyncStreamRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -8644,6 +9092,13 @@ paths:
   /api/v1/invoices/from_application_prefill/{applicationId}/:
     get:
       operationId: v1InvoicesFromApplicationPrefillRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: applicationId
@@ -8665,6 +9120,13 @@ paths:
   /api/v1/invoices/get_billable_products/{customerId}/:
     get:
       operationId: v1InvoicesGetBillableProductsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: current_invoice_id
@@ -8716,6 +9178,13 @@ paths:
   /api/v1/invoices/get_customer_applications/{customerId}/:
     get:
       operationId: v1InvoicesGetCustomerApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: current_invoice_id
@@ -8777,6 +9246,13 @@ paths:
   /api/v1/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/:
     get:
       operationId: v1InvoicesGetInvoiceApplicationDueAmountRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: invoiceApplicationId
@@ -11571,15 +12047,13 @@ components:
           type: boolean
         context_length:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
           nullable: true
         max_completion_tokens:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
           nullable: true
         modality:
           type: string
@@ -11785,15 +12259,13 @@ components:
           type: boolean
         context_length:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
           nullable: true
         max_completion_tokens:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
           nullable: true
         modality:
           type: string
@@ -13650,9 +14122,8 @@ components:
           type: boolean
         expiring_threshold_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         is_stay_permit:
           type: boolean
@@ -13698,9 +14169,8 @@ components:
           type: boolean
         expiring_threshold_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         is_stay_permit:
           type: boolean
@@ -13932,9 +14402,8 @@ components:
           readOnly: true
         sort_order:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         product:
           allOf:
           - $ref: '#/components/schemas/Product'
@@ -13946,9 +14415,8 @@ components:
           nullable: true
         quantity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notes:
           type: string
           nullable: true
@@ -14008,9 +14476,8 @@ components:
           readOnly: true
         sort_order:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         product:
           allOf:
           - $ref: '#/components/schemas/InvoiceListProduct'
@@ -14022,9 +14489,8 @@ components:
           nullable: true
         quantity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notes:
           type: string
           nullable: true
@@ -14219,9 +14685,8 @@ components:
           readOnly: true
         invoice_no:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         invoice_no_display:
           type: string
           readOnly: true
@@ -14413,9 +14878,8 @@ components:
           readOnly: true
         invoice_no:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         invoice_no_display:
           type: string
           readOnly: true
@@ -15013,9 +15477,8 @@ components:
           readOnly: true
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         required_documents:
           type: string
@@ -15025,15 +15488,13 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15119,21 +15580,18 @@ components:
           nullable: true
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15198,21 +15656,18 @@ components:
           nullable: true
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15280,9 +15735,8 @@ components:
           readOnly: true
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         required_documents:
           type: string
@@ -15292,15 +15746,13 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15453,9 +15905,8 @@ components:
           maxLength: 3
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         required_documents:
           type: string
@@ -15465,15 +15916,13 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15636,21 +16085,18 @@ components:
           maxLength: 100
         step:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notify_customer:
           type: boolean
         last_step:
@@ -15667,9 +16113,8 @@ components:
           nullable: true
         step:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         name:
           type: string
           maxLength: 100
@@ -15682,16 +16127,14 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         duration:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notify_customer:
           type: boolean
         add_task_to_calendar:
@@ -15709,9 +16152,8 @@ components:
           nullable: true
         step:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         name:
           type: string
           minLength: 1
@@ -15725,16 +16167,14 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         duration:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notify_customer:
           type: boolean
         add_task_to_calendar:
