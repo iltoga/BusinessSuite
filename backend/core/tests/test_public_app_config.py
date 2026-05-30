@@ -1,5 +1,8 @@
 """Tests for the public app configuration endpoint."""
 
+import os
+from unittest.mock import patch
+
 from core.models import AppSetting
 from core.models.ui_settings import UiSettings
 from django.test import Client, TestCase, override_settings
@@ -11,8 +14,23 @@ class PublicAppConfigTests(TestCase):
         self.client = Client()
         self.url = reverse("api-public-app-config")
 
+    def _clear_ui_scale_env(self):
+        return patch.dict(
+            os.environ,
+            {
+                "UI_SCALE_PERCENT": "",
+                "UI_AUTO_SCALE_ENABLED": "",
+                "UI_AUTO_SCALE_REFERENCE_WIDTH": "",
+                "UI_AUTO_SCALE_MIN_PERCENT": "",
+                "UI_AUTO_SCALE_MAX_PERCENT": "",
+                "UI_AUTO_SCALE_DESKTOP_ONLY": "",
+            },
+            clear=False,
+        )
+
     def test_public_app_config_contains_date_format(self):
-        response = self.client.get(self.url)
+        with self._clear_ui_scale_env():
+            response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -20,6 +38,85 @@ class PublicAppConfigTests(TestCase):
         self.assertIsInstance(payload["dateFormat"], str)
         self.assertIn("baseCurrency", payload)
         self.assertIsInstance(payload["baseCurrency"], str)
+        self.assertIn("uiScalePercent", payload)
+        self.assertEqual(payload["uiScalePercent"], 100)
+
+    def test_public_app_config_clamps_ui_scale_percent(self):
+        with self._clear_ui_scale_env():
+            AppSetting.objects.update_or_create(
+                name="UI_SCALE_PERCENT",
+                defaults={"value": "200", "scope": AppSetting.SCOPE_FRONTEND},
+            )
+
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["uiScalePercent"], 125)
+
+    def test_public_app_config_contains_ui_auto_scale_defaults(self):
+        with self._clear_ui_scale_env():
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["uiAutoScaleEnabled"], False)
+        self.assertEqual(payload["uiAutoScaleReferenceWidth"], 1440)
+        self.assertEqual(payload["uiAutoScaleMinPercent"], 95)
+        self.assertEqual(payload["uiAutoScaleMaxPercent"], 105)
+        self.assertEqual(payload["uiAutoScaleDesktopOnly"], True)
+
+    def test_public_app_config_clamps_ui_auto_scale_values(self):
+        with self._clear_ui_scale_env():
+            AppSetting.objects.update_or_create(
+                name="UI_AUTO_SCALE_REFERENCE_WIDTH",
+                defaults={"value": "500", "scope": AppSetting.SCOPE_FRONTEND},
+            )
+            AppSetting.objects.update_or_create(
+                name="UI_AUTO_SCALE_MIN_PERCENT",
+                defaults={"value": "20", "scope": AppSetting.SCOPE_FRONTEND},
+            )
+            AppSetting.objects.update_or_create(
+                name="UI_AUTO_SCALE_MAX_PERCENT",
+                defaults={"value": "300", "scope": AppSetting.SCOPE_FRONTEND},
+            )
+            AppSetting.objects.update_or_create(
+                name="UI_AUTO_SCALE_ENABLED",
+                defaults={"value": "true", "scope": AppSetting.SCOPE_FRONTEND},
+            )
+
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["uiAutoScaleEnabled"], True)
+        self.assertEqual(payload["uiAutoScaleReferenceWidth"], 1024)
+        self.assertEqual(payload["uiAutoScaleMinPercent"], 25)
+        self.assertEqual(payload["uiAutoScaleMaxPercent"], 125)
+
+    def test_public_app_config_reads_ui_scale_values_from_env(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "UI_SCALE_PERCENT": "90",
+                "UI_AUTO_SCALE_ENABLED": "True",
+                "UI_AUTO_SCALE_REFERENCE_WIDTH": "1920",
+                "UI_AUTO_SCALE_MIN_PERCENT": "60",
+                "UI_AUTO_SCALE_MAX_PERCENT": "150",
+                "UI_AUTO_SCALE_DESKTOP_ONLY": "True",
+            },
+            clear=False,
+        ):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["uiScalePercent"], 90)
+        self.assertEqual(payload["uiAutoScaleEnabled"], True)
+        self.assertEqual(payload["uiAutoScaleReferenceWidth"], 1920)
+        self.assertEqual(payload["uiAutoScaleMinPercent"], 60)
+        self.assertEqual(payload["uiAutoScaleMaxPercent"], 125)
+        self.assertEqual(payload["uiAutoScaleDesktopOnly"], True)
 
     @override_settings(MOCK_AUTH_ENABLED=False)
     def test_public_app_config_returns_mock_auth_disabled_flag(self):

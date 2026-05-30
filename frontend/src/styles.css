@@ -5,6 +5,12 @@
 
 :root {
   --radius: 0.625rem;
+  --app-ui-scale: 1;
+  --app-ui-scale-inverse: 1;
+  --app-scaled-vw: 100vw;
+  --app-scaled-dvw: 100dvw;
+  --app-scaled-vh: 100vh;
+  --app-scaled-dvh: 100dvh;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -195,7 +201,15 @@ main::-webkit-scrollbar,
   overflow: hidden;
 }
 
-.data-table-scroll :is(th[z-table-head] > div, th[z-table-head] button, td[z-table-cell] > *, th[z-table-head] span, td[z-table-cell] span, td[z-table-cell] a) {
+.data-table-scroll
+  :is(
+    th[z-table-head] > div,
+    th[z-table-head] button,
+    td[z-table-cell] > *,
+    th[z-table-head] span,
+    td[z-table-cell] span,
+    td[z-table-cell] a
+  ) {
   min-width: 0;
   max-width: 100%;
 }
@@ -288,14 +302,15 @@ html.app-brand-ready img[data-app-logo] {
   will-change: transform;
 }
 
-/* 
+/*
   Debounce Skeleton Loaders to avoid 200ms flashes on fast data.
   0-300ms: opacity 0
   300-500ms: fade in
   Then custom-pulse runs infinitely.
 */
 @keyframes skeleton-appear {
-  0%, 60% {
+  0%,
+  60% {
     opacity: 0;
   }
   100% {
@@ -304,7 +319,8 @@ html.app-brand-ready img[data-app-logo] {
 }
 
 @keyframes pulse-custom {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -313,8 +329,8 @@ html.app-brand-ready img[data-app-logo] {
 }
 
 .skeleton-delay {
-  animation: 
-    skeleton-appear var(--skeleton-debounce-duration, 500ms) ease-out forwards, 
+  animation:
+    skeleton-appear var(--skeleton-debounce-duration, 500ms) ease-out forwards,
     pulse-custom 2s cubic-bezier(0.4, 0, 0.6, 1) infinite var(--skeleton-debounce-duration, 500ms);
 }
 

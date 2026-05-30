@@ -3,6 +3,14 @@
   display: block;
 }
 
+.app-main-layout-shell {
+  height: var(--app-scaled-dvh);
+}
+
+.app-main-layout-sidebar {
+  height: var(--app-scaled-dvh);
+}
+
 .topbar-action {
   transform: scale(0.95);
   transform-origin: center;
@@ -14,9 +22,15 @@
 }
 
 .sidebar-menu-scroll {
-  max-height: calc(100dvh - 8rem);
+  max-height: calc(var(--app-scaled-dvh) - 8rem);
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@media (min-width: 1024px) {
+  .app-main-layout-sidebar {
+    height: 100%;
+  }
 }
 
 @media (min-width: 768px) {

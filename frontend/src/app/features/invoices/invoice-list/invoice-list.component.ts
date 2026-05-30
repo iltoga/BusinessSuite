@@ -1,4 +1,3 @@
-
 import {
   ChangeDetectionStrategy,
   Component,
@@ -71,8 +70,8 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ShortcutHighlightPipe,
     ...ZardDropdownImports,
     ContextHelpDirective,
-    AppDatePipe
-],
+    AppDatePipe,
+  ],
   templateUrl: './invoice-list.component.html',
   styleUrls: ['./invoice-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -201,7 +200,7 @@ export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
     this.config = {
       entityType: 'invoices',
       entityLabel: 'Invoices',
-      defaultPageSize: 11,
+      defaultPageSize: 10,
       defaultOrdering: '-invoice_date',
       enableBulkDelete: true,
       enableDelete: true,

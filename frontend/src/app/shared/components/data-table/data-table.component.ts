@@ -121,6 +121,7 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   private readonly rbacRulesSignal = inject(RBAC_RULES);
+  private tableViewportResizeRafId: number | null = null;
 
   data = input.required<readonly T[]>();
   readonly virtualData = computed(() => {
@@ -154,6 +155,12 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
   totalItems = input<number>(0);
   isLoading = input<boolean>(false);
   skeletonRows = input<number>(10);
+  itemSizePx = input<number>(50);
+  preferredVisibleRowCount = input<number>(11);
+  minimumVisibleRowCount = input<number>(0);
+  useMeasuredHeights = input<boolean>(false);
+  tableHeaderHeightPx = input<number>(48);
+  viewportBottomSpacingPx = input<number>(96);
 
   // Pagination inputs for keyboard navigation
   currentPage = input<number>(1);
@@ -166,6 +173,49 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
   private sortState = signal<SortEvent | null>(null);
   currentSort = computed(() => this.sortState());
   readonly filterSearch = signal<Record<string, string | undefined>>({});
+  private readonly currentUiScaleFactor = signal(1);
+  private readonly availableViewportVisualHeightPx = signal<number | null>(null);
+  private readonly measuredHeaderVisualHeightPx = signal<number | null>(null);
+  private readonly measuredRowVisualHeightPx = signal<number | null>(null);
+  readonly effectiveTableHeaderVisualHeightPx = computed(() =>
+    this.useMeasuredHeights()
+      ? (this.measuredHeaderVisualHeightPx() ?? this.tableHeaderHeightPx())
+      : this.tableHeaderHeightPx(),
+  );
+  readonly effectiveItemVisualHeightPx = computed(() =>
+    this.useMeasuredHeights()
+      ? (this.measuredRowVisualHeightPx() ?? this.itemSizePx())
+      : this.itemSizePx(),
+  );
+  readonly preferredTableVisualHeightPx = computed(() => {
+    const rowCount = this.isLoading() ? this.skeletonRows() : this.data().length;
+    const minimumVisibleRowCount =
+      rowCount > 0 || this.isLoading() ? Math.max(0, this.minimumVisibleRowCount()) : 0;
+    const desiredVisibleRowCount = Math.max(rowCount || 1, minimumVisibleRowCount);
+    const visibleRowCount = Math.max(
+      1,
+      Math.min(desiredVisibleRowCount, this.preferredVisibleRowCount()),
+    );
+
+    return (
+      this.effectiveTableHeaderVisualHeightPx() +
+      visibleRowCount * this.effectiveItemVisualHeightPx()
+    );
+  });
+  readonly tableViewportHeightPx = computed(() => {
+    const scaleFactor = this.currentUiScaleFactor();
+    const preferredVisualHeightPx = this.preferredTableVisualHeightPx();
+    const availableVisualHeightPx = this.availableViewportVisualHeightPx();
+    const effectiveVisualHeightPx =
+      availableVisualHeightPx === null
+        ? preferredVisualHeightPx
+        : Math.max(
+            this.effectiveItemVisualHeightPx(),
+            Math.min(preferredVisualHeightPx, availableVisualHeightPx),
+          );
+
+    return effectiveVisualHeightPx / scaleFactor;
+  });
 
   // Speed dial / selection
   selectedRow = signal<T | null>(null);
@@ -208,6 +258,10 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
     effect(() => {
       const d = this.data();
       const loading = this.isLoading();
+
+      if (this.isBrowser) {
+        this.scheduleViewportMetricsRefresh();
+      }
 
       // If we have a pending focus id, try to find it after load finishes
       if (!loading) {
@@ -257,6 +311,8 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
       // Also listen on the document in capture phase if focus is inside the table
       // to ensure Tab doesn't escape our control.
       window.addEventListener('keydown', this._globalCaptureTabHandler, true);
+      window.addEventListener('resize', this._handleViewportResize, { passive: true });
+      this.scheduleViewportMetricsRefresh();
     }
   }
 
@@ -268,7 +324,119 @@ export class DataTableComponent<T = TableRow> implements AfterViewInit, OnDestro
         true,
       );
       window.removeEventListener('keydown', this._globalCaptureTabHandler, true);
+      window.removeEventListener('resize', this._handleViewportResize);
+      if (this.tableViewportResizeRafId !== null) {
+        cancelAnimationFrame(this.tableViewportResizeRafId);
+        this.tableViewportResizeRafId = null;
+      }
     }
+  }
+
+  private readonly _handleViewportResize = () => {
+    this.scheduleViewportMetricsRefresh();
+  };
+
+  private scheduleViewportMetricsRefresh(): void {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    if (this.tableViewportResizeRafId !== null) {
+      cancelAnimationFrame(this.tableViewportResizeRafId);
+    }
+
+    this.tableViewportResizeRafId = window.requestAnimationFrame(() => {
+      this.tableViewportResizeRafId = null;
+      this.refreshViewportMetrics();
+    });
+  }
+
+  private refreshViewportMetrics(): void {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    const wrapper = this.tableWrapper?.first?.nativeElement;
+    if (!wrapper) {
+      return;
+    }
+
+    const rect = wrapper.getBoundingClientRect();
+    const scaleFactor = this.readCurrentUiScaleFactor();
+    const measuredHeights = this.readMeasuredTableVisualHeights(wrapper);
+    const availableVisualHeightPx =
+      window.innerHeight - rect.top - Math.max(0, this.viewportBottomSpacingPx());
+
+    this.currentUiScaleFactor.set(scaleFactor);
+    this.availableViewportVisualHeightPx.set(availableVisualHeightPx);
+    this.measuredHeaderVisualHeightPx.set(measuredHeights.headerVisualHeightPx);
+    this.measuredRowVisualHeightPx.set(measuredHeights.rowVisualHeightPx);
+    this.viewport()?.checkViewportSize();
+  }
+
+  private readMeasuredTableVisualHeights(wrapper: HTMLElement): {
+    headerVisualHeightPx: number | null;
+    rowVisualHeightPx: number | null;
+  } {
+    if (!this.useMeasuredHeights()) {
+      return {
+        headerVisualHeightPx: null,
+        rowVisualHeightPx: null,
+      };
+    }
+
+    const headerVisualHeightPx = this.readElementVisualHeightPx(
+      wrapper.querySelector('thead[z-table-header]'),
+    );
+    const rowVisualHeightPx = this.readAverageElementVisualHeightPx(
+      Array.from(wrapper.querySelectorAll('tbody[z-table-body] > tr[z-table-row]')).slice(0, 3),
+    );
+
+    return {
+      headerVisualHeightPx,
+      rowVisualHeightPx,
+    };
+  }
+
+  private readAverageElementVisualHeightPx(elements: readonly Element[]): number | null {
+    const heights = elements
+      .map((element) => this.readElementVisualHeightPx(element))
+      .filter((height): height is number => height !== null);
+
+    if (heights.length === 0) {
+      return null;
+    }
+
+    return heights.reduce((sum, height) => sum + height, 0) / heights.length;
+  }
+
+  private readElementVisualHeightPx(element: Element | null): number | null {
+    if (!(element instanceof HTMLElement)) {
+      return null;
+    }
+
+    const { height } = element.getBoundingClientRect();
+    return Number.isFinite(height) && height > 0 ? height : null;
+  }
+
+  private readCurrentUiScaleFactor(): number {
+    if (!this.isBrowser) {
+      return 1;
+    }
+
+    const rootStyle = getComputedStyle(document.documentElement);
+    const cssVarScale = Number.parseFloat(rootStyle.getPropertyValue('--app-ui-scale').trim());
+    const inlineZoom = Number.parseFloat(document.documentElement.style.zoom || '');
+
+    if (Number.isFinite(cssVarScale) && cssVarScale > 0) {
+      return cssVarScale;
+    }
+
+    if (Number.isFinite(inlineZoom) && inlineZoom > 0) {
+      return inlineZoom;
+    }
+
+    return 1;
   }
 
   private _captureTabHandler = (event: KeyboardEvent) => {

@@ -10,6 +10,10 @@ describe('DataTableComponent (keyboard shortcuts)', () => {
   let currentPage = 1;
   let totalPages = 1;
   let lastPageEmitted: number | null;
+  let viewportApi: {
+    scrollToIndex: ReturnType<typeof vi.fn>;
+    checkViewportSize: ReturnType<typeof vi.fn>;
+  };
 
   const sampleRow = { id: 1, name: 'John Doe' };
   const columns: ColumnConfig[] = [{ key: 'name', header: 'Name' }];
@@ -25,6 +29,68 @@ describe('DataTableComponent (keyboard shortcuts)', () => {
     queryList.reset(elements);
     queryList.notifyOnChanges();
     (component as any).rowElements = queryList;
+  };
+
+  const setTableWrapperTop = (top: number) => {
+    const el = document.createElement('div');
+    Object.defineProperty(el, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ top, bottom: top + 100, left: 0, right: 100, width: 100, height: 100 }),
+    });
+    const queryList = new QueryList<ElementRef<HTMLElement>>();
+    queryList.reset([new ElementRef(el)]);
+    queryList.notifyOnChanges();
+    (component as any).tableWrapper = queryList;
+  };
+
+  const setMeasuredTableWrapper = (top: number, headerHeight: number, rowHeights: number[]) => {
+    const wrapper = document.createElement('div');
+    Object.defineProperty(wrapper, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ top, bottom: top + 100, left: 0, right: 100, width: 100, height: 100 }),
+    });
+
+    const header = document.createElement('thead');
+    header.setAttribute('z-table-header', '');
+    Object.defineProperty(header, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({
+        top,
+        bottom: headerHeight,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: headerHeight,
+      }),
+    });
+    wrapper.appendChild(header);
+
+    const body = document.createElement('tbody');
+    body.setAttribute('z-table-body', '');
+
+    rowHeights.forEach((rowHeight) => {
+      const row = document.createElement('tr');
+      row.setAttribute('z-table-row', '');
+      Object.defineProperty(row, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({
+          top: 0,
+          bottom: rowHeight,
+          left: 0,
+          right: 100,
+          width: 100,
+          height: rowHeight,
+        }),
+      });
+      body.appendChild(row);
+    });
+
+    wrapper.appendChild(body);
+
+    const queryList = new QueryList<ElementRef<HTMLElement>>();
+    queryList.reset([new ElementRef(wrapper)]);
+    queryList.notifyOnChanges();
+    (component as any).tableWrapper = queryList;
   };
 
   beforeEach(() => {
@@ -47,13 +113,22 @@ describe('DataTableComponent (keyboard shortcuts)', () => {
       currentPage: () => currentPage,
       totalPages: () => totalPages,
       isLoading: () => false,
+      itemSizePx: () => 50,
+      preferredVisibleRowCount: () => 11,
+      minimumVisibleRowCount: () => 0,
+      useMeasuredHeights: () => false,
+      tableHeaderHeightPx: () => 48,
+      viewportBottomSpacingPx: () => 96,
       pageChange: { emit: (page: number) => (lastPageEmitted = page) },
     });
-    (component as any).viewport = () => ({ scrollToIndex: vi.fn() });
+    viewportApi = { scrollToIndex: vi.fn(), checkViewportSize: vi.fn() };
+    (component as any).viewport = () => viewportApi;
+    document.documentElement.style.setProperty('--app-ui-scale', '1');
   });
 
   afterEach(() => {
     component.ngOnDestroy();
+    document.documentElement.style.removeProperty('--app-ui-scale');
     vi.useRealTimers();
   });
 
@@ -139,5 +214,85 @@ describe('DataTableComponent (keyboard shortcuts)', () => {
       stopPropagation: () => undefined,
     } as unknown as KeyboardEvent);
     expect(lastPageEmitted).toBe(1);
+  });
+
+  it('keeps a stable visual table height while enough viewport height is available', () => {
+    currentData = Array.from({ length: 10 }, (_, index) => ({ id: index + 1 }));
+    setTableWrapperTop(220);
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 900,
+    });
+    document.documentElement.style.setProperty('--app-ui-scale', '0.75');
+
+    (component as any).refreshViewportMetrics();
+
+    expect(component.preferredTableVisualHeightPx()).toBe(548);
+    expect(component.tableViewportHeightPx()).toBeCloseTo(730.6667, 3);
+    expect(viewportApi.checkViewportSize).toHaveBeenCalled();
+  });
+
+  it('uses the slightly taller shared default when enough rows are available', () => {
+    currentData = Array.from({ length: 20 }, (_, index) => ({ id: index + 1 }));
+
+    expect(component.preferredTableVisualHeightPx()).toBe(598);
+  });
+
+  it('reserves extra height when a list requests a minimum visible row floor', () => {
+    currentData = Array.from({ length: 10 }, (_, index) => ({ id: index + 1 }));
+    Object.assign(component, {
+      minimumVisibleRowCount: () => 11,
+    });
+
+    expect(component.preferredTableVisualHeightPx()).toBe(598);
+  });
+
+  it('does not reserve extra empty height for no-results states', () => {
+    currentData = [];
+    Object.assign(component, {
+      minimumVisibleRowCount: () => 11,
+    });
+
+    expect(component.preferredTableVisualHeightPx()).toBe(98);
+  });
+
+  it('uses measured header and row heights when enabled for per-view visual alignment', () => {
+    currentData = Array.from({ length: 9 }, (_, index) => ({ id: index + 1 }));
+    Object.assign(component, {
+      preferredVisibleRowCount: () => 9,
+      minimumVisibleRowCount: () => 9,
+      useMeasuredHeights: () => true,
+    });
+    setMeasuredTableWrapper(220, 44, [62, 62, 62]);
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 1000,
+    });
+
+    (component as any).refreshViewportMetrics();
+
+    expect(component.effectiveTableHeaderVisualHeightPx()).toBe(44);
+    expect(component.effectiveItemVisualHeightPx()).toBe(62);
+    expect(component.preferredTableVisualHeightPx()).toBe(602);
+    expect(component.tableViewportHeightPx()).toBe(602);
+  });
+
+  it('caps the table height and enables in-table scrolling when the window is shorter than the preferred table height', () => {
+    currentData = Array.from({ length: 20 }, (_, index) => ({ id: index + 1 }));
+    setTableWrapperTop(260);
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 560,
+    });
+    document.documentElement.style.setProperty('--app-ui-scale', '0.8');
+
+    (component as any).refreshViewportMetrics();
+
+    expect(component.preferredTableVisualHeightPx()).toBe(598);
+    expect(component.tableViewportHeightPx()).toBeCloseTo(255, 3);
+    expect(viewportApi.checkViewportSize).toHaveBeenCalled();
   });
 });

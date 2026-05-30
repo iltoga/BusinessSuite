@@ -1,4 +1,3 @@
-
 import {
   ChangeDetectionStrategy,
   Component,
@@ -61,8 +60,8 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ...ZardSelectImports,
     ZardBadgeComponent,
     ContextHelpDirective,
-    AppDatePipe
-],
+    AppDatePipe,
+  ],
   templateUrl: './customer-list.component.html',
   styleUrls: ['./customer-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -213,7 +212,7 @@ export class CustomerListComponent extends BaseListComponent<Customer> {
     this.config = {
       entityType: 'customers',
       entityLabel: 'Customers',
-      defaultPageSize: 10,
+      defaultPageSize: 9,
       defaultOrdering: '-created_at',
       enableBulkDelete: true,
       enableDelete: true,

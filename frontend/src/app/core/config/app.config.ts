@@ -21,6 +21,12 @@ export interface AppConfig {
   fcmWebAuthDomain?: string;
   fcmWebStorageBucket?: string;
   fcmWebMeasurementId?: string;
+  uiScalePercent?: number | string;
+  uiAutoScaleEnabled?: boolean | string;
+  uiAutoScaleReferenceWidth?: number | string;
+  uiAutoScaleMinPercent?: number | string;
+  uiAutoScaleMaxPercent?: number | string;
+  uiAutoScaleDesktopOnly?: boolean | string;
   useOverlayMenu?: boolean;
   skeletonDebounceDurationMs?: number | string;
   rbac?: {
@@ -48,6 +54,12 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   fcmWebAuthDomain: '',
   fcmWebStorageBucket: '',
   fcmWebMeasurementId: '',
+  uiScalePercent: 100,
+  uiAutoScaleEnabled: false,
+  uiAutoScaleReferenceWidth: 1440,
+  uiAutoScaleMinPercent: 95,
+  uiAutoScaleMaxPercent: 105,
+  uiAutoScaleDesktopOnly: true,
   useOverlayMenu: false,
   skeletonDebounceDurationMs: 500,
   rbac: { adminGroupName: 'admin', managerGroupName: 'manager' },

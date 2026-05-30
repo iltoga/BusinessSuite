@@ -90,6 +90,14 @@ function readEnvValue(primaryKey: string, fallbackKeys: string[] = []): string {
   return '';
 }
 
+function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+}
+
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
@@ -877,6 +885,21 @@ app.use(async (req, res, next) => {
         const baseCurrencyEnv = (
           (process.env['BASE_CURRENCY'] || 'IDR').trim() || 'IDR'
         ).toUpperCase();
+        const uiScalePercentEnv = Number.parseFloat(process.env['UI_SCALE_PERCENT'] || '100');
+        const uiAutoScaleEnabledEnv = parseBooleanEnv(process.env['UI_AUTO_SCALE_ENABLED'], false);
+        const uiAutoScaleReferenceWidthEnv = Number.parseFloat(
+          process.env['UI_AUTO_SCALE_REFERENCE_WIDTH'] || '1440',
+        );
+        const uiAutoScaleMinPercentEnv = Number.parseFloat(
+          process.env['UI_AUTO_SCALE_MIN_PERCENT'] || '95',
+        );
+        const uiAutoScaleMaxPercentEnv = Number.parseFloat(
+          process.env['UI_AUTO_SCALE_MAX_PERCENT'] || '105',
+        );
+        const uiAutoScaleDesktopOnlyEnv = parseBooleanEnv(
+          process.env['UI_AUTO_SCALE_DESKTOP_ONLY'],
+          true,
+        );
         const fcmSenderIdEnv = readEnvValue('FCM_SENDER_ID', ['FCM_MESSAGING_SENDER_ID']);
         const fcmProjectNumberEnv = readEnvValue('FCM_PROJECT_NUMBER', [
           'FCM_MESSAGING_SENDER_ID',
@@ -898,6 +921,12 @@ app.use(async (req, res, next) => {
             MOCK_AUTH_ENABLED: ${JSON.stringify(mockAuthEnv)},
             title: ${JSON.stringify(appTitleEnv)},
             baseCurrency: ${JSON.stringify(baseCurrencyEnv)},
+            uiScalePercent: ${JSON.stringify(Number.isFinite(uiScalePercentEnv) ? uiScalePercentEnv : 100)},
+            uiAutoScaleEnabled: ${JSON.stringify(uiAutoScaleEnabledEnv)},
+            uiAutoScaleReferenceWidth: ${JSON.stringify(Number.isFinite(uiAutoScaleReferenceWidthEnv) ? uiAutoScaleReferenceWidthEnv : 1440)},
+            uiAutoScaleMinPercent: ${JSON.stringify(Number.isFinite(uiAutoScaleMinPercentEnv) ? uiAutoScaleMinPercentEnv : 95)},
+            uiAutoScaleMaxPercent: ${JSON.stringify(Number.isFinite(uiAutoScaleMaxPercentEnv) ? uiAutoScaleMaxPercentEnv : 105)},
+            uiAutoScaleDesktopOnly: ${JSON.stringify(uiAutoScaleDesktopOnlyEnv)},
             fcmSenderId: ${JSON.stringify(fcmSenderIdEnv)},
             fcmProjectNumber: ${JSON.stringify(fcmProjectNumberEnv)},
             fcmVapidPublicKey: ${JSON.stringify(fcmVapidPublicKeyEnv)},
@@ -945,6 +974,21 @@ app.use(async (req, res, next) => {
         const baseCurrencyEnv = (
           (process.env['BASE_CURRENCY'] || 'IDR').trim() || 'IDR'
         ).toUpperCase();
+        const uiScalePercentEnv = Number.parseFloat(process.env['UI_SCALE_PERCENT'] || '100');
+        const uiAutoScaleEnabledEnv = parseBooleanEnv(process.env['UI_AUTO_SCALE_ENABLED'], false);
+        const uiAutoScaleReferenceWidthEnv = Number.parseFloat(
+          process.env['UI_AUTO_SCALE_REFERENCE_WIDTH'] || '1440',
+        );
+        const uiAutoScaleMinPercentEnv = Number.parseFloat(
+          process.env['UI_AUTO_SCALE_MIN_PERCENT'] || '95',
+        );
+        const uiAutoScaleMaxPercentEnv = Number.parseFloat(
+          process.env['UI_AUTO_SCALE_MAX_PERCENT'] || '105',
+        );
+        const uiAutoScaleDesktopOnlyEnv = parseBooleanEnv(
+          process.env['UI_AUTO_SCALE_DESKTOP_ONLY'],
+          true,
+        );
         const fcmSenderIdEnv = readEnvValue('FCM_SENDER_ID', ['FCM_MESSAGING_SENDER_ID']);
         const fcmProjectNumberEnv = readEnvValue('FCM_PROJECT_NUMBER', [
           'FCM_MESSAGING_SENDER_ID',
@@ -966,6 +1010,12 @@ app.use(async (req, res, next) => {
             MOCK_AUTH_ENABLED: ${JSON.stringify(mockAuthEnv)},
             title: ${JSON.stringify(appTitleEnv)},
             baseCurrency: ${JSON.stringify(baseCurrencyEnv)},
+            uiScalePercent: ${JSON.stringify(Number.isFinite(uiScalePercentEnv) ? uiScalePercentEnv : 100)},
+            uiAutoScaleEnabled: ${JSON.stringify(uiAutoScaleEnabledEnv)},
+            uiAutoScaleReferenceWidth: ${JSON.stringify(Number.isFinite(uiAutoScaleReferenceWidthEnv) ? uiAutoScaleReferenceWidthEnv : 1440)},
+            uiAutoScaleMinPercent: ${JSON.stringify(Number.isFinite(uiAutoScaleMinPercentEnv) ? uiAutoScaleMinPercentEnv : 95)},
+            uiAutoScaleMaxPercent: ${JSON.stringify(Number.isFinite(uiAutoScaleMaxPercentEnv) ? uiAutoScaleMaxPercentEnv : 105)},
+            uiAutoScaleDesktopOnly: ${JSON.stringify(uiAutoScaleDesktopOnlyEnv)},
             fcmSenderId: ${JSON.stringify(fcmSenderIdEnv)},
             fcmProjectNumber: ${JSON.stringify(fcmProjectNumberEnv)},
             fcmVapidPublicKey: ${JSON.stringify(fcmVapidPublicKeyEnv)},

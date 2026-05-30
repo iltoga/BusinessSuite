@@ -6,7 +6,11 @@
   (keydown)="handleTableKeydown($event)"
   aria-label="Data table"
 >
-  <cdk-virtual-scroll-viewport itemSize="50" class="data-table-scroll h-[calc(100vh-280px)] w-full">
+  <cdk-virtual-scroll-viewport
+    [itemSize]="itemSizePx()"
+    class="data-table-scroll w-full"
+    [style.height.px]="tableViewportHeightPx()"
+  >
     <table z-table class="w-full relative">
       @if (visibleColumns().some(c => c.width)) {
         <colgroup>

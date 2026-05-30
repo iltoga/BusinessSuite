@@ -1,4 +1,4 @@
-<div class="flex h-dvh min-h-0 bg-background text-foreground overflow-hidden">
+<div class="app-main-layout-shell flex min-h-0 bg-background text-foreground overflow-hidden">
   @if (!useOverlayMenu()) {
     <aside
       [class.-translate-x-full]="!sidebarOpen()"
@@ -7,8 +7,8 @@
           ? 'lg:w-64 lg:visible lg:opacity-100 lg:pointer-events-auto'
           : 'lg:w-0 lg:invisible lg:opacity-0 lg:pointer-events-none'
       "
-      class="fixed lg:relative inset-y-0 left-0 z-40 h-dvh lg:h-full min-h-0 w-[min(18rem,86vw)] shrink-0 transform flex flex-col border-r bg-card transition-[width,transform,opacity,visibility] duration-200 ease-in-out overflow-hidden"
-      >
+      class="app-main-layout-sidebar fixed lg:relative inset-y-0 left-0 z-40 min-h-0 w-[min(18rem,86vw)] shrink-0 transform flex flex-col border-r bg-card transition-[width,transform,opacity,visibility] duration-200 ease-in-out overflow-hidden"
+    >
       <div class="h-32 shrink-0 border-b bg-accent/5 dark:bg-accent/10">
         <a
           routerLink="/dashboard"
@@ -16,7 +16,7 @@
           aria-hidden="true"
           onfocus="this.blur()"
           class="flex h-full w-full items-center justify-center rounded-md bg-card transition-transform hover:scale-[1.02] dark:bg-accent/20 overflow-hidden"
-          >
+        >
           <img
             data-app-logo
             [src]="logoSrc()"
@@ -27,23 +27,20 @@
             tabindex="-1"
             aria-hidden="true"
             onfocus="this.blur()"
-            />
+          />
         </a>
       </div>
 
       <div
         class="sidebar-menu-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain overflow-x-hidden p-4"
         (click)="onSidebarNavigationClick($event)"
-        >
+      >
         <app-menu-container />
       </div>
     </aside>
 
     @if (sidebarOpen() && !isDesktopViewport()) {
-      <div
-        class="fixed inset-0 bg-black/40 z-30"
-        (click)="toggleSidebar()"
-      ></div>
+      <div class="fixed inset-0 bg-black/40 z-30" (click)="toggleSidebar()"></div>
     }
   }
 
@@ -63,7 +60,7 @@
             (click)="toggleSidebar()"
             aria-label="Toggle sidebar"
             [attr.aria-expanded]="sidebarOpen()"
-            >
+          >
             <z-icon [zType]="sidebarOpen() ? 'chevron-left' : 'panel-left'" />
           </button>
         </div>
@@ -91,12 +88,12 @@
     class="topbar-avatar relative h-9 w-9 p-0 hover:bg-accent rounded-full overflow-visible"
     aria-label="Open user menu"
     aria-haspopup="menu"
-    >
+  >
     <z-avatar class="h-full w-full" [zSrc]="userAvatar()" [zFallback]="userInitials()" />
     @if (reminderUnreadCount() > 0) {
       <span
         class="pointer-events-none absolute left-0 top-0 z-10 inline-flex min-w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground"
-        >
+      >
         {{ reminderUnreadCountLabel() }}
       </span>
     }
@@ -115,7 +112,7 @@
           z-dropdown-menu-item
           class="min-w-0 flex-1 justify-between"
           (click)="openReminderInbox()"
-          >
+        >
           <span class="flex min-w-0 items-center">
             <z-icon zType="bell" class="mr-2 h-4 w-4" />
             <span class="truncate">Daily reminders</span>
@@ -123,7 +120,7 @@
           @if (reminderUnreadCount() > 0) {
             <span
               class="inline-flex min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground"
-              >
+            >
               {{ reminderUnreadCountLabel() }}
             </span>
           }
@@ -135,7 +132,7 @@
           class="h-8 px-2 text-[11px]"
           [disabled]="!hasUnreadReminderItems()"
           (click)="markAllMenuRemindersRead()"
-          >
+        >
           Mark all read
         </button>
       </div>
@@ -152,7 +149,7 @@
               z-dropdown-menu-item
               class="h-auto w-full max-w-full items-start gap-2 py-2"
               (click)="openReminder(item)"
-              >
+            >
               <span
                 class="mt-1 inline-block h-2 w-2 rounded-full bg-destructive"
                 [class.opacity-0]="!!item.readAt"
@@ -161,7 +158,7 @@
                 <span
                   class="block max-w-full truncate text-xs font-medium"
                   [zTooltip]="item.content"
-                  >
+                >
                   {{ item.content }}
                 </span>
                 <span class="text-[11px] text-muted-foreground">
