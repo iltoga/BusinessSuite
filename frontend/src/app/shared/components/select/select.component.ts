@@ -45,6 +45,7 @@ import {
   type ZardSelectSizeVariants,
 } from '@/shared/components/select/select.variants';
 import { mergeClasses, transform } from '@/shared/utils/merge-classes';
+import { scaleOverlayMaxHeightPx } from '@/shared/utils/ui-scale';
 
 type OnTouchedType = () => void;
 type OnChangeType = (value: string) => void;
@@ -488,7 +489,7 @@ export class ZardSelectComponent implements ControlValueAccessor, AfterContentIn
           hasBackdrop: false,
           scrollStrategy: this.overlay.scrollStrategies.reposition(),
           width: elementWidth,
-          maxHeight: 384, // max-h-96 equivalent
+          maxHeight: scaleOverlayMaxHeightPx(384), // max-h-96 equivalent
         });
         this.overlayRef
           .outsidePointerEvents()

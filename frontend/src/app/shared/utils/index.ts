@@ -10,3 +10,4 @@ export * from './number';
 export * from './pdf-print-preview';
 export * from './resource-url-sanitizer';
 export * from './type-guards';
+export * from './ui-scale';

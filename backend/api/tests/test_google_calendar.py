@@ -230,11 +230,23 @@ class TestGoogleCalendarAPI:
         resp = self.client.get("/api/calendar/")
         assert resp.status_code == status.HTTP_200_OK
         assert len(resp.data) == 2
-        assert any(
-            event["summary"].endswith("Application submission") and str(application.id) in event["summary"]
-            for event in resp.data
+        submission_event = next(
+            (
+                event
+                for event in resp.data
+                if event["summary"].endswith("Application submission") and str(application.id) in event["summary"]
+            ),
+            None,
         )
-        assert any("Biometrics" in event["summary"] for event in resp.data)
+        assert submission_event is not None
+        assert submission_event["extendedProperties"]["private"]["revisbali_event_kind"] == "application_submission"
+
+        biometrics_event = next((event for event in resp.data if "Biometrics" in event["summary"]), None)
+        assert biometrics_event is not None
+        assert biometrics_event["extendedProperties"]["private"]["revisbali_event_kind"] == "task_deadline"
+        assert biometrics_event["extendedProperties"]["private"]["revisbali_task_id"] == str(
+            product.tasks.get(step=1).id
+        )
 
     @pytest.mark.django_db
     def test_calendar_list_local_includes_completed_workflow_events_as_done(self):
@@ -315,12 +327,15 @@ class TestGoogleCalendarAPI:
         assert done_event is not None
         assert done_event["colorId"] == GoogleCalendarEventColors.done_color_id()
         assert "Step 1" in done_event["summary"]
+        assert done_event["extendedProperties"]["private"]["revisbali_event_kind"] == "task_deadline"
 
         todo_event = next((event for event in resp.data if event["id"] == f"local-app-{application.id}"), None)
         assert todo_event is not None
         assert todo_event["colorId"] == GoogleCalendarEventColors.todo_color_id()
         assert "Step 2" in todo_event["summary"]
         assert pending.due_date.isoformat() == todo_event["start"]["date"]
+        assert todo_event["extendedProperties"]["private"]["revisbali_event_kind"] == "task_deadline"
+        assert todo_event["extendedProperties"]["private"]["revisbali_task_id"] == str(task2.id)
 
     @pytest.mark.django_db
     def test_calendar_list_keeps_paid_invoice_application_task_visible(self):

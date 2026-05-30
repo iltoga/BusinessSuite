@@ -275,6 +275,74 @@ html.app-brand-ready img[data-app-logo] {
   opacity: 0.8;
 }
 
+/*
+  Windows-specific overlay fallback.
+  The desktop/web app uses document-level zoom for auto-scale. On Windows this can make
+  overlay menus feel clipped and their active states too subtle in dark themes, so keep
+  dropdown content explicitly readable and restore visible scroll affordances there.
+*/
+html.platform-windows [role='menu'],
+html.platform-windows [role='listbox'] {
+  background-color: var(--color-popover);
+  color: var(--color-popover-foreground);
+  -ms-overflow-style: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+html.platform-windows z-command-list > [role='listbox'] {
+  max-height: min(calc(18.75rem * var(--app-ui-scale-inverse)), calc(100dvh - 2rem));
+}
+
+html.platform-windows [role='menu']::-webkit-scrollbar,
+html.platform-windows [role='listbox']::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  display: block;
+}
+
+html.platform-windows [role='menu']::-webkit-scrollbar-thumb,
+html.platform-windows [role='listbox']::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+
+html.platform-windows [role='menu']::-webkit-scrollbar-track,
+html.platform-windows [role='listbox']::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.platform-windows z-select-item:hover,
+html.platform-windows [z-select-item]:hover,
+html.platform-windows z-select-item:focus-visible,
+html.platform-windows [z-select-item]:focus-visible,
+html.platform-windows z-select-item[data-selected],
+html.platform-windows [z-select-item][data-selected],
+html.platform-windows z-select-item[aria-selected='true'],
+html.platform-windows [z-select-item][aria-selected='true'],
+html.platform-windows z-dropdown-menu-item:hover,
+html.platform-windows [z-dropdown-menu-item]:hover,
+html.platform-windows z-dropdown-menu-item:focus-visible,
+html.platform-windows [z-dropdown-menu-item]:focus-visible,
+html.platform-windows z-dropdown-menu-item[data-highlighted],
+html.platform-windows [z-dropdown-menu-item][data-highlighted],
+html.platform-windows z-dropdown-menu-item[data-highlighted='true'],
+html.platform-windows [z-dropdown-menu-item][data-highlighted='true'],
+html.platform-windows .z-command-option:hover,
+html.platform-windows .z-command-option:focus-visible,
+html.platform-windows .z-command-option[aria-selected='true'],
+html.platform-windows .z-command-option[data-selected='true'] {
+  background-color: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+html.platform-windows
+  .z-command-option:is(:hover, :focus-visible, [aria-selected='true'], [data-selected='true'])
+  :is(.text-xs.opacity-60, .product-select-description) {
+  color: inherit;
+  opacity: 0.9;
+}
+
 /* Normalize all loader-circle spinners to rotate in place around the SVG center. */
 @keyframes app-circle-spin {
   from {

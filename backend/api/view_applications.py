@@ -46,6 +46,12 @@ Streams.
 
 import logging
 
+from api.utils.contracts import build_error_payload, build_success_payload, get_request_id
+from api.utils.idempotency import (
+    build_request_idempotency_fingerprint,
+    resolve_request_idempotent_job,
+    store_request_idempotent_job,
+)
 from api.utils.stream_payloads import (
     build_async_job_links,
     build_async_job_start_payload,
@@ -53,8 +59,6 @@ from api.utils.stream_payloads import (
     normalize_ocr_job_payload,
     normalize_ocr_result_payload,
 )
-from api.utils.contracts import build_error_payload, build_success_payload, get_request_id
-from api.utils.idempotency import build_request_idempotency_fingerprint, resolve_request_idempotent_job, store_request_idempotent_job
 
 from .views_imports import *
 
@@ -122,9 +126,9 @@ def _build_document_ocr_status_payload(job: DocumentOCRJob) -> dict[str, Any]:
         except (TypeError, ValueError, json.JSONDecodeError):
             structured_data = None
         if isinstance(structured_data, dict):
-            response_data["structuredData"] = normalize_ocr_result_payload(
-                {"structuredData": structured_data}
-            )["structuredData"]
+            response_data["structuredData"] = normalize_ocr_result_payload({"structuredData": structured_data})[
+                "structuredData"
+            ]
     elif job.status == DocumentOCRJob.STATUS_FAILED:
         response_data["errorMessage"] = job.error_message or "Document OCR job failed"
 
@@ -628,7 +632,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["post"], url_path="reopen")
     def reopen_application(self, request, pk=None):
-        """Re-open a completed application."""
+        """Re-open a semantically completed application."""
         application = self.get_object()
         deprecated_response = self._ensure_application_product_is_active(application)
         if deprecated_response:
@@ -1120,9 +1124,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
                 return
 
-            for stream_event in iter_replay_and_live_events(
-                stream_key=stream_key, last_event_id=last_event_id
-            ):
+            for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
                 if time.monotonic() >= deadline:
                     return
                 try:
@@ -1416,9 +1418,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
                 return
 
-            for stream_event in iter_replay_and_live_events(
-                stream_key=stream_key, last_event_id=last_event_id
-            ):
+            for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
                 if time.monotonic() >= deadline:
                     return
                 try:

@@ -528,9 +528,10 @@ class DocApplication(models.Model):
 
     def reopen(self, user) -> bool:
         """
-        Re-open a completed application and reset the last workflow step to processing.
+        Re-open a semantically completed application and reset the last workflow step
+        to processing.
         """
-        if self.status != self.STATUS_COMPLETED:
+        if self.status == self.STATUS_REJECTED or not self.is_application_completed:
             return False
 
         self.status = self.STATUS_PROCESSING

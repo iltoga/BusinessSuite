@@ -31,6 +31,7 @@ import { filter, Subscription } from 'rxjs';
 import { popoverVariants } from './popover.variants';
 
 import { mergeClasses } from '@/shared/utils/merge-classes';
+import { readOverlayTriggerWidthPx } from '@/shared/utils/ui-scale';
 
 export type ZardPopoverTrigger = 'click' | 'hover' | null;
 export type ZardPopoverPlacement = 'top' | 'bottom' | 'left' | 'right';
@@ -274,11 +275,11 @@ export class ZardPopoverDirective implements OnInit, OnDestroy {
       return;
 
     try {
-      const originRect = this.nativeElement.getBoundingClientRect();
+      const triggerWidth = readOverlayTriggerWidthPx(this.nativeElement);
       const overlayEl = (this.overlayRef as OverlayRef).overlayElement;
-      if (overlayEl && originRect.width) {
+      if (overlayEl && triggerWidth) {
         // set explicit width so popover aligns with the trigger
-        overlayEl.style.width = `${Math.round(originRect.width)}px`;
+        overlayEl.style.width = `${Math.round(triggerWidth)}px`;
       }
     } catch (e) {
       // ignore errors

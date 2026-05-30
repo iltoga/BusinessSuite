@@ -1,8 +1,8 @@
+import { Overlay, OverlayPositionBuilder } from '@angular/cdk/overlay';
 import { ElementRef, PLATFORM_ID, RendererFactory2 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Overlay, OverlayPositionBuilder } from '@angular/cdk/overlay';
 import { Subject } from 'rxjs';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ZardDropdownService } from './dropdown.service';
 
@@ -77,7 +77,9 @@ describe('ZardDropdownService', () => {
           useValue: {
             flexibleConnectedTo: vi.fn(() => ({
               withPositions: vi.fn().mockReturnThis(),
+              withFlexibleDimensions: vi.fn().mockReturnThis(),
               withPush: vi.fn().mockReturnThis(),
+              withViewportMargin: vi.fn().mockReturnThis(),
             })),
           },
         },

@@ -34,6 +34,7 @@ describe('CalendarIntegrationComponent', () => {
     summary: string,
     colorId?: string,
     isoDate: string = todayIsoDate,
+    extra: Record<string, unknown> = {},
   ) => ({
     id,
     summary,
@@ -44,7 +45,32 @@ describe('CalendarIntegrationComponent', () => {
     end: { date: isoDate },
     htmlLink: 'https://calendar.google.com',
     ...(colorId ? { colorId } : {}),
+    ...extra,
   });
+
+  const taskDeadlineExtra = {
+    extendedProperties: {
+      private: {
+        revisbali_event_kind: 'task_deadline',
+      },
+    },
+  };
+
+  const submissionExtra = {
+    extendedProperties: {
+      private: {
+        revisbali_event_kind: 'application_submission',
+      },
+    },
+  };
+
+  const visaWindowExtra = {
+    extendedProperties: {
+      private: {
+        revisbali_event_kind: 'visa_submission_window',
+      },
+    },
+  };
 
   const setup = (events: any[]) => {
     const dialogServiceMock = { create: vi.fn() };
@@ -80,8 +106,8 @@ describe('CalendarIntegrationComponent', () => {
 
   it('splits today events into todo and done buckets', () => {
     const { component } = setup([
-      makeEvent('1', 'Todo Event', '5'),
-      makeEvent('2', 'Done Event', '10'),
+      makeEvent('1', '[Application #1] Todo Event', '5', todayIsoDate, taskDeadlineExtra),
+      makeEvent('2', '[Application #2] Done Event', '10', todayIsoDate, taskDeadlineExtra),
     ]);
 
     expect(component.todayTodoEvents().length).toBe(1);
@@ -89,7 +115,9 @@ describe('CalendarIntegrationComponent', () => {
   });
 
   it('marks a todo event as done via backend patch', () => {
-    const { component, calendarServiceMock } = setup([makeEvent('1', 'Todo Event', '5')]);
+    const { component, calendarServiceMock } = setup([
+      makeEvent('1', '[Application #1] Todo Event', '5', todayIsoDate, taskDeadlineExtra),
+    ]);
     const todoEvent = component.todayTodoEvents()[0];
 
     component.toggleEventDone(todoEvent);
@@ -101,7 +129,9 @@ describe('CalendarIntegrationComponent', () => {
   });
 
   it('does not allow moving a done event back to todo', () => {
-    const { component, calendarServiceMock } = setup([makeEvent('1', 'Done Event', '10')]);
+    const { component, calendarServiceMock } = setup([
+      makeEvent('1', '[Application #1] Done Event', '10', todayIsoDate, taskDeadlineExtra),
+    ]);
     const doneEvent = component.todayDoneEvents()[0];
 
     component.toggleEventDone(doneEvent);
@@ -111,13 +141,77 @@ describe('CalendarIntegrationComponent', () => {
 
   it('lists overdue application events from newest due date to oldest within last 14 days', () => {
     const { component } = setup([
-      makeEvent('too-old', '[Application #100] Too Old Overdue', '5', isoAtOffset(-15)),
-      makeEvent('old', '[Application #101] Old Overdue', '5', isoAtOffset(-5)),
-      makeEvent('new', '[Application #102] New Overdue', '5', isoAtOffset(-1)),
-      makeEvent('done', '[Application #103] Done Overdue', '10', isoAtOffset(-2)),
+      makeEvent(
+        'too-old',
+        '[Application #100] Too Old Overdue',
+        '5',
+        isoAtOffset(-15),
+        taskDeadlineExtra,
+      ),
+      makeEvent('old', '[Application #101] Old Overdue', '5', isoAtOffset(-5), taskDeadlineExtra),
+      makeEvent('new', '[Application #102] New Overdue', '5', isoAtOffset(-1), taskDeadlineExtra),
+      makeEvent(
+        'done',
+        '[Application #103] Done Overdue',
+        '10',
+        isoAtOffset(-2),
+        taskDeadlineExtra,
+      ),
+      makeEvent(
+        'submission',
+        '[Application #104] Local Event - Application submission',
+        '9',
+        isoAtOffset(-1),
+        submissionExtra,
+      ),
+      makeEvent(
+        'visa-window',
+        '[Application #105] Local Event - Visa submission window',
+        '6',
+        isoAtOffset(-3),
+        visaWindowExtra,
+      ),
       makeEvent('other', 'General Calendar Event', '5', isoAtOffset(-3)),
     ]);
 
     expect(component.overdueApplications().map((event) => event.id)).toEqual(['new', 'old']);
+  });
+
+  it('keeps submission and visa-window milestones out of today and upcoming task widgets', () => {
+    const { component } = setup([
+      makeEvent(
+        'submission-today',
+        '[Application #201] Customer - Application submission',
+        '9',
+        todayIsoDate,
+        submissionExtra,
+      ),
+      makeEvent(
+        'todo-today',
+        '[Application #202] Customer - Biometrics',
+        '5',
+        todayIsoDate,
+        taskDeadlineExtra,
+      ),
+      makeEvent(
+        'done-today',
+        '[Application #203] Customer - Interview',
+        '10',
+        todayIsoDate,
+        taskDeadlineExtra,
+      ),
+      makeEvent(
+        'visa-future',
+        '[Application #204] Customer - Visa submission window',
+        '6',
+        isoAtOffset(1),
+        visaWindowExtra,
+      ),
+    ]);
+
+    expect(component.todayEvents().map((event) => event.id)).toEqual(['todo-today', 'done-today']);
+    expect(component.todayTodoEvents().map((event) => event.id)).toEqual(['todo-today']);
+    expect(component.todayDoneEvents().map((event) => event.id)).toEqual(['done-today']);
+    expect(component.restOfWeekEvents()).toEqual([]);
   });
 });

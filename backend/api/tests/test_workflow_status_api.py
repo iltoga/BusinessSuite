@@ -240,6 +240,42 @@ class WorkflowStatusApiTests(TestCase):
         self.assertEqual(app.current_workflow.id, step1.id)
         self.assertEqual(app.due_date, step1.due_date)
 
+    def test_reopen_application_allows_semantically_completed_application_with_stale_status(self):
+        app, workflow = self._create_application_and_workflow(document_completed=False, task_count=1)
+
+        complete_response = self.client.post(
+            f"/api/customer-applications/{app.id}/workflows/{workflow.id}/status/",
+            {"status": DocApplication.STATUS_COMPLETED},
+            format="json",
+        )
+        self.assertEqual(complete_response.status_code, 200)
+
+        app.refresh_from_db()
+        workflow.refresh_from_db()
+        self.assertEqual(app.status, DocApplication.STATUS_COMPLETED)
+        self.assertTrue(app.is_application_completed)
+
+        app.status = DocApplication.STATUS_PROCESSING
+        app.updated_by = self.user
+        app.save(skip_status_calculation=True)
+
+        app.refresh_from_db()
+        self.assertEqual(app.status, DocApplication.STATUS_PROCESSING)
+        self.assertTrue(app.is_application_completed)
+
+        reopen_response = self.client.post(
+            f"/api/customer-applications/{app.id}/reopen/",
+            {},
+            format="json",
+        )
+        self.assertEqual(reopen_response.status_code, 200)
+
+        app.refresh_from_db()
+        workflow.refresh_from_db()
+        self.assertEqual(app.status, DocApplication.STATUS_PROCESSING)
+        self.assertEqual(workflow.status, DocApplication.STATUS_PROCESSING)
+        self.assertFalse(app.is_application_completed)
+
     def test_doc_workflow_status_choices_and_terminal_statuses_track_application_constants(self):
         self.assertEqual(DocWorkflow.STATUS_CHOICES, DocApplication.STATUS_CHOICES)
         self.assertEqual(

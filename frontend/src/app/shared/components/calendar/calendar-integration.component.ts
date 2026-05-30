@@ -38,6 +38,9 @@ type CalendarEventWithColor = GoogleCalendarEvent & {
   colorId?: string;
   start?: { dateTime?: string; date?: string } | null;
   end?: { dateTime?: string; date?: string } | null;
+  extendedProperties?: {
+    private?: Record<string, string | undefined> | null;
+  } | null;
 };
 
 type CalendarEventViewModel = CalendarEventWithColor & {
@@ -76,8 +79,8 @@ type WeekCalendarDay = {
     ZardButtonComponent,
     ZardIconComponent,
     ZardSkeletonComponent,
-    AppDatePipe
-],
+    AppDatePipe,
+  ],
   templateUrl: './calendar-integration.component.html',
   styleUrl: './calendar-integration.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -131,9 +134,13 @@ export class CalendarIntegrationComponent implements OnInit {
     }),
   );
 
+  readonly taskDeadlineEvents = computed(() =>
+    this.normalizedEvents().filter((event) => this.isTaskDeadlineEvent(event)),
+  );
+
   readonly todayEvents = computed(() => {
     const today = new Date();
-    return this.normalizedEvents().filter((event) => this.isSameDay(event.startDate, today));
+    return this.taskDeadlineEvents().filter((event) => this.isSameDay(event.startDate, today));
   });
 
   readonly todayTodoEvents = computed(() => this.todayEvents().filter((event) => !event.isDone));
@@ -157,8 +164,10 @@ export class CalendarIntegrationComponent implements OnInit {
       return [];
     }
 
-    return this.normalizedEvents()
-      .filter((event) => event.startDate >= tomorrowStart && event.startDate < weekEnd)
+    return this.taskDeadlineEvents()
+      .filter(
+        (event) => !event.isDone && event.startDate >= tomorrowStart && event.startDate < weekEnd,
+      )
       .sort((left, right) => left.startDate.getTime() - right.startDate.getTime());
   });
 
@@ -173,6 +182,7 @@ export class CalendarIntegrationComponent implements OnInit {
       return [];
     }
 
+    const upcomingEvents = this.restOfWeekEvents();
     const days: WeekCalendarDay[] = [];
     for (
       let cursor = new Date(tomorrowStart);
@@ -180,7 +190,7 @@ export class CalendarIntegrationComponent implements OnInit {
       cursor.setDate(cursor.getDate() + 1)
     ) {
       const dayDate = new Date(cursor);
-      const dayEvents = this.normalizedEvents()
+      const dayEvents = upcomingEvents
         .filter((event) => this.isSameDay(event.startDate, dayDate))
         .sort((left, right) => left.startDate.getTime() - right.startDate.getTime());
 
@@ -204,10 +214,9 @@ export class CalendarIntegrationComponent implements OnInit {
     const oldestOverdueStart = new Date(todayStart);
     oldestOverdueStart.setDate(oldestOverdueStart.getDate() - 14);
 
-    return this.normalizedEvents()
+    return this.taskDeadlineEvents()
       .filter(
         (event) =>
-          this.isApplicationEvent(event) &&
           !event.isDone &&
           event.startDate.getTime() < todayStart.getTime() &&
           event.startDate.getTime() >= oldestOverdueStart.getTime(),
@@ -789,7 +798,10 @@ export class CalendarIntegrationComponent implements OnInit {
       summary: event.summary,
       startTime: event.start?.dateTime || event.start?.date || event.startDate.toISOString(),
       endTime:
-        event.end?.dateTime || event.end?.date || event.endDate?.toISOString() || event.startDate.toISOString(),
+        event.end?.dateTime ||
+        event.end?.date ||
+        event.endDate?.toISOString() ||
+        event.startDate.toISOString(),
       description: event.description,
       attendees: event.attendees,
       notifications: event.notifications,
@@ -800,6 +812,37 @@ export class CalendarIntegrationComponent implements OnInit {
 
   private isDoneEvent(event: CalendarEventWithColor): boolean {
     return event.colorId === this.doneColorId();
+  }
+
+  private eventKind(event: CalendarEventWithColor): string | null {
+    const value = event.extendedProperties?.private?.['revisbali_event_kind'];
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private isTaskDeadlineEvent(event: CalendarEventViewModel): boolean {
+    if (!this.isApplicationEvent(event)) {
+      return false;
+    }
+
+    const eventKind = this.eventKind(event);
+    if (eventKind) {
+      return eventKind === 'task_deadline';
+    }
+
+    const normalizedSummary = event.summary.trim().toLowerCase();
+    if (
+      normalizedSummary.endsWith('application submission') ||
+      normalizedSummary.endsWith('visa submission window')
+    ) {
+      return false;
+    }
+
+    return event.colorId === this.todoColorId() || event.colorId === this.doneColorId();
   }
 
   private isApplicationEvent(event: CalendarEventViewModel): boolean {

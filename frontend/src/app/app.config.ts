@@ -33,6 +33,7 @@ import { RbacService } from '@/core/api/api/rbac.service';
 import { RbacPermissions } from '@/core/api/model/rbac-permissions';
 import { provideApi } from '@/core/api/provide-api';
 import { RBAC_RULES } from '@/core/tokens/rbac.token';
+import { isWindowsPlatform } from '@/shared/utils/ui-scale';
 import { WritableSignal } from '@angular/core';
 import { provideServiceWorker } from '@angular/service-worker';
 import { ThemeName } from './core/theme.config';
@@ -252,6 +253,14 @@ function applyGlobalUiScaleFromSettings(
   applyGlobalUiScale(computeEffectiveUiScalePercent(settings, window.innerWidth));
 }
 
+function applyPlatformClasses(): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.documentElement.classList.toggle('platform-windows', isWindowsPlatform());
+}
+
 function bindGlobalUiScaleResizeHandler(
   settings: InitializeApplicationDeps['configService']['settings'],
 ): void {
@@ -319,6 +328,8 @@ export async function initializeApplication({
 
   // Wrap entire initialization in a global timeout to prevent indefinite hangs
   const initWork = async (): Promise<void> => {
+    applyPlatformClasses();
+
     console.debug('[AppInit] Loading config…');
     await configService.loadConfig();
     console.debug('[AppInit] Config loaded');

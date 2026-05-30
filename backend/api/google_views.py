@@ -134,6 +134,8 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
             data["attendees"] = event.attendees
         if event.notifications:
             data["notifications"] = event.notifications
+        if event.extended_properties:
+            data["extendedProperties"] = event.extended_properties
 
         if event.start_date and event.end_date:
             data["start"] = {"date": event.start_date.isoformat()}
@@ -229,6 +231,9 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
                 "private": {
                     "revisbali_entity": "customer_application",
                     "revisbali_customer_application_id": str(application.id),
+                    "revisbali_event_kind": "task_deadline",
+                    "revisbali_task_id": str(task.id),
+                    "revisbali_task_step": str(task.step),
                 }
             },
         }

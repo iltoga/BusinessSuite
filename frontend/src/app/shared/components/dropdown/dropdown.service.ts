@@ -16,6 +16,7 @@ import {
 import { filter, type Subscription } from 'rxjs';
 
 import { noopFn } from '@/shared/utils/merge-classes';
+import { scaleOverlayMaxHeightPx } from '@/shared/utils/ui-scale';
 
 @Injectable({
   providedIn: 'root',
@@ -164,7 +165,7 @@ export class ZardDropdownService {
       scrollStrategy: this.overlay.scrollStrategies.reposition(),
       minWidth: 200,
       maxWidth: 'calc(100vw - 16px)',
-      maxHeight: 400,
+      maxHeight: scaleOverlayMaxHeightPx(400),
     });
   }
 
