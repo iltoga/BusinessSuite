@@ -103,4 +103,48 @@ describe('SearchToolbarComponent keyboard shortcut', () => {
 
     expect(emitted).toBe(0);
   });
+
+  it('should debounce rapid input changes and emit only the latest value', () => {
+    const emitted: string[] = [];
+    component.queryChange.subscribe((value) => emitted.push(value));
+
+    component.onInput({ target: { value: 'fi' } } as unknown as Event);
+    vi.advanceTimersByTime(250);
+
+    component.onInput({ target: { value: 'final term' } } as unknown as Event);
+    vi.advanceTimersByTime(499);
+
+    expect(emitted).toEqual([]);
+
+    vi.advanceTimersByTime(1);
+
+    expect(emitted).toEqual(['final term']);
+  });
+
+  it('should submit the latest pending query immediately on Enter without duplicate debounce emits', () => {
+    const queryEmitted: string[] = [];
+    const submitted: string[] = [];
+    let tabOutCount = 0;
+
+    component.queryChange.subscribe((value) => queryEmitted.push(value));
+    component.submitted.subscribe((value) => submitted.push(value));
+    component.tabOut.subscribe(() => {
+      tabOutCount += 1;
+    });
+
+    component.onInput({ target: { value: 'latest search' } } as unknown as Event);
+    vi.advanceTimersByTime(200);
+
+    component.handleInputKeydown(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+
+    expect(queryEmitted).toEqual(['latest search']);
+    expect(submitted).toEqual(['latest search']);
+    expect(tabOutCount).toBe(1);
+
+    vi.runAllTimers();
+
+    expect(queryEmitted).toEqual(['latest search']);
+  });
 });

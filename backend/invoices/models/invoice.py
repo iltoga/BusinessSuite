@@ -14,8 +14,8 @@ from django.db import models
 from django.db.models import Prefetch, Q, Sum, Value
 from django.db.models.functions import Cast, Coalesce
 from django.db.utils import OperationalError, ProgrammingError
-from django.utils.html import strip_tags
 from django.utils import timezone
+from django.utils.html import strip_tags
 from products.models import Product
 from products.models.product_price_history import ProductPriceHistory
 
@@ -31,6 +31,31 @@ class InvoiceQuerySet(models.QuerySet):
     """
     Custom queryset for Invoice model.
     """
+
+    def search_invoices(self, query):
+        """
+        Search invoices by invoice metadata plus fuzzy customer-name matching.
+        """
+        normalized_query = str(query).strip()
+        if not normalized_query:
+            return self
+
+        return self.annotate(
+            search=SearchVector(
+                "invoice_no",
+                "invoice_date",
+                "due_date",
+                "status",
+                "invoice_date__year",
+            ),
+            first_name_similarity=TrigramSimilarity("customer__first_name", normalized_query),
+            last_name_similarity=TrigramSimilarity("customer__last_name", normalized_query),
+        ).filter(
+            Q(search=normalized_query)
+            | Q(first_name_similarity__gt=0.3)
+            | Q(last_name_similarity__gt=0.3)
+            | Q(invoice_no__icontains=normalized_query)
+        )
 
     def with_payment_totals(self):
         total_paid_field = models.DecimalField(max_digits=12, decimal_places=2)
@@ -94,36 +119,7 @@ class InvoiceManager(models.Manager):
         return InvoiceQuerySet(self.model, using=self._db)
 
     def search_invoices(self, query):
-        """
-        Search Invoices by customer, invoice number (partial match), invoice date, due date, status, invoice date year (this one exact match).
-        Use the SearchVector to search across multiple fields.
-        """
-        return self.annotate(
-            search=SearchVector(
-                "invoice_no",
-                "invoice_date",
-                "due_date",
-                "status",
-                "invoice_date__year",
-            ),
-            first_name_similarity=TrigramSimilarity("customer__first_name", query),
-            last_name_similarity=TrigramSimilarity("customer__last_name", query),
-        ).filter(
-            Q(search=query)
-            | Q(first_name_similarity__gt=0.3)
-            | Q(last_name_similarity__gt=0.3)
-            | Q(invoice_no__icontains=query)
-        )
-
-        # return self.filter(
-        #     models.Q(customer__first_name__icontains=query)
-        #     | models.Q(customer__last_name__icontains=query)
-        #     | models.Q(invoice_no__icontains=query)
-        #     | models.Q(invoice_date__icontains=query)
-        #     | models.Q(due_date__icontains=query)
-        #     | models.Q(status__icontains=query)
-        #     | (models.Q(invoice_date__year=year_query) if year_query is not None else models.Q())
-        # )
+        return self.get_queryset().search_invoices(query)
 
     def with_payment_totals(self):
         return self.get_queryset().with_payment_totals()

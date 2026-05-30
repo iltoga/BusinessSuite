@@ -7,9 +7,7 @@ from unittest.mock import patch
 
 from core.models import CalendarReminder
 from core.services.calendar_reminder_stream import (
-    get_calendar_reminder_stream_cursor,
-    reset_calendar_reminder_stream_state,
-)
+    get_calendar_reminder_stream_cursor, reset_calendar_reminder_stream_state)
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
@@ -153,6 +151,32 @@ class CalendarReminderApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         ids = [item["id"] for item in response.data["results"]]
         self.assertEqual(ids, [own.id])
+
+    def test_list_search_supports_q_alias(self):
+        matching = CalendarReminder.objects.create(
+            user=self.user,
+            created_by=self.user,
+            reminder_date=timezone.localdate(),
+            reminder_time=timezone.localtime().time().replace(second=0, microsecond=0),
+            timezone="Asia/Makassar",
+            content="Alias phrase reminder delta-search-789",
+            status=CalendarReminder.STATUS_PENDING,
+        )
+        CalendarReminder.objects.create(
+            user=self.user,
+            created_by=self.user,
+            reminder_date=timezone.localdate(),
+            reminder_time=timezone.localtime().time().replace(second=0, microsecond=0),
+            timezone="Asia/Makassar",
+            content="Completely different reminder",
+            status=CalendarReminder.STATUS_PENDING,
+        )
+
+        response = self.client.get("/api/calendar-reminders/", {"q": "delta-search-789"})
+
+        self.assertEqual(response.status_code, 200)
+        ids = [item["id"] for item in response.data["results"]]
+        self.assertEqual(ids, [matching.id])
 
     def test_list_status_filter(self):
         CalendarReminder.objects.create(

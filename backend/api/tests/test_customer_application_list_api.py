@@ -1,12 +1,11 @@
 """Regression tests for customer application list search behavior."""
 
+from customer_applications.models import DocApplication
+from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
-
-from customer_applications.models import DocApplication
-from customers.models import Customer
 from products.models import Product
 
 
@@ -57,6 +56,17 @@ class CustomerApplicationListApiTestCase(TestCase):
         self.create_application()
 
         response = self.client.get(reverse("customer-applications-list"), {"search": str(target_application.id)})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(payload["results"][0]["id"], target_application.id)
+
+    def test_application_list_search_matches_primary_key_with_q_alias(self):
+        target_application = self.create_application()
+        self.create_application()
+
+        response = self.client.get(reverse("customer-applications-list"), {"q": f"#{target_application.id}"})
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()

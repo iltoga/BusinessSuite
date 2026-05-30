@@ -39,7 +39,11 @@ Helper functions
 """
 
 from api.utils.contracts import build_success_payload
-from api.utils.idempotency import build_request_idempotency_fingerprint, resolve_request_idempotent_job, store_request_idempotent_job
+from api.utils.idempotency import (
+    build_request_idempotency_fingerprint,
+    resolve_request_idempotent_job,
+    store_request_idempotent_job,
+)
 from api.utils.stream_payloads import (
     build_async_job_links,
     build_async_job_start_payload,
@@ -75,15 +79,17 @@ def _import_item_stream_payload_from_item(item) -> dict[str, Any]:
     return serialize_invoice_import_item_payload(item)
 
 
-class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+class InvoiceViewSet(SharedSearchMixin, ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     throttle_scope = None
     throttle_cache_fail_open_actions = {
         "download_async": False,
         "import_batch": False,
     }
+    search_enabled_actions = ("list",)
+    search_queryset_method = "search_invoices"
     pagination_class = StandardResultsSetPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [SharedSearchFilter, filters.OrderingFilter]
     search_fields = [
         "invoice_no",
         "invoice_date",
@@ -105,10 +111,6 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Invoice.objects.all()
-        query = self.request.query_params.get("search") or self.request.query_params.get("q")
-        if query:
-            queryset = Invoice.objects.search_invoices(query)
-
         hide_paid = self.request.query_params.get("hide_paid", "false").lower() == "true"
         if hide_paid:
             queryset = queryset.exclude(status=Invoice.PAID)
@@ -144,15 +146,19 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             .values("total")
         )
 
-        invoice_applications_qs = InvoiceApplication.objects.select_related(
-            "product",
-            "customer_application__product",
-            "customer_application__customer",
-        ).annotate(
-            annotated_paid_amount=Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
-            annotated_due_amount=F("amount")
-            - Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
-        ).order_by("sort_order", "id")
+        invoice_applications_qs = (
+            InvoiceApplication.objects.select_related(
+                "product",
+                "customer_application__product",
+                "customer_application__customer",
+            )
+            .annotate(
+                annotated_paid_amount=Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
+                annotated_due_amount=F("amount")
+                - Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
+            )
+            .order_by("sort_order", "id")
+        )
 
         if include_payment_details:
             invoice_applications_qs = invoice_applications_qs.prefetch_related("payments")
@@ -390,7 +396,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             request=request,
             namespace=namespace,
             user_id=request.user.id,
-            queryset=InvoiceDownloadJob.objects.filter(invoice=invoice, format_type=format_type, created_by=request.user),
+            queryset=InvoiceDownloadJob.objects.filter(
+                invoice=invoice, format_type=format_type, created_by=request.user
+            ),
             fingerprint=request_fingerprint,
         )
         if cached_job is not None:
@@ -641,9 +649,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if _is_terminal_payload(initial_payload):
                 return
 
-            for stream_event in iter_replay_and_live_events(
-                stream_key=stream_key, last_event_id=last_event_id
-            ):
+            for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
                 if time.monotonic() >= deadline:
                     return
                 if stream_event is None:
@@ -764,14 +770,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             except (TypeError, ValueError):
                 return self.error_response("Invalid current invoice id", status.HTTP_400_BAD_REQUEST)
 
-            current_invoice_exists = Invoice.objects.filter(id=current_invoice_pk, customer_id=customer_id_value).exists()
+            current_invoice_exists = Invoice.objects.filter(
+                id=current_invoice_pk, customer_id=customer_id_value
+            ).exists()
             if not current_invoice_exists:
                 return self.error_response("Current invoice not found.", status.HTTP_404_NOT_FOUND)
 
             current_invoice_application_ids = set(
-                InvoiceApplication.objects.filter(invoice_id=current_invoice_pk, customer_application__isnull=False).values_list(
-                    "customer_application_id", flat=True
-                )
+                InvoiceApplication.objects.filter(
+                    invoice_id=current_invoice_pk, customer_application__isnull=False
+                ).values_list("customer_application_id", flat=True)
             )
 
         eligible_applications = (
@@ -789,7 +797,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
 
         if current_invoice_application_ids:
-            combined_ids = set(eligible_applications.values_list("id", flat=True)).union(current_invoice_application_ids)
+            combined_ids = set(eligible_applications.values_list("id", flat=True)).union(
+                current_invoice_application_ids
+            )
             applications = (
                 DocApplication.objects.filter(id__in=combined_ids)
                 .select_related("customer", "product")
@@ -848,7 +858,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             except (TypeError, ValueError):
                 return self.error_response("Invalid current invoice id", status.HTTP_400_BAD_REQUEST)
 
-            current_invoice_exists = Invoice.objects.filter(id=current_invoice_pk, customer_id=customer_id_value).exists()
+            current_invoice_exists = Invoice.objects.filter(
+                id=current_invoice_pk, customer_id=customer_id_value
+            ).exists()
             if not current_invoice_exists:
                 return self.error_response("Current invoice not found.", status.HTTP_404_NOT_FOUND)
 
@@ -858,9 +870,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 )
             )
             current_invoice_application_ids = set(
-                InvoiceApplication.objects.filter(invoice_id=current_invoice_pk, customer_application__isnull=False).values_list(
-                    "customer_application_id", flat=True
-                )
+                InvoiceApplication.objects.filter(
+                    invoice_id=current_invoice_pk, customer_application__isnull=False
+                ).values_list("customer_application_id", flat=True)
             )
 
         eligible_applications = (
@@ -878,7 +890,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
 
         if current_invoice_application_ids:
-            combined_ids = set(eligible_applications.values_list("id", flat=True)).union(current_invoice_application_ids)
+            combined_ids = set(eligible_applications.values_list("id", flat=True)).union(
+                current_invoice_application_ids
+            )
             pending_applications = (
                 DocApplication.objects.filter(id__in=combined_ids)
                 .select_related("customer", "product")
@@ -894,7 +908,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             pending_by_product.setdefault(application.product_id, []).append(application)
 
         if current_invoice_product_ids:
-            product_queryset = Product.objects.filter(Q(deprecated=False) | Q(id__in=current_invoice_product_ids)).distinct()
+            product_queryset = Product.objects.filter(
+                Q(deprecated=False) | Q(id__in=current_invoice_product_ids)
+            ).distinct()
         else:
             product_queryset = Product.objects.filter(deprecated=False)
         products = product_queryset.order_by("name")
@@ -1584,9 +1600,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if done:
                 return
 
-            for stream_event in iter_replay_and_live_events(
-                stream_key=stream_key, last_event_id=last_event_id
-            ):
+            for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
                 if time.monotonic() >= deadline:
                     return
                 if stream_event is None:

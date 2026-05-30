@@ -128,6 +128,62 @@ describe('ProductFormComponent', () => {
     expect(component.productsApi.productsUpdate).not.toHaveBeenCalled();
   });
 
+  it('hides workflow sections and omits workflow payload for other products', () => {
+    const component = createHarness();
+    (ProductFormComponent.prototype as any).initializeWorkflowSectionAvailability.call(component);
+
+    component.form.patchValue({
+      requiredDocumentIds: [12, 18],
+      optionalDocumentIds: [22],
+    });
+    component.addTask({
+      id: 7,
+      step: 1,
+      name: 'Collect docs',
+      description: '',
+      cost: '0.00',
+      duration: 2,
+      addTaskToCalendar: false,
+      notifyCustomer: false,
+      durationIsBusinessDays: true,
+      notifyDaysBefore: 0,
+      lastStep: true,
+    } as ProductDetail['tasks'][number]);
+
+    component.form.patchValue({ productType: 'other' });
+
+    expect(component.showWorkflowSections()).toBe(false);
+    expect(component.form.get('requiredDocumentIds')?.disabled).toBe(true);
+    expect(component.form.get('optionalDocumentIds')?.disabled).toBe(true);
+    expect(component.tasksArray.disabled).toBe(true);
+    expect(component.updateDto().requiredDocumentIds).toEqual([]);
+    expect(component.updateDto().optionalDocumentIds).toEqual([]);
+    expect(component.updateDto().tasks).toEqual([]);
+
+    component.form.patchValue({ productType: 'visa' });
+
+    expect(component.showWorkflowSections()).toBe(true);
+    expect(component.form.get('requiredDocumentIds')?.enabled).toBe(true);
+    expect(component.form.get('optionalDocumentIds')?.enabled).toBe(true);
+    expect(component.tasksArray.enabled).toBe(true);
+    expect(component.form.get('requiredDocumentIds')?.value).toEqual([12, 18]);
+    expect(component.form.get('optionalDocumentIds')?.value).toEqual([22]);
+    expect(component.tasksArray.length).toBe(1);
+  });
+
+  it('switches visa-specific helper copy to generic copy for other products', () => {
+    const component = createHarness();
+
+    component.form.patchValue({ productType: 'other' });
+
+    expect(component.documentsMinValidityLabel()).toBe('Documents min validity (days)');
+    expect(component.applicationWindowDaysLabel()).toBe('Application window (days)');
+    expect(component.productTypeTooltip()).toContain('Generic product');
+    expect(component.documentsMinValidityTooltip()).not.toContain('passport');
+    expect(component.applicationWindowDaysTooltip()).not.toContain('stay permit');
+    expect(component.validationPromptPlaceholder()).not.toContain('visa type');
+  });
+
   it('refreshes tasks after PATCH so newly created task ids are preserved for the next save', () => {
     const component = createHarness();
     const refreshedItem = {

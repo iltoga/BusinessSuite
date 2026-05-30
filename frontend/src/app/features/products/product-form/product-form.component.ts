@@ -12,10 +12,11 @@ import { Observable, switchMap, tap } from 'rxjs';
 
 import {
   DocumentTypesService,
+  ProductCreateUpdateRequestProductTypeEnum,
   ProductsService,
   type DocumentType,
+  type ProductCreateUpdate,
   type ProductCreateUpdateRequest,
-  ProductCreateUpdateRequestProductTypeEnum,
   type ProductDetail,
 } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
@@ -34,6 +35,7 @@ import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { BaseFormComponent, BaseFormConfig } from '@/shared/core/base-form.component';
 
 type ProductTask = NonNullable<ProductDetail['tasks']>[number];
+type ProductTaskRequest = NonNullable<ProductCreateUpdateRequest['tasks']>[number];
 type ProductNavigationState = {
   searchQuery: string | null;
   page: number | null;
@@ -95,6 +97,9 @@ export class ProductFormComponent
   );
 
   readonly hasMultipleLastSteps = computed(() => {
+    if (!this.showWorkflowSections()) {
+      return false;
+    }
     const tasks = this.tasksArray.controls;
     return tasks.filter((group) => group.get('lastStep')?.value).length > 1;
   });
@@ -125,15 +130,14 @@ export class ProductFormComponent
   override readonly fieldTooltips: Record<string, string> = {
     name: 'Display name shown to your team when selecting this product.',
     code: 'Unique internal code used in search, reports, and references.',
-    productType: 'Controls visa-specific labels and related workflow expectations.',
+    productType: 'Controls product-specific labels and related workflow expectations.',
     currency: '2-3 letter currency code used for pricing (for example IDR or USD).',
     basePrice: 'Your internal/base cost for this product.',
     retailPrice: 'Customer-facing price. It must be equal to or higher than base price.',
     validity: 'How many days the product outcome remains valid (optional).',
-    documentsMinValidity:
-      'Minimum remaining validity required for supporting documents (for visa, usually passport validity).',
+    documentsMinValidity: 'Minimum remaining validity required for supporting documents.',
     applicationWindowDays:
-      "How many days before expiry of the customer's Stay Permit this product can be submitted or renewed.",
+      'How many days before the relevant deadline this product can be submitted or renewed.',
     description: 'Internal notes that explain what this product is for.',
     validationPrompt:
       'Optional AI instruction added to document validation for applications that use this product.',
@@ -220,7 +224,7 @@ export class ProductFormComponent
   /**
    * Save new product
    */
-  protected override saveCreate(dto: ProductCreateUpdateRequest): Observable<any> {
+  protected override saveCreate(dto: ProductCreateUpdateRequest): Observable<ProductCreateUpdate> {
     return this.productsApi.productsCreate({ productCreateUpdateRequest: dto }).pipe(
       tap((item) => {
         const createdId = this.parsePositiveInteger(item?.id);
@@ -234,7 +238,7 @@ export class ProductFormComponent
   /**
    * Update existing product
    */
-  protected override saveUpdate(dto: ProductCreateUpdateRequest): Observable<any> {
+  protected override saveUpdate(dto: ProductCreateUpdateRequest): Observable<ProductDetail> {
     return this.productsApi
       .productsPartialUpdate({ id: this.itemId!, productCreateUpdateRequest: dto })
       .pipe(
@@ -252,6 +256,8 @@ export class ProductFormComponent
   override ngOnInit(): void {
     // Call base ngOnInit for standard initialization
     super.ngOnInit();
+
+    this.initializeWorkflowSectionAvailability();
 
     if (!this.isBrowser) return;
 
@@ -340,6 +346,7 @@ export class ProductFormComponent
 
     this.tasksArray.clear({ emitEvent: false });
     (item.tasks ?? []).forEach((task) => this.addTask(task));
+    this.updateWorkflowSectionAvailability();
   }
 
   /**
@@ -441,7 +448,7 @@ export class ProductFormComponent
    * Get documents min validity label based on product type
    */
   documentsMinValidityLabel(): string {
-    return this.form.get('productType')?.value === 'visa'
+    return this.isVisaProductType()
       ? 'Passport min validity (days)'
       : 'Documents min validity (days)';
   }
@@ -450,9 +457,52 @@ export class ProductFormComponent
    * Get application window days label based on product type
    */
   applicationWindowDaysLabel(): string {
-    return this.form.get('productType')?.value === 'visa'
+    return this.isVisaProductType()
       ? 'Application window (days before stay permit expiry)'
       : 'Application window (days)';
+  }
+
+  /**
+   * Whether workflow-specific UI should be shown for the selected product type.
+   */
+  showWorkflowSections(): boolean {
+    return this.isVisaProductType();
+  }
+
+  /**
+   * Get product type tooltip based on selected type
+   */
+  productTypeTooltip(): string {
+    return this.isVisaProductType()
+      ? 'Visa-specific labels and workflow guidance are enabled for this product.'
+      : 'Generic product labels and workflow guidance are enabled for this product.';
+  }
+
+  /**
+   * Get documents minimum validity tooltip based on product type
+   */
+  documentsMinValidityTooltip(): string {
+    return this.isVisaProductType()
+      ? 'Minimum remaining passport validity required for this visa product.'
+      : 'Minimum remaining validity required for supporting documents for this product.';
+  }
+
+  /**
+   * Get application window tooltip based on product type
+   */
+  applicationWindowDaysTooltip(): string {
+    return this.isVisaProductType()
+      ? "How many days before the customer's stay permit expires this product can be submitted or renewed."
+      : 'How many days before the relevant deadline this product should be submitted or renewed.';
+  }
+
+  /**
+   * Get AI validation prompt placeholder based on product type
+   */
+  validationPromptPlaceholder(): string {
+    return this.isVisaProductType()
+      ? "Optional product-specific context injected during AI document validation (e.g. 'Passport validity must be at least 12 months for this visa type')."
+      : "Optional product-specific context injected during AI document validation (e.g. 'Supporting receipt must clearly show the paid amount and payment date').";
   }
 
   /**
@@ -467,6 +517,8 @@ export class ProductFormComponent
   private buildPayload(): ProductCreateUpdateRequest {
     const rawValue = this.form.getRawValue();
     const basePrice = this.isAdminOrManager() ? rawValue.basePrice : 0;
+    const includeWorkflowSections = this.showWorkflowSections();
+    const rawTasks = (rawValue.tasks ?? []) as ProductTaskRequest[];
     return {
       name: rawValue.name ?? '',
       code: rawValue.code ?? '',
@@ -483,26 +535,28 @@ export class ProductFormComponent
       applicationWindowDays: rawValue.applicationWindowDays,
       validationPrompt: rawValue.validationPrompt ?? '',
       deprecated: rawValue.deprecated ?? false,
-      requiredDocumentIds: rawValue.requiredDocumentIds,
-      optionalDocumentIds: rawValue.optionalDocumentIds,
-      tasks: (rawValue.tasks || []).map((t: any) => {
-        const task: any = {
-          step: t.step,
-          name: t.name,
-          description: t.description,
-          cost: t.cost !== null ? String(t.cost) : '0',
-          duration: t.duration,
-          addTaskToCalendar: t.addTaskToCalendar,
-          notifyCustomer: t.notifyCustomer,
-          durationIsBusinessDays: t.durationIsBusinessDays,
-          notifyDaysBefore: t.notifyDaysBefore,
-          lastStep: t.lastStep,
-        };
-        if (t.id != null) {
-          task.id = t.id;
-        }
-        return task;
-      }),
+      requiredDocumentIds: includeWorkflowSections ? rawValue.requiredDocumentIds : [],
+      optionalDocumentIds: includeWorkflowSections ? rawValue.optionalDocumentIds : [],
+      tasks: includeWorkflowSections
+        ? rawTasks.map((t): ProductTaskRequest => {
+            const task: ProductTaskRequest = {
+              step: t.step,
+              name: t.name,
+              description: t.description,
+              cost: t.cost !== null ? String(t.cost) : '0',
+              duration: t.duration,
+              addTaskToCalendar: t.addTaskToCalendar,
+              notifyCustomer: t.notifyCustomer,
+              durationIsBusinessDays: t.durationIsBusinessDays,
+              notifyDaysBefore: t.notifyDaysBefore,
+              lastStep: t.lastStep,
+            };
+            if (t.id != null) {
+              task.id = t.id;
+            }
+            return task;
+          })
+        : [],
     };
   }
 
@@ -521,24 +575,14 @@ export class ProductFormComponent
 
   private syncTaskNotifyCustomerAvailability(group: FormGroup): void {
     const addToCalendarControl = group.get('addTaskToCalendar');
-    const notifyCustomerControl = group.get('notifyCustomer');
-    if (!addToCalendarControl || !notifyCustomerControl) {
+    if (!addToCalendarControl) {
       return;
     }
 
-    const applyState = (enabled: boolean) => {
-      if (enabled) {
-        notifyCustomerControl.enable({ emitEvent: false });
-        return;
-      }
-      notifyCustomerControl.setValue(false, { emitEvent: false });
-      notifyCustomerControl.disable({ emitEvent: false });
-    };
-
-    applyState(Boolean(addToCalendarControl.value));
+    this.applyTaskNotifyCustomerAvailability(group);
     addToCalendarControl.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((enabled) => applyState(Boolean(enabled)));
+      .subscribe(() => this.applyTaskNotifyCustomerAvailability(group));
   }
 
   private taskDurationValidator(group: FormGroup) {
@@ -570,13 +614,78 @@ export class ProductFormComponent
   }
 
   private normalizeProductType(value: unknown): ProductCreateUpdateRequestProductTypeEnum {
-    switch (String(value ?? '').trim().toLowerCase()) {
+    switch (
+      String(value ?? '')
+        .trim()
+        .toLowerCase()
+    ) {
       case ProductCreateUpdateRequestProductTypeEnum.Other:
         return ProductCreateUpdateRequestProductTypeEnum.Other;
       case ProductCreateUpdateRequestProductTypeEnum.Visa:
       default:
         return ProductCreateUpdateRequestProductTypeEnum.Visa;
     }
+  }
+
+  private isVisaProductType(): boolean {
+    return (
+      this.normalizeProductType(this.form.get('productType')?.value) ===
+      ProductCreateUpdateRequestProductTypeEnum.Visa
+    );
+  }
+
+  private initializeWorkflowSectionAvailability(): void {
+    const productTypeControl = this.form.get('productType');
+    if (!productTypeControl) {
+      return;
+    }
+
+    this.updateWorkflowSectionAvailability();
+    productTypeControl.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.updateWorkflowSectionAvailability());
+  }
+
+  private updateWorkflowSectionAvailability(): void {
+    const shouldShowWorkflowSections = this.showWorkflowSections();
+    const workflowControls = [
+      this.form.get('requiredDocumentIds'),
+      this.form.get('optionalDocumentIds'),
+      this.form.get('tasks'),
+    ];
+
+    workflowControls.forEach((control) => {
+      if (!control) {
+        return;
+      }
+
+      if (shouldShowWorkflowSections) {
+        control.enable({ emitEvent: false });
+        return;
+      }
+
+      control.disable({ emitEvent: false });
+    });
+
+    if (shouldShowWorkflowSections) {
+      this.tasksArray.controls.forEach((group) => this.applyTaskNotifyCustomerAvailability(group));
+    }
+  }
+
+  private applyTaskNotifyCustomerAvailability(group: FormGroup): void {
+    const addToCalendarControl = group.get('addTaskToCalendar');
+    const notifyCustomerControl = group.get('notifyCustomer');
+    if (!addToCalendarControl || !notifyCustomerControl || group.disabled) {
+      return;
+    }
+
+    if (addToCalendarControl.value) {
+      notifyCustomerControl.enable({ emitEvent: false });
+      return;
+    }
+
+    notifyCustomerControl.setValue(false, { emitEvent: false });
+    notifyCustomerControl.disable({ emitEvent: false });
   }
 
   protected override getNavigationState(): ProductNavigationState {

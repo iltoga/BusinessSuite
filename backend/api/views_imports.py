@@ -187,6 +187,8 @@ from .views_shared import ResilientAnonRateThrottle as AnonRateThrottle
 from .views_shared import ResilientScopedRateThrottle as ScopedRateThrottle
 from .views_shared import ResilientUserRateThrottle as UserRateThrottle
 from .views_shared import (
+    SharedSearchFilter,
+    SharedSearchMixin,
     StandardResultsSetPagination,
     _get_enqueue_guard_token,
     _latest_inflight_job,

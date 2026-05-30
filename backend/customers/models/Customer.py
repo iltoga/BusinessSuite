@@ -73,6 +73,22 @@ class CustomerQuerySet(models.QuerySet):
     def active(self):
         return self.filter(active=True)
 
+    def search_customers(self, query):
+        normalized_query = str(query).strip()
+        if not normalized_query:
+            return self
+
+        return self.filter(
+            models.Q(first_name__icontains=normalized_query)
+            | models.Q(last_name__icontains=normalized_query)
+            | models.Q(company_name__icontains=normalized_query)
+            | models.Q(email__icontains=normalized_query)
+            | models.Q(telephone__icontains=normalized_query)
+            | models.Q(telegram__icontains=normalized_query)
+            | models.Q(whatsapp__icontains=normalized_query)
+            | models.Q(passport_number__icontains=normalized_query)
+        )
+
 
 class CustomerManager(models.Manager):
     def get_queryset(self):
@@ -83,16 +99,7 @@ class CustomerManager(models.Manager):
         return self.get_queryset().active()
 
     def search_customers(self, query):
-        return self.filter(
-            models.Q(first_name__icontains=query)
-            | models.Q(last_name__icontains=query)
-            | models.Q(company_name__icontains=query)
-            | models.Q(email__icontains=query)
-            | models.Q(telephone__icontains=query)
-            | models.Q(telegram__icontains=query)
-            | models.Q(whatsapp__icontains=query)
-            | models.Q(passport_number__icontains=query)
-        )
+        return self.get_queryset().search_customers(query)
 
 
 class Customer(models.Model):

@@ -14,9 +14,9 @@ import {
   type OnDestroy,
 } from '@angular/core';
 
+import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
-import { ZardButtonComponent } from '@/shared/components/button';
 
 @Component({
   selector: 'app-search-toolbar',
@@ -29,6 +29,7 @@ import { ZardButtonComponent } from '@/shared/components/button';
 export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private emitVersion = 0;
 
   query = input<string>('');
   placeholder = input<string>('Search...');
@@ -59,6 +60,7 @@ export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
         clearTimeout(this.debounceHandle);
         this.debounceHandle = undefined;
       }
+      this.emitVersion += 1;
 
       // Clear immediately and notify parent list components to reload without search filters.
       this.searchValue.set('');
@@ -86,6 +88,7 @@ export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
       event.preventDefault();
       event.stopPropagation();
 
+      this.submitSearch();
       // Emit tabOut to trigger focus on table (as wired in parent templates)
       this.tabOut.emit();
       return;
@@ -229,7 +232,9 @@ export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
     const value = this.searchValue();
     if (this.debounceHandle) {
       clearTimeout(this.debounceHandle);
+      this.debounceHandle = undefined;
     }
+    this.emitVersion += 1;
     this.queryChange.emit(value);
     this.submitted.emit(value);
   }
@@ -240,7 +245,12 @@ export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
     }
 
     const wait = this.debounceMs();
+    const currentEmitVersion = ++this.emitVersion;
     this.debounceHandle = setTimeout(() => {
+      if (currentEmitVersion !== this.emitVersion) {
+        return;
+      }
+      this.debounceHandle = undefined;
       this.queryChange.emit(value);
     }, wait);
   }

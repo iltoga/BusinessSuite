@@ -180,10 +180,12 @@ from api.serializers.doc_application_serializer import DocApplicationListSeriali
 
 
 @extend_schema_view(list=extend_schema(responses={200: DocApplicationListSerializer(many=True)}))
-class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+class CustomerApplicationViewSet(SharedSearchMixin, ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
+    search_enabled_actions = ("list",)
+    search_queryset_method = "search_doc_applications"
     pagination_class = StandardResultsSetPagination
-    filter_backends = [filters.OrderingFilter]
+    filter_backends = [SharedSearchFilter, filters.OrderingFilter]
     search_fields = [
         "id",
         "product__name",
@@ -240,10 +242,6 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     ),
                 )
             )
-
-        query = self.request.query_params.get("search") or self.request.query_params.get("q")
-        if query:
-            queryset = queryset.search_doc_applications(query)
 
         # Detail responses can derive completion state from prefetched documents,
         # so skip aggregate annotations to keep the base query lighter.

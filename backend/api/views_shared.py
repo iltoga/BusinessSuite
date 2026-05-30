@@ -45,7 +45,7 @@ from api.cache_resilience import is_transient_cache_backend_error
 from api.permissions import is_staff_or_admin_group
 from api.utils.contracts import build_error_payload
 from django.conf import settings
-from rest_framework import pagination, serializers, status
+from rest_framework import filters, pagination, serializers, status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle, UserRateThrottle
@@ -262,6 +262,115 @@ class ApiErrorHandlingMixin:
                 return self.error_response("Server error: Response is None", status.HTTP_500_INTERNAL_SERVER_ERROR)
             return self.error_response("Server error", status.HTTP_500_INTERNAL_SERVER_ERROR)
         return response
+
+
+class SharedSearchMixin:
+    """Shared search configuration for DRF list-style endpoints.
+
+    Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+    allows opting specific actions into search, and can delegate to a
+    queryset-level custom search method when domain-specific behavior is
+    required.
+    """
+
+    search_param_aliases: tuple[str, ...] = ("search", "q")
+    search_enabled_actions: tuple[str, ...] | None = ("list",)
+    search_queryset_method: str | None = None
+
+    def get_search_param_aliases(self) -> tuple[str, ...]:
+        aliases = getattr(self, "search_param_aliases", ()) or ()
+        normalized_aliases: list[str] = []
+        for alias in aliases:
+            normalized = str(alias).strip()
+            if normalized and normalized not in normalized_aliases:
+                normalized_aliases.append(normalized)
+        return tuple(normalized_aliases or ("search", "q"))
+
+    def should_apply_search(self, _request) -> bool:
+        enabled_actions = getattr(self, "search_enabled_actions", None)
+        if not enabled_actions:
+            return True
+        return getattr(self, "action", None) in enabled_actions
+
+    def apply_search_queryset(self, queryset, search_value: str):
+        method_name = getattr(self, "search_queryset_method", None)
+        if not method_name:
+            return None
+
+        search_method = getattr(queryset, method_name, None)
+        if not callable(search_method):
+            raise AttributeError(
+                f"{queryset.__class__.__name__} does not implement the configured search method {method_name!r}."
+            )
+        return search_method(search_value)
+
+
+class SharedSearchFilter(filters.SearchFilter):
+    """Search backend with alias support and optional queryset delegation."""
+
+    default_search_param_aliases = ("search", "q")
+    _active_view = None
+
+    def get_search_param_aliases(self, view) -> tuple[str, ...]:
+        getter = getattr(view, "get_search_param_aliases", None)
+        aliases = (
+            getter() if callable(getter) else getattr(view, "search_param_aliases", self.default_search_param_aliases)
+        )
+
+        normalized_aliases: list[str] = []
+        for alias in aliases or self.default_search_param_aliases:
+            normalized = str(alias).strip()
+            if normalized and normalized not in normalized_aliases:
+                normalized_aliases.append(normalized)
+
+        if self.search_param not in normalized_aliases:
+            normalized_aliases.insert(0, self.search_param)
+
+        return tuple(normalized_aliases)
+
+    def get_search_query_value(self, request, view) -> str:
+        field = serializers.CharField(trim_whitespace=False, allow_blank=True)
+
+        first_present_value = ""
+        for alias in self.get_search_param_aliases(view):
+            raw_value = request.query_params.get(alias, None)
+            if raw_value is None:
+                continue
+
+            cleaned_value = str(field.run_validation(raw_value) or "")
+            if first_present_value == "":
+                first_present_value = cleaned_value
+            if cleaned_value != "":
+                return cleaned_value
+
+        return first_present_value
+
+    def get_search_terms(self, request):
+        view = getattr(self, "_active_view", None)
+        if view is None:
+            return super().get_search_terms(request)
+        return filters.search_smart_split(self.get_search_query_value(request, view))
+
+    def filter_queryset(self, request, queryset, view):
+        should_apply_search = getattr(view, "should_apply_search", None)
+        if callable(should_apply_search) and not should_apply_search(request):
+            return queryset
+
+        raw_search_value = self.get_search_query_value(request, view)
+        if not raw_search_value:
+            return queryset
+
+        apply_search_queryset = getattr(view, "apply_search_queryset", None)
+        if callable(apply_search_queryset):
+            custom_queryset = apply_search_queryset(queryset, raw_search_value)
+            if custom_queryset is not None:
+                return custom_queryset
+
+        self._active_view = view
+        try:
+            return super().filter_queryset(request, queryset, view)
+        finally:
+            self._active_view = None
 
 
 class StandardResultsSetPagination(pagination.PageNumberPagination):

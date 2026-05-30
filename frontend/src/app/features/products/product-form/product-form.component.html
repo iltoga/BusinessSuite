@@ -78,7 +78,7 @@
                 <z-icon
                   zType="info"
                   class="h-3.5 w-3.5 text-muted-foreground"
-                  [zTooltip]="fieldTooltips['productType']"
+                  [zTooltip]="productTypeTooltip()"
               /></label>
               <select
                 class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
@@ -191,7 +191,7 @@
                 <z-icon
                   zType="info"
                   class="h-3.5 w-3.5 text-muted-foreground"
-                  [zTooltip]="fieldTooltips['documentsMinValidity']"
+                  [zTooltip]="documentsMinValidityTooltip()"
               /></label>
               <input
                 z-input
@@ -213,7 +213,7 @@
                 <z-icon
                   zType="info"
                   class="h-3.5 w-3.5 text-muted-foreground"
-                  [zTooltip]="fieldTooltips['applicationWindowDays']"
+                  [zTooltip]="applicationWindowDaysTooltip()"
               /></label>
               <input
                 z-input
@@ -259,7 +259,7 @@
                 z-input
                 formControlName="validationPrompt"
                 rows="5"
-                placeholder="Optional product-specific context injected during AI document validation (e.g. 'Passport validity must be at least 12 months for this visa type')."
+                [placeholder]="validationPromptPlaceholder()"
               ></textarea>
               <p class="text-xs text-muted-foreground">
                 Injected as additional context during AI validation of every document in
@@ -287,247 +287,253 @@
         </div>
       </z-card>
 
-      <z-card class="overflow-hidden">
-        <div class="bg-accent/30 px-6 py-4 border-b">
-          <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
-            <z-icon zType="file-text" class="h-4 w-4 text-primary" />
-            Documents
-          </h2>
-        </div>
-        <div class="p-6">
-          <div class="flex flex-col gap-4">
-            <div class="text-sm font-medium inline-flex items-center gap-1">
-              Required documents
-              <z-icon
-                zType="info"
-                class="h-3.5 w-3.5 text-muted-foreground"
-                [zTooltip]="fieldTooltips['requiredDocumentIds']"
+      @if (showWorkflowSections()) {
+        <z-card class="overflow-hidden">
+          <div class="bg-accent/30 px-6 py-4 border-b">
+            <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+              <z-icon zType="file-text" class="h-4 w-4 text-primary" />
+              Documents
+            </h2>
+          </div>
+          <div class="p-6">
+            <div class="flex flex-col gap-4">
+              <div class="text-sm font-medium inline-flex items-center gap-1">
+                Required documents
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['requiredDocumentIds']"
+                />
+              </div>
+              <app-sortable-multi-select
+                [options]="requiredOptions()"
+                [selectedIds]="form.get('requiredDocumentIds')?.value ?? []"
+                (selectedIdsChange)="onRequiredDocsChange($event)"
+              />
+              <div class="text-sm font-medium inline-flex items-center gap-1 mt-2">
+                Optional documents
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['optionalDocumentIds']"
+                />
+              </div>
+              <app-sortable-multi-select
+                [options]="optionalOptions()"
+                [selectedIds]="form.get('optionalDocumentIds')?.value ?? []"
+                (selectedIdsChange)="onOptionalDocsChange($event)"
               />
             </div>
-            <app-sortable-multi-select
-              [options]="requiredOptions()"
-              [selectedIds]="form.get('requiredDocumentIds')?.value ?? []"
-              (selectedIdsChange)="onRequiredDocsChange($event)"
-            />
-            <div class="text-sm font-medium inline-flex items-center gap-1 mt-2">
-              Optional documents
-              <z-icon
-                zType="info"
-                class="h-3.5 w-3.5 text-muted-foreground"
-                [zTooltip]="fieldTooltips['optionalDocumentIds']"
-              />
-            </div>
-            <app-sortable-multi-select
-              [options]="optionalOptions()"
-              [selectedIds]="form.get('optionalDocumentIds')?.value ?? []"
-              (selectedIdsChange)="onOptionalDocsChange($event)"
-            />
           </div>
-        </div>
-      </z-card>
+        </z-card>
 
-      <z-card class="overflow-hidden">
-        <div class="bg-accent/30 px-6 py-4 border-b">
-          <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
-            <z-icon zType="layers" class="h-4 w-4 text-primary" />
-            Tasks
-          </h2>
-        </div>
-        <div class="p-6">
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <h3 class="text-base font-semibold">Define workflow steps</h3>
-              <p class="text-sm text-muted-foreground">Define workflow steps (max 10).</p>
-            </div>
-            <z-button type="button" zType="secondary" zSize="sm" (click)="addTask()"
-              >Add Task</z-button
-            >
+        <z-card class="overflow-hidden">
+          <div class="bg-accent/30 px-6 py-4 border-b">
+            <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+              <z-icon zType="layers" class="h-4 w-4 text-primary" />
+              Tasks
+            </h2>
           </div>
-
-          @if (tasksArray.controls.length === 0) {
-            <div class="mt-4 text-sm text-muted-foreground">
-              No tasks defined. Click <span class="font-medium">Add Task</span> to add workflow
-              steps.
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-base font-semibold">Define workflow steps</h3>
+                <p class="text-sm text-muted-foreground">Define workflow steps (max 10).</p>
+              </div>
+              <z-button type="button" zType="secondary" zSize="sm" (click)="addTask()"
+                >Add Task</z-button
+              >
             </div>
-          }
 
-          @if (hasMultipleLastSteps()) {
-            <div
-              class="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              Only one task can be marked as the last step.
-            </div>
-          }
+            @if (tasksArray.controls.length === 0) {
+              <div class="mt-4 text-sm text-muted-foreground">
+                No tasks defined. Click <span class="font-medium">Add Task</span> to add workflow
+                steps.
+              </div>
+            }
 
-          <div class="flex flex-col gap-4">
-            @for (task of tasksArray.controls; track $index) {
-              <div class="rounded-lg border p-4" [formGroup]="task">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-                  <h4 class="font-medium">Task {{ $index + 1 }}</h4>
-                  <z-button type="button" zType="ghost" zSize="sm" (click)="removeTask($index)"
-                    >Remove</z-button
-                  >
-                </div>
+            @if (hasMultipleLastSteps()) {
+              <div
+                class="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                Only one task can be marked as the last step.
+              </div>
+            }
 
-                <div class="grid gap-3 md:grid-cols-2">
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium inline-flex items-center gap-1"
-                      >Step
-                      <z-icon
-                        zType="info"
-                        class="h-3.5 w-3.5 text-muted-foreground"
-                        [zTooltip]="fieldTooltips['taskStep']"
-                    /></label>
-                    <input
-                      z-input
-                      formControlName="step"
-                      type="number"
-                      min="1"
-                      [zStatus]="
-                        task.get('step')?.invalid && task.get('step')?.touched ? 'error' : undefined
-                      "
-                    />
+            <div class="flex flex-col gap-4">
+              @for (task of tasksArray.controls; track $index) {
+                <div class="rounded-lg border p-4" [formGroup]="task">
+                  <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <h4 class="font-medium">Task {{ $index + 1 }}</h4>
+                    <z-button type="button" zType="ghost" zSize="sm" (click)="removeTask($index)"
+                      >Remove</z-button
+                    >
                   </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium inline-flex items-center gap-1"
-                      >Task name
-                      <z-icon
-                        zType="info"
-                        class="h-3.5 w-3.5 text-muted-foreground"
-                        [zTooltip]="fieldTooltips['taskName']"
-                    /></label>
-                    <input
-                      z-input
-                      formControlName="name"
-                      type="text"
-                      [zStatus]="
-                        task.get('name')?.invalid && task.get('name')?.touched ? 'error' : undefined
-                      "
-                    />
-                  </div>
-                  <div class="md:col-span-2 flex flex-col gap-2">
-                    <label class="text-sm font-medium inline-flex items-center gap-1"
-                      >Description
-                      <z-icon
-                        zType="info"
-                        class="h-3.5 w-3.5 text-muted-foreground"
-                        [zTooltip]="fieldTooltips['taskDescription']"
-                    /></label>
-                    <textarea z-input formControlName="description" rows="2"></textarea>
-                  </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium inline-flex items-center gap-1"
-                      >Cost
-                      <z-icon
-                        zType="info"
-                        class="h-3.5 w-3.5 text-muted-foreground"
-                        [zTooltip]="fieldTooltips['taskCost']"
-                    /></label>
-                    <input z-input formControlName="cost" type="number" min="0" />
-                  </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium inline-flex items-center gap-1"
-                      >Duration (days)
-                      <z-icon
-                        zType="info"
-                        class="h-3.5 w-3.5 text-muted-foreground"
-                        [zTooltip]="fieldTooltips['taskDuration']"
-                    /></label>
-                    <input
-                      z-input
-                      formControlName="duration"
-                      type="number"
-                      min="0"
-                      [zStatus]="
-                        task.get('duration')?.invalid && task.get('duration')?.touched
-                          ? 'error'
-                          : undefined
-                      "
-                    />
-                  </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium inline-flex items-center gap-1"
-                      >Add task to calendar
-                      <z-icon
-                        zType="info"
-                        class="h-3.5 w-3.5 text-muted-foreground"
-                        [zTooltip]="fieldTooltips['taskAddToCalendar']"
-                    /></label>
-                    <z-checkbox formControlName="addTaskToCalendar">
-                      <span class="text-sm">Enable</span>
-                    </z-checkbox>
-                  </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium inline-flex items-center gap-1"
-                      >Notify user
-                      <z-icon
-                        zType="info"
-                        class="h-3.5 w-3.5 text-muted-foreground"
-                        [zTooltip]="fieldTooltips['taskNotifyCustomer']"
-                    /></label>
-                    <z-checkbox formControlName="notifyCustomer">
-                      <span class="text-sm">Enable</span>
-                    </z-checkbox>
-                  </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium inline-flex items-center gap-1"
-                      >Business days?
-                      <z-icon
-                        zType="info"
-                        class="h-3.5 w-3.5 text-muted-foreground"
-                        [zTooltip]="fieldTooltips['taskDurationIsBusinessDays']"
-                    /></label>
-                    <z-checkbox formControlName="durationIsBusinessDays">
-                      <span class="text-sm">Use business days</span>
-                    </z-checkbox>
-                  </div>
-                  @if (task.get('addTaskToCalendar')?.value) {
+
+                  <div class="grid gap-3 md:grid-cols-2">
                     <div class="flex flex-col gap-2">
                       <label class="text-sm font-medium inline-flex items-center gap-1"
-                        >Notify days before
+                        >Step
                         <z-icon
                           zType="info"
                           class="h-3.5 w-3.5 text-muted-foreground"
-                          [zTooltip]="fieldTooltips['taskNotifyDaysBefore']"
+                          [zTooltip]="fieldTooltips['taskStep']"
                       /></label>
                       <input
                         z-input
-                        formControlName="notifyDaysBefore"
+                        formControlName="step"
                         type="number"
-                        min="0"
+                        min="1"
                         [zStatus]="
-                          (task.get('notifyDaysBefore')?.invalid ||
-                            task.errors?.['notifyBeforeDuration']) &&
-                          task.get('notifyDaysBefore')?.touched
+                          task.get('step')?.invalid && task.get('step')?.touched
                             ? 'error'
                             : undefined
                         "
                       />
                     </div>
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-medium inline-flex items-center gap-1"
+                        >Task name
+                        <z-icon
+                          zType="info"
+                          class="h-3.5 w-3.5 text-muted-foreground"
+                          [zTooltip]="fieldTooltips['taskName']"
+                      /></label>
+                      <input
+                        z-input
+                        formControlName="name"
+                        type="text"
+                        [zStatus]="
+                          task.get('name')?.invalid && task.get('name')?.touched
+                            ? 'error'
+                            : undefined
+                        "
+                      />
+                    </div>
+                    <div class="md:col-span-2 flex flex-col gap-2">
+                      <label class="text-sm font-medium inline-flex items-center gap-1"
+                        >Description
+                        <z-icon
+                          zType="info"
+                          class="h-3.5 w-3.5 text-muted-foreground"
+                          [zTooltip]="fieldTooltips['taskDescription']"
+                      /></label>
+                      <textarea z-input formControlName="description" rows="2"></textarea>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-medium inline-flex items-center gap-1"
+                        >Cost
+                        <z-icon
+                          zType="info"
+                          class="h-3.5 w-3.5 text-muted-foreground"
+                          [zTooltip]="fieldTooltips['taskCost']"
+                      /></label>
+                      <input z-input formControlName="cost" type="number" min="0" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-medium inline-flex items-center gap-1"
+                        >Duration (days)
+                        <z-icon
+                          zType="info"
+                          class="h-3.5 w-3.5 text-muted-foreground"
+                          [zTooltip]="fieldTooltips['taskDuration']"
+                      /></label>
+                      <input
+                        z-input
+                        formControlName="duration"
+                        type="number"
+                        min="0"
+                        [zStatus]="
+                          task.get('duration')?.invalid && task.get('duration')?.touched
+                            ? 'error'
+                            : undefined
+                        "
+                      />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-medium inline-flex items-center gap-1"
+                        >Add task to calendar
+                        <z-icon
+                          zType="info"
+                          class="h-3.5 w-3.5 text-muted-foreground"
+                          [zTooltip]="fieldTooltips['taskAddToCalendar']"
+                      /></label>
+                      <z-checkbox formControlName="addTaskToCalendar">
+                        <span class="text-sm">Enable</span>
+                      </z-checkbox>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-medium inline-flex items-center gap-1"
+                        >Notify user
+                        <z-icon
+                          zType="info"
+                          class="h-3.5 w-3.5 text-muted-foreground"
+                          [zTooltip]="fieldTooltips['taskNotifyCustomer']"
+                      /></label>
+                      <z-checkbox formControlName="notifyCustomer">
+                        <span class="text-sm">Enable</span>
+                      </z-checkbox>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-medium inline-flex items-center gap-1"
+                        >Business days?
+                        <z-icon
+                          zType="info"
+                          class="h-3.5 w-3.5 text-muted-foreground"
+                          [zTooltip]="fieldTooltips['taskDurationIsBusinessDays']"
+                      /></label>
+                      <z-checkbox formControlName="durationIsBusinessDays">
+                        <span class="text-sm">Use business days</span>
+                      </z-checkbox>
+                    </div>
+                    @if (task.get('addTaskToCalendar')?.value) {
+                      <div class="flex flex-col gap-2">
+                        <label class="text-sm font-medium inline-flex items-center gap-1"
+                          >Notify days before
+                          <z-icon
+                            zType="info"
+                            class="h-3.5 w-3.5 text-muted-foreground"
+                            [zTooltip]="fieldTooltips['taskNotifyDaysBefore']"
+                        /></label>
+                        <input
+                          z-input
+                          formControlName="notifyDaysBefore"
+                          type="number"
+                          min="0"
+                          [zStatus]="
+                            (task.get('notifyDaysBefore')?.invalid ||
+                              task.errors?.['notifyBeforeDuration']) &&
+                            task.get('notifyDaysBefore')?.touched
+                              ? 'error'
+                              : undefined
+                          "
+                        />
+                      </div>
+                    }
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-medium inline-flex items-center gap-1"
+                        >Last step
+                        <z-icon
+                          zType="info"
+                          class="h-3.5 w-3.5 text-muted-foreground"
+                          [zTooltip]="fieldTooltips['taskLastStep']"
+                      /></label>
+                      <z-checkbox formControlName="lastStep" (click)="toggleLastStep($index)">
+                        <span class="text-sm">Mark as final step</span>
+                      </z-checkbox>
+                    </div>
+                  </div>
+                  @if (task.errors?.['notifyBeforeDuration']) {
+                    <div class="mt-3 text-xs text-destructive">
+                      Notify days before cannot exceed duration.
+                    </div>
                   }
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium inline-flex items-center gap-1"
-                      >Last step
-                      <z-icon
-                        zType="info"
-                        class="h-3.5 w-3.5 text-muted-foreground"
-                        [zTooltip]="fieldTooltips['taskLastStep']"
-                    /></label>
-                    <z-checkbox formControlName="lastStep" (click)="toggleLastStep($index)">
-                      <span class="text-sm">Mark as final step</span>
-                    </z-checkbox>
-                  </div>
                 </div>
-                @if (task.errors?.['notifyBeforeDuration']) {
-                  <div class="mt-3 text-xs text-destructive">
-                    Notify days before cannot exceed duration.
-                  </div>
-                }
-              </div>
-            }
+              }
+            </div>
           </div>
-        </div>
-      </z-card>
+        </z-card>
+      }
 
       <div class="flex justify-end">
         <button z-button type="submit" zType="default" [zDisabled]="isSaving()">

@@ -21,14 +21,14 @@ AI_GUIDELINES:
 """
 
 from api.utils.ai_model_pricing import price_to_display
-from api.utils.idempotency import (
-    build_request_idempotency_fingerprint,
-    resolve_request_idempotent_job,
-    store_request_idempotent_job,
-)
-from api.utils.stream_payloads import build_async_job_links, build_async_job_start_payload
+from api.utils.idempotency import (build_request_idempotency_fingerprint,
+                                   resolve_request_idempotent_job,
+                                   store_request_idempotent_job)
+from api.utils.stream_payloads import (build_async_job_links,
+                                       build_async_job_start_payload)
 from rest_framework.renderers import JSONRenderer
-from rest_framework_simplejwt.views import TokenRefreshView as SimpleJWTTokenRefreshView
+from rest_framework_simplejwt.views import \
+    TokenRefreshView as SimpleJWTTokenRefreshView
 
 from .views_imports import *
 
@@ -240,7 +240,7 @@ class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = CountryCode.objects.all()
     serializer_class = CountryCodeSerializer
     pagination_class = None  # No pagination for country list as it's small and used for dropdowns
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [SharedSearchFilter, filters.OrderingFilter]
     search_fields = ["country", "country_idn", "alpha3_code"]
     ordering = ["country"]
 
@@ -250,7 +250,7 @@ class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     serializer_class = HolidaySerializer
     queryset = Holiday.objects.all()
     pagination_class = None
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [SharedSearchFilter, filters.OrderingFilter]
     search_fields = ["name", "description", "country"]
     ordering = ["date", "name"]
 
@@ -272,7 +272,7 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     queryset = AiModel.objects.all()
     serializer_class = AiModelSerializer
     pagination_class = None
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [SharedSearchFilter, filters.OrderingFilter]
     search_fields = ["provider", "model_id", "name", "description", "modality"]
     ordering_fields = ["provider", "name", "model_id", "updated_at", "created_at"]
     ordering = ["provider", "name"]
@@ -490,7 +490,7 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     queryset = DocumentType.objects.all()
     serializer_class = DocumentTypeSerializer
     pagination_class = None
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [SharedSearchFilter, filters.OrderingFilter]
     search_fields = ["name", "description"]
     ordering = ["name"]
 
@@ -650,9 +650,11 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return self._perform_update_with_deprecation_rules(request, partial=True)
 
 
-class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+class CustomerViewSet(SharedSearchMixin, ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     throttle_cache_fail_open_actions = {"check_passport": False}
+    search_enabled_actions = ("list", "search")
+    search_queryset_method = "search_customers"
 
     @staticmethod
     def _with_case_insensitive_name_sorting(queryset):
@@ -679,12 +681,6 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         # Keep list and explicit search action behavior aligned.
         if self.action in {"list", "search"}:
-            query = self.request.query_params.get("q") or self.request.query_params.get("search")
-            if query:
-                queryset = self._with_case_insensitive_name_sorting(
-                    Customer.objects.search_customers(query).select_related("nationality")
-                )
-
             status_param = self.request.query_params.get("status")
             if status_param:
                 if status_param == "active":
@@ -700,8 +696,17 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     serializer_class = CustomerSerializer
     pagination_class = StandardResultsSetPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["first_name", "last_name", "email", "company_name", "passport_number"]
+    filter_backends = [SharedSearchFilter, filters.OrderingFilter]
+    search_fields = [
+        "first_name",
+        "last_name",
+        "email",
+        "company_name",
+        "telephone",
+        "telegram",
+        "whatsapp",
+        "passport_number",
+    ]
     ordering_fields = [
         "first_name",
         "last_name",
@@ -717,7 +722,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="search")
     def search(self, request):
-        customers = self.get_queryset()
+        customers = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(customers)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -906,7 +911,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     }
     queryset = Product.objects.select_related("product_category").prefetch_related("tasks").all()
     pagination_class = StandardResultsSetPagination
-    filter_backends = [filters.SearchFilter, ProductOrderingFilter]
+    filter_backends = [SharedSearchFilter, ProductOrderingFilter]
     search_fields = ["name", "code", "description", "product_category__product_type"]
     ordering_fields = [
         "name",

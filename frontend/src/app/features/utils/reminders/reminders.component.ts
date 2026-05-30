@@ -46,6 +46,7 @@ import { RemindersStreamEvent, RemindersStreamService } from './reminders-stream
 import {
   ReminderBulkWritePayload,
   ReminderItem,
+  ReminderListResponse,
   ReminderStatus,
   ReminderUserOption,
   ReminderWritePayload,
@@ -120,9 +121,11 @@ export class RemindersComponent implements OnInit, OnDestroy {
   private dialogRef: any = null;
   private streamSubscription: Subscription | null = null;
   private routeSubscription: Subscription | null = null;
+  private listRequestSubscription: Subscription | null = null;
   private reconnectTimeoutId: number | null = null;
   private reconnectAttempt = 0;
   private liveConnectAttempt = 0;
+  private listRequestSequence = 0;
 
   private readonly reconnectBaseDelayMs = 2000;
   private readonly reconnectMaxDelayMs = 30000;
@@ -302,6 +305,8 @@ export class RemindersComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.listRequestSubscription?.unsubscribe();
+    this.listRequestSubscription = null;
     this.routeSubscription?.unsubscribe();
     this.routeSubscription = null;
     this.closeDialog();
@@ -622,30 +627,33 @@ export class RemindersComponent implements OnInit, OnDestroy {
   }
 
   private loadReminders(showError = true): void {
+    const requestSequence = ++this.listRequestSequence;
+    this.listRequestSubscription?.unsubscribe();
     this.isLoading.set(true);
-    this.remindersService
-      .list({
-        page: this.page(),
-        pageSize: this.pageSize(),
-        search: this.query() || undefined,
-        ordering: this.ordering(),
-        statuses: this.statusFilter(),
-        createdFrom: this.toIsoDate(this.createdFrom()),
-        createdTo: this.toIsoDate(this.createdTo()),
-      })
+    this.listRequestSubscription = this.remindersService
+      .list(this.buildReminderListQuery())
       .pipe(
         catchError((error) => {
-          if (showError) {
+          if (showError && requestSequence === this.listRequestSequence) {
             const message = extractServerErrorMessage(error);
             this.toast.error(
               message ? `Failed to load reminders: ${message}` : 'Failed to load reminders',
             );
           }
-          return of({ count: 0, next: null, previous: null, results: [] as ReminderItem[] });
+          return of(this.createEmptyReminderListResponse());
         }),
-        finalize(() => this.isLoading.set(false)),
+        finalize(() => {
+          if (requestSequence === this.listRequestSequence) {
+            this.isLoading.set(false);
+            this.listRequestSubscription = null;
+          }
+        }),
       )
       .subscribe((response) => {
+        if (requestSequence !== this.listRequestSequence) {
+          return;
+        }
+
         this.totalItems.set(response.count);
 
         const maxPage = Math.max(1, Math.ceil(response.count / this.pageSize()));
@@ -657,6 +665,35 @@ export class RemindersComponent implements OnInit, OnDestroy {
 
         this.reminders.set(response.results);
       });
+  }
+
+  private buildReminderListQuery(): {
+    page: number;
+    pageSize: number;
+    search?: string;
+    ordering?: string;
+    statuses: ReminderStatus[];
+    createdFrom: string;
+    createdTo: string;
+  } {
+    return {
+      page: this.page(),
+      pageSize: this.pageSize(),
+      search: this.query() || undefined,
+      ordering: this.ordering(),
+      statuses: this.statusFilter(),
+      createdFrom: this.toIsoDate(this.createdFrom()),
+      createdTo: this.toIsoDate(this.createdTo()),
+    };
+  }
+
+  private createEmptyReminderListResponse(): ReminderListResponse {
+    return {
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    };
   }
 
   private openDialog(title: string): void {

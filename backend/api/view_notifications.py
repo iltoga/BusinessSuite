@@ -21,14 +21,12 @@ AI_GUIDELINES:
 import logging
 
 from api.utils.contracts import build_error_payload, get_request_id
-from api.utils.stream_payloads import (
-    normalize_async_job_payload,
-    normalize_document_ocr_job_payload,
-    normalize_ocr_job_payload,
-    serialize_async_job_payload,
-    serialize_document_ocr_job_payload,
-    serialize_ocr_job_payload,
-)
+from api.utils.stream_payloads import (normalize_async_job_payload,
+                                       normalize_document_ocr_job_payload,
+                                       normalize_ocr_job_payload,
+                                       serialize_async_job_payload,
+                                       serialize_document_ocr_job_payload,
+                                       serialize_ocr_job_payload)
 
 from .views_imports import *
 
@@ -41,7 +39,8 @@ logger = logging.getLogger(__name__)
 @authentication_classes([])
 def whatsapp_webhook(request):
     """Meta WhatsApp webhook endpoint (verification + delivery statuses + incoming replies)."""
-    from notifications.services.providers import process_whatsapp_webhook_payload, verify_meta_webhook_signature
+    from notifications.services.providers import (
+        process_whatsapp_webhook_payload, verify_meta_webhook_signature)
 
     webhook_logger = logging.getLogger("notifications.whatsapp_webhook")
 
@@ -103,7 +102,7 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsStaffOrAdminGroup]
     serializer_class = WorkflowNotificationSerializer
     queryset = WorkflowNotification.objects.select_related("doc_application", "doc_workflow").all()
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [SharedSearchFilter, filters.OrderingFilter]
     search_fields = ["recipient", "subject", "status", "doc_application__id"]
     ordering = ["-id"]
 
@@ -111,7 +110,8 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="resend")
     def resend(self, request, pk=None):
         from customer_applications.tasks import schedule_whatsapp_status_poll
-        from notifications.services.providers import NotificationDispatcher, is_queued_provider_result
+        from notifications.services.providers import (
+            NotificationDispatcher, is_queued_provider_result)
 
         notification = self.get_object()
         if notification.status == WorkflowNotification.STATUS_CANCELLED:
@@ -199,7 +199,7 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     serializer_class = CalendarReminderSerializer
     queryset = CalendarReminder.objects.select_related("user", "created_by", "calendar_event").all()
     pagination_class = StandardResultsSetPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [SharedSearchFilter, filters.OrderingFilter]
     search_fields = ["content", "status", "user__username", "user__first_name", "user__last_name", "user__email"]
     ordering_fields = ["scheduled_for", "created_at", "updated_at", "status_rank"]
 
@@ -882,7 +882,8 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
             )
 
         from customer_applications.tasks import schedule_whatsapp_status_poll
-        from notifications.services.providers import WhatsappNotificationProvider, is_queued_provider_result
+        from notifications.services.providers import (
+            WhatsappNotificationProvider, is_queued_provider_result)
 
         subject = str(data.get("subject") or "").strip() or "Revis Bali CRM WhatsApp Test"
         body = str(data.get("body") or "").strip() or "WhatsApp test message from Revis Bali CRM."

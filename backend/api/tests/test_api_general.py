@@ -2027,6 +2027,20 @@ class ProductApiTestCase(TestCase):
         self.assertGreater(len(results), 0)
         self.assertTrue(any(item.get("code") == "DESC-1" for item in results))
 
+    def test_product_search_supports_q_alias(self):
+        Product.objects.create(
+            name="Alias Search",
+            code="ALIAS-1",
+            product_type="visa",
+            description="This description contains the qaliasphrase456 for testing",
+        )
+
+        response = self.client.get(reverse("products-list"), {"q": "qaliasphrase456"})
+
+        self.assertEqual(response.status_code, 200)
+        results = response.json().get("results", [])
+        self.assertTrue(any(item.get("code") == "ALIAS-1" for item in results))
+
     def test_product_bulk_delete_matches_description_query(self):
         Product.objects.create(
             name="Description Bulk Target",
