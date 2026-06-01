@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from api.utils.contracts import get_request_id
 from core.services.ocr_preview_storage import get_ocr_preview_url
 from django.urls import reverse
 
@@ -113,6 +114,8 @@ def build_async_job_start_payload(
     progress: int,
     queued: bool,
     deduplicated: bool,
+    request: Any | None = None,
+    request_id: str | None = None,
     links: dict[str, str] | None = None,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -123,6 +126,9 @@ def build_async_job_start_payload(
         "queued": bool(queued),
         "deduplicated": bool(deduplicated),
     }
+    resolved_request_id = get_request_id(request, fallback=request_id)
+    if resolved_request_id:
+        payload["requestId"] = resolved_request_id
     if links:
         payload.update(links)
     if extra:

@@ -5,6 +5,7 @@ import { of, Subject, throwError } from 'rxjs';
 import { ServerManagementService } from '@/core/api';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { REQUEST_METADATA_CONTEXT } from '@/core/utils/request-metadata';
 
 import { ServerManagementAiWorkflowFacade } from './server-management-ai-workflow.facade';
 import { ServerManagementMediaCleanupStreamService } from './server-management-media-cleanup-stream.service';
@@ -27,7 +28,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
     mediaCleanup$ = new Subject();
     mockMediaCleanupStreamService = {
-      connect: vi.fn(() => mediaCleanup$.asObservable()),
+      connectStreamUrl: vi.fn(() => mediaCleanup$.asObservable()),
     };
 
     mockServerManagementService = {
@@ -40,7 +41,17 @@ describe('ServerManagementComponent - Cache Controls', () => {
       serverManagementMediaRepairCreate: vi
         .fn()
         .mockReturnValue(of({ data: { ok: true, repairs: [] } })),
-      serverManagementMediaCleanupCreate: vi.fn(),
+      serverManagementMediaCleanupCreate: vi.fn().mockReturnValue(
+        of({
+          jobId: 'media-cleanup-job-1',
+          status: 'queued',
+          progress: 0,
+          queued: true,
+          deduplicated: false,
+          streamUrl:
+            '/api/server-management/media-cleanup/stream/?replay=1&job_id=media-cleanup-job-1',
+        }),
+      ),
       serverManagementLocalResilienceRetrieve: vi.fn().mockReturnValue(
         of({
           data: {
@@ -84,9 +95,9 @@ describe('ServerManagementComponent - Cache Controls', () => {
           },
         }),
       ),
-      serverManagementUiSettingsRetrieve: vi.fn().mockReturnValue(
-        of({ data: { useOverlayMenu: false } }),
-      ),
+      serverManagementUiSettingsRetrieve: vi
+        .fn()
+        .mockReturnValue(of({ data: { useOverlayMenu: false } })),
       serverManagementUiSettingsPartialUpdate: vi
         .fn()
         .mockReturnValue(of({ data: { useOverlayMenu: true } })),
@@ -125,7 +136,9 @@ describe('ServerManagementComponent - Cache Controls', () => {
         ),
       serverManagementCacheEnableCreate: vi
         .fn()
-        .mockReturnValue(of({ data: { enabled: true, version: 1, message: 'Cache enabled successfully' } })),
+        .mockReturnValue(
+          of({ data: { enabled: true, version: 1, message: 'Cache enabled successfully' } }),
+        ),
     };
 
     aiFacadeMock = {
@@ -239,6 +252,32 @@ describe('ServerManagementComponent - Cache Controls', () => {
     component.cleanupDryRun.set(true);
     component.runMediaCleanup();
 
+    expect(mockServerManagementService.serverManagementMediaCleanupCreate).toHaveBeenCalledWith(
+      {
+        mediaCleanupRequestRequest: {
+          dryRun: true,
+        },
+      },
+      'body',
+      false,
+      expect.objectContaining({
+        context: expect.anything(),
+      }),
+    );
+    const requestContext =
+      mockServerManagementService.serverManagementMediaCleanupCreate.mock.calls[0]?.[3]?.context;
+    const requestMetadata = requestContext?.get(REQUEST_METADATA_CONTEXT);
+    expect(requestMetadata).toEqual(
+      expect.objectContaining({
+        requestId: expect.any(String),
+        idempotencyKey: expect.any(String),
+      }),
+    );
+    expect(mockMediaCleanupStreamService.connectStreamUrl).toHaveBeenCalledWith(
+      '/api/server-management/media-cleanup/stream/?replay=1&job_id=media-cleanup-job-1',
+      requestMetadata,
+    );
+
     mediaCleanup$.next({
       event: 'media_cleanup_finished',
       cleanup: {
@@ -257,13 +296,6 @@ describe('ServerManagementComponent - Cache Controls', () => {
       },
     });
 
-    expect(mockMediaCleanupStreamService.connect).toHaveBeenCalledWith(
-      true,
-      expect.objectContaining({
-        requestId: expect.any(String),
-        idempotencyKey: expect.any(String),
-      }),
-    );
     expect(component.cleanupResult()?.orphanedFiles).toBe(1);
     expect(mockToastService.success).toHaveBeenCalledWith('Preview found 1 unlinked files');
   });

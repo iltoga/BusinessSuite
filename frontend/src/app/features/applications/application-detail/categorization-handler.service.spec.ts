@@ -131,6 +131,42 @@ describe('ApplicationCategorizationHandler progress messaging', () => {
     expect(handler.statusMessage()).toContain('passport.jpg');
     expect(handler.statusMessage()).toContain('Passport');
   });
+
+  it('maps legacy errorMessage payloads from complete events into the displayed error field', () => {
+    const handler = createHandler();
+    (handler as any).totalFiles.set(1);
+
+    handler.handleEvent({
+      type: 'complete',
+      data: {
+        results: [
+          {
+            itemId: 'item-err-1',
+            filename: 'bad-upload.pdf',
+            status: 'error',
+            pipelineStage: 'error',
+            aiValidationEnabled: false,
+            documentType: null,
+            documentTypeId: null,
+            documentId: null,
+            confidence: 0,
+            reasoning: '',
+            errorMessage: 'AI provider timeout',
+            categorizationPass: null,
+            validationStatus: null,
+            validationReasoning: null,
+            validationNegativeIssues: null,
+            validationProvider: null,
+            validationProviderName: null,
+            validationModel: null,
+          },
+        ],
+      },
+    });
+
+    expect(handler.results()).toHaveLength(1);
+    expect(handler.results()[0]?.error).toBe('AI provider timeout');
+  });
 });
 
 describe('truncateFilename', () => {

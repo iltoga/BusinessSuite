@@ -41,7 +41,7 @@
  * Observable immediately errors with `new Error('Token expired')`.
  */
 import { Injectable, NgZone } from '@angular/core';
-import { map, Observable } from 'rxjs';
+import { map, Observable, Subscription } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
 import {
@@ -61,6 +61,40 @@ export interface SseMessage<T> {
   event: string;
   data: T;
   id?: string;
+}
+
+export interface ReconnectOnCompleteOptions<T> {
+  shouldReconnect: (lastValue: T | null) => boolean;
+  reconnectDelayMs?: number;
+}
+
+export class SseConnectionError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = 'SseConnectionError';
+    Object.setPrototypeOf(this, SseConnectionError.prototype);
+  }
+}
+
+export function isUnauthorizedSseError(error: unknown): boolean {
+  if (error instanceof SseConnectionError && (error.status === 401 || error.status === 403)) {
+    return true;
+  }
+
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+
+  const status = (error as { status?: unknown }).status;
+  if (status === 401 || status === 403) {
+    return true;
+  }
+
+  const message = (error as { message?: unknown }).message;
+  return typeof message === 'string' && /SSE request failed \((401|403)\)/.test(message);
 }
 
 @Injectable({
@@ -101,7 +135,7 @@ export class SseService {
       let rotationTimeoutId: ReturnType<typeof setTimeout> | null = null;
       let isSettled = false;
       let streamOpened = false;
-      const lastEventIdAtOpen = useReplayCursor ? this.lastEventIds.get(url) ?? null : null;
+      const lastEventIdAtOpen = useReplayCursor ? (this.lastEventIds.get(url) ?? null) : null;
 
       if (lastEventIdAtOpen) {
         console.info('[SseService] Reconnecting SSE stream', {
@@ -179,8 +213,16 @@ export class SseService {
           });
 
           if (!response.ok) {
-            console.warn('[SseService] SSE request failed', { url, status: response.status });
-            throw new Error(`SSE request failed (${response.status})`);
+            if (response.status === 401 || response.status === 403) {
+              console.info('[SseService] SSE stream unauthorized', {
+                url,
+                status: response.status,
+              });
+              this.authService.logout();
+            } else {
+              console.warn('[SseService] SSE request failed', { url, status: response.status });
+            }
+            throw new SseConnectionError(`SSE request failed (${response.status})`, response.status);
           }
           if (!response.body) {
             console.warn('[SseService] SSE stream body is unavailable', { url });
@@ -242,11 +284,13 @@ export class SseService {
             return;
           }
 
-          console.error('[SseService] SSE stream error', {
-            url,
-            requestId: requestMetadata.requestId,
-            error: this.describeError(error),
-          });
+          if (!isUnauthorizedSseError(error)) {
+            console.error('[SseService] SSE stream error', {
+              url,
+              requestId: requestMetadata.requestId,
+              error: this.describeError(error),
+            });
+          }
           errorSubscriber(error);
         }
       };
@@ -327,4 +371,67 @@ export class SseService {
       message: String(error ?? 'Unknown SSE error'),
     };
   }
+}
+
+export function reconnectOnComplete<T>(
+  streamFactory: () => Observable<T>,
+  options: ReconnectOnCompleteOptions<T>,
+): Observable<T> {
+  const reconnectDelayMs = options.reconnectDelayMs ?? 250;
+
+  return new Observable<T>((subscriber) => {
+    let innerSubscription: Subscription | null = null;
+    let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let lastValue: T | null = null;
+    let isStopped = false;
+
+    const clearReconnectTimeout = () => {
+      if (reconnectTimeoutId === null) {
+        return;
+      }
+
+      clearTimeout(reconnectTimeoutId);
+      reconnectTimeoutId = null;
+    };
+
+    const connect = () => {
+      if (isStopped) {
+        return;
+      }
+
+      innerSubscription = streamFactory().subscribe({
+        next: (value) => {
+          lastValue = value;
+          subscriber.next(value);
+        },
+        error: (error) => {
+          subscriber.error(error);
+        },
+        complete: () => {
+          if (isStopped) {
+            return;
+          }
+
+          if (!options.shouldReconnect(lastValue)) {
+            subscriber.complete();
+            return;
+          }
+
+          reconnectTimeoutId = setTimeout(() => {
+            reconnectTimeoutId = null;
+            connect();
+          }, reconnectDelayMs);
+        },
+      });
+    };
+
+    connect();
+
+    return () => {
+      isStopped = true;
+      clearReconnectTimeout();
+      innerSubscription?.unsubscribe();
+      innerSubscription = null;
+    };
+  });
 }

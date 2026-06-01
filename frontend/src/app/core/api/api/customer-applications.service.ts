@@ -38,6 +38,12 @@ import { DocApplicationSerializerWithRelationsRequest } from '../model/doc-appli
 // @ts-ignore
 import { DocWorkflow } from '../model/doc-workflow';
 // @ts-ignore
+import { DocumentCategorizationInitRequestRequest } from '../model/document-categorization-init-request-request';
+// @ts-ignore
+import { DocumentCategorizationQueuedResponse } from '../model/document-categorization-queued-response';
+// @ts-ignore
+import { DocumentCategorizationStartResponse } from '../model/document-categorization-start-response';
+// @ts-ignore
 import { PaginatedDocApplicationListList } from '../model/paginated-doc-application-list-list';
 
 // @ts-ignore
@@ -48,6 +54,8 @@ import {
   CustomerApplicationsServiceInterface,
   CustomerApplicationsAdvanceWorkflowCreateRequestParams,
   CustomerApplicationsBulkDeleteCreateRequestParams,
+  CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+  CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
   CustomerApplicationsCreateRequestParams,
   CustomerApplicationsDestroyRequestParams,
   CustomerApplicationsForceCloseCreateRequestParams,
@@ -308,6 +316,290 @@ export class CustomerApplicationsService
       {
         context: localVarHttpContext,
         body: customerApplicationsBulkDeleteRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
+  }
+
+  /**
+   * Upload multiple files and start AI categorization. Files are saved to temp storage and Dramatiq tasks are dispatched in parallel.
+   * @endpoint post /api/customer-applications/{applicationId}/categorize-documents/
+   * @param requestParameters
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public customerApplicationsCategorizeDocumentsCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<DocumentCategorizationQueuedResponse>;
+  public customerApplicationsCategorizeDocumentsCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<DocumentCategorizationQueuedResponse>>;
+  public customerApplicationsCategorizeDocumentsCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<DocumentCategorizationQueuedResponse>>;
+  public customerApplicationsCategorizeDocumentsCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    const applicationId = requestParameters?.applicationId;
+    if (applicationId === null || applicationId === undefined) {
+      throw new Error(
+        'Required parameter applicationId was null or undefined when calling customerApplicationsCategorizeDocumentsCreate.',
+      );
+    }
+    const files = requestParameters?.files;
+    if (files === null || files === undefined) {
+      throw new Error(
+        'Required parameter files was null or undefined when calling customerApplicationsCategorizeDocumentsCreate.',
+      );
+    }
+    const model = requestParameters?.model;
+    const providerOrder = requestParameters?.providerOrder;
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (cookieAuth) required
+
+    // authentication (jwtAuth) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'jwtAuth',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = ['multipart/form-data', 'application/x-www-form-urlencoded'];
+
+    const canConsumeForm = this.canConsumeForm(consumes);
+
+    let localVarFormParams: { append(param: string, value: any): any };
+    let localVarUseForm = false;
+    let localVarConvertFormParamsToString = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+    localVarUseForm = canConsumeForm;
+    if (localVarUseForm) {
+      localVarFormParams = new FormData();
+    } else {
+      localVarFormParams = new HttpParams({ encoder: this.encoder });
+    }
+
+    if (files) {
+      if (localVarUseForm) {
+        files.forEach((element) => {
+          localVarFormParams =
+            (localVarFormParams.append('files', <any>element) as any) || localVarFormParams;
+        });
+      } else {
+        localVarFormParams =
+          (localVarFormParams.append('files', [...files].join(COLLECTION_FORMATS['csv'])) as any) ||
+          localVarFormParams;
+      }
+    }
+    if (model !== undefined) {
+      localVarFormParams =
+        (localVarFormParams.append('model', <any>model) as any) || localVarFormParams;
+    }
+    if (providerOrder) {
+      if (localVarUseForm) {
+        providerOrder.forEach((element) => {
+          localVarFormParams =
+            (localVarFormParams.append('providerOrder', <any>element) as any) || localVarFormParams;
+        });
+      } else {
+        localVarFormParams =
+          (localVarFormParams.append(
+            'providerOrder',
+            [...providerOrder].join(COLLECTION_FORMATS['csv']),
+          ) as any) || localVarFormParams;
+      }
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/customer-applications/${this.configuration.encodeParam({ name: 'applicationId', value: applicationId, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/categorize-documents/`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<DocumentCategorizationQueuedResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: localVarConvertFormParamsToString
+          ? localVarFormParams.toString()
+          : localVarFormParams,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
+  }
+
+  /**
+   * Create a categorization job first so frontend can subscribe to SSE before file upload starts.
+   * @endpoint post /api/customer-applications/{applicationId}/categorize-documents/init/
+   * @param requestParameters
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public customerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<DocumentCategorizationStartResponse>;
+  public customerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<DocumentCategorizationStartResponse>>;
+  public customerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<DocumentCategorizationStartResponse>>;
+  public customerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    const applicationId = requestParameters?.applicationId;
+    if (applicationId === null || applicationId === undefined) {
+      throw new Error(
+        'Required parameter applicationId was null or undefined when calling customerApplicationsCategorizeDocumentsInitCreate.',
+      );
+    }
+    const documentCategorizationInitRequestRequest =
+      requestParameters?.documentCategorizationInitRequestRequest;
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (cookieAuth) required
+
+    // authentication (jwtAuth) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'jwtAuth',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = [
+      'application/json',
+      'application/x-www-form-urlencoded',
+      'multipart/form-data',
+    ];
+    const httpContentTypeSelected: string | undefined =
+      this.configuration.selectHeaderContentType(consumes);
+    if (httpContentTypeSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/customer-applications/${this.configuration.encodeParam({ name: 'applicationId', value: applicationId, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/categorize-documents/init/`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<DocumentCategorizationStartResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: documentCategorizationInitRequestRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,

@@ -25,6 +25,8 @@ api/customers.service.ts
 api/customers.serviceInterface.ts
 api/dashboard-stats.service.ts
 api/dashboard-stats.serviceInterface.ts
+api/document-categorization.service.ts
+api/document-categorization.serviceInterface.ts
 api/document-ocr.service.ts
 api/document-ocr.serviceInterface.ts
 api/document-types.service.ts
@@ -69,6 +71,7 @@ configuration.ts
 encoder.ts
 git_push.sh
 index.ts
+model/admin-async-start-response.ts
 model/admin-push-notification-dispatch-result.ts
 model/admin-push-notification-send-request.ts
 model/admin-push-notification-user.ts
@@ -91,6 +94,8 @@ model/calendar-reminder-inbox-snooze-request.ts
 model/calendar-reminder-inbox-snooze.ts
 model/calendar-reminder-request.ts
 model/calendar-reminder.ts
+model/categorization-apply-item-request.ts
+model/categorization-apply-request.ts
 model/change-password-request.ts
 model/country-code.ts
 model/custom-token-obtain-request.ts
@@ -116,6 +121,13 @@ model/doc-application-serializer-with-relations-request.ts
 model/doc-application-serializer-with-relations.ts
 model/doc-workflow.ts
 model/document-action.ts
+model/document-categorization-apply-response.ts
+model/document-categorization-init-request-request.ts
+model/document-categorization-item.ts
+model/document-categorization-job.ts
+model/document-categorization-queued-response.ts
+model/document-categorization-start-response.ts
+model/document-categorization-upload-files-response.ts
 model/document-merge-request.ts
 model/document-request.ts
 model/document-type-request.ts

@@ -40,11 +40,18 @@ class DocumentCategorizationUploadProgressTests(TestCase):
 
     def test_init_creates_job_with_upload_stage_payload(self):
         url = reverse("api-categorize-documents-init", kwargs={"application_id": self.application.id})
-        response = self.client.post(url, data={"totalFiles": 2})
+        response = self.client.post(url, data={"totalFiles": 2}, HTTP_X_REQUEST_ID="req-init-1")
 
-        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(response.status_code, 202, response.content)
         body = response.json()
         self.assertEqual(body["totalFiles"], 2)
+        self.assertEqual(body["status"], "queued")
+        self.assertEqual(body["progress"], 0)
+        self.assertTrue(body["queued"])
+        self.assertFalse(body["deduplicated"])
+        self.assertEqual(body["requestId"], "req-init-1")
+        self.assertIn(f"/api/document-categorization/{body['jobId']}/status/", body["statusUrl"])
+        self.assertIn(f"/api/document-categorization/stream/{body['jobId']}/", body["streamUrl"])
 
         job = DocumentCategorizationJob.objects.get(id=body["jobId"])
         self.assertEqual(job.total_files, 2)
@@ -64,41 +71,56 @@ class DocumentCategorizationUploadProgressTests(TestCase):
             url,
             data={"totalFiles": 2},
             HTTP_IDEMPOTENCY_KEY="categorization-init-1",
+            HTTP_X_REQUEST_ID="req-idem-1",
         )
         second = self.client.post(
             url,
             data={"totalFiles": 2},
             HTTP_IDEMPOTENCY_KEY="categorization-init-1",
+            HTTP_X_REQUEST_ID="req-idem-2",
         )
 
-        self.assertEqual(first.status_code, 201, first.content)
-        self.assertEqual(second.status_code, 201, second.content)
+        self.assertEqual(first.status_code, 202, first.content)
+        self.assertEqual(second.status_code, 202, second.content)
 
         first_body = first.json()
         second_body = second.json()
         self.assertEqual(first_body["jobId"], second_body["jobId"])
         self.assertEqual(first_body["totalFiles"], 2)
         self.assertEqual(second_body["totalFiles"], 2)
+        self.assertEqual(first_body.get("requestId"), "req-idem-1")
+        self.assertEqual(second_body.get("requestId"), "req-idem-2")
+        self.assertTrue(first_body["queued"])
+        self.assertTrue(second_body["deduplicated"])
         self.assertEqual(DocumentCategorizationJob.objects.filter(doc_application=self.application).count(), 1)
 
     @patch("api.views_categorization.run_document_categorization_item")
     @patch("api.views_categorization.default_storage.save", side_effect=lambda path, _content: path)
     def test_upload_updates_progress_and_dispatches_items(self, _storage_save_mock, run_task_mock):
         init_url = reverse("api-categorize-documents-init", kwargs={"application_id": self.application.id})
-        init_response = self.client.post(init_url, data={"totalFiles": 2})
-        self.assertEqual(init_response.status_code, 201, init_response.content)
+        init_response = self.client.post(init_url, data={"totalFiles": 2}, HTTP_X_REQUEST_ID="req-upload-init")
+        self.assertEqual(init_response.status_code, 202, init_response.content)
         job_id = init_response.json()["jobId"]
 
         upload_url = reverse("api-categorization-upload-files", kwargs={"job_id": job_id})
         file_1 = SimpleUploadedFile("flight_ticket.pdf", b"flight-pdf-bytes", content_type="application/pdf")
         file_2 = SimpleUploadedFile("itk.pdf", b"itk-pdf-bytes", content_type="application/pdf")
 
-        response = self.client.post(upload_url, data={"files": [file_1, file_2]})
+        response = self.client.post(upload_url, data={"files": [file_1, file_2]}, HTTP_X_REQUEST_ID="req-upload-1")
 
         self.assertEqual(response.status_code, 202, response.content)
         body = response.json()
+        self.assertEqual(body["jobId"], job_id)
+        self.assertEqual(body["status"], "processing")
+        self.assertEqual(body["progress"], 40)
+        self.assertTrue(body["queued"])
+        self.assertFalse(body["deduplicated"])
+        self.assertEqual(body["requestId"], "req-upload-1")
         self.assertEqual(body["uploadedFiles"], 2)
         self.assertEqual(body["dispatchedTasks"], 2)
+        self.assertEqual(body["totalFiles"], 2)
+        self.assertIn(f"/api/document-categorization/{job_id}/status/", body["statusUrl"])
+        self.assertIn(f"/api/document-categorization/stream/{job_id}/", body["streamUrl"])
 
         job = DocumentCategorizationJob.objects.get(id=job_id)
         self.assertIsNotNone(job.result)

@@ -7,12 +7,8 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { CategorizationApplyItemRequest } from './categorization-apply-item-request';
 
-export interface ProductPriceListPrintStartResponse {
-  jobId: string;
-  status: string;
-  progress: number;
-  queued: boolean;
-  deduplicated: boolean;
-  requestId?: string;
+export interface CategorizationApplyRequest {
+  mappings: Array<CategorizationApplyItemRequest>;
 }

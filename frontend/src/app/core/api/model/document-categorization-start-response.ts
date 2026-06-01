@@ -8,11 +8,14 @@
  * Do not edit the class manually.
  */
 
-export interface ProductPriceListPrintStartResponse {
+export interface DocumentCategorizationStartResponse {
   jobId: string;
   status: string;
   progress: number;
   queued: boolean;
   deduplicated: boolean;
   requestId?: string;
+  statusUrl?: string;
+  streamUrl?: string;
+  totalFiles: number;
 }

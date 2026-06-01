@@ -205,6 +205,35 @@ class StayPermitWorkflowScheduleServiceTests(TestCase):
         self.assertEqual(step_one.start_date, date(2026, 3, 2))
         self.assertEqual(step_one.due_date, date(2026, 3, 4))
 
+    def test_sync_recalculates_stale_completed_status_when_pending_step_is_scheduled(self):
+        self.stay_doc_type.ai_validation = False
+        self.stay_doc_type.has_file = False
+        self.stay_doc_type.save()
+        application = DocApplication.objects.create(
+            customer=self.customer,
+            product=self.product,
+            doc_date=date(2026, 2, 1),
+            created_by=self.user,
+        )
+        Document.objects.create(
+            doc_application=application,
+            doc_type=self.stay_doc_type,
+            expiration_date=date(2026, 4, 1),
+            required=True,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        application.status = DocApplication.STATUS_COMPLETED
+        application.save(skip_status_calculation=True)
+
+        step_one = self.service.sync(application=application, actor_user_id=self.user.id)
+
+        application.refresh_from_db()
+        self.assertIsNotNone(step_one)
+        self.assertEqual(step_one.status, DocApplication.STATUS_PENDING)
+        self.assertEqual(application.status, DocApplication.STATUS_PROCESSING)
+        self.assertFalse(application.is_application_completed)
+
 
 class WorkflowStatusTransitionServiceTests(TestCase):
     def setUp(self):

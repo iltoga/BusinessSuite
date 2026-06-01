@@ -260,7 +260,10 @@ def _perform_prune_auditlog() -> None:
 
 
 def _register_auditlog_prune() -> None:
-    schedule = str(AppSettingService.get_effective_raw("AUDITLOG_RETENTION_SCHEDULE", "04:00") or "").strip()
+    # Bootstrap must remain DB-safe because this module is imported while Dramatiq
+    # is being configured from `CoreConfig.ready()`. Use the settings/env-backed
+    # value at import time and keep DB-backed lookup inside task execution only.
+    schedule = str(getattr(settings, "AUDITLOG_RETENTION_SCHEDULE", "04:00") or "").strip()
     if not schedule:
         # Explicitly disabled
         return

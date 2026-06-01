@@ -18,6 +18,32 @@ This file summarizes the main API surface in `backend/api/urls.py` and related D
 
 ---
 
+## Async transport contract
+
+### Canonical async start payload
+
+Endpoints that **start** long-running work should return `202 Accepted` JSON using the shared async envelope shape:
+
+- `jobId`
+- `status`
+- `progress`
+- `queued`
+- `deduplicated`
+- `requestId` (when `X-Request-ID` was sent)
+- optional links such as `statusUrl`, `streamUrl`, or `downloadUrl`
+
+This payload is built from the backend async helpers and is the contract the Angular app should normalize first, before opening any SSE stream.
+
+### SSE behavior
+
+- Streams use `text/event-stream` and may emit keepalive comment frames (`: keepalive`).
+- The backend intentionally caps many SSE responses at about **55 seconds**; frontend consumers must reconnect on clean completion unless they have already seen a terminal state.
+- Replay is driven by `Last-Event-ID` and/or explicit replay URLs (for example `?replay=1&job_id=<id>`).
+- Reusing the same `Idempotency-Key` with the **same** request payload should return the same job identity with `deduplicated=true`.
+- Reusing the same `Idempotency-Key` with a **different** payload should return **`409 Conflict`** with the canonical error shape.
+
+---
+
 ## Users & Settings
 
 - `GET /api/user-profile/me/`
@@ -114,6 +140,12 @@ Application create/update/workflow transitions queue `sync_application_calendar_
 
 1. updates local `CalendarEvent` rows,
 2. triggers Google Calendar sync via calendar-event model signals.
+
+### Customer-application async flows
+
+- `POST /api/customer-applications/{application_id}/categorize-documents/init/` — returns canonical 202-style start payload
+- `POST /api/customer-applications/{id}/enqueue-document-ocr/` — returns canonical async start payload
+- Long-running progress is consumed through either domain-specific SSE endpoints or the generic `/api/async-jobs/status/{job_id}/` SSE endpoint.
 
 ---
 
@@ -238,6 +270,11 @@ Application create/update/workflow transitions queue `sync_application_calendar_
 - `POST /api/document-ocr/check/`
 - `GET /api/document-ocr/status/{job_id}/`
 
+### OCR async tracking
+
+- OCR start endpoints return job identity plus optional `statusUrl`/`streamUrl`.
+- The frontend currently prefers the generic job SSE endpoint `GET /api/async-jobs/status/{job_id}/` for live OCR progress, because it exposes the canonical async-job payload shape.
+
 ---
 
 ## Calendar, reminders, notifications
@@ -285,9 +322,12 @@ Push/webhook:
 - `GET /api/backups/download/{filename}/`
 - `POST /api/backups/upload/`
 - `DELETE /api/backups/delete-all/`
-- `GET /api/backups/start/` (SSE)
-- `POST /api/backups/restore/` (SSE)
+- `POST /api/backups/start-job/` — returns canonical async start payload for backup execution
+- `POST /api/backups/restore-job/` — returns canonical async start payload for restore execution
+- `GET /api/backups/start/` (SSE) — replay/job-filterable backup stream
+- `GET /api/backups/restore/?file=...` (SSE) — restore stream; replay by `job_id` also supported
 - `GET /api/server-management/` (+ action endpoints)
+- `POST /api/server-management/media-cleanup/` — returns canonical async start payload for media cleanup
 - `GET /api/dashboard-stats/`
 - `GET /api/async-jobs/`
 - `GET /api/async-jobs/status/{job_id}/` (SSE)
@@ -350,6 +390,12 @@ Push/webhook:
 
 - `GET /api/core/realtime/stream/` (SSE) — global realtime event multiplexer
 - `GET /api/server-management/media-cleanup/stream/` (SSE) — media cleanup progress
+
+### Realtime stream notes
+
+- `/api/core/realtime/stream/` is the shared user-scoped multiplexed stream used as the generic fallback for job progress.
+- `/api/async-jobs/status/{job_id}/` is the preferred per-job SSE endpoint when a caller already has a job ID.
+- Admin SSE endpoints (`/api/backups/start/`, `/api/backups/restore/`, `/api/server-management/media-cleanup/stream/`) support replay/job scoping for reconnecting to an already-started operation.
 
 ---
 

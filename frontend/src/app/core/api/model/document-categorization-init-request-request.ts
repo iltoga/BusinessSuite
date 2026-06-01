@@ -8,11 +8,8 @@
  * Do not edit the class manually.
  */
 
-export interface ProductPriceListPrintStartResponse {
-  jobId: string;
-  status: string;
-  progress: number;
-  queued: boolean;
-  deduplicated: boolean;
-  requestId?: string;
+export interface DocumentCategorizationInitRequestRequest {
+  totalFiles?: number;
+  model?: string | null;
+  providerOrder?: Array<string>;
 }

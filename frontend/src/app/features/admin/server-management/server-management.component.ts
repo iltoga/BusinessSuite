@@ -9,7 +9,7 @@ import {
   PLATFORM_ID,
   signal,
 } from '@angular/core';
-import { catchError, EMPTY, finalize, Subscription } from 'rxjs';
+import { catchError, EMPTY, finalize, map, Subscription } from 'rxjs';
 
 import { ServerManagementService } from '@/core/api';
 import {
@@ -19,7 +19,8 @@ import {
   DesktopVaultStatus,
 } from '@/core/services/desktop-bridge.service';
 import { GlobalToastService } from '@/core/services/toast.service';
-import { createAsyncRequestMetadata } from '@/core/utils/request-metadata';
+import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
+import { createAsyncRequestMetadata, requestMetadataContext } from '@/core/utils/request-metadata';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -41,7 +42,6 @@ import {
   CacheHealthResponse,
   CacheStatusResponse,
   LocalResilienceSettingsResponse,
-  MediaCleanupFile,
   MediaCleanupResult,
   MediaDiagnosticResult,
   normalizeCacheHealth,
@@ -54,7 +54,6 @@ import {
   normalizeServerActionResponse,
   normalizeUiSettings,
   normalizeVaultResetResponse,
-  ServerActionResponse,
   ServerSettings,
   toOptionalNumber,
   toOptionalString,
@@ -686,19 +685,52 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
     this.stopMediaCleanupStream();
 
     const requestMetadata = createAsyncRequestMetadata();
-    this.mediaCleanupSubscription = this.mediaCleanupStream
-      .connect(this.cleanupDryRun(), requestMetadata)
-      .subscribe({
-        next: (event) => this.handleMediaCleanupStreamEvent(event),
-        error: () => {
-          this.toast.error('Failed to clean unlinked media files');
-          this.finishServerAction('mediaCleanup');
-          this.stopMediaCleanupStream();
+    this.serverManagementApi
+      .serverManagementMediaCleanupCreate(
+        {
+          mediaCleanupRequestRequest: {
+            dryRun: this.cleanupDryRun(),
+          },
         },
-        complete: () => {
-          this.finishServerAction('mediaCleanup');
-          this.stopMediaCleanupStream();
+        'body',
+        false,
+        {
+          context: requestMetadataContext(requestMetadata),
         },
+      )
+      .pipe(
+        map((response) => normalizeJobEnvelope(response)),
+        catchError(() => {
+          this.toast.error('Failed to start media cleanup');
+          this.finishServerAction('mediaCleanup');
+          return EMPTY;
+        }),
+      )
+      .subscribe((startResponse) => {
+        const streamUrl = this.resolveMediaCleanupStreamUrl(
+          startResponse.streamUrl,
+          startResponse.jobId,
+        );
+        if (!streamUrl) {
+          this.toast.error('Media cleanup stream is unavailable');
+          this.finishServerAction('mediaCleanup');
+          return;
+        }
+
+        this.mediaCleanupSubscription = this.mediaCleanupStream
+          .connectStreamUrl(streamUrl, requestMetadata)
+          .subscribe({
+            next: (event) => this.handleMediaCleanupStreamEvent(event),
+            error: () => {
+              this.toast.error('Failed to clean unlinked media files');
+              this.finishServerAction('mediaCleanup');
+              this.stopMediaCleanupStream();
+            },
+            complete: () => {
+              this.finishServerAction('mediaCleanup');
+              this.stopMediaCleanupStream();
+            },
+          });
       });
   }
 
@@ -798,6 +830,27 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
     this.mediaCleanupSubscription = null;
   }
 
+  private resolveMediaCleanupStreamUrl(
+    streamUrl: string | null | undefined,
+    jobId: string | null | undefined,
+  ): string | null {
+    const normalizedStreamUrl = typeof streamUrl === 'string' ? streamUrl.trim() : '';
+    if (normalizedStreamUrl) {
+      return normalizedStreamUrl;
+    }
+
+    const normalizedJobId = typeof jobId === 'string' ? jobId.trim() : '';
+    if (!normalizedJobId) {
+      return null;
+    }
+
+    const params = new URLSearchParams({
+      replay: '1',
+      job_id: normalizedJobId,
+    });
+    return `/api/server-management/media-cleanup/stream/?${params.toString()}`;
+  }
+
   getCacheBackendType(cacheBackend?: string | null): string {
     if (!cacheBackend) {
       return 'Unknown';
@@ -828,5 +881,4 @@ export class ServerManagementComponent implements OnInit, OnDestroy {
   getFailoverProviderStatus(provider: AiWorkflowFailoverProvider): string {
     return this.aiWorkflowFacade.getFailoverProviderStatus(provider);
   }
-
 }

@@ -8,11 +8,9 @@
  * Do not edit the class manually.
  */
 
-export interface ProductPriceListPrintStartResponse {
-  jobId: string;
-  status: string;
-  progress: number;
-  queued: boolean;
-  deduplicated: boolean;
-  requestId?: string;
+export interface DocumentCategorizationApplyResponse {
+  applied?: Array<{ [key: string]: any }>;
+  errors?: Array<{ [key: string]: any }>;
+  totalApplied: number;
+  totalErrors: number;
 }

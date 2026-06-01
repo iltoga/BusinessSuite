@@ -66,12 +66,14 @@ export function camelizePayload(value: unknown): unknown {
   );
 }
 
-function extractJobIdFromRecord(
-  record: Record<string, unknown>,
-): string | undefined {
+function extractJobIdFromRecord(record: Record<string, unknown>): string | undefined {
+  return firstDefined(toOptionalString(record['jobId']), toOptionalString(record['id']));
+}
+
+function extractRequestIdFromRecord(record: Record<string, unknown>): string | undefined {
   return firstDefined(
-    toOptionalString(record['jobId']),
-    toOptionalString(record['id']),
+    toOptionalString(record['requestId']),
+    toOptionalString(record['request_id']),
   );
 }
 
@@ -107,46 +109,68 @@ export function extractJobId(value: unknown): string | undefined {
     return undefined;
   }
 
-  return extractJobIdFromRecord(record) ?? extractJobIdFromRecord(extractNestedRecord(record) ?? {});
+  return (
+    extractJobIdFromRecord(record) ?? extractJobIdFromRecord(extractNestedRecord(record) ?? {})
+  );
 }
 
 export function normalizeJobEnvelope<T extends object>(
   value: T,
-): T & { jobId?: string } {
+): T & { jobId?: string; requestId?: string } {
   const unwrapped = unwrapApiEnvelope(value);
+  const rawRecord = isRecord(value) ? (camelizePayload(value) as Record<string, unknown>) : {};
   const record = isRecord(unwrapped)
     ? (camelizePayload(unwrapped) as Record<string, unknown>)
     : ({} as Record<string, unknown>);
-  const jobId = extractJobIdFromRecord(record) ?? extractJobIdFromRecord(extractNestedRecord(record) ?? {});
+  const jobId =
+    extractJobIdFromRecord(record) ?? extractJobIdFromRecord(extractNestedRecord(record) ?? {});
+  const meta = isRecord(rawRecord['meta'])
+    ? (camelizePayload(rawRecord['meta']) as Record<string, unknown>)
+    : null;
+  const requestId = firstDefined(
+    extractRequestIdFromRecord(record),
+    extractRequestIdFromRecord(extractNestedRecord(record) ?? {}),
+    meta ? extractRequestIdFromRecord(meta) : undefined,
+  );
   if (!jobId) {
-    return record as T & { jobId?: string };
+    if (!requestId) {
+      return record as T & { jobId?: string; requestId?: string };
+    }
+    return {
+      ...record,
+      requestId,
+    } as T & { jobId?: string; requestId?: string };
   }
 
   return {
     ...record,
     jobId: toOptionalString(record['jobId']) ?? jobId,
-  } as T & { jobId?: string };
+    ...(requestId ? { requestId } : {}),
+  } as T & { jobId?: string; requestId?: string };
 }
 
 export function normalizeAsyncJobUpdate(update: unknown): AsyncJob {
   const record = isRecord(update) ? (camelizePayload(update) as Record<string, unknown>) : {};
   const nested = extractPayloadRecord(record);
-  const jobId = firstDefined(
-    extractJobIdFromRecord(record),
-    nested ? extractJobIdFromRecord(nested) : undefined,
-  ) ?? '';
+  const jobId =
+    firstDefined(
+      extractJobIdFromRecord(record),
+      nested ? extractJobIdFromRecord(nested) : undefined,
+    ) ?? '';
   const status = normalizeAsyncJobStatus(
     toOptionalString(record['status']),
     nested ? toOptionalString(nested['status']) : undefined,
   );
-  const progress = firstDefined(
-    toOptionalNumber(record['progress']),
-    nested ? toOptionalNumber(nested['progress']) : undefined,
-  ) ?? 0;
-  const taskName = firstDefined(
-    toOptionalString(record['taskName']),
-    nested ? toOptionalString(nested['taskName']) : undefined,
-  ) ?? '';
+  const progress =
+    firstDefined(
+      toOptionalNumber(record['progress']),
+      nested ? toOptionalNumber(nested['progress']) : undefined,
+    ) ?? 0;
+  const taskName =
+    firstDefined(
+      toOptionalString(record['taskName']),
+      nested ? toOptionalString(nested['taskName']) : undefined,
+    ) ?? '';
   const resultValue = firstDefined(record['result'], nested?.['result']);
 
   const job: Record<string, unknown> = {
@@ -155,43 +179,46 @@ export function normalizeAsyncJobUpdate(update: unknown): AsyncJob {
     taskName,
     status,
     progress,
-    message: firstDefined(
-      toOptionalString(record['message']),
-      nested ? toOptionalString(nested['message']) : undefined,
-    ) ?? null,
+    message:
+      firstDefined(
+        toOptionalString(record['message']),
+        nested ? toOptionalString(nested['message']) : undefined,
+      ) ?? null,
     result: isRecord(resultValue) ? resultValue : {},
-    errorMessage: firstDefined(
-      toOptionalString(record['errorMessage']),
-      nested ? toOptionalString(nested['errorMessage']) : undefined,
-    ) ?? null,
-    createdAt: firstDefined(
-      toOptionalString(record['createdAt']),
-      nested ? toOptionalString(nested['createdAt']) : undefined,
-    ) ?? '',
-    updatedAt: firstDefined(
-      toOptionalString(record['updatedAt']),
-      nested ? toOptionalString(nested['updatedAt']) : undefined,
-    ) ?? '',
-    createdBy: firstDefined(
-      toOptionalNumber(record['createdBy']),
-      nested ? toOptionalNumber(nested['createdBy']) : undefined,
-    ) ?? null,
+    errorMessage:
+      firstDefined(
+        toOptionalString(record['errorMessage']),
+        nested ? toOptionalString(nested['errorMessage']) : undefined,
+      ) ?? null,
+    createdAt:
+      firstDefined(
+        toOptionalString(record['createdAt']),
+        nested ? toOptionalString(nested['createdAt']) : undefined,
+      ) ?? '',
+    updatedAt:
+      firstDefined(
+        toOptionalString(record['updatedAt']),
+        nested ? toOptionalString(nested['updatedAt']) : undefined,
+      ) ?? '',
+    createdBy:
+      firstDefined(
+        toOptionalNumber(record['createdBy']),
+        nested ? toOptionalNumber(nested['createdBy']) : undefined,
+      ) ?? null,
   };
 
   return job as unknown as AsyncJob;
 }
 
 export function isTerminalAsyncJob(job: Pick<AsyncJob, 'status'> | null | undefined): boolean {
-  return (
-    job?.status === AsyncJobStatusEnum.Completed || job?.status === AsyncJobStatusEnum.Failed
-  );
+  return job?.status === AsyncJobStatusEnum.Completed || job?.status === AsyncJobStatusEnum.Failed;
 }
 
-function normalizeAsyncJobStatus(
-  ...values: Array<string | null | undefined>
-): AsyncJobStatusEnum {
+function normalizeAsyncJobStatus(...values: Array<string | null | undefined>): AsyncJobStatusEnum {
   for (const value of values) {
-    const normalized = String(value ?? '').trim().toLowerCase();
+    const normalized = String(value ?? '')
+      .trim()
+      .toLowerCase();
     switch (normalized) {
       case AsyncJobStatusEnum.Pending:
         return AsyncJobStatusEnum.Pending;

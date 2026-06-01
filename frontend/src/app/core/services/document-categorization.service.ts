@@ -1,20 +1,25 @@
-import { HttpClient, HttpEvent } from '@angular/common/http';
+import { HttpEvent } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
-import { SseService } from '@/core/services/sse.service';
+import {
+  DocumentCategorizationApplyResponse as ApiDocumentCategorizationApplyResponse,
+  DocumentCategorizationStartResponse as ApiDocumentCategorizationStartResponse,
+  DocumentCategorizationUploadFilesResponse as ApiDocumentCategorizationUploadFilesResponse,
+  CustomerApplicationsService as CustomerApplicationsApiService,
+  DocumentCategorizationService as DocumentCategorizationApiService,
+  DocumentsService,
+} from '@/core/api';
+import { reconnectOnComplete, SseService } from '@/core/services/sse.service';
 import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
+import { isCategorizationPipelineTerminal } from '@/core/utils/document-categorization-pipeline';
 import {
   createAsyncRequestMetadata,
   requestMetadataContext,
   type RequestMetadata,
 } from '@/core/utils/request-metadata';
 
-export interface CategorizationStartResponse {
-  jobId: string;
-  totalFiles: number;
-  status: string;
-}
+export type CategorizationStartResponse = ApiDocumentCategorizationStartResponse;
 
 export interface CategorizationFileResult {
   itemId: string;
@@ -35,6 +40,7 @@ export interface CategorizationFileResult {
   confidence: number;
   reasoning: string;
   error: string | null;
+  errorMessage?: string | null;
   categorizationPass: number | null;
   validationStatus: 'valid' | 'invalid' | 'pending' | 'error' | null;
   validationReasoning: string | null;
@@ -58,6 +64,7 @@ export interface CategorizationSseEvent {
     reasoning?: string;
     message?: string;
     error?: string;
+    errorMessage?: string;
     total?: number;
     categorizationPass?: number;
     validationStatus?: string;
@@ -98,20 +105,10 @@ export interface CategorizationApplyMapping {
   documentId: number;
 }
 
-export interface CategorizationApplyResponse {
-  applied: Array<{
-    itemId: string;
-    documentId: number;
-    documentType: string;
-    filename: string;
-  }>;
-  errors: Array<{
-    itemId: string;
-    error: string;
-  }>;
-  totalApplied: number;
-  totalErrors: number;
-}
+export type CategorizationApplyResponse = ApiDocumentCategorizationApplyResponse;
+
+const CATEGORIZATION_STREAM_RECONNECT_DELAY_MS = 250;
+const CATEGORIZATION_STREAM_ROTATION_MS = 55_000;
 
 export interface ValidateCategoryResponse {
   matches: boolean;
@@ -132,7 +129,9 @@ export interface ValidateCategoryResponse {
   providedIn: 'root',
 })
 export class DocumentCategorizationService {
-  private readonly http = inject(HttpClient);
+  private readonly customerApplicationsApi = inject(CustomerApplicationsApiService);
+  private readonly documentCategorizationApi = inject(DocumentCategorizationApiService);
+  private readonly documentsApi = inject(DocumentsService);
   private readonly sseService = inject(SseService);
 
   /**
@@ -146,30 +145,40 @@ export class DocumentCategorizationService {
     requestMetadata?: RequestMetadata | null,
   ): Observable<CategorizationStartResponse> {
     const metadata = requestMetadata ?? createAsyncRequestMetadata();
-    return this.http.post<CategorizationStartResponse>(
-      `/api/customer-applications/${applicationId}/categorize-documents/init/`,
-      {
-        totalFiles,
-        model: model ?? null,
-        providerOrder: providerOrder ?? null,
-      },
-      {
-        context: requestMetadataContext(metadata),
-      },
-    ).pipe(map((response) => normalizeJobEnvelope(response)));
+    return this.customerApplicationsApi
+      .customerApplicationsCategorizeDocumentsInitCreate(
+        {
+          applicationId,
+          documentCategorizationInitRequestRequest: {
+            totalFiles,
+            model: model ?? null,
+            providerOrder: providerOrder ?? undefined,
+          },
+        },
+        'body',
+        false,
+        {
+          context: requestMetadataContext(metadata),
+        },
+      )
+      .pipe(map((response) => normalizeJobEnvelope(response)));
   }
 
   /**
    * Upload files into an existing categorization job.
    */
-  uploadFilesToJob(jobId: string, files: File[]): Observable<HttpEvent<unknown>> {
-    const formData = new FormData();
-    files.forEach((file) => formData.append('files', file));
-
-    return this.http.post(`/api/document-categorization/${jobId}/upload/`, formData, {
-      observe: 'events',
-      reportProgress: true,
-    });
+  uploadFilesToJob(
+    jobId: string,
+    files: File[],
+  ): Observable<HttpEvent<ApiDocumentCategorizationUploadFilesResponse>> {
+    return this.documentCategorizationApi.documentCategorizationUploadCreate(
+      {
+        jobId,
+        files,
+      },
+      'events',
+      true,
+    );
   }
 
   /**
@@ -177,14 +186,22 @@ export class DocumentCategorizationService {
    * Returns events with type and data parsed from SSE event/data lines.
    */
   watchCategorizationJob(jobId: string): Observable<CategorizationSseEvent> {
-    return this.sseService
-      .connectMessages<CategorizationSseEvent['data']>(`/api/document-categorization/stream/${jobId}/`)
-      .pipe(
-        // Preserve the existing consumer contract: { type, data }.
-        // `type` comes from SSE `event:` with fallback to "message".
-        // Cursor handling is done inside SseService via SSE `id`.
-        map((message) => ({ type: message.event || 'message', data: message.data })),
-      );
+    return reconnectOnComplete(
+      () =>
+        this.sseService
+          .connectMessages<CategorizationSseEvent['data']>(
+            `/api/document-categorization/stream/${jobId}/`,
+            {
+              maxConnectionDurationMs: CATEGORIZATION_STREAM_ROTATION_MS,
+            },
+          )
+          .pipe(map((message) => ({ type: message.event || 'message', data: message.data }))),
+      {
+        reconnectDelayMs: CATEGORIZATION_STREAM_RECONNECT_DELAY_MS,
+        shouldReconnect: (lastEvent) =>
+          lastEvent === null || !this.isCategorizationEventTerminal(lastEvent),
+      },
+    );
   }
 
   /**
@@ -194,29 +211,128 @@ export class DocumentCategorizationService {
     jobId: string,
     mappings: CategorizationApplyMapping[],
   ): Observable<CategorizationApplyResponse> {
-    const payload = {
-      mappings: mappings.map((mapping) => ({
-        item_id: mapping.itemId,
-        document_id: mapping.documentId,
-      })),
-    };
-
-    return this.http.post<CategorizationApplyResponse>(
-      `/api/document-categorization/${jobId}/apply/`,
-      payload,
-    );
+    return this.documentCategorizationApi.documentCategorizationApplyCreate({
+      jobId,
+      categorizationApplyRequest: {
+        mappings: mappings.map((mapping) => ({
+          itemId: mapping.itemId,
+          documentId: mapping.documentId,
+        })),
+      },
+    });
   }
 
   /**
    * Validate a single file against its expected document type.
    */
   validateCategory(documentId: number, file: File): Observable<ValidateCategoryResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
+    return this.documentsApi
+      .documentsValidateCategoryCreate({
+        documentId,
+        file,
+      })
+      .pipe(map((response) => this.normalizeValidateCategoryResponse(response)));
+  }
 
-    return this.http.post<ValidateCategoryResponse>(
-      `/api/documents/${documentId}/validate-category/`,
-      formData,
-    );
+  private normalizeValidateCategoryResponse(
+    response: Record<string, unknown>,
+  ): ValidateCategoryResponse {
+    return {
+      matches: this.readBoolean(response['matches']),
+      expectedType: this.readString(response['expectedType']) ?? '',
+      detectedType: this.readString(response['detectedType']),
+      confidence: this.readNumber(response['confidence']) ?? 0,
+      reasoning: this.readString(response['reasoning']) ?? '',
+      documentTypeId: this.readNumber(response['documentTypeId']),
+      validationStatus: this.readValidationStatus(response['validationStatus']),
+      validationResult: this.readRecord(response['validationResult']),
+      aiValidationEnabled: this.readOptionalBoolean(response['aiValidationEnabled']),
+      validationProvider: this.readString(response['validationProvider']),
+      validationProviderName: this.readString(response['validationProviderName']),
+      validationModel: this.readString(response['validationModel']),
+    };
+  }
+
+  private readString(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private readNumber(value: unknown): number | null {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : null;
+    }
+
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+  }
+
+  private readBoolean(value: unknown): boolean {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === 'true') {
+        return true;
+      }
+      if (normalized === 'false') {
+        return false;
+      }
+    }
+
+    return Boolean(value);
+  }
+
+  private readOptionalBoolean(value: unknown): boolean | undefined {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+
+    return this.readBoolean(value);
+  }
+
+  private readRecord(value: unknown): Record<string, unknown> | null {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+
+    return null;
+  }
+
+  private readValidationStatus(value: unknown): ValidateCategoryResponse['validationStatus'] {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    if (
+      normalized === 'valid' ||
+      normalized === 'invalid' ||
+      normalized === 'error' ||
+      normalized === ''
+    ) {
+      return normalized;
+    }
+
+    return undefined;
+  }
+
+  private isCategorizationEventTerminal(event: CategorizationSseEvent): boolean {
+    const results = Array.isArray(event.data?.results) ? event.data.results : [];
+    if (results.length === 0) {
+      return false;
+    }
+
+    return results.every((result) => isCategorizationPipelineTerminal(result));
   }
 }

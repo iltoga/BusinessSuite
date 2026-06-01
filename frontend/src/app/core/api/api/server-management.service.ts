@@ -22,6 +22,8 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
+import { AdminAsyncStartResponse } from '../model/admin-async-start-response';
+// @ts-ignore
 import { MediaCleanupRequestRequest } from '../model/media-cleanup-request-request';
 
 // @ts-ignore
@@ -1344,7 +1346,7 @@ export class ServerManagementService
 
   /**
    * Clean unlinked media files
-   * Delete unlinked media files from the active media store.
+   * Return a canonical 202 start payload for media cleanup execution.
    * @endpoint post /api/server-management/media-cleanup/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -1360,7 +1362,7 @@ export class ServerManagementService
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<AdminAsyncStartResponse>;
   public serverManagementMediaCleanupCreate(
     requestParameters?: ServerManagementMediaCleanupCreateRequestParams,
     observe?: 'response',
@@ -1370,7 +1372,7 @@ export class ServerManagementService
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  ): Observable<HttpResponse<AdminAsyncStartResponse>>;
   public serverManagementMediaCleanupCreate(
     requestParameters?: ServerManagementMediaCleanupCreateRequestParams,
     observe?: 'events',
@@ -1380,7 +1382,7 @@ export class ServerManagementService
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  ): Observable<HttpEvent<AdminAsyncStartResponse>>;
   public serverManagementMediaCleanupCreate(
     requestParameters?: ServerManagementMediaCleanupCreateRequestParams,
     observe: any = 'body',
@@ -1440,7 +1442,7 @@ export class ServerManagementService
 
     let localVarPath = `/api/server-management/media-cleanup/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<AdminAsyncStartResponse>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: mediaCleanupRequestRequest,
       responseType: <any>responseType_,

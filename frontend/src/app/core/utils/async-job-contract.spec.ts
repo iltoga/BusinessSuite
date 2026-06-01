@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  extractJobId,
-  normalizeAsyncJobUpdate,
-  normalizeJobEnvelope,
-} from './async-job-contract';
+import { extractJobId, normalizeAsyncJobUpdate, normalizeJobEnvelope } from './async-job-contract';
 
 describe('extractJobId', () => {
   it('prefers canonical fields and falls back to nested payloads', () => {
@@ -26,6 +22,43 @@ describe('normalizeJobEnvelope', () => {
       jobId: 'job-1',
       status: 'queued',
       progress: 0,
+    });
+  });
+
+  it('preserves a top-level requestId field when present', () => {
+    expect(
+      normalizeJobEnvelope({
+        jobId: 'job-1',
+        status: 'queued',
+        progress: 0,
+        requestId: 'req-123',
+      }),
+    ).toEqual({
+      jobId: 'job-1',
+      status: 'queued',
+      progress: 0,
+      requestId: 'req-123',
+    });
+  });
+
+  it('lifts requestId from envelope meta when the payload is wrapped', () => {
+    expect(
+      normalizeJobEnvelope({
+        data: {
+          jobId: 'job-2',
+          status: 'processing',
+          progress: 50,
+        },
+        meta: {
+          request_id: 'req-456',
+          api_version: 'v1',
+        },
+      }),
+    ).toEqual({
+      jobId: 'job-2',
+      status: 'processing',
+      progress: 50,
+      requestId: 'req-456',
     });
   });
 });

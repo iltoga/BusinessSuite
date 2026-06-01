@@ -1,8 +1,11 @@
-import { Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { mapJobUpdateToAsyncJob, type RealtimeJobUpdate } from './realtime-notification.service';
-import { RealtimeNotificationService } from './realtime-notification.service';
+import {
+  mapJobUpdateToAsyncJob,
+  RealtimeNotificationService,
+  type RealtimeJobUpdate,
+} from './realtime-notification.service';
 import { type SseMessage } from './sse.service';
 
 describe('mapJobUpdateToAsyncJob', () => {
@@ -68,5 +71,106 @@ describe('RealtimeNotificationService.watchJob', () => {
     expect(nextSpy).toHaveBeenCalledTimes(2);
     expect(completeSpy).toHaveBeenCalledTimes(1);
     expect(sub.closed).toBe(true);
+  });
+
+  it('reconnects the shared realtime stream after clean completion', async () => {
+    vi.useFakeTimers();
+
+    const service = Object.create(RealtimeNotificationService.prototype) as any;
+    service._events$ = null;
+    service.sseService = {
+      connectMessages: vi
+        .fn()
+        .mockReturnValueOnce(
+          of({
+            event: 'job_update',
+            id: '1',
+            data: { jobId: 'job-9', status: 'processing', progress: 25 },
+          }),
+        )
+        .mockReturnValueOnce(
+          of({
+            event: 'job_update',
+            id: '2',
+            data: { jobId: 'job-9', status: 'completed', progress: 100 },
+          }),
+        ),
+    };
+
+    const nextSpy = vi.fn();
+    const completeSpy = vi.fn();
+
+    service.watchJob('job-9').subscribe({
+      next: nextSpy,
+      complete: completeSpy,
+    });
+
+    await vi.runAllTimersAsync();
+
+    expect(service.sseService.connectMessages).toHaveBeenCalledTimes(2);
+    expect(service.sseService.connectMessages).toHaveBeenNthCalledWith(
+      1,
+      '/api/core/realtime/stream/',
+      {
+        maxConnectionDurationMs: 55_000,
+      },
+    );
+    expect(nextSpy).toHaveBeenCalledTimes(2);
+    expect(nextSpy.mock.calls[0]?.[0]).toMatchObject({
+      jobId: 'job-9',
+      status: 'processing',
+      progress: 25,
+    });
+    expect(nextSpy.mock.calls[1]?.[0]).toMatchObject({
+      jobId: 'job-9',
+      status: 'completed',
+      progress: 100,
+    });
+    expect(completeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('resets the shared realtime stream after an initial connection error', () => {
+    const service = Object.create(RealtimeNotificationService.prototype) as any;
+    service._events$ = null;
+    service.sseService = {
+      connectMessages: vi
+        .fn()
+        .mockReturnValueOnce(throwError(() => new Error('stream boot failed')))
+        .mockReturnValueOnce(
+          of({
+            event: 'job_update',
+            id: '3',
+            data: { jobId: 'job-reset', status: 'processing', progress: 5 },
+          }),
+        ),
+    };
+
+    const firstErrorSpy = vi.fn();
+    service.watchAll().subscribe({
+      error: firstErrorSpy,
+    });
+
+    expect(firstErrorSpy).toHaveBeenCalledTimes(1);
+
+    const nextSpy = vi.fn();
+    const sub = service.watchAll().subscribe({
+      next: nextSpy,
+    });
+
+    expect(service.sseService.connectMessages).toHaveBeenCalledTimes(2);
+    expect(service.sseService.connectMessages).toHaveBeenNthCalledWith(
+      2,
+      '/api/core/realtime/stream/',
+      {
+        maxConnectionDurationMs: 55_000,
+      },
+    );
+    expect(nextSpy).toHaveBeenCalledWith({
+      event: 'job_update',
+      id: '3',
+      data: { jobId: 'job-reset', status: 'processing', progress: 5 },
+    });
+
+    sub.unsubscribe();
   });
 });

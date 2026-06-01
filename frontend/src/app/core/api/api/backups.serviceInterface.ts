@@ -11,6 +11,7 @@ import { HttpHeaders } from '@angular/common/http';
 
 import { Observable } from 'rxjs';
 
+import { AdminAsyncStartResponse } from '../model/models';
 import { DeleteMultipleBackupsRequest } from '../model/models';
 
 import { Configuration } from '../configuration';
@@ -27,15 +28,13 @@ export interface BackupsDownloadRetrieveRequestParams {
   filename: string;
 }
 
-export interface BackupsRestoreCreateRequestParams {
+export interface BackupsRestoreJobCreateRequestParams {
   file?: string;
   includeUsers?: boolean;
-  replay?: boolean;
 }
 
-export interface BackupsStartRetrieveRequestParams {
+export interface BackupsStartJobCreateRequestParams {
   includeUsers?: boolean;
-  replay?: boolean;
 }
 
 export interface BackupsServiceInterface {
@@ -84,14 +83,14 @@ export interface BackupsServiceInterface {
 
   /**
    * Restore from backup
-   * Trigger stream-backed SSE restore execution.
-   * @endpoint post /api/backups/restore/
+   * Return a canonical 202 start payload for restore execution.
+   * @endpoint post /api/backups/restore-job/
    * @param requestParameters
    */
-  backupsRestoreCreate(
-    requestParameters: BackupsRestoreCreateRequestParams,
+  backupsRestoreJobCreate(
+    requestParameters: BackupsRestoreJobCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<AdminAsyncStartResponse>;
 
   /**
    * List available backups
@@ -102,14 +101,14 @@ export interface BackupsServiceInterface {
 
   /**
    * Start backup process
-   * Trigger stream-backed SSE backup execution.
-   * @endpoint get /api/backups/start/
+   * Return a canonical 202 start payload for backup execution.
+   * @endpoint post /api/backups/start-job/
    * @param requestParameters
    */
-  backupsStartRetrieve(
-    requestParameters: BackupsStartRetrieveRequestParams,
+  backupsStartJobCreate(
+    requestParameters: BackupsStartJobCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<AdminAsyncStartResponse>;
 
   /**
    * Upload backup file

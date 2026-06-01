@@ -28,7 +28,9 @@ import os
 import re
 import shutil
 import tarfile
+import uuid
 from collections.abc import Mapping
+from urllib.parse import urlencode
 
 import requests
 from admin_tools import services
@@ -41,9 +43,16 @@ from api.permissions import (
 from api.serializers.local_resilience_serializer import LocalResilienceSettingsSerializer
 from api.serializers.ui_settings_serializer import UiSettingsSerializer
 from api.utils.contracts import build_error_payload, build_success_payload, get_request_id
-from api.utils.idempotency import build_request_idempotency_fingerprint, claim_request_idempotency
+from api.utils.idempotency import (
+    IdempotencyConflictError,
+    build_request_idempotency_fingerprint,
+    claim_request_idempotency,
+    get_cached_async_job_id,
+    store_request_idempotent_job,
+)
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
+from api.utils.stream_payloads import build_async_job_start_payload
 from api.views import ApiErrorHandlingMixin
 from core.models import AppSetting
 from core.models.ai_request_usage import AIRequestUsage
@@ -55,10 +64,11 @@ from core.services.redis_streams import format_sse_event, resolve_last_event_id,
 from core.services.ui_settings_service import UiSettingsService
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.cache import caches
+from django.core.cache import cache, caches
 from django.db.models import Count, Q, Sum
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import FileResponse, JsonResponse, StreamingHttpResponse
+from django.urls import reverse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
@@ -71,6 +81,9 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+_ADMIN_JOB_NAMESPACE = uuid.UUID("5e50a8d8-5036-4d71-8b9d-0695b7adf8df")
+_ADMIN_REPLAY_FROM_START_CURSOR = "0-0"
+
 
 class BackupsPlaceholderSerializer(serializers.Serializer):
     """Schema placeholder for backup utility endpoints."""
@@ -78,6 +91,18 @@ class BackupsPlaceholderSerializer(serializers.Serializer):
 
 class ServerManagementPlaceholderSerializer(serializers.Serializer):
     """Schema placeholder for server management utility endpoints."""
+
+
+class AdminAsyncStartResponseSerializer(serializers.Serializer):
+    """Canonical 202 response payload for admin stream-backed jobs."""
+
+    jobId = serializers.CharField()
+    status = serializers.CharField()
+    progress = serializers.IntegerField()
+    queued = serializers.BooleanField()
+    deduplicated = serializers.BooleanField()
+    requestId = serializers.CharField(required=False)
+    streamUrl = serializers.URLField(required=False)
 
 
 def _clear_cacheops_query_store() -> None:
@@ -140,12 +165,123 @@ def _resolve_backup_path(filename: str | None) -> str | None:
     return path if os.path.exists(path) else None
 
 
+def _normalized_job_id(value: str | None) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
+def _build_admin_job_id(*, request, namespace: str, cache_key: str | None) -> str:
+    cached_job_id = get_cached_async_job_id(cache_key) if cache_key else None
+    if cached_job_id:
+        return cached_job_id
+
+    if cache_key:
+        return str(uuid.uuid5(_ADMIN_JOB_NAMESPACE, cache_key))
+
+    request_id = get_request_id(request)
+    if request_id:
+        return str(
+            uuid.uuid5(
+                _ADMIN_JOB_NAMESPACE,
+                f"{namespace}:{getattr(getattr(request, 'user', None), 'id', None)}:{request_id}",
+            )
+        )
+
+    return str(uuid.uuid4())
+
+
+def _build_admin_stream_url(request, *, route_name: str, query_params: Mapping[str, str | int | bool | None]) -> str:
+    filtered_params = {
+        str(key): str(value) for key, value in query_params.items() if value is not None and str(value).strip() != ""
+    }
+    base_url = request.build_absolute_uri(reverse(route_name))
+    if not filtered_params:
+        return base_url
+    return f"{base_url}?{urlencode(filtered_params, doseq=True)}"
+
+
+def _build_admin_async_start_payload(
+    request,
+    *,
+    job_id: str,
+    deduplicated: bool,
+    stream_route_name: str,
+    stream_query_params: Mapping[str, str | int | bool | None],
+) -> dict:
+    return build_async_job_start_payload(
+        job_id=job_id,
+        status="queued",
+        progress=0,
+        queued=not deduplicated,
+        deduplicated=deduplicated,
+        request=request,
+        links={
+            "streamUrl": _build_admin_stream_url(
+                request,
+                route_name=stream_route_name,
+                query_params=stream_query_params,
+            )
+        },
+    )
+
+
+def _resolve_admin_replay_cursor(request, *, replay_mode: bool) -> str | None:
+    if not replay_mode:
+        return None
+    return resolve_last_event_id(request) or _ADMIN_REPLAY_FROM_START_CURSOR
+
+
+def _admin_stream_conflict_response(request, exc: Exception):
+    return JsonResponse(
+        build_error_payload(
+            code="conflict",
+            message=str(exc),
+            request=request,
+        ),
+        status=status.HTTP_409_CONFLICT,
+    )
+
+
+def _admin_start_conflict_response(request, exc: Exception):
+    return _error_response(
+        str(exc),
+        status_code=status.HTTP_409_CONFLICT,
+        code="conflict",
+        request=request,
+    )
+
+
+def _resolve_admin_request_flag(request, *keys: str, default: str = "0") -> bool:
+    for key in keys:
+        value = _query_param(request, key)
+        if value is not None:
+            return _as_bool(value)
+
+        data = getattr(request, "data", None)
+        if data is not None and hasattr(data, "get"):
+            value = data.get(key)
+            if value is not None:
+                return _as_bool(value)
+    return _as_bool(default)
+
+
+def _resolve_admin_event_job_id(stream_event, payload: Mapping[str, object] | None = None) -> str | None:
+    if isinstance(payload, Mapping):
+        payload_job_id = _normalized_job_id(payload.get("jobId") or payload.get("job_id"))
+        if payload_job_id:
+            return payload_job_id
+
+    raw = getattr(stream_event, "raw", None) or {}
+    return _normalized_job_id(raw.get("job_id"))
+
+
 def _stream_admin_events(
     *,
     user_id: int,
     replay_cursor: str | None,
     start_new: bool,
     accepted_events: set[str],
+    job_id: str | None = None,
     enqueue_callback,
 ):
     def _sync_stream():
@@ -167,6 +303,11 @@ def _stream_admin_events(
                 continue
 
             payload = dict(stream_event.payload)
+            event_job_id = _resolve_admin_event_job_id(stream_event, payload)
+            if job_id and event_job_id != job_id:
+                continue
+            if event_job_id and "jobId" not in payload:
+                payload["jobId"] = event_job_id
             terminal = bool(payload.pop("_terminal", False))
             yield format_sse_event(data=payload, event_id=stream_event.id)
             if terminal:
@@ -181,20 +322,26 @@ def _start_admin_stream(
     namespace: str,
     replay_mode: bool,
     accepted_events: set[str],
+    job_id: str | None = None,
     enqueue_callback,
 ):
     request_fingerprint = build_request_idempotency_fingerprint(request)
-    _, deduplicated = claim_request_idempotency(
-        request=request,
-        namespace=namespace,
-        user_id=request.user.id,
-        fingerprint=request_fingerprint,
-    )
-    replay_cursor = resolve_last_event_id(request) if replay_mode else None
+    try:
+        _, deduplicated = claim_request_idempotency(
+            request=request,
+            namespace=namespace,
+            user_id=request.user.id,
+            fingerprint=request_fingerprint,
+        )
+    except IdempotencyConflictError as exc:
+        return _admin_stream_conflict_response(request, exc)
+
+    replay_cursor = _resolve_admin_replay_cursor(request, replay_mode=replay_mode)
     logger.info(
-        "%s connect user_id=%s request_id=%s replay_cursor=%s deduplicated=%s replay_mode=%s",
+        "%s connect user_id=%s job_id=%s request_id=%s replay_cursor=%s deduplicated=%s replay_mode=%s",
         namespace,
         request.user.id,
+        job_id,
         get_request_id(request),
         replay_cursor,
         deduplicated,
@@ -205,6 +352,7 @@ def _start_admin_stream(
         replay_cursor=replay_cursor,
         start_new=not replay_mode and not deduplicated,
         accepted_events=accepted_events,
+        job_id=job_id,
         enqueue_callback=enqueue_callback,
     )
 
@@ -229,14 +377,18 @@ def backup_start_sse(request):
 
     include_users = _as_bool(_query_param(request, "include_users", "0"))
     replay_mode = _as_bool(_query_param(request, "replay", "0"))
+    job_id = _normalized_job_id(_query_param(request, "job_id"))
     return _start_admin_stream(
         request,
         namespace="backup_start_sse",
         replay_mode=replay_mode,
         accepted_events={"backup_started", "backup_message", "backup_finished", "backup_failed"},
+        job_id=job_id,
         enqueue_callback=lambda: admin_tasks.run_backup_stream.delay(
             user_id=request.user.id,
             include_users=include_users,
+            job_id=job_id,
+            request_id=get_request_id(request),
         ),
     )
 
@@ -254,15 +406,16 @@ def backup_restore_sse(request):
             status=403,
         )
 
+    replay_mode = _as_bool(_query_param(request, "replay", "0"))
+    job_id = _normalized_job_id(_query_param(request, "job_id"))
     gz_path = _resolve_backup_path(_query_param(request, "file"))
-    if not gz_path:
+    if not gz_path and not (replay_mode and job_id):
         return JsonResponse(
             build_error_payload(code="validation_error", message="Missing file parameter", request=request),
             status=400,
         )
 
     include_users = _as_bool(_query_param(request, "include_users", "0"))
-    replay_mode = _as_bool(_query_param(request, "replay", "0"))
     return _start_admin_stream(
         request,
         namespace="backup_restore_sse",
@@ -274,10 +427,13 @@ def backup_restore_sse(request):
             "restore_finished",
             "restore_failed",
         },
+        job_id=job_id,
         enqueue_callback=lambda: admin_tasks.run_restore_stream.delay(
             user_id=request.user.id,
             archive_path=gz_path,
             include_users=include_users,
+            job_id=job_id,
+            request_id=get_request_id(request),
         ),
     )
 
@@ -297,6 +453,7 @@ def media_cleanup_start_sse(request):
 
     dry_run = _as_bool(_query_param(request, "dry_run", "1"))
     replay_mode = _as_bool(_query_param(request, "replay", "0"))
+    job_id = _normalized_job_id(_query_param(request, "job_id"))
     return _start_admin_stream(
         request,
         namespace="media_cleanup_start_sse",
@@ -308,9 +465,12 @@ def media_cleanup_start_sse(request):
             "media_cleanup_finished",
             "media_cleanup_failed",
         },
+        job_id=job_id,
         enqueue_callback=lambda: admin_tasks.run_media_cleanup_stream.delay(
             user_id=request.user.id,
             dry_run=dry_run,
+            job_id=job_id,
+            request_id=get_request_id(request),
         ),
     )
 
@@ -496,32 +656,60 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
     @extend_schema(
         summary="Start backup process",
+        request=None,
         parameters=[
             OpenApiParameter("include_users", OpenApiTypes.BOOL, location=OpenApiParameter.QUERY),
-            OpenApiParameter(
-                "replay",
-                OpenApiTypes.BOOL,
-                location=OpenApiParameter.QUERY,
-                description="Set true to replay existing stream events without enqueuing a new backup job.",
-            ),
         ],
-        responses={200: OpenApiTypes.OBJECT},
+        responses={202: AdminAsyncStartResponseSerializer, 409: OpenApiTypes.OBJECT},
     )
-    @action(detail=False, methods=["get"], url_path="start")
+    @action(detail=False, methods=["post"], url_path="start-job")
     def start_backup(self, request):
-        """Trigger stream-backed SSE backup execution."""
-        include_users = _as_bool(_query_param(request, "include_users", "0"))
-        replay_mode = _as_bool(_query_param(request, "replay", "0"))
-        replay_cursor = resolve_last_event_id(request) if replay_mode else None
-        return _stream_admin_events(
-            user_id=request.user.id,
-            replay_cursor=replay_cursor,
-            start_new=not replay_mode,
-            accepted_events={"backup_started", "backup_message", "backup_finished", "backup_failed"},
-            enqueue_callback=lambda: admin_tasks.run_backup_stream.delay(
+        """Return a canonical 202 start payload for backup execution."""
+        namespace = "backup_start_sse"
+        include_users = _resolve_admin_request_flag(request, "include_users", "includeUsers", default="0")
+        request_fingerprint = build_request_idempotency_fingerprint(request)
+        try:
+            cache_key, deduplicated = claim_request_idempotency(
+                request=request,
+                namespace=namespace,
                 user_id=request.user.id,
-                include_users=include_users,
+                fingerprint=request_fingerprint,
+            )
+        except IdempotencyConflictError as exc:
+            return _admin_start_conflict_response(request, exc)
+
+        job_id = _build_admin_job_id(request=request, namespace=namespace, cache_key=cache_key)
+
+        if not deduplicated:
+            try:
+                admin_tasks.run_backup_stream.delay(
+                    user_id=request.user.id,
+                    include_users=include_users,
+                    job_id=job_id,
+                    request_id=get_request_id(request),
+                )
+                store_request_idempotent_job(
+                    cache_key=cache_key,
+                    job_id=job_id,
+                    fingerprint=request_fingerprint,
+                )
+            except Exception as exc:
+                if cache_key:
+                    cache.delete(cache_key)
+                return self.error_response(str(exc), status.HTTP_500_INTERNAL_SERVER_ERROR, request=request)
+
+        return Response(
+            _build_admin_async_start_payload(
+                request,
+                job_id=job_id,
+                deduplicated=deduplicated,
+                stream_route_name="api-backup-start-sse",
+                stream_query_params={
+                    "replay": 1,
+                    "job_id": job_id,
+                },
             ),
+            status=status.HTTP_202_ACCEPTED,
         )
 
     @extend_schema(summary="Delete all backups", responses={200: OpenApiTypes.OBJECT})
@@ -595,44 +783,66 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
     @extend_schema(
         summary="Restore from backup",
+        request=None,
         parameters=[
             OpenApiParameter("file", OpenApiTypes.STR, location=OpenApiParameter.QUERY),
             OpenApiParameter("include_users", OpenApiTypes.BOOL, location=OpenApiParameter.QUERY),
-            OpenApiParameter(
-                "replay",
-                OpenApiTypes.BOOL,
-                location=OpenApiParameter.QUERY,
-                description="Set true to replay existing stream events without enqueuing a new restore job.",
-            ),
         ],
-        responses={200: OpenApiTypes.OBJECT},
+        responses={202: AdminAsyncStartResponseSerializer, 400: OpenApiTypes.OBJECT, 409: OpenApiTypes.OBJECT},
     )
-    @action(detail=False, methods=["post"], url_path="restore")
+    @action(detail=False, methods=["post"], url_path="restore-job")
     def restore(self, request):
-        """Trigger stream-backed SSE restore execution."""
+        """Return a canonical 202 start payload for restore execution."""
         gz_path = _resolve_backup_path(_query_param(request, "file"))
         if not gz_path:
             return _error_response("Missing file parameter", status_code=400, code="validation_error", request=request)
 
-        include_users = _as_bool(_query_param(request, "include_users", "0"))
-        replay_mode = _as_bool(_query_param(request, "replay", "0"))
-        replay_cursor = resolve_last_event_id(request) if replay_mode else None
-        return _stream_admin_events(
-            user_id=request.user.id,
-            replay_cursor=replay_cursor,
-            start_new=not replay_mode,
-            accepted_events={
-                "restore_started",
-                "restore_progress",
-                "restore_message",
-                "restore_finished",
-                "restore_failed",
-            },
-            enqueue_callback=lambda: admin_tasks.run_restore_stream.delay(
+        namespace = "backup_restore_sse"
+        include_users = _resolve_admin_request_flag(request, "include_users", "includeUsers", default="0")
+        request_fingerprint = build_request_idempotency_fingerprint(request)
+        try:
+            cache_key, deduplicated = claim_request_idempotency(
+                request=request,
+                namespace=namespace,
                 user_id=request.user.id,
-                archive_path=gz_path,
-                include_users=include_users,
+                fingerprint=request_fingerprint,
+            )
+        except IdempotencyConflictError as exc:
+            return _admin_start_conflict_response(request, exc)
+
+        job_id = _build_admin_job_id(request=request, namespace=namespace, cache_key=cache_key)
+
+        if not deduplicated:
+            try:
+                admin_tasks.run_restore_stream.delay(
+                    user_id=request.user.id,
+                    archive_path=gz_path,
+                    include_users=include_users,
+                    job_id=job_id,
+                    request_id=get_request_id(request),
+                )
+                store_request_idempotent_job(
+                    cache_key=cache_key,
+                    job_id=job_id,
+                    fingerprint=request_fingerprint,
+                )
+            except Exception as exc:
+                if cache_key:
+                    cache.delete(cache_key)
+                return self.error_response(str(exc), status.HTTP_500_INTERNAL_SERVER_ERROR, request=request)
+
+        return Response(
+            _build_admin_async_start_payload(
+                request,
+                job_id=job_id,
+                deduplicated=deduplicated,
+                stream_route_name="api-backup-restore-sse",
+                stream_query_params={
+                    "replay": 1,
+                    "job_id": job_id,
+                },
             ),
+            status=status.HTTP_202_ACCEPTED,
         )
 
 
@@ -996,7 +1206,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             name="MediaCleanupRequestSerializer",
             fields={"dryRun": serializers.BooleanField(required=False, default=True)},
         ),
-        responses={200: OpenApiTypes.OBJECT},
+        responses={202: AdminAsyncStartResponseSerializer, 409: OpenApiTypes.OBJECT},
     )
     @action(
         detail=False,
@@ -1005,18 +1215,53 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         throttle_scope="server_management_media_cleanup",
     )
     def media_cleanup(self, request):
-        """Delete unlinked media files from the active media store."""
+        """Return a canonical 202 start payload for media cleanup execution."""
+        namespace = "media_cleanup_start_sse"
+        dry_run = _resolve_admin_request_flag(request, "dryRun", "dry_run", default="1")
+        request_fingerprint = build_request_idempotency_fingerprint(request)
         try:
-            raw_dry_run = request.data.get("dryRun", request.data.get("dry_run", True))
-            if isinstance(raw_dry_run, bool):
-                dry_run = raw_dry_run
-            else:
-                dry_run = str(raw_dry_run).strip().lower() in {"1", "true", "yes", "on"}
+            cache_key, deduplicated = claim_request_idempotency(
+                request=request,
+                namespace=namespace,
+                user_id=request.user.id,
+                fingerprint=request_fingerprint,
+            )
+        except IdempotencyConflictError as exc:
+            return _admin_start_conflict_response(request, exc)
 
-            cleanup = services.cleanup_unlinked_media_files(dry_run=dry_run)
-            return _success_response({"ok": True, "cleanup": cleanup}, request=request)
-        except Exception as e:
-            return self.error_response(str(e), status.HTTP_500_INTERNAL_SERVER_ERROR, request=request)
+        job_id = _build_admin_job_id(request=request, namespace=namespace, cache_key=cache_key)
+
+        if not deduplicated:
+            try:
+                admin_tasks.run_media_cleanup_stream.delay(
+                    user_id=request.user.id,
+                    dry_run=dry_run,
+                    job_id=job_id,
+                    request_id=get_request_id(request),
+                )
+                store_request_idempotent_job(
+                    cache_key=cache_key,
+                    job_id=job_id,
+                    fingerprint=request_fingerprint,
+                )
+            except Exception as exc:
+                if cache_key:
+                    cache.delete(cache_key)
+                return self.error_response(str(exc), status.HTTP_500_INTERNAL_SERVER_ERROR, request=request)
+
+        return Response(
+            _build_admin_async_start_payload(
+                request,
+                job_id=job_id,
+                deduplicated=deduplicated,
+                stream_route_name="api-server-management-media-cleanup-stream-sse",
+                stream_query_params={
+                    "replay": 1,
+                    "job_id": job_id,
+                },
+            ),
+            status=status.HTTP_202_ACCEPTED,
+        )
 
     @extend_schema(
         summary="List and create application settings",

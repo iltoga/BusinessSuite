@@ -19,6 +19,9 @@ import { DocApplicationDetail } from '../model/models';
 import { DocApplicationSerializerWithRelations } from '../model/models';
 import { DocApplicationSerializerWithRelationsRequest } from '../model/models';
 import { DocWorkflow } from '../model/models';
+import { DocumentCategorizationInitRequestRequest } from '../model/models';
+import { DocumentCategorizationQueuedResponse } from '../model/models';
+import { DocumentCategorizationStartResponse } from '../model/models';
 import { PaginatedDocApplicationListList } from '../model/models';
 
 import { Configuration } from '../configuration';
@@ -30,6 +33,18 @@ export interface CustomerApplicationsAdvanceWorkflowCreateRequestParams {
 
 export interface CustomerApplicationsBulkDeleteCreateRequestParams {
   customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest;
+}
+
+export interface CustomerApplicationsCategorizeDocumentsCreateRequestParams {
+  applicationId: number;
+  files: Array<Blob>;
+  model?: string | null;
+  providerOrder?: Array<string>;
+}
+
+export interface CustomerApplicationsCategorizeDocumentsInitCreateRequestParams {
+  applicationId: number;
+  documentCategorizationInitRequestRequest?: DocumentCategorizationInitRequestRequest;
 }
 
 export interface CustomerApplicationsCreateRequestParams {
@@ -115,6 +130,28 @@ export interface CustomerApplicationsServiceInterface {
     requestParameters: CustomerApplicationsBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
   ): Observable<CustomerApplicationsBulkDeleteResponse>;
+
+  /**
+   *
+   * Upload multiple files and start AI categorization. Files are saved to temp storage and Dramatiq tasks are dispatched in parallel.
+   * @endpoint post /api/customer-applications/{applicationId}/categorize-documents/
+   * @param requestParameters
+   */
+  customerApplicationsCategorizeDocumentsCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<DocumentCategorizationQueuedResponse>;
+
+  /**
+   *
+   * Create a categorization job first so frontend can subscribe to SSE before file upload starts.
+   * @endpoint post /api/customer-applications/{applicationId}/categorize-documents/init/
+   * @param requestParameters
+   */
+  customerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<DocumentCategorizationStartResponse>;
 
   /**
    *

@@ -263,9 +263,18 @@ class DocApplication(models.Model):
         Checks whether the application is completed.
         """
         current_workflow = self.current_workflow
-        if self.status == self.STATUS_COMPLETED:
-            return True
-        return bool(current_workflow and current_workflow.is_workflow_completed)
+        if self.has_configured_tasks or self.workflows.exists():
+            return bool(current_workflow and current_workflow.is_workflow_completed)
+        return self.status == self.STATUS_COMPLETED
+
+    @property
+    def effective_status(self):
+        """
+        Return the workflow-aware status without trusting a stale completed value.
+        """
+        if self.has_configured_tasks or self.workflows.exists():
+            return self._get_application_status()
+        return self.status
 
     @property
     def has_next_task(self):
@@ -408,8 +417,9 @@ class DocApplication(models.Model):
             return self.STATUS_COMPLETED
 
         if self.is_document_collection_completed:
-            # If there are no workflows configured, treat a fully collected document set as completed.
-            if not self.workflows.exists():
+            # Only taskless products complete at document collection; task-based products
+            # must reach their final workflow step.
+            if not self.has_configured_tasks and not self.workflows.exists():
                 return self.STATUS_COMPLETED
             return self.STATUS_PROCESSING
 

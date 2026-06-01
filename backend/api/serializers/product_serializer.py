@@ -321,6 +321,7 @@ class ProductImportStartResponseSerializer(serializers.Serializer):
     progress = serializers.IntegerField()
     queued = serializers.BooleanField()
     deduplicated = serializers.BooleanField()
+    requestId = serializers.CharField(required=False, allow_blank=False)
 
 
 class ProductPriceListPrintStartSerializer(serializers.Serializer):
@@ -333,6 +334,7 @@ class ProductPriceListPrintStartResponseSerializer(serializers.Serializer):
     progress = serializers.IntegerField()
     queued = serializers.BooleanField()
     deduplicated = serializers.BooleanField()
+    requestId = serializers.CharField(required=False, allow_blank=False)
 
 
 class ProductCategoryFilterOptionSerializer(serializers.Serializer):

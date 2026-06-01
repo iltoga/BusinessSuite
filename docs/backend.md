@@ -19,3 +19,34 @@
 - Logging: structured logging via Logger service; performance middleware; logs in `logs/`.
 - Runtime toggles: backend settings and environment overrides.
 - Tests: pytest with strict markers; e2e Redis/Dramatiq tests; caching and task runtime policies covered.
+
+## Canonical async controller pattern
+
+- Async **start** endpoints should return `202 Accepted` JSON, not immediately treat the SSE endpoint as the trigger.
+- Build start payloads from the shared async helpers so callers receive a consistent contract: `jobId`, `status`, `progress`, `queued`, `deduplicated`, optional `requestId`, `statusUrl`, `streamUrl`, and `downloadUrl`.
+- Keep heavy orchestration in services/tasks; views should only validate input, claim idempotency, enqueue work, and shape the response.
+
+## Stream publication path
+
+- The production path for user-facing progress is DB state → signal/service publish → Redis Streams → SSE.
+- Preserve `transaction.on_commit()` publication patterns so streams do not race ahead of committed database state.
+- Domain SSE endpoints should align on replay behavior, keepalive handling, and terminal-event semantics.
+
+## Idempotency and conflict behavior
+
+- Async controllers should accept `Idempotency-Key` and fingerprint the request payload/query.
+- Same key + same fingerprint => return the cached job identity with `deduplicated=true`.
+- Same key + different fingerprint => return **`409 Conflict`** using the canonical error payload.
+- When possible, include `requestId` in start responses and stream payloads so traces can be correlated across layers.
+
+## SSE operational guidance
+
+- Several SSE endpoints are deliberately rotated around **55 seconds**; frontend consumers are expected to reconnect on clean completion.
+- Replay should honor `Last-Event-ID`, and replay-first admin/domain URLs may also expose explicit query params such as `replay=1` and `job_id=<id>`.
+- Keepalive comment frames are part of normal operation and should not be interpreted as data events.
+
+## Bootstrap safety
+
+- Keep Dramatiq bootstrap/import paths free of database-dependent settings reads.
+- Resolve DB-backed runtime settings lazily after Django is ready or inside task/runtime code, not at module import time.
+- Treat this as an import-safety rule for `business_suite/dramatiq.py` and related worker bootstrap code.

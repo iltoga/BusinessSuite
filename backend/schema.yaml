@@ -423,10 +423,10 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/backups/restore/:
+  /api/backups/restore-job/:
     post:
-      operationId: backupsRestoreCreate
-      description: Trigger stream-backed SSE restore execution.
+      operationId: backupsRestoreJobCreate
+      description: Return a canonical 202 start payload for restore execution.
       summary: Restore from backup
       parameters:
       - in: query
@@ -437,48 +437,55 @@ paths:
         name: include_users
         schema:
           type: boolean
-      - in: query
-        name: replay
-        schema:
-          type: boolean
-        description: Set true to replay existing stream events without enqueuing a
-          new restore job.
       tags:
       - backups
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '400':
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/backups/start/:
-    get:
-      operationId: backupsStartRetrieve
-      description: Trigger stream-backed SSE backup execution.
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/start-job/:
+    post:
+      operationId: backupsStartJobCreate
+      description: Return a canonical 202 start payload for backup execution.
       summary: Start backup process
       parameters:
       - in: query
         name: include_users
         schema:
           type: boolean
-      - in: query
-        name: replay
-        schema:
-          type: boolean
-        description: Set true to replay existing stream events without enqueuing a
-          new backup job.
       tags:
       - backups
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '409':
           content:
             application/json:
               schema:
@@ -1245,6 +1252,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocApplicationDetail'
+          description: ''
+  /api/customer-applications/{applicationId}/categorize-documents/:
+    post:
+      operationId: customerApplicationsCategorizeDocumentsCreate
+      description: |-
+        Upload multiple files and start AI categorization.
+        Files are saved to temp storage and Dramatiq tasks are dispatched in parallel.
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationQueuedResponse'
+          description: ''
+  /api/customer-applications/{applicationId}/categorize-documents/init/:
+    post:
+      operationId: customerApplicationsCategorizeDocumentsInitCreate
+      description: Create a categorization job first so frontend can subscribe to
+        SSE before file upload starts.
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationStartResponse'
           description: ''
   /api/customer-applications/{id}/:
     get:
@@ -2124,6 +2201,109 @@ paths:
                 items:
                   $ref: '#/components/schemas/DashboardStats'
           description: ''
+  /api/document-categorization/{jobId}/apply/:
+    post:
+      operationId: documentCategorizationApplyCreate
+      description: |-
+        Apply confirmed categorization results: attach files to Document rows.
+
+        After applying the requested mappings, **all** transient files for this
+        job are deleted from storage (``tmp/categorization/{job_id}/``).  This
+        includes unapplied files (e.g. "No Slot" or errored items) so that
+        only files copied into their final Document location are persisted.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - document-categorization
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationApplyResponse'
+          description: ''
+        '409':
+          description: Categorization job is still processing and cannot be applied
+            yet.
+  /api/document-categorization/{jobId}/status/:
+    get:
+      operationId: documentCategorizationStatusRetrieve
+      description: Polling fallback for categorization job status.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - document-categorization
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationJob'
+          description: ''
+  /api/document-categorization/{jobId}/upload/:
+    post:
+      operationId: documentCategorizationUploadCreate
+      description: Upload files into an existing categorization job and dispatch item
+        tasks.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - document-categorization
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadFilesRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadFilesRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationUploadFilesResponse'
+          description: ''
   /api/document-ocr/check/:
     post:
       operationId: documentOcrCheckCreate
@@ -2444,6 +2624,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Document'
+          description: ''
+  /api/documents/{documentId}/validate-category/:
+    post:
+      operationId: documentsValidateCategoryCreate
+      description: Run pre-upload AI validation for a file against the target DocumentType
+        rules.
+      parameters:
+      - in: path
+        name: documentId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ValidateDocumentCategoryRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ValidateDocumentCategoryRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/documents/{id}/:
     get:
@@ -5065,7 +5278,7 @@ paths:
   /api/server-management/media-cleanup/:
     post:
       operationId: serverManagementMediaCleanupCreate
-      description: Delete unlinked media files from the active media store.
+      description: Return a canonical 202 start payload for media cleanup execution.
       summary: Clean unlinked media files
       tags:
       - server-management
@@ -5087,7 +5300,13 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '409':
           content:
             application/json:
               schema:
@@ -6127,10 +6346,10 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/v1/backups/restore/:
+  /api/v1/backups/restore-job/:
     post:
-      operationId: v1BackupsRestoreCreate
-      description: Trigger stream-backed SSE restore execution.
+      operationId: v1BackupsRestoreJobCreate
+      description: Return a canonical 202 start payload for restore execution.
       summary: Restore from backup
       parameters:
       - in: query
@@ -6141,48 +6360,55 @@ paths:
         name: include_users
         schema:
           type: boolean
-      - in: query
-        name: replay
-        schema:
-          type: boolean
-        description: Set true to replay existing stream events without enqueuing a
-          new restore job.
       tags:
       - v1
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '400':
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/v1/backups/start/:
-    get:
-      operationId: v1BackupsStartRetrieve
-      description: Trigger stream-backed SSE backup execution.
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/backups/start-job/:
+    post:
+      operationId: v1BackupsStartJobCreate
+      description: Return a canonical 202 start payload for backup execution.
       summary: Start backup process
       parameters:
       - in: query
         name: include_users
         schema:
           type: boolean
-      - in: query
-        name: replay
-        schema:
-          type: boolean
-        description: Set true to replay existing stream events without enqueuing a
-          new backup job.
       tags:
       - v1
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '409':
           content:
             application/json:
               schema:
@@ -6949,6 +7175,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocApplicationDetail'
+          description: ''
+  /api/v1/customer-applications/{applicationId}/categorize-documents/:
+    post:
+      operationId: v1CustomerApplicationsCategorizeDocumentsCreate
+      description: |-
+        Upload multiple files and start AI categorization.
+        Files are saved to temp storage and Dramatiq tasks are dispatched in parallel.
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationQueuedResponse'
+          description: ''
+  /api/v1/customer-applications/{applicationId}/categorize-documents/init/:
+    post:
+      operationId: v1CustomerApplicationsCategorizeDocumentsInitCreate
+      description: Create a categorization job first so frontend can subscribe to
+        SSE before file upload starts.
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationStartResponse'
           description: ''
   /api/v1/customer-applications/{id}/:
     get:
@@ -7828,6 +8124,109 @@ paths:
                 items:
                   $ref: '#/components/schemas/DashboardStats'
           description: ''
+  /api/v1/document-categorization/{jobId}/apply/:
+    post:
+      operationId: v1DocumentCategorizationApplyCreate
+      description: |-
+        Apply confirmed categorization results: attach files to Document rows.
+
+        After applying the requested mappings, **all** transient files for this
+        job are deleted from storage (``tmp/categorization/{job_id}/``).  This
+        includes unapplied files (e.g. "No Slot" or errored items) so that
+        only files copied into their final Document location are persisted.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationApplyResponse'
+          description: ''
+        '409':
+          description: Categorization job is still processing and cannot be applied
+            yet.
+  /api/v1/document-categorization/{jobId}/status/:
+    get:
+      operationId: v1DocumentCategorizationStatusRetrieve
+      description: Polling fallback for categorization job status.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationJob'
+          description: ''
+  /api/v1/document-categorization/{jobId}/upload/:
+    post:
+      operationId: v1DocumentCategorizationUploadCreate
+      description: Upload files into an existing categorization job and dispatch item
+        tasks.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadFilesRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadFilesRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationUploadFilesResponse'
+          description: ''
   /api/v1/document-ocr/check/:
     post:
       operationId: v1DocumentOcrCheckCreate
@@ -8148,6 +8547,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Document'
+          description: ''
+  /api/v1/documents/{documentId}/validate-category/:
+    post:
+      operationId: v1DocumentsValidateCategoryCreate
+      description: Run pre-upload AI validation for a file against the target DocumentType
+        rules.
+      parameters:
+      - in: path
+        name: documentId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ValidateDocumentCategoryRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ValidateDocumentCategoryRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/documents/{id}/:
     get:
@@ -10769,7 +11201,7 @@ paths:
   /api/v1/server-management/media-cleanup/:
     post:
       operationId: v1ServerManagementMediaCleanupCreate
-      description: Delete unlinked media files from the active media store.
+      description: Return a canonical 202 start payload for media cleanup execution.
       summary: Clean unlinked media files
       tags:
       - v1
@@ -10791,7 +11223,13 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '409':
           content:
             application/json:
               schema:
@@ -11914,6 +12352,31 @@ paths:
       - Mock
 components:
   schemas:
+    AdminAsyncStartResponse:
+      type: object
+      description: Canonical 202 response payload for admin stream-backed jobs.
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+        requestId:
+          type: string
+        streamUrl:
+          type: string
+          format: uri
+      required:
+      - deduplicated
+      - jobId
+      - progress
+      - queued
+      - status
     AdminPushNotificationDispatchResult:
       type: object
       properties:
@@ -12686,6 +13149,26 @@ components:
       - reminder_date
       - reminder_time
       - user
+    CategorizationApplyItemRequest:
+      type: object
+      properties:
+        item_id:
+          type: string
+          format: uuid
+        document_id:
+          type: integer
+      required:
+      - document_id
+      - item_id
+    CategorizationApplyRequest:
+      type: object
+      properties:
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategorizationApplyItemRequest'
+      required:
+      - mappings
     ChangePasswordRequest:
       type: object
       properties:
@@ -14053,6 +14536,318 @@ components:
       - icon
       - label
       - name
+    DocumentCategorizationApplyResponse:
+      type: object
+      properties:
+        applied:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        totalApplied:
+          type: integer
+        totalErrors:
+          type: integer
+      required:
+      - totalApplied
+      - totalErrors
+    DocumentCategorizationInitRequestRequest:
+      type: object
+      properties:
+        totalFiles:
+          type: integer
+          minimum: 0
+        model:
+          type: string
+          nullable: true
+        providerOrder:
+          type: array
+          items:
+            type: string
+            minLength: 1
+    DocumentCategorizationItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sortIndex:
+          type: integer
+          readOnly: true
+        filename:
+          type: string
+          maxLength: 255
+        status:
+          enum:
+          - queued
+          - processing
+          - categorized
+          - error
+          type: string
+          description: |-
+            * `queued` - Queued
+            * `processing` - Processing
+            * `categorized` - Categorized
+            * `error` - Error
+          x-spec-enum-id: 3b2714a7c72fd7ab
+        documentTypeName:
+          type: string
+          readOnly: true
+        documentId:
+          type: integer
+          readOnly: true
+        confidence:
+          type: number
+          format: double
+          nullable: true
+        result:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        validationStatus:
+          type: string
+          readOnly: true
+          nullable: true
+        validationResult:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        errorMessage:
+          type: string
+          readOnly: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - createdAt
+      - documentId
+      - documentTypeName
+      - errorMessage
+      - filename
+      - id
+      - result
+      - sortIndex
+      - updatedAt
+      - validationResult
+      - validationStatus
+    DocumentCategorizationJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        docApplicationId:
+          type: integer
+          readOnly: true
+        status:
+          enum:
+          - queued
+          - processing
+          - completed
+          - failed
+          type: string
+          description: |-
+            * `queued` - Queued
+            * `processing` - Processing
+            * `completed` - Completed
+            * `failed` - Failed
+          x-spec-enum-id: c71ea0f6ba40f041
+        progress:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        totalFiles:
+          type: integer
+          readOnly: true
+        processedFiles:
+          type: integer
+          readOnly: true
+        successCount:
+          type: integer
+          readOnly: true
+        errorCount:
+          type: integer
+          readOnly: true
+        requestParams:
+          readOnly: true
+        result:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        errorMessage:
+          type: string
+          readOnly: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentCategorizationItem'
+          readOnly: true
+      required:
+      - createdAt
+      - docApplicationId
+      - errorCount
+      - errorMessage
+      - id
+      - items
+      - processedFiles
+      - requestParams
+      - result
+      - successCount
+      - totalFiles
+      - updatedAt
+    DocumentCategorizationQueuedResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+        requestId:
+          type: string
+        statusUrl:
+          type: string
+          format: uri
+        streamUrl:
+          type: string
+          format: uri
+        totalFiles:
+          type: integer
+        uploadedFiles:
+          type: integer
+        dispatchedTasks:
+          type: integer
+      required:
+      - deduplicated
+      - jobId
+      - progress
+      - queued
+      - status
+      - totalFiles
+    DocumentCategorizationStartResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+        requestId:
+          type: string
+        statusUrl:
+          type: string
+          format: uri
+        streamUrl:
+          type: string
+          format: uri
+        totalFiles:
+          type: integer
+      required:
+      - deduplicated
+      - jobId
+      - progress
+      - queued
+      - status
+      - totalFiles
+    DocumentCategorizationUploadFilesRequestRequest:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+            format: binary
+      required:
+      - files
+    DocumentCategorizationUploadFilesResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+        requestId:
+          type: string
+        statusUrl:
+          type: string
+          format: uri
+        streamUrl:
+          type: string
+          format: uri
+        totalFiles:
+          type: integer
+        uploadedFiles:
+          type: integer
+        dispatchedTasks:
+          type: integer
+      required:
+      - deduplicated
+      - dispatchedTasks
+      - jobId
+      - progress
+      - queued
+      - status
+      - totalFiles
+      - uploadedFiles
+    DocumentCategorizationUploadRequestRequest:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+            format: binary
+        model:
+          type: string
+          nullable: true
+        providerOrder:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required:
+      - files
     DocumentMergeRequest:
       type: object
       description: Serializer for merging documents.
@@ -15829,6 +16624,8 @@ components:
           type: boolean
         deduplicated:
           type: boolean
+        requestId:
+          type: string
       required:
       - deduplicated
       - jobId
@@ -15863,6 +16660,8 @@ components:
           type: boolean
         deduplicated:
           type: boolean
+        requestId:
+          type: string
       required:
       - deduplicated
       - jobId
@@ -16268,6 +17067,14 @@ components:
         dark_mode:
           type: boolean
         preferences: {}
+    ValidateDocumentCategoryRequestRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
     WebPushSubscription:
       type: object
       properties:

@@ -240,6 +240,21 @@ class WorkflowStatusApiTests(TestCase):
         self.assertEqual(app.current_workflow.id, step1.id)
         self.assertEqual(app.due_date, step1.due_date)
 
+    def test_application_detail_reports_process_status_when_completed_status_is_stale(self):
+        app, workflow = self._create_application_and_workflow(document_completed=True, task_count=1)
+        app.documents.update(completed=True)
+        app.status = DocApplication.STATUS_COMPLETED
+        app.save(skip_status_calculation=True)
+
+        response = self.client.get(f"/api/customer-applications/{app.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["status"], DocApplication.STATUS_PROCESSING)
+        self.assertFalse(payload["isApplicationCompleted"])
+        workflow.refresh_from_db()
+        self.assertEqual(workflow.status, DocApplication.STATUS_PENDING)
+
     def test_reopen_application_allows_semantically_completed_application_with_stale_status(self):
         app, workflow = self._create_application_and_workflow(document_completed=False, task_count=1)
 

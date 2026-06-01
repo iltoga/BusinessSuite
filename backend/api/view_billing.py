@@ -409,6 +409,7 @@ class InvoiceViewSet(SharedSearchMixin, ApiErrorHandlingMixin, viewsets.ModelVie
                     progress=cached_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                     links=build_async_job_links(
                         request,
                         cached_job.id,
@@ -454,6 +455,7 @@ class InvoiceViewSet(SharedSearchMixin, ApiErrorHandlingMixin, viewsets.ModelVie
                     progress=existing_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                     links=build_async_job_links(
                         request,
                         existing_job.id,
@@ -512,6 +514,7 @@ class InvoiceViewSet(SharedSearchMixin, ApiErrorHandlingMixin, viewsets.ModelVie
                 progress=job.progress,
                 queued=True,
                 deduplicated=False,
+                request=request,
                 links=build_async_job_links(
                     request,
                     job.id,

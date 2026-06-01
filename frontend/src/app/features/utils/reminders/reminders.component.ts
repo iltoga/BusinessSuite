@@ -17,6 +17,7 @@ import { Subscription, catchError, finalize, of } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
 import { BackendReadinessService } from '@/core/services/backend-readiness.service';
+import { isUnauthorizedSseError } from '@/core/services/sse.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -734,7 +735,7 @@ export class RemindersComponent implements OnInit, OnDestroy {
       this.streamSubscription?.unsubscribe();
       this.streamSubscription = this.remindersStreamService.connect().subscribe({
         next: (event) => this.handleLiveEvent(event),
-        error: () => this.handleLiveDisconnect(),
+        error: (error) => this.handleLiveDisconnect(error),
         complete: () => this.handleLiveDisconnect(),
       });
     });
@@ -775,9 +776,12 @@ export class RemindersComponent implements OnInit, OnDestroy {
     this.reconnectTimeoutId = window.setTimeout(() => this.connectLiveStream(), delay);
   }
 
-  private handleLiveDisconnect(): void {
+  private handleLiveDisconnect(error?: unknown): void {
     this.liveConnecting.set(false);
     this.liveConnected.set(false);
+    if (isUnauthorizedSseError(error)) {
+      return;
+    }
     this.scheduleReconnect();
   }
 

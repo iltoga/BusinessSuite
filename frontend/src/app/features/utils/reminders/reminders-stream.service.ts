@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { NEVER, Observable } from 'rxjs';
 
+import { AuthService } from '@/core/services/auth.service';
 import { SseService } from '@/core/services/sse.service';
 
 const STREAM_ROTATION_MS = 55_000;
@@ -22,9 +23,14 @@ export type ReminderInboxStreamSignal = 'refresh' | 'reconnect' | 'ignore';
   providedIn: 'root',
 })
 export class RemindersStreamService {
+  private readonly authService = inject(AuthService);
   private readonly sseService = inject(SseService);
 
   connect(): Observable<RemindersStreamEvent> {
+    if (!this.authService.isAuthenticated()) {
+      return NEVER;
+    }
+
     return this.sseService.connect<RemindersStreamEvent>('/api/calendar-reminders/stream/', {
       maxConnectionDurationMs: STREAM_ROTATION_MS,
     });

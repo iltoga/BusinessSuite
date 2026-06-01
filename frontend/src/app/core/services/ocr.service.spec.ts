@@ -80,13 +80,67 @@ describe('OcrService passport OCR', () => {
       result = value;
     });
 
-    expect(sseServiceMock.connect).toHaveBeenCalledWith('/api/async-jobs/status/job-ai/');
+    expect(sseServiceMock.connect).toHaveBeenCalledWith('/api/async-jobs/status/job-ai/', {
+      maxConnectionDurationMs: 55_000,
+    });
     expect(result).toMatchObject({
       jobId: 'job-ai',
       status: 'completed',
       progress: 100,
       extractionMode: 'ai',
       mrzData: { number: 'X123' },
+    });
+  });
+
+  it('reconnects passport job tracking when the stream completes before terminal state', async () => {
+    vi.useFakeTimers();
+
+    sseServiceMock.connect
+      .mockReturnValueOnce(
+        of({
+          jobId: 'job-reconnect',
+          status: 'processing',
+          progress: 25,
+          extractionMode: 'ai',
+        }),
+      )
+      .mockReturnValueOnce(
+        of({
+          jobId: 'job-reconnect',
+          status: 'completed',
+          progress: 100,
+          extractionMode: 'ai',
+          result: { mrzData: { number: 'Y987' } },
+        }),
+      );
+
+    const received: Array<unknown> = [];
+
+    service.watchPassportOcrJob('job-reconnect').subscribe((value) => {
+      received.push(value);
+    });
+
+    await vi.runAllTimersAsync();
+
+    expect(sseServiceMock.connect).toHaveBeenCalledTimes(2);
+    expect(sseServiceMock.connect).toHaveBeenNthCalledWith(
+      1,
+      '/api/async-jobs/status/job-reconnect/',
+      {
+        maxConnectionDurationMs: 55_000,
+      },
+    );
+    expect(received).toHaveLength(2);
+    expect(received[0]).toMatchObject({
+      jobId: 'job-reconnect',
+      status: 'processing',
+      progress: 25,
+    });
+    expect(received[1]).toMatchObject({
+      jobId: 'job-reconnect',
+      status: 'completed',
+      progress: 100,
+      mrzData: { number: 'Y987' },
     });
   });
 });

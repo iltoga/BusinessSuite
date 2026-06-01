@@ -79,6 +79,11 @@ export interface DocumentsUpdateRequestParams {
   aiValidationResultOverride?: any | null;
 }
 
+export interface DocumentsValidateCategoryCreateRequestParams {
+  documentId: number;
+  file: Blob;
+}
+
 export interface DocumentsServiceInterface {
   defaultHeaders: HttpHeaders;
   configuration: Configuration;
@@ -177,4 +182,15 @@ export interface DocumentsServiceInterface {
     requestParameters: DocumentsUpdateRequestParams,
     extraHttpRequestParams?: any,
   ): Observable<Document>;
+
+  /**
+   *
+   * Run pre-upload AI validation for a file against the target DocumentType rules.
+   * @endpoint post /api/documents/{documentId}/validate-category/
+   * @param requestParameters
+   */
+  documentsValidateCategoryCreate(
+    requestParameters: DocumentsValidateCategoryCreateRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<{ [key: string]: any }>;
 }

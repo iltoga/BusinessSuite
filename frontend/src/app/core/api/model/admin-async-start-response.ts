@@ -8,11 +8,15 @@
  * Do not edit the class manually.
  */
 
-export interface ProductPriceListPrintStartResponse {
+/**
+ * Canonical 202 response payload for admin stream-backed jobs.
+ */
+export interface AdminAsyncStartResponse {
   jobId: string;
   status: string;
   progress: number;
   queued: boolean;
   deduplicated: boolean;
   requestId?: string;
+  streamUrl?: string;
 }
