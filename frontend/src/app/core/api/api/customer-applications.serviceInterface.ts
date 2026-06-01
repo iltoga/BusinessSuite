@@ -19,6 +19,9 @@ import { DocApplicationDetail } from '../model/models';
 import { DocApplicationSerializerWithRelations } from '../model/models';
 import { DocApplicationSerializerWithRelationsRequest } from '../model/models';
 import { DocWorkflow } from '../model/models';
+import { DocumentCategorizationInitRequestRequest } from '../model/models';
+import { DocumentCategorizationQueuedResponse } from '../model/models';
+import { DocumentCategorizationStartResponse } from '../model/models';
 import { PaginatedDocApplicationListList } from '../model/models';
 
 import { Configuration } from '../configuration';
@@ -30,6 +33,18 @@ export interface CustomerApplicationsAdvanceWorkflowCreateRequestParams {
 
 export interface CustomerApplicationsBulkDeleteCreateRequestParams {
   customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest;
+}
+
+export interface CustomerApplicationsCategorizeDocumentsCreateRequestParams {
+  applicationId: number;
+  files: Array<Blob>;
+  model?: string | null;
+  providerOrder?: Array<string>;
+}
+
+export interface CustomerApplicationsCategorizeDocumentsInitCreateRequestParams {
+  applicationId: number;
+  documentCategorizationInitRequestRequest?: DocumentCategorizationInitRequestRequest;
 }
 
 export interface CustomerApplicationsCreateRequestParams {
@@ -107,7 +122,7 @@ export interface CustomerApplicationsServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/customer-applications/bulk-delete/
    * @param requestParameters
    */
@@ -115,6 +130,28 @@ export interface CustomerApplicationsServiceInterface {
     requestParameters: CustomerApplicationsBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
   ): Observable<CustomerApplicationsBulkDeleteResponse>;
+
+  /**
+   *
+   * Upload multiple files and start AI categorization. Files are saved to temp storage and Dramatiq tasks are dispatched in parallel.
+   * @endpoint post /api/customer-applications/{applicationId}/categorize-documents/
+   * @param requestParameters
+   */
+  customerApplicationsCategorizeDocumentsCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<DocumentCategorizationQueuedResponse>;
+
+  /**
+   *
+   * Create a categorization job first so frontend can subscribe to SSE before file upload starts.
+   * @endpoint post /api/customer-applications/{applicationId}/categorize-documents/init/
+   * @param requestParameters
+   */
+  customerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<DocumentCategorizationStartResponse>;
 
   /**
    *
@@ -151,7 +188,7 @@ export interface CustomerApplicationsServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customer-applications/
    * @param requestParameters
    */
@@ -162,7 +199,7 @@ export interface CustomerApplicationsServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/customer-applications/{id}/
    * @param requestParameters
    */
@@ -173,7 +210,7 @@ export interface CustomerApplicationsServiceInterface {
 
   /**
    *
-   * Re-open a completed application.
+   * Re-open a semantically completed application.
    * @endpoint post /api/customer-applications/{id}/reopen/
    * @param requestParameters
    */
@@ -184,7 +221,7 @@ export interface CustomerApplicationsServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customer-applications/{id}/
    * @param requestParameters
    */

@@ -38,6 +38,7 @@ import {
   DocumentsPrintRetrieveRequestParams,
   DocumentsRetrieveRequestParams,
   DocumentsUpdateRequestParams,
+  DocumentsValidateCategoryCreateRequestParams,
 } from './documents.serviceInterface';
 
 @Injectable({
@@ -1223,6 +1224,136 @@ export class DocumentsService extends BaseService implements DocumentsServiceInt
     let localVarPath = `/api/documents/${this.configuration.encodeParam({ name: 'id', value: id, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/`;
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Document>('put', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
+      body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
+      headers: localVarHeaders,
+      observe: observe,
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
+    });
+  }
+
+  /**
+   * Run pre-upload AI validation for a file against the target DocumentType rules.
+   * @endpoint post /api/documents/{documentId}/validate-category/
+   * @param requestParameters
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public documentsValidateCategoryCreate(
+    requestParameters: DocumentsValidateCategoryCreateRequestParams,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<{ [key: string]: any }>;
+  public documentsValidateCategoryCreate(
+    requestParameters: DocumentsValidateCategoryCreateRequestParams,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  public documentsValidateCategoryCreate(
+    requestParameters: DocumentsValidateCategoryCreateRequestParams,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  public documentsValidateCategoryCreate(
+    requestParameters: DocumentsValidateCategoryCreateRequestParams,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    const documentId = requestParameters?.documentId;
+    if (documentId === null || documentId === undefined) {
+      throw new Error(
+        'Required parameter documentId was null or undefined when calling documentsValidateCategoryCreate.',
+      );
+    }
+    const file = requestParameters?.file;
+    if (file === null || file === undefined) {
+      throw new Error(
+        'Required parameter file was null or undefined when calling documentsValidateCategoryCreate.',
+      );
+    }
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (cookieAuth) required
+
+    // authentication (jwtAuth) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'jwtAuth',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = ['multipart/form-data', 'application/x-www-form-urlencoded'];
+
+    const canConsumeForm = this.canConsumeForm(consumes);
+
+    let localVarFormParams: { append(param: string, value: any): any };
+    let localVarUseForm = false;
+    let localVarConvertFormParamsToString = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+    localVarUseForm = canConsumeForm;
+    if (localVarUseForm) {
+      localVarFormParams = new FormData();
+    } else {
+      localVarFormParams = new HttpParams({ encoder: this.encoder });
+    }
+
+    if (file !== undefined) {
+      localVarFormParams =
+        (localVarFormParams.append('file', <any>file) as any) || localVarFormParams;
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/documents/${this.configuration.encodeParam({ name: 'documentId', value: documentId, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/validate-category/`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
       responseType: <any>responseType_,

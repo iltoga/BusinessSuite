@@ -21,14 +21,14 @@ AI_GUIDELINES:
 """
 
 from api.utils.ai_model_pricing import price_to_display
-from api.utils.idempotency import (build_request_idempotency_fingerprint,
-                                   resolve_request_idempotent_job,
-                                   store_request_idempotent_job)
-from api.utils.stream_payloads import (build_async_job_links,
-                                       build_async_job_start_payload)
+from api.utils.idempotency import (
+    build_request_idempotency_fingerprint,
+    resolve_request_idempotent_job,
+    store_request_idempotent_job,
+)
+from api.utils.stream_payloads import build_async_job_links, build_async_job_start_payload
 from rest_framework.renderers import JSONRenderer
-from rest_framework_simplejwt.views import \
-    TokenRefreshView as SimpleJWTTokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView as SimpleJWTTokenRefreshView
 
 from .views_imports import *
 
@@ -855,6 +855,7 @@ class CustomerViewSet(SharedSearchMixin, ApiErrorHandlingMixin, viewsets.ModelVi
                     progress=cached_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                 ),
                 status=status.HTTP_202_ACCEPTED,
             )
@@ -880,6 +881,7 @@ class CustomerViewSet(SharedSearchMixin, ApiErrorHandlingMixin, viewsets.ModelVi
                 progress=0,
                 queued=True,
                 deduplicated=False,
+                request=request,
             ),
             status=status.HTTP_202_ACCEPTED,
         )
@@ -1261,6 +1263,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     progress=cached_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                 ),
                 status=status.HTTP_202_ACCEPTED,
             )
@@ -1278,6 +1281,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     progress=existing_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                 ),
                 status=status.HTTP_202_ACCEPTED,
             ),
@@ -1314,6 +1318,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 progress=job.progress,
                 queued=True,
                 deduplicated=False,
+                request=request,
             ),
             status=status.HTTP_202_ACCEPTED,
         )
@@ -1350,6 +1355,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     progress=cached_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                 ),
                 status=status.HTTP_202_ACCEPTED,
             )
@@ -1367,6 +1373,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     progress=existing_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                 ),
                 status=status.HTTP_202_ACCEPTED,
             ),
@@ -1403,6 +1410,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 progress=job.progress,
                 queued=True,
                 deduplicated=False,
+                request=request,
             ),
             status=status.HTTP_202_ACCEPTED,
         )
@@ -1506,6 +1514,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     progress=cached_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                 ),
                 status=status.HTTP_202_ACCEPTED,
             )
@@ -1523,6 +1532,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     progress=existing_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                 ),
                 status=status.HTTP_202_ACCEPTED,
             ),
@@ -1563,6 +1573,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 progress=job.progress,
                 queued=True,
                 deduplicated=False,
+                request=request,
             ),
             status=status.HTTP_202_ACCEPTED,
         )

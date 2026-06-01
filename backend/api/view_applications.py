@@ -999,6 +999,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     progress=cached_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                     links=_build_passport_ocr_links(request, cached_job.id),
                     extra={"extractionMode": _ocr_extraction_mode(cached_job)},
                 ),
@@ -1013,6 +1014,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     progress=existing_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                     links=_build_passport_ocr_links(request, existing_job.id),
                     extra={"extractionMode": _ocr_extraction_mode(existing_job)},
                 ),
@@ -1068,6 +1070,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     progress=job.progress,
                     queued=True,
                     deduplicated=False,
+                    request=request,
                     links=_build_passport_ocr_links(request, job.id),
                     extra={"extractionMode": extraction_mode},
                 ),
@@ -1270,6 +1273,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     progress=cached_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                     links=build_async_job_links(
                         request,
                         cached_job.id,
@@ -1288,6 +1292,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     progress=existing_job.progress,
                     queued=False,
                     deduplicated=True,
+                    request=request,
                     links=build_async_job_links(
                         request,
                         existing_job.id,
@@ -1346,6 +1351,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     progress=job.progress,
                     queued=True,
                     deduplicated=False,
+                    request=request,
                     links=build_async_job_links(
                         request,
                         job.id,

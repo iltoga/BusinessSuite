@@ -1,4 +1,4 @@
-import { firstValueFrom, of, Subject, throwError, takeWhile } from 'rxjs';
+import { firstValueFrom, of, Subject, takeWhile, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AsyncJobStatusEnum, type AsyncJob } from '@/core/api';
@@ -32,7 +32,9 @@ describe('JobService.watchJob', () => {
 
     const job = (await firstValueFrom(service.watchJob('job-1'))) as AsyncJob;
 
-    expect(service.sseService.connect).toHaveBeenCalledWith('/api/async-jobs/status/job-1/');
+    expect(service.sseService.connect).toHaveBeenCalledWith('/api/async-jobs/status/job-1/', {
+      maxConnectionDurationMs: 55_000,
+    });
     expect(service.realtimeService.watchJob).not.toHaveBeenCalled();
     expect(job.jobId).toBe('job-1');
     expect(job.progress).toBe(25);
@@ -103,11 +105,65 @@ describe('JobService.watchJob', () => {
 
     const job = nextSpy.mock.calls.at(-1)?.[0] as AsyncJob;
 
-    expect(service.sseService.connect).toHaveBeenCalledWith('/api/async-jobs/status/job-2/');
+    expect(service.sseService.connect).toHaveBeenCalledWith('/api/async-jobs/status/job-2/', {
+      maxConnectionDurationMs: 55_000,
+    });
     expect(service.realtimeService.watchJob).toHaveBeenCalledWith('job-2');
     expect(job.jobId).toBe('job-2');
     expect(job.result).toEqual({ isValid: true });
     expect(completeSpy).toHaveBeenCalledTimes(1);
     expect(sub.closed).toBe(true);
+  });
+
+  it('reconnects the direct job stream when it completes before reaching a terminal state', async () => {
+    vi.useFakeTimers();
+
+    const service = Object.create(JobService.prototype) as any;
+    service.realtimeService = {
+      watchJob: vi.fn(),
+    };
+    service.sseService = {
+      connect: vi
+        .fn()
+        .mockReturnValueOnce(
+          of({
+            jobId: 'job-3',
+            status: AsyncJobStatusEnum.Processing,
+            progress: 25,
+          }),
+        )
+        .mockReturnValueOnce(
+          of({
+            jobId: 'job-3',
+            status: AsyncJobStatusEnum.Completed,
+            progress: 100,
+          }),
+        ),
+    };
+
+    const nextSpy = vi.fn();
+    const completeSpy = vi.fn();
+
+    service.watchJob('job-3').subscribe({
+      next: nextSpy,
+      complete: completeSpy,
+    });
+
+    await vi.runAllTimersAsync();
+
+    expect(service.sseService.connect).toHaveBeenCalledTimes(2);
+    expect(nextSpy).toHaveBeenCalledTimes(2);
+    expect(nextSpy.mock.calls[0]?.[0]).toMatchObject({
+      jobId: 'job-3',
+      status: AsyncJobStatusEnum.Processing,
+      progress: 25,
+    });
+    expect(nextSpy.mock.calls[1]?.[0]).toMatchObject({
+      jobId: 'job-3',
+      status: AsyncJobStatusEnum.Completed,
+      progress: 100,
+    });
+    expect(completeSpy).toHaveBeenCalledTimes(1);
+    expect(service.realtimeService.watchJob).not.toHaveBeenCalled();
   });
 });

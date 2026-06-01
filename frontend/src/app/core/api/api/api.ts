@@ -31,6 +31,9 @@ export * from './customers.serviceInterface';
 export * from './dashboard-stats.service';
 import { DashboardStatsService } from './dashboard-stats.service';
 export * from './dashboard-stats.serviceInterface';
+export * from './document-categorization.service';
+import { DocumentCategorizationService } from './document-categorization.service';
+export * from './document-categorization.serviceInterface';
 export * from './document-ocr.service';
 import { DocumentOcrService } from './document-ocr.service';
 export * from './document-ocr.serviceInterface';
@@ -103,6 +106,7 @@ export const APIS = [
   CustomerApplicationsService,
   CustomersService,
   DashboardStatsService,
+  DocumentCategorizationService,
   DocumentOcrService,
   DocumentTypesService,
   DocumentsService,

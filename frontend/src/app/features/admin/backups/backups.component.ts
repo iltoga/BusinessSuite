@@ -13,7 +13,8 @@ import { catchError, EMPTY, finalize, map, of, Subscription, type Observable } f
 import { BackupsService } from '@/core/api';
 import { SseService } from '@/core/services/sse.service';
 import { unwrapApiRecord } from '@/core/utils/api-envelope';
-import { createAsyncRequestMetadata } from '@/core/utils/request-metadata';
+import { normalizeJobEnvelope } from '@/core/utils/async-job-contract';
+import { createAsyncRequestMetadata, requestMetadataContext } from '@/core/utils/request-metadata';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -242,44 +243,83 @@ export class BackupsComponent extends BaseListComponent<Backup> {
     if (this.isOperationRunning()) {
       return;
     }
+
+    const requestMetadata = createAsyncRequestMetadata();
     this.isOperationRunning.set(true);
     this.logMessages.set([]);
     this.operationProgress.set(null);
     this.operationLabel.set('Backup progress');
 
     this.clearSseSubscription();
-    this.sseSubscription = this.sseService
-      .connect<{
-        message?: string;
-        progress?: number;
-      }>(`/api/backups/start/?include_users=${this.includeUsers()}`, {
-        useReplayCursor: false,
-        requestMetadata: createAsyncRequestMetadata(),
-      })
-      .subscribe({
-        next: (data) => {
-          const message = data.message;
-          if (message) {
-            this.logMessages.update((msgs) => [...msgs, message]);
-          }
-          if (typeof data.progress === 'number') {
-            this.operationProgress.set(data.progress);
-          }
-          if (data.message?.includes('Backup finished')) {
-            this.isOperationRunning.set(false);
-            this.operationProgress.set(100);
-            this.toast.success('Backup completed successfully');
-            this.reload();
-            this.clearSseSubscription();
-            setTimeout(() => this.operationProgress.set(null), 1500);
-          }
+    this.backupsApi
+      .backupsStartJobCreate(
+        {
+          includeUsers: this.includeUsers(),
         },
-        error: () => {
+        'body',
+        false,
+        {
+          context: requestMetadataContext(requestMetadata),
+        },
+      )
+      .pipe(
+        map((response) => normalizeJobEnvelope(response)),
+        catchError(() => {
           this.isOperationRunning.set(false);
           this.operationProgress.set(null);
-          this.toast.error('Backup failed');
-          this.clearSseSubscription();
-        },
+          this.toast.error('Failed to start backup');
+          return EMPTY;
+        }),
+      )
+      .subscribe((startResponse) => {
+        const streamUrl = this.resolveAdminStreamUrl(
+          startResponse.streamUrl,
+          '/api/backups/start/',
+          startResponse.jobId,
+        );
+        if (!streamUrl) {
+          this.isOperationRunning.set(false);
+          this.operationProgress.set(null);
+          this.toast.error('Backup stream is unavailable');
+          return;
+        }
+        if (startResponse.deduplicated) {
+          this.logMessages.update((msgs) => [...msgs, 'Reconnected to existing backup job']);
+        }
+
+        this.sseSubscription = this.sseService
+          .connect<{
+            message?: string;
+            progress?: number;
+          }>(streamUrl, {
+            useReplayCursor: true,
+            requestMetadata,
+          })
+          .subscribe({
+            next: (data) => {
+              const message = data.message;
+              if (message) {
+                this.logMessages.update((msgs) => [...msgs, message]);
+              }
+              if (typeof data.progress === 'number') {
+                this.operationProgress.set(data.progress);
+              }
+              if (data.message?.includes('Backup finished')) {
+                this.isOperationRunning.set(false);
+                this.operationProgress.set(100);
+                this.toast.success('Backup completed successfully');
+                this.reload();
+                this.clearSseSubscription();
+                setTimeout(() => this.operationProgress.set(null), 1500);
+              }
+            },
+            error: () => {
+              this.isOperationRunning.set(false);
+              this.operationProgress.set(null);
+              this.toast.error('Backup failed');
+              this.clearSseSubscription();
+            },
+          });
       });
   }
 
@@ -300,47 +340,88 @@ export class BackupsComponent extends BaseListComponent<Backup> {
       return;
     }
 
+    const requestMetadata = createAsyncRequestMetadata();
     this.isOperationRunning.set(true);
     this.logMessages.set([]);
     this.operationProgress.set(0);
     this.operationLabel.set('Restore progress');
 
     this.clearSseSubscription();
-    this.sseSubscription = this.sseService
-      .connect<{
-        message?: string;
-        progress?: string | number;
-      }>(`/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}`, {
-        useReplayCursor: false,
-        requestMetadata: createAsyncRequestMetadata(),
-      })
-      .subscribe({
-        next: (data) => {
-          const message = data.message;
-          if (message) {
-            this.logMessages.update((msgs) => [...msgs, message]);
-          }
-          if (data.progress !== undefined) {
-            const progress =
-              typeof data.progress === 'number' ? data.progress : Number.parseFloat(data.progress);
-            if (!Number.isNaN(progress)) {
-              this.operationProgress.set(progress);
-            }
-          }
-          if (data.message?.includes('Restore finished')) {
-            this.isOperationRunning.set(false);
-            this.operationProgress.set(100);
-            this.toast.success('Restore completed successfully');
-            this.clearSseSubscription();
-            setTimeout(() => this.operationProgress.set(null), 1500);
-          }
+    this.backupsApi
+      .backupsRestoreJobCreate(
+        {
+          file: filename,
+          includeUsers: this.includeUsers(),
         },
-        error: () => {
+        'body',
+        false,
+        {
+          context: requestMetadataContext(requestMetadata),
+        },
+      )
+      .pipe(
+        map((response) => normalizeJobEnvelope(response)),
+        catchError(() => {
           this.isOperationRunning.set(false);
           this.operationProgress.set(null);
-          this.toast.error('Restore failed');
-          this.clearSseSubscription();
-        },
+          this.toast.error('Failed to start restore');
+          return EMPTY;
+        }),
+      )
+      .subscribe((startResponse) => {
+        const streamUrl = this.resolveAdminStreamUrl(
+          startResponse.streamUrl,
+          '/api/backups/restore/',
+          startResponse.jobId,
+        );
+        if (!streamUrl) {
+          this.isOperationRunning.set(false);
+          this.operationProgress.set(null);
+          this.toast.error('Restore stream is unavailable');
+          return;
+        }
+        if (startResponse.deduplicated) {
+          this.logMessages.update((msgs) => [...msgs, 'Reconnected to existing restore job']);
+        }
+
+        this.sseSubscription = this.sseService
+          .connect<{
+            message?: string;
+            progress?: string | number;
+          }>(streamUrl, {
+            useReplayCursor: true,
+            requestMetadata,
+          })
+          .subscribe({
+            next: (data) => {
+              const message = data.message;
+              if (message) {
+                this.logMessages.update((msgs) => [...msgs, message]);
+              }
+              if (data.progress !== undefined) {
+                const progress =
+                  typeof data.progress === 'number'
+                    ? data.progress
+                    : Number.parseFloat(data.progress);
+                if (!Number.isNaN(progress)) {
+                  this.operationProgress.set(progress);
+                }
+              }
+              if (data.message?.includes('Restore finished')) {
+                this.isOperationRunning.set(false);
+                this.operationProgress.set(100);
+                this.toast.success('Restore completed successfully');
+                this.clearSseSubscription();
+                setTimeout(() => this.operationProgress.set(null), 1500);
+              }
+            },
+            error: () => {
+              this.isOperationRunning.set(false);
+              this.operationProgress.set(null);
+              this.toast.error('Restore failed');
+              this.clearSseSubscription();
+            },
+          });
       });
   }
 
@@ -591,5 +672,27 @@ export class BackupsComponent extends BaseListComponent<Backup> {
       this.sseSubscription.unsubscribe();
       this.sseSubscription = null;
     }
+  }
+
+  private resolveAdminStreamUrl(
+    streamUrl: string | null | undefined,
+    fallbackPath: string,
+    jobId: string | null | undefined,
+  ): string | null {
+    const normalizedStreamUrl = typeof streamUrl === 'string' ? streamUrl.trim() : '';
+    if (normalizedStreamUrl) {
+      return normalizedStreamUrl;
+    }
+
+    const normalizedJobId = typeof jobId === 'string' ? jobId.trim() : '';
+    if (!normalizedJobId) {
+      return null;
+    }
+
+    const params = new URLSearchParams({
+      replay: '1',
+      job_id: normalizedJobId,
+    });
+    return `${fallbackPath}?${params.toString()}`;
   }
 }

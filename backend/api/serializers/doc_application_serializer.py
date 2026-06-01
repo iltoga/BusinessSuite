@@ -349,6 +349,7 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer(read_only=True)
     documents = DocumentSerializer(many=True, read_only=True, source="ordered_documents")
     workflows = DocWorkflowSerializer(many=True, read_only=True)
+    status = serializers.CharField(source="effective_status", read_only=True)
     str_field = serializers.SerializerMethodField()
     is_document_collection_completed = serializers.BooleanField(read_only=True)
     is_application_completed = serializers.BooleanField(read_only=True)

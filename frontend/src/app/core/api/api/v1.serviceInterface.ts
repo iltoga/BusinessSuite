@@ -11,6 +11,7 @@ import { HttpHeaders } from '@angular/common/http';
 
 import { Observable } from 'rxjs';
 
+import { AdminAsyncStartResponse } from '../model/models';
 import { AdminPushNotificationDispatchResult } from '../model/models';
 import { AdminPushNotificationSendRequest } from '../model/models';
 import { AdminPushNotificationUser } from '../model/models';
@@ -28,6 +29,7 @@ import { CalendarReminderInboxMarkReadRequest } from '../model/models';
 import { CalendarReminderInboxSnooze } from '../model/models';
 import { CalendarReminderInboxSnoozeRequest } from '../model/models';
 import { CalendarReminderRequest } from '../model/models';
+import { CategorizationApplyRequest } from '../model/models';
 import { CountryCode } from '../model/models';
 import { CustomTokenObtainRequest } from '../model/models';
 import { CustomTokenRefresh } from '../model/models';
@@ -47,6 +49,12 @@ import { DocApplicationSerializerWithRelations } from '../model/models';
 import { DocApplicationSerializerWithRelationsRequest } from '../model/models';
 import { DocWorkflow } from '../model/models';
 import { Document } from '../model/models';
+import { DocumentCategorizationApplyResponse } from '../model/models';
+import { DocumentCategorizationInitRequestRequest } from '../model/models';
+import { DocumentCategorizationJob } from '../model/models';
+import { DocumentCategorizationQueuedResponse } from '../model/models';
+import { DocumentCategorizationStartResponse } from '../model/models';
+import { DocumentCategorizationUploadFilesResponse } from '../model/models';
 import { DocumentType } from '../model/models';
 import { DocumentTypeRequest } from '../model/models';
 import { GoogleCalendarEvent } from '../model/models';
@@ -162,15 +170,13 @@ export interface V1BackupsDownloadRetrieveRequestParams {
   filename: string;
 }
 
-export interface V1BackupsRestoreCreateRequestParams {
+export interface V1BackupsRestoreJobCreateRequestParams {
   file?: string;
   includeUsers?: boolean;
-  replay?: boolean;
 }
 
-export interface V1BackupsStartRetrieveRequestParams {
+export interface V1BackupsStartJobCreateRequestParams {
   includeUsers?: boolean;
-  replay?: boolean;
 }
 
 export interface V1CalendarCreateRequestParams {
@@ -273,6 +279,18 @@ export interface V1CustomerApplicationsAdvanceWorkflowCreateRequestParams {
 
 export interface V1CustomerApplicationsBulkDeleteCreateRequestParams {
   customerApplicationsBulkDeleteRequestRequest?: CustomerApplicationsBulkDeleteRequestRequest;
+}
+
+export interface V1CustomerApplicationsCategorizeDocumentsCreateRequestParams {
+  applicationId: number;
+  files: Array<Blob>;
+  model?: string | null;
+  providerOrder?: Array<string>;
+}
+
+export interface V1CustomerApplicationsCategorizeDocumentsInitCreateRequestParams {
+  applicationId: number;
+  documentCategorizationInitRequestRequest?: DocumentCategorizationInitRequestRequest;
 }
 
 export interface V1CustomerApplicationsCreateRequestParams {
@@ -392,6 +410,20 @@ export interface V1CustomersUpdateRequestParams {
   customerRequest?: CustomerRequest;
 }
 
+export interface V1DocumentCategorizationApplyCreateRequestParams {
+  jobId: string;
+  categorizationApplyRequest: CategorizationApplyRequest;
+}
+
+export interface V1DocumentCategorizationStatusRetrieveRequestParams {
+  jobId: string;
+}
+
+export interface V1DocumentCategorizationUploadCreateRequestParams {
+  jobId: string;
+  files: Array<Blob>;
+}
+
 export interface V1DocumentOcrStatusRetrieveRequestParams {
   jobId: string;
 }
@@ -500,6 +532,11 @@ export interface V1DocumentsUpdateRequestParams {
   required?: boolean;
   aiValidationStatusOverride?: string;
   aiValidationResultOverride?: any | null;
+}
+
+export interface V1DocumentsValidateCategoryCreateRequestParams {
+  documentId: number;
+  file: Blob;
 }
 
 export interface V1HolidaysCreateRequestParams {
@@ -1090,14 +1127,14 @@ export interface V1ServiceInterface {
 
   /**
    * Restore from backup
-   * Trigger stream-backed SSE restore execution.
-   * @endpoint post /api/v1/backups/restore/
+   * Return a canonical 202 start payload for restore execution.
+   * @endpoint post /api/v1/backups/restore-job/
    * @param requestParameters
    */
-  v1BackupsRestoreCreate(
-    requestParameters: V1BackupsRestoreCreateRequestParams,
+  v1BackupsRestoreJobCreate(
+    requestParameters: V1BackupsRestoreJobCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<AdminAsyncStartResponse>;
 
   /**
    * List available backups
@@ -1108,14 +1145,14 @@ export interface V1ServiceInterface {
 
   /**
    * Start backup process
-   * Trigger stream-backed SSE backup execution.
-   * @endpoint get /api/v1/backups/start/
+   * Return a canonical 202 start payload for backup execution.
+   * @endpoint post /api/v1/backups/start-job/
    * @param requestParameters
    */
-  v1BackupsStartRetrieve(
-    requestParameters: V1BackupsStartRetrieveRequestParams,
+  v1BackupsStartJobCreate(
+    requestParameters: V1BackupsStartJobCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<AdminAsyncStartResponse>;
 
   /**
    * Upload backup file
@@ -1367,7 +1404,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customer-applications/bulk-delete/
    * @param requestParameters
    */
@@ -1375,6 +1412,28 @@ export interface V1ServiceInterface {
     requestParameters: V1CustomerApplicationsBulkDeleteCreateRequestParams,
     extraHttpRequestParams?: any,
   ): Observable<CustomerApplicationsBulkDeleteResponse>;
+
+  /**
+   *
+   * Upload multiple files and start AI categorization. Files are saved to temp storage and Dramatiq tasks are dispatched in parallel.
+   * @endpoint post /api/v1/customer-applications/{applicationId}/categorize-documents/
+   * @param requestParameters
+   */
+  v1CustomerApplicationsCategorizeDocumentsCreate(
+    requestParameters: V1CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<DocumentCategorizationQueuedResponse>;
+
+  /**
+   *
+   * Create a categorization job first so frontend can subscribe to SSE before file upload starts.
+   * @endpoint post /api/v1/customer-applications/{applicationId}/categorize-documents/init/
+   * @param requestParameters
+   */
+  v1CustomerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: V1CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<DocumentCategorizationStartResponse>;
 
   /**
    *
@@ -1411,7 +1470,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customer-applications/
    * @param requestParameters
    */
@@ -1422,7 +1481,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/v1/customer-applications/{id}/
    * @param requestParameters
    */
@@ -1433,7 +1492,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   * Re-open a completed application.
+   * Re-open a semantically completed application.
    * @endpoint post /api/v1/customer-applications/{id}/reopen/
    * @param requestParameters
    */
@@ -1444,7 +1503,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customer-applications/{id}/
    * @param requestParameters
    */
@@ -1499,7 +1558,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/{id}/applications-history/
    * @param requestParameters
    */
@@ -1510,7 +1569,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customers/bulk-delete/
    * @param requestParameters
    */
@@ -1532,7 +1591,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customers/
    * @param requestParameters
    */
@@ -1543,7 +1602,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint delete /api/v1/customers/{id}/
    * @param requestParameters
    */
@@ -1554,7 +1613,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/
    * @param requestParameters
    */
@@ -1565,7 +1624,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/v1/customers/{id}/
    * @param requestParameters
    */
@@ -1576,7 +1635,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/{id}/
    * @param requestParameters
    */
@@ -1587,14 +1646,14 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/search/
    */
   v1CustomersSearchRetrieve(extraHttpRequestParams?: any): Observable<Customer>;
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customers/{id}/toggle-active/
    * @param requestParameters
    */
@@ -1605,7 +1664,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/{id}/uninvoiced-applications/
    * @param requestParameters
    */
@@ -1616,7 +1675,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint put /api/v1/customers/{id}/
    * @param requestParameters
    */
@@ -1631,6 +1690,39 @@ export interface V1ServiceInterface {
    * @endpoint get /api/v1/dashboard-stats/
    */
   v1DashboardStatsList(extraHttpRequestParams?: any): Observable<Array<DashboardStats>>;
+
+  /**
+   *
+   * Apply confirmed categorization results: attach files to Document rows.  After applying the requested mappings, **all** transient files for this job are deleted from storage (&#x60;&#x60;tmp/categorization/{job_id}/&#x60;&#x60;).  This includes unapplied files (e.g. \&quot;No Slot\&quot; or errored items) so that only files copied into their final Document location are persisted.
+   * @endpoint post /api/v1/document-categorization/{jobId}/apply/
+   * @param requestParameters
+   */
+  v1DocumentCategorizationApplyCreate(
+    requestParameters: V1DocumentCategorizationApplyCreateRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<DocumentCategorizationApplyResponse>;
+
+  /**
+   *
+   * Polling fallback for categorization job status.
+   * @endpoint get /api/v1/document-categorization/{jobId}/status/
+   * @param requestParameters
+   */
+  v1DocumentCategorizationStatusRetrieve(
+    requestParameters: V1DocumentCategorizationStatusRetrieveRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<DocumentCategorizationJob>;
+
+  /**
+   *
+   * Upload files into an existing categorization job and dispatch item tasks.
+   * @endpoint post /api/v1/document-categorization/{jobId}/upload/
+   * @param requestParameters
+   */
+  v1DocumentCategorizationUploadCreate(
+    requestParameters: V1DocumentCategorizationUploadCreateRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<DocumentCategorizationUploadFilesResponse>;
 
   /**
    *
@@ -1846,6 +1938,17 @@ export interface V1ServiceInterface {
 
   /**
    *
+   * Run pre-upload AI validation for a file against the target DocumentType rules.
+   * @endpoint post /api/v1/documents/{documentId}/validate-category/
+   * @param requestParameters
+   */
+  v1DocumentsValidateCategoryCreate(
+    requestParameters: V1DocumentsValidateCategoryCreateRequestParams,
+    extraHttpRequestParams?: any,
+  ): Observable<{ [key: string]: any }>;
+
+  /**
+   *
    *
    * @endpoint post /api/v1/holidays/
    * @param requestParameters
@@ -1912,7 +2015,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/bulk-delete/
    * @param requestParameters
    */
@@ -1923,7 +2026,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/
    * @param requestParameters
    */
@@ -1934,7 +2037,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/{id}/delete-preview/
    * @param requestParameters
    */
@@ -1945,7 +2048,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint delete /api/v1/invoices/{id}/
    * @param requestParameters
    */
@@ -1956,7 +2059,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/{id}/download-async/
    * @param requestParameters
    */
@@ -1967,7 +2070,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/download-async/file/{jobId}/
    * @param requestParameters
    */
@@ -1978,7 +2081,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/download-async/status/{jobId}/
    * @param requestParameters
    */
@@ -1989,7 +2092,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/download-async/stream/{jobId}/
    * @param requestParameters
    */
@@ -2000,7 +2103,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/{id}/download/
    * @param requestParameters
    */
@@ -2011,7 +2114,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/{id}/force-delete/
    * @param requestParameters
    */
@@ -2022,7 +2125,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/from_application_prefill/{applicationId}/
    * @param requestParameters
    */
@@ -2033,7 +2136,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/get_billable_products/{customerId}/
    * @param requestParameters
    */
@@ -2044,7 +2147,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/get_customer_applications/{customerId}/
    * @param requestParameters
    */
@@ -2055,7 +2158,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/
    * @param requestParameters
    */
@@ -2117,7 +2220,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/
    * @param requestParameters
    */
@@ -2128,7 +2231,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/{id}/mark-as-paid/
    * @param requestParameters
    */
@@ -2139,7 +2242,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/v1/invoices/{id}/
    * @param requestParameters
    */
@@ -2161,7 +2264,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/{id}/
    * @param requestParameters
    */
@@ -2172,7 +2275,7 @@ export interface V1ServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint put /api/v1/invoices/{id}/
    * @param requestParameters
    */
@@ -2723,14 +2826,14 @@ export interface V1ServiceInterface {
 
   /**
    * Clean unlinked media files
-   * Delete unlinked media files from the active media store.
+   * Return a canonical 202 start payload for media cleanup execution.
    * @endpoint post /api/v1/server-management/media-cleanup/
    * @param requestParameters
    */
   v1ServerManagementMediaCleanupCreate(
     requestParameters: V1ServerManagementMediaCleanupCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<AdminAsyncStartResponse>;
 
   /**
    * Run media files diagnostic

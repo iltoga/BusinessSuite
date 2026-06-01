@@ -8,7 +8,10 @@ import {
   requestMetadataContext,
   type RequestMetadata,
 } from '@/core/utils/request-metadata';
-import { SseService } from './sse.service';
+import { reconnectOnComplete, SseService } from './sse.service';
+
+const OCR_STREAM_RECONNECT_DELAY_MS = 250;
+const OCR_STREAM_ROTATION_MS = 55_000;
 
 export interface OcrQueuedResponse {
   jobId: string;
@@ -113,7 +116,24 @@ export class OcrService {
     // Accept negotiation in the local app. Use the generic SSE endpoint, which
     // the backend maps to OCRJob records and returns the same Redis stream.
     const normalizedUrl = `/api/async-jobs/status/${jobId}/`;
-    return this.sseService.connect<unknown>(normalizedUrl).pipe(
+    return reconnectOnComplete(
+      () =>
+        this.sseService.connect<unknown>(normalizedUrl, {
+          maxConnectionDurationMs: OCR_STREAM_ROTATION_MS,
+        }),
+      {
+        reconnectDelayMs: OCR_STREAM_RECONNECT_DELAY_MS,
+        shouldReconnect: (lastPayload) => {
+          if (lastPayload === null) {
+            return true;
+          }
+
+          return !this.isTerminalOcrStatus(
+            this.normalizePassportOcrStreamPayload(lastPayload).status,
+          );
+        },
+      },
+    ).pipe(
       map((payload) => this.normalizePassportOcrStreamPayload(payload)),
       takeWhile((job) => !this.isTerminalOcrStatus(job.status), true),
     );
@@ -140,20 +160,16 @@ export class OcrService {
     }
 
     const metadata = options?.requestMetadata ?? createAsyncRequestMetadata();
-    return this.http.post<OcrQueuedResponse | DocumentOcrStatusResponse>(
-      '/api/document-ocr/check/',
-      formData,
-      {
+    return this.http
+      .post<OcrQueuedResponse | DocumentOcrStatusResponse>('/api/document-ocr/check/', formData, {
         context: requestMetadataContext(metadata),
-      },
-    ).pipe(map((response) => normalizeJobEnvelope(response)));
+      })
+      .pipe(map((response) => normalizeJobEnvelope(response)));
   }
 
   getDocumentOcrStatus(statusUrl: string): Observable<DocumentOcrStatusResponse> {
     return this.getDocumentOcrStatusResponse(statusUrl).pipe(
-      map((response) =>
-        normalizeJobEnvelope(response.body as DocumentOcrStatusResponse),
-      ),
+      map((response) => normalizeJobEnvelope(response.body as DocumentOcrStatusResponse)),
     );
   }
 
@@ -167,7 +183,9 @@ export class OcrService {
   }
 
   private isTerminalOcrStatus(status: string | null | undefined): boolean {
-    const normalized = String(status ?? '').trim().toLowerCase();
+    const normalized = String(status ?? '')
+      .trim()
+      .toLowerCase();
     return normalized === 'completed' || normalized === 'failed';
   }
 
@@ -192,8 +210,12 @@ export class OcrService {
     } as OcrStatusResponse;
   }
 
-  private normalizePassportOcrExtractionMode(value: unknown): PassportOcrExtractionMode | undefined {
-    const mode = String(value ?? '').trim().toLowerCase();
+  private normalizePassportOcrExtractionMode(
+    value: unknown,
+  ): PassportOcrExtractionMode | undefined {
+    const mode = String(value ?? '')
+      .trim()
+      .toLowerCase();
     if (mode === 'ai' || mode === 'ocr') {
       return mode;
     }

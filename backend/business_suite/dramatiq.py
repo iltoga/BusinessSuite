@@ -47,14 +47,6 @@ def _setting_or_env(name: str, default: str = "") -> str:
     if env_value is not None and str(env_value).strip() != "":
         value = env_value
 
-    db_value = None
-    if apps.ready:
-        from core.services.app_setting_service import AppSettingService
-
-        db_value = AppSettingService.get_raw(name, default=None, require_override=True)
-    if db_value is not None and str(db_value).strip() != "":
-        value = db_value
-
     return str(value)
 
 

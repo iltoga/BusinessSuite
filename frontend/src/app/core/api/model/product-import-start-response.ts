@@ -14,4 +14,5 @@ export interface ProductImportStartResponse {
   progress: number;
   queued: boolean;
   deduplicated: boolean;
+  requestId?: string;
 }

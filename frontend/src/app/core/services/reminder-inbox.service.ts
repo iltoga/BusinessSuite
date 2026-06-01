@@ -7,6 +7,7 @@ import { AuthService } from '@/core/services/auth.service';
 import { BackendReadinessService } from '@/core/services/backend-readiness.service';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { PushNotificationsService } from '@/core/services/push-notifications.service';
+import { isUnauthorizedSseError } from '@/core/services/sse.service';
 import {
   RemindersStreamService,
   type RemindersStreamEvent,
@@ -255,7 +256,7 @@ export class ReminderInboxService {
       this.streamSubscription?.unsubscribe();
       this.streamSubscription = this.remindersStreamService.connect().subscribe({
         next: (event) => this.handleReminderStreamEvent(event),
-        error: () => this.handleReminderStreamDisconnect(),
+        error: (error) => this.handleReminderStreamDisconnect(error),
         complete: () => this.handleReminderStreamDisconnect(),
       });
     });
@@ -279,8 +280,12 @@ export class ReminderInboxService {
     }
   }
 
-  private handleReminderStreamDisconnect(): void {
+  private handleReminderStreamDisconnect(error?: unknown): void {
     if (!this.started || !isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    if (isUnauthorizedSseError(error)) {
       return;
     }
 

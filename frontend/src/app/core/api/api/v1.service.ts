@@ -22,6 +22,8 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
+import { AdminAsyncStartResponse } from '../model/admin-async-start-response';
+// @ts-ignore
 import { AdminPushNotificationDispatchResult } from '../model/admin-push-notification-dispatch-result';
 // @ts-ignore
 import { AdminPushNotificationSendRequest } from '../model/admin-push-notification-send-request';
@@ -55,6 +57,8 @@ import { CalendarReminderInboxSnooze } from '../model/calendar-reminder-inbox-sn
 import { CalendarReminderInboxSnoozeRequest } from '../model/calendar-reminder-inbox-snooze-request';
 // @ts-ignore
 import { CalendarReminderRequest } from '../model/calendar-reminder-request';
+// @ts-ignore
+import { CategorizationApplyRequest } from '../model/categorization-apply-request';
 // @ts-ignore
 import { CountryCode } from '../model/country-code';
 // @ts-ignore
@@ -93,6 +97,18 @@ import { DocApplicationSerializerWithRelationsRequest } from '../model/doc-appli
 import { DocWorkflow } from '../model/doc-workflow';
 // @ts-ignore
 import { Document } from '../model/document';
+// @ts-ignore
+import { DocumentCategorizationApplyResponse } from '../model/document-categorization-apply-response';
+// @ts-ignore
+import { DocumentCategorizationInitRequestRequest } from '../model/document-categorization-init-request-request';
+// @ts-ignore
+import { DocumentCategorizationJob } from '../model/document-categorization-job';
+// @ts-ignore
+import { DocumentCategorizationQueuedResponse } from '../model/document-categorization-queued-response';
+// @ts-ignore
+import { DocumentCategorizationStartResponse } from '../model/document-categorization-start-response';
+// @ts-ignore
+import { DocumentCategorizationUploadFilesResponse } from '../model/document-categorization-upload-files-response';
 // @ts-ignore
 import { DocumentType } from '../model/document-type';
 // @ts-ignore
@@ -232,8 +248,8 @@ import {
   V1BackupsDeleteDestroyRequestParams,
   V1BackupsDeleteMultipleCreateRequestParams,
   V1BackupsDownloadRetrieveRequestParams,
-  V1BackupsRestoreCreateRequestParams,
-  V1BackupsStartRetrieveRequestParams,
+  V1BackupsRestoreJobCreateRequestParams,
+  V1BackupsStartJobCreateRequestParams,
   V1CalendarCreateRequestParams,
   V1CalendarDestroyRequestParams,
   V1CalendarPartialUpdateRequestParams,
@@ -255,6 +271,8 @@ import {
   V1CountryCodesRetrieveRequestParams,
   V1CustomerApplicationsAdvanceWorkflowCreateRequestParams,
   V1CustomerApplicationsBulkDeleteCreateRequestParams,
+  V1CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+  V1CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
   V1CustomerApplicationsCreateRequestParams,
   V1CustomerApplicationsDestroyRequestParams,
   V1CustomerApplicationsForceCloseCreateRequestParams,
@@ -277,6 +295,9 @@ import {
   V1CustomersToggleActiveCreateRequestParams,
   V1CustomersUninvoicedApplicationsListRequestParams,
   V1CustomersUpdateRequestParams,
+  V1DocumentCategorizationApplyCreateRequestParams,
+  V1DocumentCategorizationStatusRetrieveRequestParams,
+  V1DocumentCategorizationUploadCreateRequestParams,
   V1DocumentOcrStatusRetrieveRequestParams,
   V1DocumentOcrStreamRetrieveRequestParams,
   V1DocumentTypesCanDeleteRetrieveRequestParams,
@@ -295,6 +316,7 @@ import {
   V1DocumentsPrintRetrieveRequestParams,
   V1DocumentsRetrieveRequestParams,
   V1DocumentsUpdateRequestParams,
+  V1DocumentsValidateCategoryCreateRequestParams,
   V1HolidaysCreateRequestParams,
   V1HolidaysDestroyRequestParams,
   V1HolidaysListRequestParams,
@@ -1930,15 +1952,15 @@ export class V1Service extends BaseService implements V1ServiceInterface {
 
   /**
    * Restore from backup
-   * Trigger stream-backed SSE restore execution.
-   * @endpoint post /api/v1/backups/restore/
+   * Return a canonical 202 start payload for restore execution.
+   * @endpoint post /api/v1/backups/restore-job/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
-  public v1BackupsRestoreCreate(
-    requestParameters?: V1BackupsRestoreCreateRequestParams,
+  public v1BackupsRestoreJobCreate(
+    requestParameters?: V1BackupsRestoreJobCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -1946,9 +1968,9 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
-  public v1BackupsRestoreCreate(
-    requestParameters?: V1BackupsRestoreCreateRequestParams,
+  ): Observable<AdminAsyncStartResponse>;
+  public v1BackupsRestoreJobCreate(
+    requestParameters?: V1BackupsRestoreJobCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -1956,9 +1978,9 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
-  public v1BackupsRestoreCreate(
-    requestParameters?: V1BackupsRestoreCreateRequestParams,
+  ): Observable<HttpResponse<AdminAsyncStartResponse>>;
+  public v1BackupsRestoreJobCreate(
+    requestParameters?: V1BackupsRestoreJobCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -1966,9 +1988,9 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
-  public v1BackupsRestoreCreate(
-    requestParameters?: V1BackupsRestoreCreateRequestParams,
+  ): Observable<HttpEvent<AdminAsyncStartResponse>>;
+  public v1BackupsRestoreJobCreate(
+    requestParameters?: V1BackupsRestoreJobCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -1979,7 +2001,6 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   ): Observable<any> {
     const file = requestParameters?.file;
     const includeUsers = requestParameters?.includeUsers;
-    const replay = requestParameters?.replay;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -1995,14 +2016,6 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       localVarQueryParameters,
       'include_users',
       <any>includeUsers,
-      QueryParamStyle.Form,
-      true,
-    );
-
-    localVarQueryParameters = this.addToHttpParams(
-      localVarQueryParameters,
-      'replay',
-      <any>replay,
       QueryParamStyle.Form,
       true,
     );
@@ -2040,9 +2053,9 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       }
     }
 
-    let localVarPath = `/api/v1/backups/restore/`;
+    let localVarPath = `/api/v1/backups/restore-job/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<AdminAsyncStartResponse>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
@@ -2146,15 +2159,15 @@ export class V1Service extends BaseService implements V1ServiceInterface {
 
   /**
    * Start backup process
-   * Trigger stream-backed SSE backup execution.
-   * @endpoint get /api/v1/backups/start/
+   * Return a canonical 202 start payload for backup execution.
+   * @endpoint post /api/v1/backups/start-job/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
-  public v1BackupsStartRetrieve(
-    requestParameters?: V1BackupsStartRetrieveRequestParams,
+  public v1BackupsStartJobCreate(
+    requestParameters?: V1BackupsStartJobCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -2162,9 +2175,9 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
-  public v1BackupsStartRetrieve(
-    requestParameters?: V1BackupsStartRetrieveRequestParams,
+  ): Observable<AdminAsyncStartResponse>;
+  public v1BackupsStartJobCreate(
+    requestParameters?: V1BackupsStartJobCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -2172,9 +2185,9 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
-  public v1BackupsStartRetrieve(
-    requestParameters?: V1BackupsStartRetrieveRequestParams,
+  ): Observable<HttpResponse<AdminAsyncStartResponse>>;
+  public v1BackupsStartJobCreate(
+    requestParameters?: V1BackupsStartJobCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -2182,9 +2195,9 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
-  public v1BackupsStartRetrieve(
-    requestParameters?: V1BackupsStartRetrieveRequestParams,
+  ): Observable<HttpEvent<AdminAsyncStartResponse>>;
+  public v1BackupsStartJobCreate(
+    requestParameters?: V1BackupsStartJobCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -2194,7 +2207,6 @@ export class V1Service extends BaseService implements V1ServiceInterface {
     },
   ): Observable<any> {
     const includeUsers = requestParameters?.includeUsers;
-    const replay = requestParameters?.replay;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -2202,14 +2214,6 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       localVarQueryParameters,
       'include_users',
       <any>includeUsers,
-      QueryParamStyle.Form,
-      true,
-    );
-
-    localVarQueryParameters = this.addToHttpParams(
-      localVarQueryParameters,
-      'replay',
-      <any>replay,
       QueryParamStyle.Form,
       true,
     );
@@ -2247,9 +2251,9 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       }
     }
 
-    let localVarPath = `/api/v1/backups/start/`;
+    let localVarPath = `/api/v1/backups/start-job/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('get', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<AdminAsyncStartResponse>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
@@ -4914,6 +4918,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customer-applications/bulk-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -5016,6 +5021,290 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       {
         context: localVarHttpContext,
         body: customerApplicationsBulkDeleteRequestRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
+  }
+
+  /**
+   * Upload multiple files and start AI categorization. Files are saved to temp storage and Dramatiq tasks are dispatched in parallel.
+   * @endpoint post /api/v1/customer-applications/{applicationId}/categorize-documents/
+   * @param requestParameters
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public v1CustomerApplicationsCategorizeDocumentsCreate(
+    requestParameters: V1CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<DocumentCategorizationQueuedResponse>;
+  public v1CustomerApplicationsCategorizeDocumentsCreate(
+    requestParameters: V1CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<DocumentCategorizationQueuedResponse>>;
+  public v1CustomerApplicationsCategorizeDocumentsCreate(
+    requestParameters: V1CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<DocumentCategorizationQueuedResponse>>;
+  public v1CustomerApplicationsCategorizeDocumentsCreate(
+    requestParameters: V1CustomerApplicationsCategorizeDocumentsCreateRequestParams,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    const applicationId = requestParameters?.applicationId;
+    if (applicationId === null || applicationId === undefined) {
+      throw new Error(
+        'Required parameter applicationId was null or undefined when calling v1CustomerApplicationsCategorizeDocumentsCreate.',
+      );
+    }
+    const files = requestParameters?.files;
+    if (files === null || files === undefined) {
+      throw new Error(
+        'Required parameter files was null or undefined when calling v1CustomerApplicationsCategorizeDocumentsCreate.',
+      );
+    }
+    const model = requestParameters?.model;
+    const providerOrder = requestParameters?.providerOrder;
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (cookieAuth) required
+
+    // authentication (jwtAuth) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'jwtAuth',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = ['multipart/form-data', 'application/x-www-form-urlencoded'];
+
+    const canConsumeForm = this.canConsumeForm(consumes);
+
+    let localVarFormParams: { append(param: string, value: any): any };
+    let localVarUseForm = false;
+    let localVarConvertFormParamsToString = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+    localVarUseForm = canConsumeForm;
+    if (localVarUseForm) {
+      localVarFormParams = new FormData();
+    } else {
+      localVarFormParams = new HttpParams({ encoder: this.encoder });
+    }
+
+    if (files) {
+      if (localVarUseForm) {
+        files.forEach((element) => {
+          localVarFormParams =
+            (localVarFormParams.append('files', <any>element) as any) || localVarFormParams;
+        });
+      } else {
+        localVarFormParams =
+          (localVarFormParams.append('files', [...files].join(COLLECTION_FORMATS['csv'])) as any) ||
+          localVarFormParams;
+      }
+    }
+    if (model !== undefined) {
+      localVarFormParams =
+        (localVarFormParams.append('model', <any>model) as any) || localVarFormParams;
+    }
+    if (providerOrder) {
+      if (localVarUseForm) {
+        providerOrder.forEach((element) => {
+          localVarFormParams =
+            (localVarFormParams.append('providerOrder', <any>element) as any) || localVarFormParams;
+        });
+      } else {
+        localVarFormParams =
+          (localVarFormParams.append(
+            'providerOrder',
+            [...providerOrder].join(COLLECTION_FORMATS['csv']),
+          ) as any) || localVarFormParams;
+      }
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/customer-applications/${this.configuration.encodeParam({ name: 'applicationId', value: applicationId, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/categorize-documents/`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<DocumentCategorizationQueuedResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: localVarConvertFormParamsToString
+          ? localVarFormParams.toString()
+          : localVarFormParams,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
+  }
+
+  /**
+   * Create a categorization job first so frontend can subscribe to SSE before file upload starts.
+   * @endpoint post /api/v1/customer-applications/{applicationId}/categorize-documents/init/
+   * @param requestParameters
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public v1CustomerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: V1CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<DocumentCategorizationStartResponse>;
+  public v1CustomerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: V1CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<DocumentCategorizationStartResponse>>;
+  public v1CustomerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: V1CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<DocumentCategorizationStartResponse>>;
+  public v1CustomerApplicationsCategorizeDocumentsInitCreate(
+    requestParameters: V1CustomerApplicationsCategorizeDocumentsInitCreateRequestParams,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    const applicationId = requestParameters?.applicationId;
+    if (applicationId === null || applicationId === undefined) {
+      throw new Error(
+        'Required parameter applicationId was null or undefined when calling v1CustomerApplicationsCategorizeDocumentsInitCreate.',
+      );
+    }
+    const documentCategorizationInitRequestRequest =
+      requestParameters?.documentCategorizationInitRequestRequest;
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (cookieAuth) required
+
+    // authentication (jwtAuth) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'jwtAuth',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = [
+      'application/json',
+      'application/x-www-form-urlencoded',
+      'multipart/form-data',
+    ];
+    const httpContentTypeSelected: string | undefined =
+      this.configuration.selectHeaderContentType(consumes);
+    if (httpContentTypeSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/customer-applications/${this.configuration.encodeParam({ name: 'applicationId', value: applicationId, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/categorize-documents/init/`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<DocumentCategorizationStartResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: documentCategorizationInitRequestRequest,
         responseType: <any>responseType_,
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
@@ -5351,6 +5640,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customer-applications/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -5488,6 +5778,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/v1/customer-applications/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -5614,7 +5905,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
-   * Re-open a completed application.
+   * Re-open a semantically completed application.
    * @endpoint post /api/v1/customer-applications/{id}/reopen/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -5738,6 +6029,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customer-applications/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -6324,6 +6616,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/{id}/applications-history/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -6467,6 +6760,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customers/bulk-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -6692,6 +6986,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customers/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -6800,6 +7095,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint delete /api/v1/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -6884,6 +7180,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7017,6 +7314,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/v1/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7131,6 +7429,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7231,6 +7530,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/search/
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
@@ -7319,6 +7619,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/customers/{id}/toggle-active/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7433,6 +7734,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/customers/{id}/uninvoiced-applications/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7576,6 +7878,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint put /api/v1/customers/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -7775,6 +8078,375 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
       reportProgress: reportProgress,
     });
+  }
+
+  /**
+   * Apply confirmed categorization results: attach files to Document rows.  After applying the requested mappings, **all** transient files for this job are deleted from storage (&#x60;&#x60;tmp/categorization/{job_id}/&#x60;&#x60;).  This includes unapplied files (e.g. \&quot;No Slot\&quot; or errored items) so that only files copied into their final Document location are persisted.
+   * @endpoint post /api/v1/document-categorization/{jobId}/apply/
+   * @param requestParameters
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public v1DocumentCategorizationApplyCreate(
+    requestParameters: V1DocumentCategorizationApplyCreateRequestParams,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<DocumentCategorizationApplyResponse>;
+  public v1DocumentCategorizationApplyCreate(
+    requestParameters: V1DocumentCategorizationApplyCreateRequestParams,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<DocumentCategorizationApplyResponse>>;
+  public v1DocumentCategorizationApplyCreate(
+    requestParameters: V1DocumentCategorizationApplyCreateRequestParams,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<DocumentCategorizationApplyResponse>>;
+  public v1DocumentCategorizationApplyCreate(
+    requestParameters: V1DocumentCategorizationApplyCreateRequestParams,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    const jobId = requestParameters?.jobId;
+    if (jobId === null || jobId === undefined) {
+      throw new Error(
+        'Required parameter jobId was null or undefined when calling v1DocumentCategorizationApplyCreate.',
+      );
+    }
+    const categorizationApplyRequest = requestParameters?.categorizationApplyRequest;
+    if (categorizationApplyRequest === null || categorizationApplyRequest === undefined) {
+      throw new Error(
+        'Required parameter categorizationApplyRequest was null or undefined when calling v1DocumentCategorizationApplyCreate.',
+      );
+    }
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (cookieAuth) required
+
+    // authentication (jwtAuth) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'jwtAuth',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = [
+      'application/json',
+      'application/x-www-form-urlencoded',
+      'multipart/form-data',
+    ];
+    const httpContentTypeSelected: string | undefined =
+      this.configuration.selectHeaderContentType(consumes);
+    if (httpContentTypeSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/document-categorization/${this.configuration.encodeParam({ name: 'jobId', value: jobId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}/apply/`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<DocumentCategorizationApplyResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: categorizationApplyRequest,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
+  }
+
+  /**
+   * Polling fallback for categorization job status.
+   * @endpoint get /api/v1/document-categorization/{jobId}/status/
+   * @param requestParameters
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public v1DocumentCategorizationStatusRetrieve(
+    requestParameters: V1DocumentCategorizationStatusRetrieveRequestParams,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<DocumentCategorizationJob>;
+  public v1DocumentCategorizationStatusRetrieve(
+    requestParameters: V1DocumentCategorizationStatusRetrieveRequestParams,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<DocumentCategorizationJob>>;
+  public v1DocumentCategorizationStatusRetrieve(
+    requestParameters: V1DocumentCategorizationStatusRetrieveRequestParams,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<DocumentCategorizationJob>>;
+  public v1DocumentCategorizationStatusRetrieve(
+    requestParameters: V1DocumentCategorizationStatusRetrieveRequestParams,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    const jobId = requestParameters?.jobId;
+    if (jobId === null || jobId === undefined) {
+      throw new Error(
+        'Required parameter jobId was null or undefined when calling v1DocumentCategorizationStatusRetrieve.',
+      );
+    }
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (cookieAuth) required
+
+    // authentication (jwtAuth) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'jwtAuth',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/document-categorization/${this.configuration.encodeParam({ name: 'jobId', value: jobId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}/status/`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<DocumentCategorizationJob>('get', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
+      headers: localVarHeaders,
+      observe: observe,
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
+    });
+  }
+
+  /**
+   * Upload files into an existing categorization job and dispatch item tasks.
+   * @endpoint post /api/v1/document-categorization/{jobId}/upload/
+   * @param requestParameters
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public v1DocumentCategorizationUploadCreate(
+    requestParameters: V1DocumentCategorizationUploadCreateRequestParams,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<DocumentCategorizationUploadFilesResponse>;
+  public v1DocumentCategorizationUploadCreate(
+    requestParameters: V1DocumentCategorizationUploadCreateRequestParams,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<DocumentCategorizationUploadFilesResponse>>;
+  public v1DocumentCategorizationUploadCreate(
+    requestParameters: V1DocumentCategorizationUploadCreateRequestParams,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<DocumentCategorizationUploadFilesResponse>>;
+  public v1DocumentCategorizationUploadCreate(
+    requestParameters: V1DocumentCategorizationUploadCreateRequestParams,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    const jobId = requestParameters?.jobId;
+    if (jobId === null || jobId === undefined) {
+      throw new Error(
+        'Required parameter jobId was null or undefined when calling v1DocumentCategorizationUploadCreate.',
+      );
+    }
+    const files = requestParameters?.files;
+    if (files === null || files === undefined) {
+      throw new Error(
+        'Required parameter files was null or undefined when calling v1DocumentCategorizationUploadCreate.',
+      );
+    }
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (cookieAuth) required
+
+    // authentication (jwtAuth) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'jwtAuth',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = ['multipart/form-data', 'application/x-www-form-urlencoded'];
+
+    const canConsumeForm = this.canConsumeForm(consumes);
+
+    let localVarFormParams: { append(param: string, value: any): any };
+    let localVarUseForm = false;
+    let localVarConvertFormParamsToString = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+    localVarUseForm = canConsumeForm;
+    if (localVarUseForm) {
+      localVarFormParams = new FormData();
+    } else {
+      localVarFormParams = new HttpParams({ encoder: this.encoder });
+    }
+
+    if (files) {
+      if (localVarUseForm) {
+        files.forEach((element) => {
+          localVarFormParams =
+            (localVarFormParams.append('files', <any>element) as any) || localVarFormParams;
+        });
+      } else {
+        localVarFormParams =
+          (localVarFormParams.append('files', [...files].join(COLLECTION_FORMATS['csv'])) as any) ||
+          localVarFormParams;
+      }
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/document-categorization/${this.configuration.encodeParam({ name: 'jobId', value: jobId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}/upload/`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<DocumentCategorizationUploadFilesResponse>(
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: localVarConvertFormParamsToString
+          ? localVarFormParams.toString()
+          : localVarFormParams,
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -10081,6 +10753,136 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Run pre-upload AI validation for a file against the target DocumentType rules.
+   * @endpoint post /api/v1/documents/{documentId}/validate-category/
+   * @param requestParameters
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public v1DocumentsValidateCategoryCreate(
+    requestParameters: V1DocumentsValidateCategoryCreateRequestParams,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<{ [key: string]: any }>;
+  public v1DocumentsValidateCategoryCreate(
+    requestParameters: V1DocumentsValidateCategoryCreateRequestParams,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  public v1DocumentsValidateCategoryCreate(
+    requestParameters: V1DocumentsValidateCategoryCreateRequestParams,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  public v1DocumentsValidateCategoryCreate(
+    requestParameters: V1DocumentsValidateCategoryCreateRequestParams,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    const documentId = requestParameters?.documentId;
+    if (documentId === null || documentId === undefined) {
+      throw new Error(
+        'Required parameter documentId was null or undefined when calling v1DocumentsValidateCategoryCreate.',
+      );
+    }
+    const file = requestParameters?.file;
+    if (file === null || file === undefined) {
+      throw new Error(
+        'Required parameter file was null or undefined when calling v1DocumentsValidateCategoryCreate.',
+      );
+    }
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (cookieAuth) required
+
+    // authentication (jwtAuth) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'jwtAuth',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = ['multipart/form-data', 'application/x-www-form-urlencoded'];
+
+    const canConsumeForm = this.canConsumeForm(consumes);
+
+    let localVarFormParams: { append(param: string, value: any): any };
+    let localVarUseForm = false;
+    let localVarConvertFormParamsToString = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    // see https://stackoverflow.com/questions/4007969/application-x-www-form-urlencoded-or-multipart-form-data
+    localVarUseForm = canConsumeForm;
+    if (localVarUseForm) {
+      localVarFormParams = new FormData();
+    } else {
+      localVarFormParams = new HttpParams({ encoder: this.encoder });
+    }
+
+    if (file !== undefined) {
+      localVarFormParams =
+        (localVarFormParams.append('file', <any>file) as any) || localVarFormParams;
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/documents/${this.configuration.encodeParam({ name: 'documentId', value: documentId, in: 'path', style: 'simple', explode: false, dataType: 'number', dataFormat: undefined })}/validate-category/`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
+      body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
+      headers: localVarHeaders,
+      observe: observe,
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
+    });
+  }
+
+  /**
    * @endpoint post /api/v1/holidays/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -10729,6 +11531,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/bulk-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -10841,6 +11644,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -10954,6 +11758,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/{id}/delete-preview/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11058,6 +11863,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint delete /api/v1/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11142,6 +11948,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/{id}/download-async/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11256,6 +12063,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/download-async/file/{jobId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11356,6 +12164,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/download-async/status/{jobId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11456,6 +12265,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/download-async/stream/{jobId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11556,6 +12366,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/{id}/download/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11657,6 +12468,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/{id}/force-delete/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11775,6 +12587,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/from_application_prefill/{applicationId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -11879,6 +12692,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/get_billable_products/{customerId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -12031,6 +12845,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/get_customer_applications/{customerId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -12211,6 +13026,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -12893,6 +13709,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -13035,6 +13852,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/v1/invoices/{id}/mark-as-paid/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -13158,6 +13976,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/v1/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -13384,6 +14203,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/v1/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -13484,6 +14304,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
   }
 
   /**
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint put /api/v1/invoices/{id}/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -19001,7 +19822,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
 
   /**
    * Clean unlinked media files
-   * Delete unlinked media files from the active media store.
+   * Return a canonical 202 start payload for media cleanup execution.
    * @endpoint post /api/v1/server-management/media-cleanup/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -19017,7 +19838,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<AdminAsyncStartResponse>;
   public v1ServerManagementMediaCleanupCreate(
     requestParameters?: V1ServerManagementMediaCleanupCreateRequestParams,
     observe?: 'response',
@@ -19027,7 +19848,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
+  ): Observable<HttpResponse<AdminAsyncStartResponse>>;
   public v1ServerManagementMediaCleanupCreate(
     requestParameters?: V1ServerManagementMediaCleanupCreateRequestParams,
     observe?: 'events',
@@ -19037,7 +19858,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
+  ): Observable<HttpEvent<AdminAsyncStartResponse>>;
   public v1ServerManagementMediaCleanupCreate(
     requestParameters?: V1ServerManagementMediaCleanupCreateRequestParams,
     observe: any = 'body',
@@ -19097,7 +19918,7 @@ export class V1Service extends BaseService implements V1ServiceInterface {
 
     let localVarPath = `/api/v1/server-management/media-cleanup/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<AdminAsyncStartResponse>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: mediaCleanupRequestRequest,
       responseType: <any>responseType_,

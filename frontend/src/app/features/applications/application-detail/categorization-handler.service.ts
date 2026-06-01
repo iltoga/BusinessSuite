@@ -4,8 +4,8 @@ import {
   type CategorizationFileResult as ServiceFileResult,
 } from '@/core/services/document-categorization.service';
 import { GlobalToastService } from '@/core/services/toast.service';
-import { isCategorizationPipelineTerminal } from '@/core/utils/document-categorization-pipeline';
 import { extractJobId } from '@/core/utils/async-job-contract';
+import { isCategorizationPipelineTerminal } from '@/core/utils/document-categorization-pipeline';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { HttpEventType } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
@@ -444,7 +444,7 @@ export class ApplicationCategorizationHandler {
           documentId: null,
           confidence: 0,
           reasoning: '',
-          error: event.data['error'] ?? 'Unknown error',
+          error: event.data['error'] ?? event.data['errorMessage'] ?? 'Unknown error',
           categorizationPass: null,
           validationStatus: null,
           validationReasoning: null,
@@ -462,7 +462,8 @@ export class ApplicationCategorizationHandler {
 
         if (event.data['filename']) {
           const errFilename = `"${truncateFilename(event.data['filename'])}"`;
-          const errMsg = event.data['error'] ? `: ${event.data['error']}` : '';
+          const rawError = event.data['error'] ?? event.data['errorMessage'];
+          const errMsg = rawError ? `: ${rawError}` : '';
           this.lastActivitySummary.set(`Error on: ${errFilename}${errMsg}`);
         }
         this.refreshStatusMessage();
@@ -568,7 +569,7 @@ export class ApplicationCategorizationHandler {
             documentId: r.documentId,
             confidence: r.confidence,
             reasoning: r.reasoning,
-            error: r.error ?? null,
+            error: r.error ?? r.errorMessage ?? null,
             categorizationPass: r.categorizationPass ?? null,
             validationStatus: r.validationStatus ?? null,
             validationReasoning: r.validationReasoning ?? null,

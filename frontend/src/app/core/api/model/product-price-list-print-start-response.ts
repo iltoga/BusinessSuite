@@ -14,4 +14,5 @@ export interface ProductPriceListPrintStartResponse {
   progress: number;
   queued: boolean;
   deduplicated: boolean;
+  requestId?: string;
 }

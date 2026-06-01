@@ -86,7 +86,7 @@ export interface CustomersServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customers/{id}/applications-history/
    * @param requestParameters
    */
@@ -97,7 +97,7 @@ export interface CustomersServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/customers/bulk-delete/
    * @param requestParameters
    */
@@ -119,7 +119,7 @@ export interface CustomersServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/customers/
    * @param requestParameters
    */
@@ -130,7 +130,7 @@ export interface CustomersServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint delete /api/customers/{id}/
    * @param requestParameters
    */
@@ -141,7 +141,7 @@ export interface CustomersServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customers/
    * @param requestParameters
    */
@@ -152,7 +152,7 @@ export interface CustomersServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint patch /api/customers/{id}/
    * @param requestParameters
    */
@@ -163,7 +163,7 @@ export interface CustomersServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customers/{id}/
    * @param requestParameters
    */
@@ -174,14 +174,14 @@ export interface CustomersServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customers/search/
    */
   customersSearchRetrieve(extraHttpRequestParams?: any): Observable<Customer>;
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint post /api/customers/{id}/toggle-active/
    * @param requestParameters
    */
@@ -192,7 +192,7 @@ export interface CustomersServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint get /api/customers/{id}/uninvoiced-applications/
    * @param requestParameters
    */
@@ -203,7 +203,7 @@ export interface CustomersServiceInterface {
 
   /**
    *
-   *
+   * Shared search configuration for DRF list-style endpoints.  Supports a canonical &#x60;&#x60;?search&#x3D;&#x60;&#x60; param with the legacy &#x60;&#x60;?q&#x3D;&#x60;&#x60; alias, allows opting specific actions into search, and can delegate to a queryset-level custom search method when domain-specific behavior is required.
    * @endpoint put /api/customers/{id}/
    * @param requestParameters
    */

@@ -341,3 +341,32 @@ class DramatiqSettingsTests(SimpleTestCase):
             int(getattr(results_middleware, "result_ttl", 0)),
             int(getattr(settings, "DRAMATIQ_RESULTS_TTL_MS", 0)),
         )
+
+    def test_dramatiq_reload_does_not_read_db_backed_runtime_settings(self):
+        from business_suite import dramatiq as dramatiq_runtime
+
+        with patch(
+            "core.services.app_setting_service.AppSettingService.get_raw",
+            side_effect=AssertionError("bootstrap should not hit AppSettingService.get_raw"),
+        ), patch(
+            "core.services.app_setting_service.AppSettingService.get_effective_raw",
+            side_effect=AssertionError("bootstrap should not hit AppSettingService.get_effective_raw"),
+        ):
+            reloaded = importlib.reload(dramatiq_runtime)
+
+        self.assertIsNotNone(reloaded.broker)
+
+    def test_register_auditlog_prune_does_not_read_db_backed_runtime_settings(self):
+        from core.tasks import cron_jobs
+
+        def fake_periodic_task(*args, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+        with patch(
+            "core.services.app_setting_service.AppSettingService.get_effective_raw",
+            side_effect=AssertionError("cron_jobs bootstrap should not hit AppSettingService.get_effective_raw"),
+        ), patch("core.tasks.cron_jobs.db_periodic_task", side_effect=fake_periodic_task):
+            cron_jobs._register_auditlog_prune()

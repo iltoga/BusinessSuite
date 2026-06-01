@@ -22,6 +22,8 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
+import { AdminAsyncStartResponse } from '../model/admin-async-start-response';
+// @ts-ignore
 import { DeleteMultipleBackupsRequest } from '../model/delete-multiple-backups-request';
 
 // @ts-ignore
@@ -33,8 +35,8 @@ import {
   BackupsDeleteDestroyRequestParams,
   BackupsDeleteMultipleCreateRequestParams,
   BackupsDownloadRetrieveRequestParams,
-  BackupsRestoreCreateRequestParams,
-  BackupsStartRetrieveRequestParams,
+  BackupsRestoreJobCreateRequestParams,
+  BackupsStartJobCreateRequestParams,
 } from './backups.serviceInterface';
 
 @Injectable({
@@ -449,15 +451,15 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
 
   /**
    * Restore from backup
-   * Trigger stream-backed SSE restore execution.
-   * @endpoint post /api/backups/restore/
+   * Return a canonical 202 start payload for restore execution.
+   * @endpoint post /api/backups/restore-job/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
-  public backupsRestoreCreate(
-    requestParameters?: BackupsRestoreCreateRequestParams,
+  public backupsRestoreJobCreate(
+    requestParameters?: BackupsRestoreJobCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -465,9 +467,9 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
-  public backupsRestoreCreate(
-    requestParameters?: BackupsRestoreCreateRequestParams,
+  ): Observable<AdminAsyncStartResponse>;
+  public backupsRestoreJobCreate(
+    requestParameters?: BackupsRestoreJobCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -475,9 +477,9 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
-  public backupsRestoreCreate(
-    requestParameters?: BackupsRestoreCreateRequestParams,
+  ): Observable<HttpResponse<AdminAsyncStartResponse>>;
+  public backupsRestoreJobCreate(
+    requestParameters?: BackupsRestoreJobCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -485,9 +487,9 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
-  public backupsRestoreCreate(
-    requestParameters?: BackupsRestoreCreateRequestParams,
+  ): Observable<HttpEvent<AdminAsyncStartResponse>>;
+  public backupsRestoreJobCreate(
+    requestParameters?: BackupsRestoreJobCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -498,7 +500,6 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
   ): Observable<any> {
     const file = requestParameters?.file;
     const includeUsers = requestParameters?.includeUsers;
-    const replay = requestParameters?.replay;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -514,14 +515,6 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
       localVarQueryParameters,
       'include_users',
       <any>includeUsers,
-      QueryParamStyle.Form,
-      true,
-    );
-
-    localVarQueryParameters = this.addToHttpParams(
-      localVarQueryParameters,
-      'replay',
-      <any>replay,
       QueryParamStyle.Form,
       true,
     );
@@ -559,9 +552,9 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
       }
     }
 
-    let localVarPath = `/api/backups/restore/`;
+    let localVarPath = `/api/backups/restore-job/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<AdminAsyncStartResponse>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
@@ -665,15 +658,15 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
 
   /**
    * Start backup process
-   * Trigger stream-backed SSE backup execution.
-   * @endpoint get /api/backups/start/
+   * Return a canonical 202 start payload for backup execution.
+   * @endpoint post /api/backups/start-job/
    * @param requestParameters
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
-  public backupsStartRetrieve(
-    requestParameters?: BackupsStartRetrieveRequestParams,
+  public backupsStartJobCreate(
+    requestParameters?: BackupsStartJobCreateRequestParams,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -681,9 +674,9 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<{ [key: string]: any }>;
-  public backupsStartRetrieve(
-    requestParameters?: BackupsStartRetrieveRequestParams,
+  ): Observable<AdminAsyncStartResponse>;
+  public backupsStartJobCreate(
+    requestParameters?: BackupsStartJobCreateRequestParams,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -691,9 +684,9 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<{ [key: string]: any }>>;
-  public backupsStartRetrieve(
-    requestParameters?: BackupsStartRetrieveRequestParams,
+  ): Observable<HttpResponse<AdminAsyncStartResponse>>;
+  public backupsStartJobCreate(
+    requestParameters?: BackupsStartJobCreateRequestParams,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -701,9 +694,9 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<{ [key: string]: any }>>;
-  public backupsStartRetrieve(
-    requestParameters?: BackupsStartRetrieveRequestParams,
+  ): Observable<HttpEvent<AdminAsyncStartResponse>>;
+  public backupsStartJobCreate(
+    requestParameters?: BackupsStartJobCreateRequestParams,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -713,7 +706,6 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
     },
   ): Observable<any> {
     const includeUsers = requestParameters?.includeUsers;
-    const replay = requestParameters?.replay;
 
     let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -721,14 +713,6 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
       localVarQueryParameters,
       'include_users',
       <any>includeUsers,
-      QueryParamStyle.Form,
-      true,
-    );
-
-    localVarQueryParameters = this.addToHttpParams(
-      localVarQueryParameters,
-      'replay',
-      <any>replay,
       QueryParamStyle.Form,
       true,
     );
@@ -766,9 +750,9 @@ export class BackupsService extends BaseService implements BackupsServiceInterfa
       }
     }
 
-    let localVarPath = `/api/backups/start/`;
+    let localVarPath = `/api/backups/start-job/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<{ [key: string]: any }>('get', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<AdminAsyncStartResponse>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,

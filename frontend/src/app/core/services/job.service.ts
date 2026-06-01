@@ -1,12 +1,15 @@
 import { inject, Injectable } from '@angular/core';
-import { catchError, map, Observable, takeWhile, timeout } from 'rxjs';
+import { catchError, map, Observable, takeWhile } from 'rxjs';
 
 import { type AsyncJob } from '@/core/api';
 import { RealtimeNotificationService } from '@/core/services/realtime-notification.service';
-import { SseService } from '@/core/services/sse.service';
+import { reconnectOnComplete, SseService } from '@/core/services/sse.service';
 import { isTerminalAsyncJob, normalizeAsyncJobUpdate } from '@/core/utils/async-job-contract';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { JobProgressDialogComponent } from '@/shared/components/job-progress-dialog/job-progress-dialog.component';
+
+const DIRECT_JOB_STREAM_RECONNECT_DELAY_MS = 250;
+const DIRECT_JOB_STREAM_ROTATION_MS = 55_000;
 
 @Injectable({
   providedIn: 'root',
@@ -32,12 +35,18 @@ export class JobService {
   }
 
   private watchJobDirect(jobId: string): Observable<AsyncJob> {
-    return this.sseService
-      .connect<unknown>(`/api/async-jobs/status/${jobId}/`)
-      .pipe(
-        map((payload) => normalizeAsyncJobUpdate(payload)),
-        takeWhile((job) => !isTerminalAsyncJob(job), true),
-      );
+    return reconnectOnComplete(
+      () =>
+        this.sseService
+          .connect<unknown>(`/api/async-jobs/status/${jobId}/`, {
+            maxConnectionDurationMs: DIRECT_JOB_STREAM_ROTATION_MS,
+          })
+          .pipe(map((payload) => normalizeAsyncJobUpdate(payload))),
+      {
+        reconnectDelayMs: DIRECT_JOB_STREAM_RECONNECT_DELAY_MS,
+        shouldReconnect: (lastJob) => lastJob === null || !isTerminalAsyncJob(lastJob),
+      },
+    ).pipe(takeWhile((job) => !isTerminalAsyncJob(job), true));
   }
 
   /**

@@ -11,6 +11,7 @@ import { HttpHeaders } from '@angular/common/http';
 
 import { Observable } from 'rxjs';
 
+import { AdminAsyncStartResponse } from '../model/models';
 import { MediaCleanupRequestRequest } from '../model/models';
 
 import { Configuration } from '../configuration';
@@ -188,14 +189,14 @@ export interface ServerManagementServiceInterface {
 
   /**
    * Clean unlinked media files
-   * Delete unlinked media files from the active media store.
+   * Return a canonical 202 start payload for media cleanup execution.
    * @endpoint post /api/server-management/media-cleanup/
    * @param requestParameters
    */
   serverManagementMediaCleanupCreate(
     requestParameters: ServerManagementMediaCleanupCreateRequestParams,
     extraHttpRequestParams?: any,
-  ): Observable<{ [key: string]: any }>;
+  ): Observable<AdminAsyncStartResponse>;
 
   /**
    * Run media files diagnostic

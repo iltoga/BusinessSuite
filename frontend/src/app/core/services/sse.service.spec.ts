@@ -2,7 +2,7 @@ import { NgZone } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthService } from './auth.service';
-import { SseService } from './sse.service';
+import { isUnauthorizedSseError, SseConnectionError, SseService } from './sse.service';
 
 describe('SseService', () => {
   let sse: SseService;
@@ -111,6 +111,27 @@ describe('SseService', () => {
     expect(options.headers.get('X-Request-ID')).toBe('req-123');
     expect(options.headers.get('Idempotency-Key')).toBe('idem-456');
     sub.unsubscribe();
+  });
+
+  it('logs out and preserves status when the stream is unauthorized', async () => {
+    (globalThis.fetch as any).mockResolvedValue(createSseResponse([], 401));
+
+    await new Promise<void>((resolve, reject) => {
+      sse.connect('/sse').subscribe({
+        next: () => reject(new Error('should not emit next')),
+        error: (error) => {
+          expect(error).toBeInstanceOf(SseConnectionError);
+          expect(error.status).toBe(401);
+          expect(mockAuth.logout).toHaveBeenCalled();
+          resolve();
+        },
+        complete: () => reject(new Error('should not complete')),
+      });
+    });
+  });
+
+  it('recognizes plain unauthorized stream errors', () => {
+    expect(isUnauthorizedSseError(new Error('SSE request failed (401)'))).toBe(true);
   });
 
   it('parses SSE event/id frames via connectMessages', async () => {

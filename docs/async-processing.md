@@ -14,6 +14,49 @@
 - Retries & resilience: Dramatiq retry middleware; idempotency locks around jobs; progress persisted on long-running tasks (OCR jobs, document conversions).
 - Monitoring: tracing middleware emits spans; logs include actor, queue, retries; Redis namespaces `dramatiq:queue` and `dramatiq:results`.
 
+## Canonical user-facing async flow
+
+For **user-visible progress**, the production path is:
+
+1. API endpoint accepts the request and returns a canonical `202 Accepted` async start payload.
+2. Domain models / services update persisted job state.
+3. Django signals and async services publish normalized events into **Redis Streams**.
+4. SSE endpoints replay/live-read those stream events.
+5. Angular consumers reconnect on clean completion until they observe a terminal state.
+
+In diagram form:
+
+```mermaid
+flowchart LR
+  A[Angular POST start request] --> B[Django / DRF start endpoint]
+  B --> C[Dramatiq actor or service work]
+  C --> D[DB state update]
+  D --> E[Django signal / stream publisher]
+  E --> F[Redis Streams]
+  F --> G[SSE endpoint]
+  G --> H[Angular SSE consumer]
+```
+
+The Redis Results backend exists, but it is **not** the primary user-facing progress transport for the hardened frontend path.
+
+## SSE lifecycle rules
+
+- Many SSE responses are intentionally rotated at about **55 seconds**.
+- Frontend consumers should treat clean completion as a reconnect signal unless the last observed payload is terminal.
+- Replay semantics use `Last-Event-ID` for cursor resume; several domain streams also expose replay URLs such as `?replay=1&job_id=<id>`.
+- Keepalive comment frames are expected and should not be treated as progress events.
+- When the same `Idempotency-Key` is reused with a different request fingerprint, APIs should return **`409 Conflict`** instead of silently enqueueing a second job.
+
+## Manual verification checklist
+
+- [ ] Start a job that exceeds 55 seconds and verify the frontend reconnects without losing progress.
+- [ ] Refresh mid-job and confirm replay resumes from `Last-Event-ID` without duplicate terminal state handling.
+- [ ] Re-send the same async POST with the same `Idempotency-Key` and confirm the response is deduplicated.
+- [ ] Re-send the same async POST with the same `Idempotency-Key` but a different payload and confirm a `409 Conflict` response.
+- [ ] Trace one `X-Request-ID` from the initial start request through worker logs and the resulting SSE payloads.
+- [ ] Verify the global realtime stream reconnects cleanly after server-initiated rotation.
+- [ ] Verify categorization and OCR jobs both survive stream rotation and still emit final terminal updates.
+
 ## Scheduled Cron Jobs
 
 All scheduled tasks are registered in `core/tasks/cron_jobs.py` and run on the `scheduled` queue via `@db_periodic_task`. Each uses Redis-based enqueue/run locks to prevent concurrent execution.

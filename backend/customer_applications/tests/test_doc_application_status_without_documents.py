@@ -2,11 +2,12 @@
 
 from datetime import date, timedelta
 
-from customer_applications.models import DocApplication
+from customer_applications.models import DocApplication, Document
 from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from products.models import Product, Task
+from products.models.document_type import DocumentType
 
 User = get_user_model()
 
@@ -116,3 +117,39 @@ class DocApplicationStatusWithoutDocumentsTests(TestCase):
         )
 
         self.assertIsNotNone(application.due_date)
+
+    def test_completed_documents_do_not_complete_application_when_product_has_unstarted_tasks(self):
+        product = Product.objects.create(
+            name="Tasked Document Product",
+            code="TASK-DOC-1",
+            required_documents="Passport",
+            optional_documents="",
+        )
+        Task.objects.create(
+            product=product,
+            step=1,
+            name="Biometrics",
+            duration=2,
+            duration_is_business_days=False,
+        )
+        doc_type = DocumentType.objects.create(name="Passport", has_doc_number=True, ai_validation=False)
+
+        application = DocApplication.objects.create(
+            customer=self.customer,
+            product=product,
+            doc_date=date.today(),
+            created_by=self.user,
+        )
+
+        Document.objects.create(
+            doc_application=application,
+            doc_type=doc_type,
+            required=True,
+            doc_number="P123456",
+            created_by=self.user,
+        )
+
+        application.refresh_from_db()
+        self.assertTrue(application.is_document_collection_completed)
+        self.assertEqual(application.status, DocApplication.STATUS_PROCESSING)
+        self.assertFalse(application.is_application_completed)

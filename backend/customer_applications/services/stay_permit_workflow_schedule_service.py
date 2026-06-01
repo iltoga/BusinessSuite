@@ -31,7 +31,7 @@ class StayPermitWorkflowScheduleService:
         if not product.tasks.exists():
             if application.due_date is not None:
                 application.due_date = None
-                application.save(update_fields=["due_date", "updated_at"])
+                application.save(update_fields=["due_date", "status", "updated_at"])
             return None
 
         from customer_applications.services.stay_permit_submission_window_service import (
@@ -60,12 +60,12 @@ class StayPermitWorkflowScheduleService:
                     step_one.delete()
                 if application.due_date is not None:
                     application.due_date = None
-                    application.save(update_fields=["due_date", "updated_at"])
+                    application.save(update_fields=["due_date", "status", "updated_at"])
                 return None
 
             if application.doc_date != submission_date:
                 application.doc_date = submission_date
-                application.save(update_fields=["doc_date", "updated_at"])
+                application.save(update_fields=["doc_date", "status", "updated_at"])
 
             start_date = submission_date
             due_date = calculate_due_date(
@@ -100,6 +100,6 @@ class StayPermitWorkflowScheduleService:
 
             if application.due_date != due_date:
                 application.due_date = due_date
-                application.save(update_fields=["due_date", "updated_at"])
+                application.save(update_fields=["due_date", "status", "updated_at"])
 
         return step_one

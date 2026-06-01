@@ -25,7 +25,7 @@ from api.utils.contracts import build_error_payload, build_success_payload
 from api.utils.idempotency import resolve_request_idempotent_job, store_request_idempotent_job
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
-from api.utils.stream_payloads import build_async_job_start_payload, camelize_payload
+from api.utils.stream_payloads import build_async_job_links, build_async_job_start_payload, camelize_payload
 from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.ai_document_categorizer import (
     AIDocumentCategorizer,
@@ -41,15 +41,26 @@ from core.tasks.document_categorization import (
     run_document_categorization_item,
 )
 from customer_applications.models import DocApplication, Document, DocumentCategorizationItem, DocumentCategorizationJob
+from django.core.files import File
 from django.core.files.storage import default_storage
 from django.http import JsonResponse, StreamingHttpResponse
-from rest_framework import status
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 logger = Logger.get_logger(__name__)
+
+
+def _ensure_schema_serializer(view_callable):
+    """Keep function-based API views visible to the schema preprocessing hook."""
+    view_cls = getattr(view_callable, "cls", None)
+    if view_cls is not None and not hasattr(view_cls, "serializer_class"):
+        view_cls.serializer_class = serializers.Serializer
+    return view_callable
 
 
 def _error_response(
@@ -114,6 +125,26 @@ def _sync_ai_validation_from_categorization_item(document: Document, item: Docum
 
     document.ai_validation_status = Document.AI_VALIDATION_NONE
     document.ai_validation_result = None
+
+
+def _move_or_copy_storage_file(source_path: str, final_path: str) -> str:
+    """Persist a categorization temp file to its final storage path.
+
+    Local filesystem storage can move the file without reading/writing a second
+    copy. Other storage backends fall back to streaming through Django storage.
+    """
+    if hasattr(default_storage, "path"):
+        try:
+            source_fs_path = default_storage.path(source_path)
+            final_fs_path = default_storage.path(final_path)
+            os.makedirs(os.path.dirname(final_fs_path), exist_ok=True)
+            os.replace(source_fs_path, final_fs_path)
+            return final_path
+        except (NotImplementedError, OSError, ValueError):
+            pass
+
+    with default_storage.open(source_path, "rb") as source_file:
+        return default_storage.save(final_path, File(source_file))
 
 
 def _parse_provider_order(raw_value: Any) -> list[str] | None:
@@ -386,6 +417,54 @@ def _upload_files_to_job(*, job: DocumentCategorizationJob, files: list) -> tupl
     return uploaded_files, dispatched_tasks
 
 
+def _categorization_progress(job: DocumentCategorizationJob, *, fallback: int = 0) -> int:
+    result = job.result if isinstance(job.result, dict) else {}
+    overall_progress = result.get("overall_progress_percent")
+    try:
+        return int(overall_progress)
+    except (TypeError, ValueError):
+        return int(fallback or 0)
+
+
+def _build_categorization_links(request, job_id) -> dict[str, str]:
+    return build_async_job_links(
+        request,
+        job_id,
+        status_route="api-categorization-job-status",
+        stream_route="api-categorization-stream-sse",
+    )
+
+
+@extend_schema(
+    request=inline_serializer(
+        name="DocumentCategorizationInitRequest",
+        fields={
+            "totalFiles": serializers.IntegerField(required=False, min_value=0),
+            "model": serializers.CharField(required=False, allow_null=True, allow_blank=True),
+            "providerOrder": serializers.ListField(
+                child=serializers.CharField(),
+                required=False,
+                allow_empty=True,
+            ),
+        },
+    ),
+    responses={
+        202: inline_serializer(
+            name="DocumentCategorizationStartResponse",
+            fields={
+                "jobId": serializers.UUIDField(),
+                "status": serializers.CharField(),
+                "progress": serializers.IntegerField(),
+                "queued": serializers.BooleanField(),
+                "deduplicated": serializers.BooleanField(),
+                "requestId": serializers.CharField(required=False),
+                "statusUrl": serializers.URLField(required=False),
+                "streamUrl": serializers.URLField(required=False),
+                "totalFiles": serializers.IntegerField(),
+            },
+        ),
+    },
+)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def categorize_documents_init(request, application_id):
@@ -409,12 +488,19 @@ def categorize_documents_init(request, application_id):
     )
     if cached_job is not None:
         return Response(
-            {
-                "jobId": str(cached_job.id),
-                "totalFiles": int(cached_job.total_files or total_files),
-                "status": cached_job.status,
-            },
-            status=status.HTTP_201_CREATED,
+            build_async_job_start_payload(
+                job_id=cached_job.id,
+                status=cached_job.status,
+                progress=_categorization_progress(cached_job),
+                queued=False,
+                deduplicated=True,
+                request=request,
+                links=_build_categorization_links(request, cached_job.id),
+                extra={
+                    "totalFiles": int(cached_job.total_files or total_files),
+                },
+            ),
+            status=status.HTTP_202_ACCEPTED,
         )
 
     job = _create_categorization_job(
@@ -428,15 +514,54 @@ def categorize_documents_init(request, application_id):
     store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
 
     return Response(
-        {
-            "jobId": str(job.id),
-            "totalFiles": total_files,
-            "status": "queued",
-        },
-        status=status.HTTP_201_CREATED,
+        build_async_job_start_payload(
+            job_id=job.id,
+            status=job.status,
+            progress=_categorization_progress(job),
+            queued=True,
+            deduplicated=False,
+            request=request,
+            links=_build_categorization_links(request, job.id),
+            extra={
+                "totalFiles": total_files,
+            },
+        ),
+        status=status.HTTP_202_ACCEPTED,
     )
 
 
+@extend_schema(
+    request=inline_serializer(
+        name="DocumentCategorizationUploadRequest",
+        fields={
+            "files": serializers.ListField(child=serializers.FileField(), required=True),
+            "model": serializers.CharField(required=False, allow_null=True, allow_blank=True),
+            "providerOrder": serializers.ListField(
+                child=serializers.CharField(),
+                required=False,
+                allow_empty=True,
+            ),
+        },
+    ),
+    responses={
+        202: inline_serializer(
+            name="DocumentCategorizationQueuedResponse",
+            fields={
+                "jobId": serializers.UUIDField(),
+                "status": serializers.CharField(),
+                "progress": serializers.IntegerField(),
+                "queued": serializers.BooleanField(),
+                "deduplicated": serializers.BooleanField(),
+                "requestId": serializers.CharField(required=False),
+                "statusUrl": serializers.URLField(required=False),
+                "streamUrl": serializers.URLField(required=False),
+                "totalFiles": serializers.IntegerField(),
+                "uploadedFiles": serializers.IntegerField(required=False),
+                "dispatchedTasks": serializers.IntegerField(required=False),
+            },
+        ),
+    },
+)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
@@ -463,15 +588,19 @@ def categorize_documents(request, application_id):
     )
     if cached_job is not None:
         return Response(
-            build_success_payload(
-                {
-                    "jobId": str(cached_job.id),
-                    "totalFiles": int(cached_job.total_files or len(files)),
-                    "status": cached_job.status,
-                },
+            build_async_job_start_payload(
+                job_id=cached_job.id,
+                status=cached_job.status,
+                progress=_categorization_progress(cached_job),
+                queued=False,
+                deduplicated=True,
                 request=request,
+                links=_build_categorization_links(request, cached_job.id),
+                extra={
+                    "totalFiles": int(cached_job.total_files or len(files)),
+                },
             ),
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_202_ACCEPTED,
         )
 
     if not files:
@@ -491,22 +620,54 @@ def categorize_documents(request, application_id):
         total_files=len(files),
     )
 
-    _upload_files_to_job(job=job, files=files)
+    uploaded_files, dispatched_count = _upload_files_to_job(job=job, files=files)
     store_request_idempotent_job(cache_key=idempotency_cache_key, job_id=job.id)
 
     return Response(
-        build_success_payload(
-            {
-                "jobId": str(job.id),
-                "totalFiles": len(files),
-                "status": "queued",
-            },
+        build_async_job_start_payload(
+            job_id=job.id,
+            status="processing",
+            progress=_categorization_progress(job),
+            queued=True,
+            deduplicated=False,
             request=request,
+            links=_build_categorization_links(request, job.id),
+            extra={
+                "totalFiles": len(files),
+                "uploadedFiles": uploaded_files,
+                "dispatchedTasks": dispatched_count,
+            },
         ),
-        status=status.HTTP_201_CREATED,
+        status=status.HTTP_202_ACCEPTED,
     )
 
 
+@extend_schema(
+    request=inline_serializer(
+        name="DocumentCategorizationUploadFilesRequest",
+        fields={
+            "files": serializers.ListField(child=serializers.FileField(), required=True),
+        },
+    ),
+    responses={
+        202: inline_serializer(
+            name="DocumentCategorizationUploadFilesResponse",
+            fields={
+                "jobId": serializers.UUIDField(),
+                "status": serializers.CharField(),
+                "progress": serializers.IntegerField(),
+                "queued": serializers.BooleanField(),
+                "deduplicated": serializers.BooleanField(),
+                "requestId": serializers.CharField(required=False),
+                "statusUrl": serializers.URLField(required=False),
+                "streamUrl": serializers.URLField(required=False),
+                "totalFiles": serializers.IntegerField(),
+                "uploadedFiles": serializers.IntegerField(),
+                "dispatchedTasks": serializers.IntegerField(),
+            },
+        ),
+    },
+)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
@@ -533,12 +694,20 @@ def categorization_upload_files(request, job_id):
     uploaded_files, dispatched_count = _upload_files_to_job(job=job, files=files)
 
     return Response(
-        {
-            "jobId": str(job.id),
-            "uploadedFiles": uploaded_files,
-            "dispatchedTasks": dispatched_count,
-            "status": "processing",
-        },
+        build_async_job_start_payload(
+            job_id=job.id,
+            status="processing",
+            progress=_categorization_progress(job),
+            queued=True,
+            deduplicated=False,
+            request=request,
+            links=_build_categorization_links(request, job.id),
+            extra={
+                "totalFiles": int(job.total_files or len(files)),
+                "uploadedFiles": uploaded_files,
+                "dispatchedTasks": dispatched_count,
+            },
+        ),
         status=status.HTTP_202_ACCEPTED,
     )
 
@@ -865,6 +1034,7 @@ def categorization_stream_sse(request, job_id):
                                 "index": item.sort_index,
                                 "filename": item.filename,
                                 "message": f"✗ {item.filename}: {item.error_message or 'Unknown error'}",
+                                "error": item.error_message or "Unknown error",
                                 "errorMessage": item.error_message or "Unknown error",
                             },
                             event_id=event_id,
@@ -907,6 +1077,7 @@ def categorization_stream_sse(request, job_id):
                             "confidence": item.confidence,
                             "reasoning": item_result.get("reasoning", ""),
                             "categorizationPass": item_result.get("pass_used", 1),
+                            "error": item.error_message or None,
                             "errorMessage": item.error_message or None,
                             "pipelineStage": item_result.get("stage"),
                             "aiValidationEnabled": bool(item_result.get("ai_validation_enabled")),
@@ -1026,6 +1197,21 @@ def categorization_stream_sse(request, job_id):
     return response
 
 
+@extend_schema(
+    request=CategorizationApplySerializer,
+    responses={
+        200: inline_serializer(
+            name="DocumentCategorizationApplyResponse",
+            fields={
+                "applied": serializers.ListField(child=serializers.DictField(), required=False),
+                "errors": serializers.ListField(child=serializers.DictField(), required=False),
+                "totalApplied": serializers.IntegerField(),
+                "totalErrors": serializers.IntegerField(),
+            },
+        ),
+        409: OpenApiResponse(description="Categorization job is still processing and cannot be applied yet."),
+    },
+)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def categorization_apply(request, job_id):
@@ -1037,7 +1223,7 @@ def categorization_apply(request, job_id):
     only files copied into their final Document location are persisted.
     """
     try:
-        job = DocumentCategorizationJob.objects.get(id=job_id)
+        job = DocumentCategorizationJob.objects.select_related("doc_application").get(id=job_id)
     except DocumentCategorizationJob.DoesNotExist:
         return _error_response("Job not found.", status.HTTP_404_NOT_FOUND, code="not_found", request=request)
 
@@ -1054,9 +1240,8 @@ def categorization_apply(request, job_id):
     applied = []
     errors = []
 
-    incomplete_items = [
-        item.filename for item in job.items.all().order_by("sort_index") if not categorization_item_is_terminal(item)
-    ]
+    job_items = list(job.items.select_related("document_type", "document").all().order_by("sort_index"))
+    incomplete_items = [item.filename for item in job_items if not categorization_item_is_terminal(item)]
     if incomplete_items:
         pending_list = ", ".join(incomplete_items[:3])
         if len(incomplete_items) > 3:
@@ -1074,30 +1259,30 @@ def categorization_apply(request, job_id):
             request=request,
         )
 
+    item_by_id = {str(item.id): item for item in job_items}
+    document_ids = [mapping["document_id"] for mapping in mappings]
+    documents_by_id = Document.objects.select_related(
+        "doc_type",
+        "doc_application",
+        "doc_application__customer",
+        "doc_application__product",
+    ).filter(id__in=document_ids, doc_application=job.doc_application).in_bulk()
+
     for mapping in mappings:
         item_id = mapping["item_id"]
         document_id = mapping["document_id"]
 
-        try:
-            item = DocumentCategorizationItem.objects.get(id=item_id, job=job)
-        except DocumentCategorizationItem.DoesNotExist:
+        item = item_by_id.get(str(item_id))
+        if item is None:
             errors.append({"itemId": str(item_id), "errorMessage": "Item not found"})
             continue
 
-        try:
-            document = Document.objects.get(
-                id=document_id,
-                doc_application=job.doc_application,
-            )
-        except Document.DoesNotExist:
+        document = documents_by_id.get(document_id)
+        if document is None:
             errors.append({"itemId": str(item_id), "errorMessage": "Document not found in this application"})
             continue
 
         try:
-            # Read the temp file
-            with default_storage.open(item.file_path, "rb") as f:
-                file_content = f.read()
-
             # Determine the final path
             _, extension = os.path.splitext(item.filename)
             from core.utils.helpers import whitespaces_to_underscores
@@ -1107,9 +1292,7 @@ def categorization_apply(request, job_id):
             final_path = f"{doc_application_folder}/{final_filename}"
 
             # Save to final location
-            from django.core.files.base import ContentFile
-
-            saved_path = default_storage.save(final_path, ContentFile(file_content))
+            saved_path = _move_or_copy_storage_file(item.file_path, final_path)
 
             # Update the Document
             document.file.name = saved_path
@@ -1175,6 +1358,15 @@ def categorization_apply(request, job_id):
     )
 
 
+@extend_schema(
+    request=inline_serializer(
+        name="ValidateDocumentCategoryRequest",
+        fields={
+            "file": serializers.FileField(),
+        },
+    ),
+    responses={200: OpenApiTypes.OBJECT},
+)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
@@ -1277,6 +1469,7 @@ def validate_document_category(request, document_id):
         )
 
 
+@extend_schema(responses={200: DocumentCategorizationJobSerializer})
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def categorization_job_status(request, job_id):
@@ -1291,6 +1484,14 @@ def categorization_job_status(request, job_id):
 
     serializer = DocumentCategorizationJobSerializer(job)
     return Response(serializer.data)
+
+
+categorize_documents_init = _ensure_schema_serializer(categorize_documents_init)
+categorize_documents = _ensure_schema_serializer(categorize_documents)
+categorization_upload_files = _ensure_schema_serializer(categorization_upload_files)
+categorization_apply = _ensure_schema_serializer(categorization_apply)
+validate_document_category = _ensure_schema_serializer(validate_document_category)
+categorization_job_status = _ensure_schema_serializer(categorization_job_status)
 
 
 def _send_event(event_type: str, data: dict, *, event_id: str | None = None) -> str:

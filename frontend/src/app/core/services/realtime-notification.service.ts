@@ -1,9 +1,12 @@
 import { inject, Injectable } from '@angular/core';
-import { filter, map, Observable, shareReplay, takeWhile } from 'rxjs';
+import { filter, map, Observable, ReplaySubject, share, takeWhile } from 'rxjs';
 
 import { type AsyncJob } from '@/core/api';
+import { reconnectOnComplete, SseMessage, SseService } from '@/core/services/sse.service';
 import { isTerminalAsyncJob, normalizeAsyncJobUpdate } from '@/core/utils/async-job-contract';
-import { SseMessage, SseService } from '@/core/services/sse.service';
+
+const GLOBAL_REALTIME_RECONNECT_DELAY_MS = 250;
+const GLOBAL_REALTIME_STREAM_ROTATION_MS = 55_000;
 
 export interface RealtimeJobUpdate {
   status?: string; // 'queued' | 'processing' | 'completed' | 'failed'
@@ -34,9 +37,23 @@ export class RealtimeNotificationService {
   private get events$(): Observable<SseMessage<unknown>> {
     if (!this._events$) {
       // Connect to the single global multiplexed stream
-      this._events$ = this.sseService
-        .connectMessages<unknown>('/api/core/realtime/stream/')
-        .pipe(shareReplay({ bufferSize: 50, refCount: true }));
+      this._events$ = reconnectOnComplete(
+        () =>
+          this.sseService.connectMessages<unknown>('/api/core/realtime/stream/', {
+            maxConnectionDurationMs: GLOBAL_REALTIME_STREAM_ROTATION_MS,
+          }),
+        {
+          reconnectDelayMs: GLOBAL_REALTIME_RECONNECT_DELAY_MS,
+          shouldReconnect: () => true,
+        },
+      ).pipe(
+        share({
+          connector: () => new ReplaySubject<SseMessage<unknown>>(50),
+          resetOnError: true,
+          resetOnComplete: true,
+          resetOnRefCountZero: true,
+        }),
+      );
     }
     return this._events$;
   }

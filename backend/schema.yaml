@@ -423,10 +423,10 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/backups/restore/:
+  /api/backups/restore-job/:
     post:
-      operationId: backupsRestoreCreate
-      description: Trigger stream-backed SSE restore execution.
+      operationId: backupsRestoreJobCreate
+      description: Return a canonical 202 start payload for restore execution.
       summary: Restore from backup
       parameters:
       - in: query
@@ -437,48 +437,55 @@ paths:
         name: include_users
         schema:
           type: boolean
-      - in: query
-        name: replay
-        schema:
-          type: boolean
-        description: Set true to replay existing stream events without enqueuing a
-          new restore job.
       tags:
       - backups
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '400':
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/backups/start/:
-    get:
-      operationId: backupsStartRetrieve
-      description: Trigger stream-backed SSE backup execution.
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/start-job/:
+    post:
+      operationId: backupsStartJobCreate
+      description: Return a canonical 202 start payload for backup execution.
       summary: Start backup process
       parameters:
       - in: query
         name: include_users
         schema:
           type: boolean
-      - in: query
-        name: replay
-        schema:
-          type: boolean
-        description: Set true to replay existing stream events without enqueuing a
-          new backup job.
       tags:
       - backups
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '409':
           content:
             application/json:
               schema:
@@ -1172,6 +1179,13 @@ paths:
   /api/customer-applications/:
     get:
       operationId: customerApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - name: ordering
         required: false
@@ -1239,9 +1253,86 @@ paths:
               schema:
                 $ref: '#/components/schemas/DocApplicationDetail'
           description: ''
+  /api/customer-applications/{applicationId}/categorize-documents/:
+    post:
+      operationId: customerApplicationsCategorizeDocumentsCreate
+      description: |-
+        Upload multiple files and start AI categorization.
+        Files are saved to temp storage and Dramatiq tasks are dispatched in parallel.
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationQueuedResponse'
+          description: ''
+  /api/customer-applications/{applicationId}/categorize-documents/init/:
+    post:
+      operationId: customerApplicationsCategorizeDocumentsInitCreate
+      description: Create a categorization job first so frontend can subscribe to
+        SSE before file upload starts.
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationStartResponse'
+          description: ''
   /api/customer-applications/{id}/:
     get:
       operationId: customerApplicationsRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1300,6 +1391,13 @@ paths:
           description: ''
     patch:
       operationId: customerApplicationsPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1430,7 +1528,7 @@ paths:
   /api/customer-applications/{id}/reopen/:
     post:
       operationId: customerApplicationsReopenCreate
-      description: Re-open a completed application.
+      description: Re-open a semantically completed application.
       parameters:
       - in: path
         name: id
@@ -1608,6 +1706,13 @@ paths:
   /api/customer-applications/bulk-delete/:
     post:
       operationId: customerApplicationsBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - customer-applications
       requestBody:
@@ -1637,6 +1742,13 @@ paths:
   /api/customers/:
     get:
       operationId: customersList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - name: ordering
         required: false
@@ -1676,6 +1788,13 @@ paths:
           description: ''
     post:
       operationId: customersCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - customers
       requestBody:
@@ -1705,6 +1824,13 @@ paths:
   /api/customers/{id}/:
     get:
       operationId: customersRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1725,6 +1851,13 @@ paths:
           description: ''
     put:
       operationId: customersUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1759,6 +1892,13 @@ paths:
           description: ''
     patch:
       operationId: customersPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1793,6 +1933,13 @@ paths:
           description: ''
     delete:
       operationId: customersDestroy
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1810,6 +1957,13 @@ paths:
   /api/customers/{id}/applications-history/:
     get:
       operationId: customersApplicationsHistoryList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1856,6 +2010,13 @@ paths:
   /api/customers/{id}/toggle-active/:
     post:
       operationId: customersToggleActiveCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1892,6 +2053,13 @@ paths:
   /api/customers/{id}/uninvoiced-applications/:
     get:
       operationId: customersUninvoicedApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -1938,6 +2106,13 @@ paths:
   /api/customers/bulk-delete/:
     post:
       operationId: customersBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - customers
       requestBody:
@@ -1990,6 +2165,13 @@ paths:
   /api/customers/search/:
     get:
       operationId: customersSearchRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - customers
       security:
@@ -2018,6 +2200,109 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DashboardStats'
+          description: ''
+  /api/document-categorization/{jobId}/apply/:
+    post:
+      operationId: documentCategorizationApplyCreate
+      description: |-
+        Apply confirmed categorization results: attach files to Document rows.
+
+        After applying the requested mappings, **all** transient files for this
+        job are deleted from storage (``tmp/categorization/{job_id}/``).  This
+        includes unapplied files (e.g. "No Slot" or errored items) so that
+        only files copied into their final Document location are persisted.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - document-categorization
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationApplyResponse'
+          description: ''
+        '409':
+          description: Categorization job is still processing and cannot be applied
+            yet.
+  /api/document-categorization/{jobId}/status/:
+    get:
+      operationId: documentCategorizationStatusRetrieve
+      description: Polling fallback for categorization job status.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - document-categorization
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationJob'
+          description: ''
+  /api/document-categorization/{jobId}/upload/:
+    post:
+      operationId: documentCategorizationUploadCreate
+      description: Upload files into an existing categorization job and dispatch item
+        tasks.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - document-categorization
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadFilesRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadFilesRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationUploadFilesResponse'
           description: ''
   /api/document-ocr/check/:
     post:
@@ -2339,6 +2624,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Document'
+          description: ''
+  /api/documents/{documentId}/validate-category/:
+    post:
+      operationId: documentsValidateCategoryCreate
+      description: Run pre-upload AI validation for a file against the target DocumentType
+        rules.
+      parameters:
+      - in: path
+        name: documentId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ValidateDocumentCategoryRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ValidateDocumentCategoryRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/documents/{id}/:
     get:
@@ -2728,6 +3046,13 @@ paths:
   /api/invoices/:
     get:
       operationId: invoicesList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: hide_paid
@@ -2771,6 +3096,13 @@ paths:
           description: ''
     post:
       operationId: invoicesCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - invoices
       requestBody:
@@ -2801,6 +3133,13 @@ paths:
   /api/invoices/{id}/:
     get:
       operationId: invoicesRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -2822,6 +3161,13 @@ paths:
           description: ''
     put:
       operationId: invoicesUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -2858,6 +3204,13 @@ paths:
           description: ''
     patch:
       operationId: invoicesPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -2894,6 +3247,13 @@ paths:
           description: ''
     delete:
       operationId: invoicesDestroy
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -2912,6 +3272,13 @@ paths:
   /api/invoices/{id}/delete-preview/:
     get:
       operationId: invoicesDeletePreviewRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -2934,6 +3301,13 @@ paths:
   /api/invoices/{id}/download/:
     get:
       operationId: invoicesDownloadRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: file_format
@@ -2965,6 +3339,13 @@ paths:
   /api/invoices/{id}/download-async/:
     post:
       operationId: invoicesDownloadAsyncCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -3006,6 +3387,13 @@ paths:
   /api/invoices/{id}/force-delete/:
     post:
       operationId: invoicesForceDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -3042,6 +3430,13 @@ paths:
   /api/invoices/{id}/mark-as-paid/:
     post:
       operationId: invoicesMarkAsPaidCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -3079,6 +3474,13 @@ paths:
   /api/invoices/bulk-delete/:
     post:
       operationId: invoicesBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - invoices
       requestBody:
@@ -3108,6 +3510,13 @@ paths:
   /api/invoices/download-async/file/{jobId}/:
     get:
       operationId: invoicesDownloadAsyncFileRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -3131,6 +3540,13 @@ paths:
   /api/invoices/download-async/status/{jobId}/:
     get:
       operationId: invoicesDownloadAsyncStatusRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -3155,6 +3571,13 @@ paths:
   /api/invoices/download-async/stream/{jobId}/:
     get:
       operationId: invoicesDownloadAsyncStreamRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -3178,6 +3601,13 @@ paths:
   /api/invoices/from_application_prefill/{applicationId}/:
     get:
       operationId: invoicesFromApplicationPrefillRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: applicationId
@@ -3199,6 +3629,13 @@ paths:
   /api/invoices/get_billable_products/{customerId}/:
     get:
       operationId: invoicesGetBillableProductsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: current_invoice_id
@@ -3250,6 +3687,13 @@ paths:
   /api/invoices/get_customer_applications/{customerId}/:
     get:
       operationId: invoicesGetCustomerApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: current_invoice_id
@@ -3311,6 +3755,13 @@ paths:
   /api/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/:
     get:
       operationId: invoicesGetInvoiceApplicationDueAmountRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: invoiceApplicationId
@@ -4827,7 +5278,7 @@ paths:
   /api/server-management/media-cleanup/:
     post:
       operationId: serverManagementMediaCleanupCreate
-      description: Delete unlinked media files from the active media store.
+      description: Return a canonical 202 start payload for media cleanup execution.
       summary: Clean unlinked media files
       tags:
       - server-management
@@ -4849,7 +5300,13 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '409':
           content:
             application/json:
               schema:
@@ -5889,10 +6346,10 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/v1/backups/restore/:
+  /api/v1/backups/restore-job/:
     post:
-      operationId: v1BackupsRestoreCreate
-      description: Trigger stream-backed SSE restore execution.
+      operationId: v1BackupsRestoreJobCreate
+      description: Return a canonical 202 start payload for restore execution.
       summary: Restore from backup
       parameters:
       - in: query
@@ -5903,48 +6360,55 @@ paths:
         name: include_users
         schema:
           type: boolean
-      - in: query
-        name: replay
-        schema:
-          type: boolean
-        description: Set true to replay existing stream events without enqueuing a
-          new restore job.
       tags:
       - v1
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '400':
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/v1/backups/start/:
-    get:
-      operationId: v1BackupsStartRetrieve
-      description: Trigger stream-backed SSE backup execution.
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/backups/start-job/:
+    post:
+      operationId: v1BackupsStartJobCreate
+      description: Return a canonical 202 start payload for backup execution.
       summary: Start backup process
       parameters:
       - in: query
         name: include_users
         schema:
           type: boolean
-      - in: query
-        name: replay
-        schema:
-          type: boolean
-        description: Set true to replay existing stream events without enqueuing a
-          new backup job.
       tags:
       - v1
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '409':
           content:
             application/json:
               schema:
@@ -6638,6 +7102,13 @@ paths:
   /api/v1/customer-applications/:
     get:
       operationId: v1CustomerApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - name: ordering
         required: false
@@ -6705,9 +7176,86 @@ paths:
               schema:
                 $ref: '#/components/schemas/DocApplicationDetail'
           description: ''
+  /api/v1/customer-applications/{applicationId}/categorize-documents/:
+    post:
+      operationId: v1CustomerApplicationsCategorizeDocumentsCreate
+      description: |-
+        Upload multiple files and start AI categorization.
+        Files are saved to temp storage and Dramatiq tasks are dispatched in parallel.
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationQueuedResponse'
+          description: ''
+  /api/v1/customer-applications/{applicationId}/categorize-documents/init/:
+    post:
+      operationId: v1CustomerApplicationsCategorizeDocumentsInitCreate
+      description: Create a categorization job first so frontend can subscribe to
+        SSE before file upload starts.
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationInitRequestRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationStartResponse'
+          description: ''
   /api/v1/customer-applications/{id}/:
     get:
       operationId: v1CustomerApplicationsRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -6766,6 +7314,13 @@ paths:
           description: ''
     patch:
       operationId: v1CustomerApplicationsPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -6896,7 +7451,7 @@ paths:
   /api/v1/customer-applications/{id}/reopen/:
     post:
       operationId: v1CustomerApplicationsReopenCreate
-      description: Re-open a completed application.
+      description: Re-open a semantically completed application.
       parameters:
       - in: path
         name: id
@@ -7074,6 +7629,13 @@ paths:
   /api/v1/customer-applications/bulk-delete/:
     post:
       operationId: v1CustomerApplicationsBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       requestBody:
@@ -7103,6 +7665,13 @@ paths:
   /api/v1/customers/:
     get:
       operationId: v1CustomersList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - name: ordering
         required: false
@@ -7142,6 +7711,13 @@ paths:
           description: ''
     post:
       operationId: v1CustomersCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       requestBody:
@@ -7171,6 +7747,13 @@ paths:
   /api/v1/customers/{id}/:
     get:
       operationId: v1CustomersRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7191,6 +7774,13 @@ paths:
           description: ''
     put:
       operationId: v1CustomersUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7225,6 +7815,13 @@ paths:
           description: ''
     patch:
       operationId: v1CustomersPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7259,6 +7856,13 @@ paths:
           description: ''
     delete:
       operationId: v1CustomersDestroy
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7276,6 +7880,13 @@ paths:
   /api/v1/customers/{id}/applications-history/:
     get:
       operationId: v1CustomersApplicationsHistoryList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7322,6 +7933,13 @@ paths:
   /api/v1/customers/{id}/toggle-active/:
     post:
       operationId: v1CustomersToggleActiveCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7358,6 +7976,13 @@ paths:
   /api/v1/customers/{id}/uninvoiced-applications/:
     get:
       operationId: v1CustomersUninvoicedApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -7404,6 +8029,13 @@ paths:
   /api/v1/customers/bulk-delete/:
     post:
       operationId: v1CustomersBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       requestBody:
@@ -7456,6 +8088,13 @@ paths:
   /api/v1/customers/search/:
     get:
       operationId: v1CustomersSearchRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       security:
@@ -7484,6 +8123,109 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DashboardStats'
+          description: ''
+  /api/v1/document-categorization/{jobId}/apply/:
+    post:
+      operationId: v1DocumentCategorizationApplyCreate
+      description: |-
+        Apply confirmed categorization results: attach files to Document rows.
+
+        After applying the requested mappings, **all** transient files for this
+        job are deleted from storage (``tmp/categorization/{job_id}/``).  This
+        includes unapplied files (e.g. "No Slot" or errored items) so that
+        only files copied into their final Document location are persisted.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CategorizationApplyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationApplyResponse'
+          description: ''
+        '409':
+          description: Categorization job is still processing and cannot be applied
+            yet.
+  /api/v1/document-categorization/{jobId}/status/:
+    get:
+      operationId: v1DocumentCategorizationStatusRetrieve
+      description: Polling fallback for categorization job status.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationJob'
+          description: ''
+  /api/v1/document-categorization/{jobId}/upload/:
+    post:
+      operationId: v1DocumentCategorizationUploadCreate
+      description: Upload files into an existing categorization job and dispatch item
+        tasks.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadFilesRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentCategorizationUploadFilesRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCategorizationUploadFilesResponse'
           description: ''
   /api/v1/document-ocr/check/:
     post:
@@ -7805,6 +8547,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Document'
+          description: ''
+  /api/v1/documents/{documentId}/validate-category/:
+    post:
+      operationId: v1DocumentsValidateCategoryCreate
+      description: Run pre-upload AI validation for a file against the target DocumentType
+        rules.
+      parameters:
+      - in: path
+        name: documentId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ValidateDocumentCategoryRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ValidateDocumentCategoryRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/documents/{id}/:
     get:
@@ -8194,6 +8969,13 @@ paths:
   /api/v1/invoices/:
     get:
       operationId: v1InvoicesList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: hide_paid
@@ -8237,6 +9019,13 @@ paths:
           description: ''
     post:
       operationId: v1InvoicesCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       requestBody:
@@ -8267,6 +9056,13 @@ paths:
   /api/v1/invoices/{id}/:
     get:
       operationId: v1InvoicesRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8288,6 +9084,13 @@ paths:
           description: ''
     put:
       operationId: v1InvoicesUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8324,6 +9127,13 @@ paths:
           description: ''
     patch:
       operationId: v1InvoicesPartialUpdate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8360,6 +9170,13 @@ paths:
           description: ''
     delete:
       operationId: v1InvoicesDestroy
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8378,6 +9195,13 @@ paths:
   /api/v1/invoices/{id}/delete-preview/:
     get:
       operationId: v1InvoicesDeletePreviewRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8400,6 +9224,13 @@ paths:
   /api/v1/invoices/{id}/download/:
     get:
       operationId: v1InvoicesDownloadRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: file_format
@@ -8431,6 +9262,13 @@ paths:
   /api/v1/invoices/{id}/download-async/:
     post:
       operationId: v1InvoicesDownloadAsyncCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8472,6 +9310,13 @@ paths:
   /api/v1/invoices/{id}/force-delete/:
     post:
       operationId: v1InvoicesForceDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8508,6 +9353,13 @@ paths:
   /api/v1/invoices/{id}/mark-as-paid/:
     post:
       operationId: v1InvoicesMarkAsPaidCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: id
@@ -8545,6 +9397,13 @@ paths:
   /api/v1/invoices/bulk-delete/:
     post:
       operationId: v1InvoicesBulkDeleteCreate
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       tags:
       - v1
       requestBody:
@@ -8574,6 +9433,13 @@ paths:
   /api/v1/invoices/download-async/file/{jobId}/:
     get:
       operationId: v1InvoicesDownloadAsyncFileRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -8597,6 +9463,13 @@ paths:
   /api/v1/invoices/download-async/status/{jobId}/:
     get:
       operationId: v1InvoicesDownloadAsyncStatusRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -8621,6 +9494,13 @@ paths:
   /api/v1/invoices/download-async/stream/{jobId}/:
     get:
       operationId: v1InvoicesDownloadAsyncStreamRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: jobId
@@ -8644,6 +9524,13 @@ paths:
   /api/v1/invoices/from_application_prefill/{applicationId}/:
     get:
       operationId: v1InvoicesFromApplicationPrefillRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: applicationId
@@ -8665,6 +9552,13 @@ paths:
   /api/v1/invoices/get_billable_products/{customerId}/:
     get:
       operationId: v1InvoicesGetBillableProductsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: current_invoice_id
@@ -8716,6 +9610,13 @@ paths:
   /api/v1/invoices/get_customer_applications/{customerId}/:
     get:
       operationId: v1InvoicesGetCustomerApplicationsList
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: query
         name: current_invoice_id
@@ -8777,6 +9678,13 @@ paths:
   /api/v1/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/:
     get:
       operationId: v1InvoicesGetInvoiceApplicationDueAmountRetrieve
+      description: |-
+        Shared search configuration for DRF list-style endpoints.
+
+        Supports a canonical ``?search=`` param with the legacy ``?q=`` alias,
+        allows opting specific actions into search, and can delegate to a
+        queryset-level custom search method when domain-specific behavior is
+        required.
       parameters:
       - in: path
         name: invoiceApplicationId
@@ -10293,7 +11201,7 @@ paths:
   /api/v1/server-management/media-cleanup/:
     post:
       operationId: v1ServerManagementMediaCleanupCreate
-      description: Delete unlinked media files from the active media store.
+      description: Return a canonical 202 start payload for media cleanup execution.
       summary: Clean unlinked media files
       tags:
       - v1
@@ -10315,7 +11223,13 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '200':
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAsyncStartResponse'
+          description: ''
+        '409':
           content:
             application/json:
               schema:
@@ -11438,6 +12352,31 @@ paths:
       - Mock
 components:
   schemas:
+    AdminAsyncStartResponse:
+      type: object
+      description: Canonical 202 response payload for admin stream-backed jobs.
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+        requestId:
+          type: string
+        streamUrl:
+          type: string
+          format: uri
+      required:
+      - deduplicated
+      - jobId
+      - progress
+      - queued
+      - status
     AdminPushNotificationDispatchResult:
       type: object
       properties:
@@ -11571,15 +12510,13 @@ components:
           type: boolean
         context_length:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
           nullable: true
         max_completion_tokens:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
           nullable: true
         modality:
           type: string
@@ -11785,15 +12722,13 @@ components:
           type: boolean
         context_length:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
           nullable: true
         max_completion_tokens:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
           nullable: true
         modality:
           type: string
@@ -12214,6 +13149,26 @@ components:
       - reminder_date
       - reminder_time
       - user
+    CategorizationApplyItemRequest:
+      type: object
+      properties:
+        item_id:
+          type: string
+          format: uuid
+        document_id:
+          type: integer
+      required:
+      - document_id
+      - item_id
+    CategorizationApplyRequest:
+      type: object
+      properties:
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategorizationApplyItemRequest'
+      required:
+      - mappings
     ChangePasswordRequest:
       type: object
       properties:
@@ -13581,6 +14536,318 @@ components:
       - icon
       - label
       - name
+    DocumentCategorizationApplyResponse:
+      type: object
+      properties:
+        applied:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        totalApplied:
+          type: integer
+        totalErrors:
+          type: integer
+      required:
+      - totalApplied
+      - totalErrors
+    DocumentCategorizationInitRequestRequest:
+      type: object
+      properties:
+        totalFiles:
+          type: integer
+          minimum: 0
+        model:
+          type: string
+          nullable: true
+        providerOrder:
+          type: array
+          items:
+            type: string
+            minLength: 1
+    DocumentCategorizationItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sortIndex:
+          type: integer
+          readOnly: true
+        filename:
+          type: string
+          maxLength: 255
+        status:
+          enum:
+          - queued
+          - processing
+          - categorized
+          - error
+          type: string
+          description: |-
+            * `queued` - Queued
+            * `processing` - Processing
+            * `categorized` - Categorized
+            * `error` - Error
+          x-spec-enum-id: 3b2714a7c72fd7ab
+        documentTypeName:
+          type: string
+          readOnly: true
+        documentId:
+          type: integer
+          readOnly: true
+        confidence:
+          type: number
+          format: double
+          nullable: true
+        result:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        validationStatus:
+          type: string
+          readOnly: true
+          nullable: true
+        validationResult:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        errorMessage:
+          type: string
+          readOnly: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - createdAt
+      - documentId
+      - documentTypeName
+      - errorMessage
+      - filename
+      - id
+      - result
+      - sortIndex
+      - updatedAt
+      - validationResult
+      - validationStatus
+    DocumentCategorizationJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        docApplicationId:
+          type: integer
+          readOnly: true
+        status:
+          enum:
+          - queued
+          - processing
+          - completed
+          - failed
+          type: string
+          description: |-
+            * `queued` - Queued
+            * `processing` - Processing
+            * `completed` - Completed
+            * `failed` - Failed
+          x-spec-enum-id: c71ea0f6ba40f041
+        progress:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        totalFiles:
+          type: integer
+          readOnly: true
+        processedFiles:
+          type: integer
+          readOnly: true
+        successCount:
+          type: integer
+          readOnly: true
+        errorCount:
+          type: integer
+          readOnly: true
+        requestParams:
+          readOnly: true
+        result:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        errorMessage:
+          type: string
+          readOnly: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentCategorizationItem'
+          readOnly: true
+      required:
+      - createdAt
+      - docApplicationId
+      - errorCount
+      - errorMessage
+      - id
+      - items
+      - processedFiles
+      - requestParams
+      - result
+      - successCount
+      - totalFiles
+      - updatedAt
+    DocumentCategorizationQueuedResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+        requestId:
+          type: string
+        statusUrl:
+          type: string
+          format: uri
+        streamUrl:
+          type: string
+          format: uri
+        totalFiles:
+          type: integer
+        uploadedFiles:
+          type: integer
+        dispatchedTasks:
+          type: integer
+      required:
+      - deduplicated
+      - jobId
+      - progress
+      - queued
+      - status
+      - totalFiles
+    DocumentCategorizationStartResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+        requestId:
+          type: string
+        statusUrl:
+          type: string
+          format: uri
+        streamUrl:
+          type: string
+          format: uri
+        totalFiles:
+          type: integer
+      required:
+      - deduplicated
+      - jobId
+      - progress
+      - queued
+      - status
+      - totalFiles
+    DocumentCategorizationUploadFilesRequestRequest:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+            format: binary
+      required:
+      - files
+    DocumentCategorizationUploadFilesResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        progress:
+          type: integer
+        queued:
+          type: boolean
+        deduplicated:
+          type: boolean
+        requestId:
+          type: string
+        statusUrl:
+          type: string
+          format: uri
+        streamUrl:
+          type: string
+          format: uri
+        totalFiles:
+          type: integer
+        uploadedFiles:
+          type: integer
+        dispatchedTasks:
+          type: integer
+      required:
+      - deduplicated
+      - dispatchedTasks
+      - jobId
+      - progress
+      - queued
+      - status
+      - totalFiles
+      - uploadedFiles
+    DocumentCategorizationUploadRequestRequest:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+            format: binary
+        model:
+          type: string
+          nullable: true
+        providerOrder:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required:
+      - files
     DocumentMergeRequest:
       type: object
       description: Serializer for merging documents.
@@ -13650,9 +14917,8 @@ components:
           type: boolean
         expiring_threshold_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         is_stay_permit:
           type: boolean
@@ -13698,9 +14964,8 @@ components:
           type: boolean
         expiring_threshold_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         is_stay_permit:
           type: boolean
@@ -13932,9 +15197,8 @@ components:
           readOnly: true
         sort_order:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         product:
           allOf:
           - $ref: '#/components/schemas/Product'
@@ -13946,9 +15210,8 @@ components:
           nullable: true
         quantity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notes:
           type: string
           nullable: true
@@ -14008,9 +15271,8 @@ components:
           readOnly: true
         sort_order:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         product:
           allOf:
           - $ref: '#/components/schemas/InvoiceListProduct'
@@ -14022,9 +15284,8 @@ components:
           nullable: true
         quantity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notes:
           type: string
           nullable: true
@@ -14219,9 +15480,8 @@ components:
           readOnly: true
         invoice_no:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         invoice_no_display:
           type: string
           readOnly: true
@@ -14413,9 +15673,8 @@ components:
           readOnly: true
         invoice_no:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         invoice_no_display:
           type: string
           readOnly: true
@@ -15013,9 +16272,8 @@ components:
           readOnly: true
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         required_documents:
           type: string
@@ -15025,15 +16283,13 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15119,21 +16375,18 @@ components:
           nullable: true
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15198,21 +16451,18 @@ components:
           nullable: true
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15280,9 +16530,8 @@ components:
           readOnly: true
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         required_documents:
           type: string
@@ -15292,15 +16541,13 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15377,6 +16624,8 @@ components:
           type: boolean
         deduplicated:
           type: boolean
+        requestId:
+          type: string
       required:
       - deduplicated
       - jobId
@@ -15411,6 +16660,8 @@ components:
           type: boolean
         deduplicated:
           type: boolean
+        requestId:
+          type: string
       required:
       - deduplicated
       - jobId
@@ -15453,9 +16704,8 @@ components:
           maxLength: 3
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         required_documents:
           type: string
@@ -15465,15 +16715,13 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         application_window_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         validation_prompt:
           type: string
@@ -15636,21 +16884,18 @@ components:
           maxLength: 100
         step:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notify_customer:
           type: boolean
         last_step:
@@ -15667,9 +16912,8 @@ components:
           nullable: true
         step:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         name:
           type: string
           maxLength: 100
@@ -15682,16 +16926,14 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         duration:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notify_customer:
           type: boolean
         add_task_to_calendar:
@@ -15709,9 +16951,8 @@ components:
           nullable: true
         step:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         name:
           type: string
           minLength: 1
@@ -15725,16 +16966,14 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         duration:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notify_customer:
           type: boolean
         add_task_to_calendar:
@@ -15828,6 +17067,14 @@ components:
         dark_mode:
           type: boolean
         preferences: {}
+    ValidateDocumentCategoryRequestRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
     WebPushSubscription:
       type: object
       properties:
