@@ -54,6 +54,61 @@ jobs:
               fi
             }
 
+            dump_bs_core_diagnostics() {
+              echo "🔎  Docker Compose status:"
+              docker compose ps || true
+
+              echo "🔎  bs-core container state:"
+              docker inspect bs-core \
+                --format 'status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' \
+                2>/dev/null || true
+
+              echo "🔎  bs-core health log:"
+              docker inspect bs-core \
+                --format '{{range .State.Health.Log}}{{println .Start "exit=" .ExitCode "output=" .Output}}{{end}}' \
+                2>/dev/null || true
+
+              echo "🔎  bs-core container logs:"
+              docker compose logs --no-color --tail=200 bs-core || true
+
+              if [ -n "${DATA_PATH:-}" ] && [ -f "${DATA_PATH}/logs/django.log" ]; then
+                echo "🔎  /logs/django.log tail:"
+                tail -200 "${DATA_PATH}/logs/django.log" || true
+              fi
+            }
+
+            wait_for_bs_core_health() {
+              BS_CORE_WAIT_SECONDS=0
+              BS_CORE_MAX_WAIT_SECONDS="${BS_CORE_MAX_WAIT_SECONDS:-300}"
+              BS_CORE_SLEEP_SECONDS=5
+
+              while [ "$BS_CORE_WAIT_SECONDS" -lt "$BS_CORE_MAX_WAIT_SECONDS" ]; do
+                CORE_STATUS=$(docker inspect bs-core --format '{{.State.Status}}' 2>/dev/null || echo missing)
+                CORE_EXIT=$(docker inspect bs-core --format '{{.State.ExitCode}}' 2>/dev/null || echo unknown)
+                CORE_OOM=$(docker inspect bs-core --format '{{.State.OOMKilled}}' 2>/dev/null || echo unknown)
+                CORE_HEALTH=$(docker inspect bs-core --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' 2>/dev/null || echo missing)
+
+                if [ "$CORE_STATUS" != "running" ]; then
+                  echo "❌  bs-core is not running (status=${CORE_STATUS}, exit=${CORE_EXIT}, oom=${CORE_OOM})."
+                  dump_bs_core_diagnostics
+                  return 1
+                fi
+
+                if [ "$CORE_HEALTH" = "healthy" ]; then
+                  echo "✅  bs-core is healthy."
+                  return 0
+                fi
+
+                echo "⏳  Waiting for bs-core health (${BS_CORE_WAIT_SECONDS}s/${BS_CORE_MAX_WAIT_SECONDS}s, status=${CORE_STATUS}, health=${CORE_HEALTH}) …"
+                sleep "$BS_CORE_SLEEP_SECONDS"
+                BS_CORE_WAIT_SECONDS=$((BS_CORE_WAIT_SECONDS + BS_CORE_SLEEP_SECONDS))
+              done
+
+              echo "❌  bs-core did not become healthy after ${BS_CORE_MAX_WAIT_SECONDS}s."
+              dump_bs_core_diagnostics
+              return 1
+            }
+
             # ── EARLY DISK CLEANUP — free space before git fetch ──
             echo "🧹  Pre-deploy disk cleanup …"
             DISK_AVAIL_KB=$(df --output=avail "$REPO_DIR" 2>/dev/null | tail -1 | tr -d ' ' || echo 999999)
@@ -241,8 +296,18 @@ jobs:
             done
             echo "✅  db is healthy."
 
-            echo "🚀  Starting application containers …"
-            docker compose up -d $APP_SERVICES
+            echo "🚀  Starting bs-core first …"
+            docker compose up -d bs-alloy bs-core || {
+              dump_bs_core_diagnostics
+              exit 1
+            }
+            wait_for_bs_core_health || exit 1
+
+            echo "🚀  Starting remaining application containers …"
+            docker compose up -d bs-worker bs-scheduler bs-frontend || {
+              dump_bs_core_diagnostics
+              exit 1
+            }
 
             # Optionally run initial data seeding if explicitly requested via .env (INITIALIZE_DB=true)
             if [ "${INITIALIZE_DB:-false}" = "true" ]; then
