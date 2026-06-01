@@ -368,7 +368,7 @@ services:
       context: ./
       dockerfile: Dockerfile.frontend
       args:
-        NODE_OPTIONS: --max-old-space-size=${FRONTEND_BUILD_HEAP_MB:-1536}
+        NODE_OPTIONS: --max-old-space-size=${FRONTEND_BUILD_HEAP_MB:-1280}
         NG_BUILD_MAX_WORKERS: ${FRONTEND_BUILD_MAX_WORKERS:-1}
     networks:
       dockernet:

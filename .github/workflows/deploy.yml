@@ -40,10 +40,19 @@ jobs:
 
             FRONTEND_RECLAIM_THRESHOLD_KB=6291456
             FRONTEND_MIN_SAFE_BUILD_KB=4194304
-            FRONTEND_BUILD_HEAP_MB="${FRONTEND_BUILD_HEAP_MB:-1536}"
+            FRONTEND_BUILD_HEAP_MB="${FRONTEND_BUILD_HEAP_MB:-1280}"
             FRONTEND_BUILD_MAX_WORKERS="${FRONTEND_BUILD_MAX_WORKERS:-1}"
-            FRONTEND_BUILD_REQUIRED_MEM_KB="${FRONTEND_BUILD_REQUIRED_MEM_KB:-1572864}"
-            FRONTEND_BUILD_MIN_SWAP_FREE_KB="${FRONTEND_BUILD_MIN_SWAP_FREE_KB:-262144}"
+            FRONTEND_BUILD_REQUIRED_MEM_KB="${FRONTEND_BUILD_REQUIRED_MEM_KB:-2621440}"
+            FRONTEND_BUILD_MIN_SWAP_FREE_KB="${FRONTEND_BUILD_MIN_SWAP_FREE_KB:-524288}"
+            FRONTEND_SIDE_SERVICES_STOPPED=false
+            FRONTEND_APP_SERVICES_STOPPED=false
+
+            restart_stopped_services_after_failed_build() {
+              if [ "$FRONTEND_SIDE_SERVICES_STOPPED" = true ] || [ "$FRONTEND_APP_SERVICES_STOPPED" = true ]; then
+                echo "⚠️  Build failed after stopping services for frontend memory headroom — restarting the existing stack."
+                docker compose up -d bs-core bs-frontend bs-worker bs-scheduler bs-alloy 2>/dev/null || true
+              fi
+            }
 
             # ── EARLY DISK CLEANUP — free space before git fetch ──
             echo "🧹  Pre-deploy disk cleanup …"
@@ -162,6 +171,7 @@ jobs:
               if [ "$MEM_AVAILABLE_KB" -lt "$FRONTEND_BUILD_REQUIRED_MEM_KB" ] 2>/dev/null || [ "$SWAP_FREE_KB" -lt "$FRONTEND_BUILD_MIN_SWAP_FREE_KB" ] 2>/dev/null; then
                 echo "⚠️  Low-memory frontend build mode enabled — temporarily stopping non-critical services before Angular SSR build."
                 docker compose stop bs-worker bs-scheduler bs-alloy 2>/dev/null || true
+                FRONTEND_SIDE_SERVICES_STOPPED=true
 
                 MEM_AFTER_TRIM_KB=$(awk '/MemAvailable:/ { print $2; exit }' /proc/meminfo 2>/dev/null || echo 0)
                 SWAP_AFTER_TRIM_KB=$(awk '/SwapFree:/ { print $2; exit }' /proc/meminfo 2>/dev/null || echo 0)
@@ -170,6 +180,11 @@ jobs:
                 if [ "$MEM_AFTER_TRIM_KB" -lt "$FRONTEND_BUILD_REQUIRED_MEM_KB" ] 2>/dev/null || [ "$SWAP_AFTER_TRIM_KB" -lt "$FRONTEND_BUILD_MIN_SWAP_FREE_KB" ] 2>/dev/null; then
                   echo "⚠️  Memory is still tight — stopping the live app containers before rebuilding bs-frontend to avoid an OOM-killed build."
                   docker compose stop bs-core bs-frontend 2>/dev/null || true
+                  FRONTEND_APP_SERVICES_STOPPED=true
+
+                  MEM_AFTER_APP_STOP_KB=$(awk '/MemAvailable:/ { print $2; exit }' /proc/meminfo 2>/dev/null || echo 0)
+                  SWAP_AFTER_APP_STOP_KB=$(awk '/SwapFree:/ { print $2; exit }' /proc/meminfo 2>/dev/null || echo 0)
+                  echo "📊  Memory after stopping live app containers: available=${MEM_AFTER_APP_STOP_KB} KB, swap-free=${SWAP_AFTER_APP_STOP_KB} KB"
                 fi
               fi
             fi
@@ -185,13 +200,19 @@ jobs:
             fi
             if [ -n "$BUILD_TARGETS" ]; then
               if [ "$BACKEND_CHANGED" = true ]; then
-                docker compose build bs-core
+                docker compose build bs-core || {
+                  restart_stopped_services_after_failed_build
+                  exit 1
+                }
               fi
               if [ "$FRONTEND_CHANGED" = true ]; then
                 docker compose build \
                   --build-arg NODE_OPTIONS=--max-old-space-size=${FRONTEND_BUILD_HEAP_MB} \
                   --build-arg NG_BUILD_MAX_WORKERS=${FRONTEND_BUILD_MAX_WORKERS} \
-                  bs-frontend
+                  bs-frontend || {
+                    restart_stopped_services_after_failed_build
+                    exit 1
+                  }
               fi
             else
               echo "ℹ️  No image rebuilds needed — using cached images."

@@ -1,10 +1,10 @@
-FROM oven/bun:latest AS bun
+FROM oven/bun:1.3.6 AS bun
 
-FROM node:24-slim AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
-ARG NODE_OPTIONS=--max-old-space-size=1536
+ARG NODE_OPTIONS=--max-old-space-size=1280
 ARG NG_BUILD_MAX_WORKERS=1
 ENV NODE_OPTIONS=$NODE_OPTIONS
 ENV NG_BUILD_MAX_WORKERS=$NG_BUILD_MAX_WORKERS
@@ -21,9 +21,14 @@ RUN set -eux; \
 COPY frontend/ ./
 
 # Run Angular CLI via Node to avoid Bun's ESM loader limitations during build
-RUN node ./node_modules/@angular/cli/bin/ng.js build --configuration production --progress=false
+RUN node ./node_modules/@angular/cli/bin/ng.js build --configuration production --progress=false || { \
+  status=$?; \
+  echo "Angular build failed; dumping Angular error logs if present."; \
+  find /tmp -maxdepth 3 -path '*/angular-errors.log' -type f -print -exec cat {} + 2>/dev/null || true; \
+  exit "$status"; \
+}
 
-FROM oven/bun:latest AS runner
+FROM oven/bun:1.3.6 AS runner
 
 WORKDIR /app
 
