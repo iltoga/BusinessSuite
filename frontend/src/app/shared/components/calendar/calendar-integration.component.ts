@@ -15,6 +15,11 @@ import type { ZardDialogRef } from '@/shared/components/dialog/dialog-ref';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardSkeletonComponent } from '@/shared/components/skeleton/skeleton.component';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import {
+  formatDateForApi,
+  getTodayInTimezoneDate,
+  parseApiDate,
+} from '@/shared/utils/date-parsing';
 import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -86,6 +91,7 @@ type WeekCalendarDay = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarIntegrationComponent implements OnInit {
+  private readonly BUSINESS_TIMEZONE = 'Asia/Makassar';
   private calendarService = inject(CalendarService);
   private configService = inject(ConfigService);
   private holidayService = inject(HolidayService);
@@ -139,7 +145,7 @@ export class CalendarIntegrationComponent implements OnInit {
   );
 
   readonly todayEvents = computed(() => {
-    const today = new Date();
+    const today = this.todayInBusinessTimezone();
     return this.taskDeadlineEvents().filter((event) => this.isSameDay(event.startDate, today));
   });
 
@@ -154,7 +160,7 @@ export class CalendarIntegrationComponent implements OnInit {
   });
 
   readonly restOfWeekEvents = computed(() => {
-    const today = new Date();
+    const today = this.todayInBusinessTimezone();
     const tomorrowStart = new Date(today);
     tomorrowStart.setDate(today.getDate() + 1);
     tomorrowStart.setHours(0, 0, 0, 0);
@@ -172,7 +178,7 @@ export class CalendarIntegrationComponent implements OnInit {
   });
 
   readonly restOfWeekCalendarDays = computed<WeekCalendarDay[]>(() => {
-    const today = new Date();
+    const today = this.todayInBusinessTimezone();
     const tomorrowStart = this.startOfDay(
       new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1),
     );
@@ -195,7 +201,7 @@ export class CalendarIntegrationComponent implements OnInit {
         .sort((left, right) => left.startDate.getTime() - right.startDate.getTime());
 
       days.push({
-        key: dayDate.toISOString(),
+        key: formatDateForApi(dayDate),
         date: dayDate,
         label: new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(dayDate),
         shortDate: new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short' }).format(
@@ -210,7 +216,7 @@ export class CalendarIntegrationComponent implements OnInit {
   });
 
   readonly overdueApplications = computed(() => {
-    const todayStart = this.startOfDay(new Date());
+    const todayStart = this.startOfDay(this.todayInBusinessTimezone());
     const oldestOverdueStart = new Date(todayStart);
     oldestOverdueStart.setDate(oldestOverdueStart.getDate() - 14);
 
@@ -914,35 +920,12 @@ export class CalendarIntegrationComponent implements OnInit {
   }
 
   private parseHolidayDate(value: string | null | undefined): Date | null {
-    const raw = (value ?? '').trim();
-    if (!raw) return null;
-
-    const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    if (isoMatch) {
-      const year = Number(isoMatch[1]);
-      const month = Number(isoMatch[2]);
-      const day = Number(isoMatch[3]);
-      const localDate = new Date(year, month - 1, day);
-      if (
-        localDate.getFullYear() === year &&
-        localDate.getMonth() === month - 1 &&
-        localDate.getDate() === day
-      ) {
-        return localDate;
-      }
-      return null;
-    }
-
-    const parsed = new Date(raw);
-    if (Number.isNaN(parsed.getTime())) {
-      return null;
-    }
-    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return parseApiDate(value);
   }
 
   private parseCalendarDateValue(value: string): Date {
     const raw = value.trim();
-    const dateOnly = this.parseHolidayDate(raw);
+    const dateOnly = parseApiDate(raw);
     if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(raw) && dateOnly) {
       return dateOnly;
     }
@@ -951,6 +934,27 @@ export class CalendarIntegrationComponent implements OnInit {
     if (Number.isNaN(parsed.getTime())) {
       return new Date();
     }
-    return parsed;
+    return this.dateInBusinessTimezone(parsed);
+  }
+
+  private todayInBusinessTimezone(): Date {
+    const today = getTodayInTimezoneDate(this.BUSINESS_TIMEZONE);
+    return new Date(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  }
+
+  private dateInBusinessTimezone(value: Date): Date {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: this.BUSINESS_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(value);
+    const year = Number(parts.find((part) => part.type === 'year')?.value);
+    const month = Number(parts.find((part) => part.type === 'month')?.value);
+    const day = Number(parts.find((part) => part.type === 'day')?.value);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+      return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+    return new Date(year, month - 1, day);
   }
 }

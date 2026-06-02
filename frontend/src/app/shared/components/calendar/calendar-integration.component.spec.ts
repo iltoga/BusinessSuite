@@ -104,6 +104,10 @@ describe('CalendarIntegrationComponent', () => {
     return { component, calendarServiceMock, dialogServiceMock };
   };
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('splits today events into todo and done buckets', () => {
     const { component } = setup([
       makeEvent('1', '[Application #1] Todo Event', '5', todayIsoDate, taskDeadlineExtra),
@@ -112,6 +116,28 @@ describe('CalendarIntegrationComponent', () => {
 
     expect(component.todayTodoEvents().length).toBe(1);
     expect(component.todayDoneEvents().length).toBe(1);
+  });
+
+  it('uses the Bali business date for timestamped calendar events', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-01T17:30:00.000Z'));
+
+    const { component } = setup([
+      {
+        ...makeEvent(
+          'bali-today',
+          '[Application #325] Maria Puig Ramon - biometrics',
+          '5',
+          '2026-06-02',
+          taskDeadlineExtra,
+        ),
+        start: { dateTime: '2026-06-02T00:30:00+08:00' },
+        end: { dateTime: '2026-06-02T01:30:00+08:00' },
+      },
+    ]);
+
+    expect(component.todayTodoEvents().map((event) => event.id)).toEqual(['bali-today']);
+    expect(component.overdueApplications()).toEqual([]);
   });
 
   it('marks a todo event as done via backend patch', () => {
