@@ -147,7 +147,13 @@
     @if (hasTasks()) {
       <z-card class="p-5">
         <h2 class="text-lg font-semibold mb-4">Tasks</h2>
-        <app-data-table [columns]="taskColumns()" [data]="tasks()" />
+        <app-data-table
+          [columns]="taskColumns()"
+          [data]="tasks()"
+          [useMeasuredHeights]="true"
+          [itemSizePx]="80"
+          [viewportBottomSpacingPx]="0"
+        />
       </z-card>
     }
   } @else {
