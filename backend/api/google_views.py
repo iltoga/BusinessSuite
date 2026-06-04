@@ -322,7 +322,20 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
             else:
                 next_task = next((t for t in tasks if t.add_task_to_calendar), None)
 
-            due_date = application.due_date
+            due_date = None
+            if next_task:
+                # Prefer the workflow due_date for the current step when available.
+                if current_workflow and current_workflow.task_id == next_task.id and current_workflow.due_date:
+                    due_date = current_workflow.due_date
+                elif current_workflow and current_workflow.status == DocApplication.STATUS_COMPLETED:
+                    # Chain from the completed step's due_date.
+                    due_date = calculate_due_date(
+                        current_workflow.due_date,
+                        next_task.duration,
+                        next_task.duration_is_business_days,
+                    )
+            if not due_date:
+                due_date = application.due_date
             if not due_date and next_task:
                 due_date = calculate_due_date(
                     application.doc_date or timezone.localdate(),

@@ -55,9 +55,7 @@ class ApplicationCalendarService:
         if start_date:
             due_date = application.calculate_next_calendar_due_date(start_date=start_date)
         else:
-            due_date = application.due_date or application.calculate_next_calendar_due_date(
-                start_date=application.doc_date
-            )
+            due_date = self._resolve_task_due_date(application, task)
 
         current_event = self._get_existing_calendar_event_for_application(application)
         current_event_task_id, _ = self._event_task_identity(current_event)
@@ -340,6 +338,42 @@ class ApplicationCalendarService:
             )
             .order_by("-updated_at", "-created_at")
             .first()
+        )
+
+    def _resolve_task_due_date(self, application, task):
+        """Determine the correct due date for *task* on *application*.
+
+        Resolution order:
+        1. Existing workflow record for this task (most authoritative).
+        2. Recalculate via ``calculate_next_calendar_due_date`` which now
+           chains from the previous completed step.
+        3. ``application.due_date`` as last-resort fallback.
+        """
+        from customer_applications.models.doc_workflow import DocWorkflow
+
+        # 1. If there is already a workflow row for this exact task, use its
+        #    calculated due_date — this is the single source of truth once
+        #    the workflow has been created by the transition service.
+        workflow_for_task = (
+            DocWorkflow.objects.filter(
+                doc_application=application,
+                task_id=task.id,
+            )
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        if workflow_for_task and workflow_for_task.due_date:
+            return workflow_for_task.due_date
+
+        # 2. Recalculate: chains from the previous completed step's due_date
+        #    (fixed in calculate_next_calendar_due_date).
+        calculated = application.calculate_next_calendar_due_date()
+        if calculated:
+            return calculated
+
+        # 3. Last resort — use whatever is stored on the application.
+        return application.due_date or application.calculate_next_calendar_due_date(
+            start_date=application.doc_date
         )
 
     def _sync_application_submission_event(self, application):

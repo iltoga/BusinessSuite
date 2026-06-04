@@ -347,7 +347,15 @@ class DocApplication(models.Model):
                 return None
             base_date = start_date or self.get_first_task_start_date()
             return base_date
-        base_date = start_date or self.get_first_task_start_date()
+        base_date = start_date
+        if not base_date and self.pk:
+            # For step 2+ tasks, chain from the previous completed step's due
+            # date so the deadline accumulates correctly.
+            current_workflow = self.current_workflow
+            if current_workflow and current_workflow.status == self.STATUS_COMPLETED:
+                base_date = current_workflow.due_date
+        if not base_date:
+            base_date = self.get_first_task_start_date()
         if not base_date:
             return None
         return calculate_due_date(base_date, task.duration, task.duration_is_business_days)
