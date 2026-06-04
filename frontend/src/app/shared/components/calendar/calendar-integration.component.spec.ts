@@ -152,6 +152,11 @@ describe('CalendarIntegrationComponent', () => {
       id: '1',
       googleCalendarEventRequest: expect.objectContaining({ done: true }),
     });
+
+    // Backend rejects requests with both `done` and `colorId`; verify colorId is excluded.
+    const actualRequest =
+      calendarServiceMock.calendarPartialUpdate.mock.calls[0][0].googleCalendarEventRequest;
+    expect(actualRequest).not.toHaveProperty('colorId');
   });
 
   it('does not allow moving a done event back to todo', () => {

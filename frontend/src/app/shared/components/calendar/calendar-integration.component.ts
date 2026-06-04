@@ -585,7 +585,6 @@ export class CalendarIntegrationComponent implements OnInit {
     }
 
     this.setEventUpdating(event.id, true);
-    const targetColorId = this.doneColorId();
 
     this.calendarService
       .calendarPartialUpdate({
@@ -594,19 +593,11 @@ export class CalendarIntegrationComponent implements OnInit {
       })
       .pipe(finalize(() => this.setEventUpdating(event.id, false)))
       .subscribe({
-        next: (updatedEvent) => {
-          this.events.update((items) =>
-            items.map((item) =>
-              item.id === event.id
-                ? ({
-                    ...item,
-                    colorId: targetColorId,
-                    ...(updatedEvent as CalendarEventWithColor),
-                  } as GoogleCalendarEvent)
-                : item,
-            ),
-          );
-          this.ensureSelectedTodayEvent();
+        next: () => {
+          // Reload all events from backend so the dashboard reflects the
+          // updated workflow state (completed step removed from overdue,
+          // new next-step event appears, etc.).
+          this.loadEvents();
         },
       });
   }
@@ -800,7 +791,7 @@ export class CalendarIntegrationComponent implements OnInit {
     event: CalendarEventViewModel,
     overrides: Partial<GoogleCalendarEventRequest>,
   ): GoogleCalendarEventRequest {
-    return {
+    const base: GoogleCalendarEventRequest = {
       summary: event.summary,
       startTime: event.start?.dateTime || event.start?.date || event.startDate.toISOString(),
       endTime:
@@ -812,8 +803,15 @@ export class CalendarIntegrationComponent implements OnInit {
       attendees: event.attendees,
       notifications: event.notifications,
       colorId: event.colorId as GoogleCalendarEventRequestColorIdEnum | undefined,
-      ...overrides,
     };
+
+    // Backend rejects requests containing both `done` and `colorId`;
+    // when marking done, drop the color so the server controls it.
+    if ('done' in overrides) {
+      delete base.colorId;
+    }
+
+    return { ...base, ...overrides };
   }
 
   private isDoneEvent(event: CalendarEventWithColor): boolean {
